@@ -204,8 +204,9 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 
 **GET /api/plugins/kanban/config**
 - Handler: `plugin_api.py:1143` `get_config`.
-- Response: kanban plugin config (lanes, `lane_by_profile`, default tenant — fields as that function returns from config). Not `approvals.mode`.
-- Auth: session token. Storage: config.yaml kanban section + board metadata. Status: verified. SPEC section 5.
+- Response (`plugin_api.py:1147`): `{default_tenant, lane_by_profile, include_archived_by_default, render_markdown}` from `dashboard.kanban` in config.yaml. Not `approvals.mode`. Lanes are not in this object.
+- Auth: session token. Storage: config.yaml `dashboard.kanban`. Freshness: request-time. Events: none.
+- Status: verified. SPEC section 5 cites `/api/plugins/kanban/config` for lanes. This handler does not return lanes. Board columns come from `GET /workflow`, not from this config. Do not invent a lanes array here.
 
 **GET /api/plugins/kanban/workflow**
 - Handler: `plugin_api.py:1619` `get_workflow`.
@@ -216,7 +217,8 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 
 **GET /api/plugins/kanban/projects**
 - Handler: `plugin_api.py:1392` `list_kanban_projects`.
-- Distinct from `projects.db` and from workflow-studio `/projects`. Auth: session token. Status: verified as a kanban helper, not the Desktop projects store.
+- Response (`plugin_api.py:1399`): `{projects: [{id, slug, name, primary_path, icon, color}]}`. Non-archived only. This is `projects.db` for the serve process home, not a per-profile `?profile=` read and not workflow-studio `/projects`.
+- Auth: session token. Storage: `projects.db`. Freshness: request-time. Status: verified. SPEC R4's profile-scoped read is JSON-RPC `projects.list`, not this route.
 
 **GET /api/plugins/kanban/tasks/{task_id}/log**
 - Handler: `plugin_api.py:1249` `get_task_log`. Worker log tail. Storage: `HERMES_HOME/kanban/logs`. Auth: session token. Status: verified. SPEC O35.
@@ -261,13 +263,17 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 
 **GET /api/sessions**
 - Handler: `hermes_cli/web_routers/sessions.py:177` `get_sessions`.
-- Request: profile scope via the sessions router helpers.
-- Response: session list for that profile store. Auth: session token.
-- Storage: profile `state.db` sessions table. Freshness: request-time.
+- Request: `limit` (0-100, default 20), `offset`, `min_messages`, `archived` (`exclude|only|include`), `order` (`created|recent`), `source`, `sources`, `exclude_sources`, `cwd_prefix`, `full`, `profile`.
+- Response (`sessions.py:239`): `{sessions, total, limit, offset, storage}`. Each row gets `is_active`, `profile`, `is_default_profile`, `archived`, `pinned`. Unless `full=1`, `system_prompt` and `model_config` are omitted (`sessions.py:187`). `storage` is `{profile: "corrupt"}` or `{}`.
+- Side effect: `_maybe_auto_archive_for_profile` runs before the read (`sessions.py:198`). This GET is not pure. Ops must not call it as a silent poll without accepting that archive write. This slice did not call it.
+- Auth: session token. Storage: profile `state.db`. Freshness: request-time. 503 on a busy store, not an empty list (`sessions.py:249`).
 - Status: verified. SPEC O18, O20.
 
 **GET /api/sessions/search**
-- Handler: `sessions.py:284` `search_sessions`. Auth: session token. Storage: `state.db`. Status: verified. SPEC R24.
+- Handler: `sessions.py:284` `search_sessions`.
+- Request: `q`, `limit` (clamped 1-100), `profile`, `source`, `sources`, `exclude_sources`. Empty `q` returns `{results: []}`.
+- Response: `{results: [...]}` (`sessions.py:458`). A result includes `session_id`, `lineage_root`, and when a session row exists: `id, source, model, title, started_at, ended_at, last_active, is_active, message_count, tool_call_count, input_tokens, output_tokens, preview, parent_session_id, profile` (`sessions.py:373`). Missing token fields are coerced with `or 0` (`sessions.py:385`). That zero is not measured usage. Ops must not display those fields as tokens. Provenance for a real total is `GET /api/analytics/usage`, not search.
+- Auth: session token. Storage: `state.db` plus FTS. Freshness: request-time. Status: verified as a search. SPEC R24. Not a usage source.
 
 **GET /api/sessions/{session_id}/timeline**
 - Handler: `sessions.py:785` `get_session_timeline`.
@@ -319,7 +325,8 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Auth: session token. Status: verified as raw text, not as structured author/updated.
 
 **GET /api/skills/hub/official**
-- Handler: `skills.py:123` `list_official_skills`. Hub catalog, not installed skills. Auth: session token. Status: verified. SPEC G10.
+- Handler: `skills.py:123` `list_official_skills`.
+- Response: `{skills: [...]}` (`skills.py:141`). Each payload is `_skill_meta_to_payload` plus `category` (from `official/<category>/<skill>`, else `general`) and `installed` (bool). Hub catalog, not the installed-skill list. Auth: session token. Freshness: request-time local scan. Status: verified. SPEC G10. Bundles are not this route.
 
 **GET /api/memory**
 - Handler: `hermes_cli/web_routers/ops.py:491` `get_memory_status`.
@@ -327,7 +334,8 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 
 **GET /api/memory/providers/{name}/config**
 - Handler: `hermes_cli/web_routers/memory_providers.py:508` `get_memory_provider_config`.
-- Request: path `name`, profile scope. Auth: session token. Status: verified. SPEC 4.1.
+- Request: path `name` (charset-allowlisted, `memory_providers.py:504`), optional `surface`, `?profile=`.
+- Response: declared schema, or `{name, label, docs_url, fields}` / `{name, label, fields, setup}` when the provider has no surface (`memory_providers.py:515`). Empty `fields` means nothing to render. Auth: session token. Storage: provider manifest. Freshness: request-time. Status: verified. SPEC 4.1.
 
 **GET /api/messaging/platforms**
 - Handler: `hermes_cli/web_routers/messaging.py:824` `get_messaging_platforms`.
@@ -339,10 +347,16 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Auth: session token. Status: verified for those two platforms only.
 
 **GET /api/mcp/catalog**
-- Handler: `hermes_cli/web_routers/mcp.py:439` `list_mcp_catalog`. Auth: session token. Status: verified. SPEC G6, G62. No featured/recommended flag was cited by a handler in this slice; G64 is already a Cut in SPEC 12.7.
+- Handler: `hermes_cli/web_routers/mcp.py:439` `list_mcp_catalog`.
+- Request: `?profile=`, `detect_apps` (default false).
+- Response (`mcp.py:469`): `{entries, diagnostics}`. Each entry (`mcp.py:402`): `name, description, connector_slug, source, transport, auth_type, required_env[{name, prompt, required}], command, args, url, install_url, install_ref, bootstrap, default_enabled, post_install, suggest|null, needs_install, installed, enabled`. `required_env` is names and prompts, not values. `diagnostics` is `{name, kind, message}[]`. No featured flag.
+- Auth: session token. Storage: catalog manifests plus install state for the profile. Freshness: request-time. Status: verified. SPEC G6, G62. G64 stays a Cut: no featured flag here.
 
 **GET /api/mcp/servers**
-- Handler: `mcp.py:94` `list_mcp_servers`. Auth: session token. Storage: profile MCP config. Status: verified. SPEC G33, G83.
+- Handler: `mcp.py:94` `list_mcp_servers`.
+- Request: `?profile=`.
+- Response: `{servers: [_mcp_server_summary...]}`. Summary (`hermes_cli/web_server_mcp.py:92`): `{name, transport, url, command, args, env, auth, enabled, tools, source, plugin}`. `env` is passed through `_redact_mcp_env`. Ops still must not render `env` values. `tools` null means all tools.
+- Auth: session token. Storage: profile MCP config. Freshness: request-time. Status: verified. SPEC G33, G83.
 
 **GET /api/providers/oauth**
 - Handler: `hermes_cli/web_routers/oauth.py:683` `list_oauth_providers`.
@@ -360,16 +374,23 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Response (`files.py:566`): `{name, path, size, mime_type, data_url, ...policy meta}`. `data_url` is base64 of the file. 413 if over the size cap. Auth: session token. Storage: managed file roots, not an arbitrary path. Status: verified. SPEC O17, O34.
 
 **GET /api/git/status**
-- Handler: `hermes_cli/web_routers/git.py:50` `git_status_route`. Auth: session token. Status: verified. SPEC O36 (branch only when a task worktree is focused).
+- Handler: `hermes_cli/web_routers/git.py:50` `git_status_route` -> `hermes_cli/web_git.py:202` `repo_status`.
+- Request: `path` (repo cwd).
+- Response (`web_git.py:231`): `{branch, defaultBranch, detached, ahead, behind, staged, unstaged, untracked, conflicted, changed, added, removed, files}` or null if not a repo. `files` capped at 200. Auth: session token. Freshness: request-time git. Status: verified. SPEC O36. Show branch only when the focused task has this worktree.
 
 **GET /api/git/review/diff**
-- Handler: `git.py:130` `git_review_diff_route`. Auth: session token. Status: verified. SPEC O33, R38.
+- Handler: `git.py:130` `git_review_diff_route`.
+- Request: `path`, `file`, `scope` (default `uncommitted`), `base`, `staged`. Hosted read guard on the file.
+- Response: `{diff: string}` (`git.py:138`). Auth: session token. Status: verified. SPEC O33, R38.
 
 **GET /api/git/file-diff**
-- Handler: `git.py:141` `git_file_diff_route`. Auth: session token. Status: verified. SPEC O33, O73.
+- Handler: `git.py:141` `git_file_diff_route`.
+- Request: `path`, `file`. Response: `{diff: string}` vs HEAD (`git.py:146`). Auth: session token. Status: verified. SPEC O33, O73.
 
 **GET /api/logs**
-- Handler: `hermes_cli/web_routers/status.py:825` `get_logs`. Auth: session token. Status: verified. SPEC O35. Distinct from kanban task log.
+- Handler: `hermes_cli/web_routers/status.py:825` `get_logs`.
+- Request: `file` (default `agent`, must be a key of `LOG_FILES`), `lines` (capped 500, or 2000 then trimmed when `search` is set), `level`, `component`, `search`, `profile`.
+- Response: `{file, lines}` (`status.py:865`). Missing file: `{file, lines: []}`. Unknown file: 400. Auth: session token. Storage: `HERMES_HOME/logs/<name>` for the profile scope. Freshness: tail read. Status: verified. SPEC O35. Distinct from kanban `GET /tasks/{id}/log`.
 
 ### 4.6 Gateway run reads and approval events
 
@@ -622,6 +643,7 @@ Not in `hermes-agent`. Installed at `C:\Users\nachi\AppData\Local\hermes\plugins
 | A2 per-run | `null`, provenance `unknown` | `0` |
 | `GET /api/analytics/usage` | the aggregate's real zero, provenance `analytics.usage` | calling that zero a run's tokens |
 | cron output preview row | ignore `input_tokens: 0` (`cron.py:270`) | showing it as usage |
+| `GET /api/sessions/search` | coerced `input_tokens or 0` (`sessions.py:385`) | showing that zero as usage |
 | live sub-agent event | `null` when the event omitted tokens | `0` |
 | status bar today-total | only `analytics.usage?days=1`, tooltip names that route | sum of run nulls |
 
