@@ -1,13 +1,13 @@
 # Desktop surface audit (P0-04)
 
-Status: read-only discovery. No shell, no new component, no route.
+Status: read-only discovery, r2 docs delta applied. No shell, no new component, no route. SPEC rows are not relaxed.
 Base: `hermes-agent` `865ba906c1a` (`feat/ops-panel` / `ops/P0-04` at audit time).
 SPEC: `01-Projects/Hermes/desktop-ops-panel/SPEC.md` v4. Rows: O9, O26, O32, O38, O44, O45, O48, O50, O51, O52, O55, O64, O65, G13, G17, G58, R23, R53, R55.
 PLAN task: P0 item 4 (titlebar, palette pages, status-bar groups, themes, split host, model picker, notify, subagents, keymap).
 
 Method: follow exported symbols and their call sites. A missing symbol is a named blocker or a bounded implementation requirement. It is not an invitation to invent a second chrome.
 
-Live Desktop (`apps/desktop/release/win-unpacked/Hermes.exe`) was running during this audit. No key was injected. Ctrl+W / Ctrl+Tab would mutate production tabs and sessions. The collision ledger in `keymap.md` is signed from source, not from a production keypress.
+Live Desktop (`apps/desktop/release/win-unpacked/Hermes.exe`) was running during this audit. No key was injected. Ctrl+W / Ctrl+Tab would mutate production tabs and sessions. The collision ledger in `keymap.md` is named from source. It is not a keypress signature. Judge r2 signs it, or records a concrete blocker.
 
 ## 1. Seam inventory
 
@@ -29,10 +29,10 @@ Reuse these. Do not copy them.
 | Layout persistence | `src/lib/layout-persistence.ts:13-25` `LAYOUT_KEYS`; `:73` `keyFor` | per interface mode (`advanced` vs `.simple`), not per connection/profile | See D14. Do not fork the tree store. |
 | Sash | `src/components/pane-shell/geometry.ts:172` `beginSashDrag`; `src/components/pane-shell/tree/renderer/tree-split.tsx` | existing zone sash | Split width uses this sash. |
 | Pane lifecycle | `src/components/pane-shell/pane-lifecycle.ts:1` | `'visible' \| 'hot-hidden' \| 'parked'` | Full-screen hides chat as `hot-hidden`, never `parked` (unmount). |
-| Narrow rails | `src/app/layout-constants.ts:30-32` | `SIDEBAR_DOCK_MIN_WIDTH_PX = 640`, `SIDEBAR_COLLAPSE_MEDIA_QUERY` | Real rail collapse. Not 1024 and not 1280. `$narrowViewport` is `tree/store.ts:1301`. |
-| Tab overflow | `src/components/ui/tab-dropdown.tsx:99` `ResponsiveTabs` | wide row is `md:flex` (`:115`, Tailwind `md` = 768px); narrower becomes a dropdown | O48 / R53 tab overflow reuses this. Do not invent an 800px window breakpoint. |
+| Narrow rails (Desktop) | `src/app/layout-constants.ts:30-32` | `SIDEBAR_DOCK_MIN_WIDTH_PX = 640`, `SIDEBAR_COLLAPSE_MEDIA_QUERY` | Desktop's own dock floor. Note only. It is not the Ops rail rule in R53. |
+| Tab overflow (Desktop) | `src/components/ui/tab-dropdown.tsx:99` `ResponsiveTabs`; `:115` `md:flex`; `:130` `md:hidden` | Tailwind `md:` is a viewport media query at 768px, not a container query and not 800px | Ops tabs must not reuse these classes unchanged. See R53 / BR-R53. |
 | Model picker | `src/components/model-picker.tsx:58` | `ModelPickerDialog` | The only picker. |
-| Picker owner | `src/lib/model-picker-owner.ts:22` | `resolveModelPickerOwner` | Scope is the focused tile's route, else the ambient profile. |
+| Picker owner | `src/lib/model-picker-owner.ts:22` | `resolveModelPickerOwner` | Focused tile route, else ambient profile. No Ops-profile input. See BR-PICKER-OWNER. |
 | Picker open | `src/app/model-picker-overlay.tsx:33` `ModelPickerOverlay`; `src/store/session` `setModelPickerOpen` | composer pill calls it (`src/app/chat/composer/model-pill.tsx`) | Ops chip calls the same opener. It does not render a second dialog. |
 | Picker chord | `src/lib/keybinds/actions.ts:88` | `composer.modelPicker` = `mod+shift+m` | Leave it. Ops does not bind another model chord. |
 | Toasts | `src/store/notifications.ts:58` `$notifications`; `:249` `notify` | `NotificationInput` | Undo / "resolved elsewhere" go through `notify`. No second toast queue. |
@@ -87,7 +87,7 @@ Scoped persistence (bounded requirement, not built here):
 Full-screen round-trip:
 
 - ⤢ hides every non-Ops pane as `hot-hidden` (keep-alive). It does not `park` them and does not unmount the chat composer.
-- A second ⤢, or Esc when full-screen is the innermost layer (keymap), restores the previous hidden set. The restore snapshot is UI state, not a backend write.
+- A second ⤢, or Esc when full-screen is the innermost numbered layer (priority 5, `keymap.md` §4), restores the previous hidden set. The restore snapshot is UI state, not a backend write.
 - Chat session id, draft, and stream stay on the existing session tile. Full-screen must not call `session.new` and must not navigate to `/`.
 
 Live-session badge:
@@ -97,12 +97,21 @@ Live-session badge:
 - Source: existing session dot / subagent activity (`src/store/session-dot-state.ts` reading `$subagentsBySession`). Label is the session title, not a fabricated status.
 - Click restores the split and focuses that chat. It does not approve, steer, or stop.
 
-Responsive (R53 adapted to real breakpoints, not the SPEC's 1280/1024/800 numbers):
+Responsive (R53, SPEC.md:673, verbatim, not adapted):
 
-- Rail: follow `$narrowViewport` (`SIDEBAR_DOCK_MIN_WIDTH_PX = 640`). Under that, rails overlay (`narrow-overlays.tsx`). The 640 floor exists so a 1280px window split in half stays docked (`layout-constants.ts:29`). A new 1024px or 1280px window breakpoint would fight that. Do not add one.
-- Inspector: overlay when the Ops pane's own container is too narrow to dock it, using the same overlay pattern as `narrow-overlays.tsx`. Not a new viewport query at 1280.
-- Tabs: `ResponsiveTabs` (dropdown under the `md` / 768px container, not a new 800px window rule).
-- Three rail collapse states (O44: full / icons / hidden) are an Ops-local preference (G17 says persist it). They are not a second copy of `view.toggleSidebar` (`mod+b`). Icon state is Ops-only; hidden-under-640 uses the existing overlay.
+Under 1280 px the inspector overlays. Under 1024 px the rail shows icons. Under 800 px tabs become a dropdown.
+
+Measured width: the Ops pane container, not the window. A wide window with Ops in a half split must still hit these thresholds. Window width is the wrong measure because D14 keeps chat beside Ops.
+
+Bounded requirement BR-R53, owner phase P0.5 (PLAN.md task 2 split and task 3 rail/tabs). Not this card.
+
+- Inspector overlays when the Ops pane container is under 1280px.
+- Rail shows icons when that container is under 1024px.
+- Tabs become a dropdown when that container is under 800px.
+- `ResponsiveTabs` (`src/components/ui/tab-dropdown.tsx:115` `md:flex`, `:130` `md:hidden`) uses Tailwind `md:`. That is a viewport media query at 768px. It is not a container breakpoint and it is not 800px. Reusing the component unchanged does not satisfy R53 when Ops is a pane inside a wider window. P0.5 adds a container-query path (or an Ops-local row) keyed off the Ops pane container. Do not call `md` a container breakpoint.
+- `SIDEBAR_DOCK_MIN_WIDTH_PX = 640` (`layout-constants.ts:30`) is a Desktop dock floor so a 1280px window split in half stays docked (`layout-constants.ts:29`). Note only. It does not replace 1280/1024/800.
+
+Three rail collapse states (O44: full / icons / hidden) are an Ops-local preference (G17 says persist it). They are not a second copy of `view.toggleSidebar` (`mod+b`). The icon state is the R53 under-1024px container rule. Hidden-under-640 is the Desktop overlay, not a substitute for the SPEC numbers.
 
 ## 4. Lenses and Bot Chat — no duplicate chrome
 
@@ -137,8 +146,9 @@ O50 model chip — one visible chip:
 
 - Split mode: the composer `model-pill` is the chip. Ops renders none.
 - Full-screen (chat hot-hidden): one Ops chip in the titlebar cluster, label `profile · model`, click `setModelPickerOpen(true)`.
-- The dialog is `ModelPickerDialog`. Display filter is policy P2 (SPEC §4.4): anthropic direct `claude-*`, openai-codex/openai `gpt-6.1-sol` / `-900k` / `-pro`, xai-oauth/xai `grok-4.7`. Writes wait for A5/A6. This audit does not add a write path.
-- `resolveModelPickerOwner` stays the owner resolver. Ops must not pass a different profile than the focused Ops profile when the chip is the Ops chip, and must not retarget the chat pill's session while chat is visible.
+- `setModelPickerOpen(true)` does not take an owner. `ModelPickerOverlay` (`src/app/model-picker-overlay.tsx:59-65`) calls `resolveModelPickerOwner` (`src/lib/model-picker-owner.ts:22`) with the focused/selected session tiles and the ambient profile only. There is no Ops-profile argument.
+- Bounded requirement BR-PICKER-OWNER, owner phase P0.5 (PLAN.md task 3, chip): when the opener is the Ops full-screen chip, the overlay must resolve that Ops connection and profile, and must not retarget the visible chat pill. Do not add a second dialog. Do not invent a picker. Writes still wait for A5/A6.
+- The dialog is `ModelPickerDialog`. Display filter is policy P2 (SPEC §4.4): anthropic direct `claude-*`, openai-codex/openai `gpt-6.1-sol` / `-900k` / `-pro`, xai-oauth/xai `grok-4.7`. This audit does not add a write path.
 
 O65: one status-bar group id `ops` via `setStatusbarItemGroup`. Tokens today come from `/api/analytics/usage` with a provenance tooltip. No avatar stack component of our own if the group can render the existing item shape.
 
@@ -156,8 +166,10 @@ Bounded implementation requirements (owner is frozen; code is a later phase):
 - Contribute one `setStatusbarItemGroup('ops', ...)`.
 - Add `gold-night` through `resolveTheme` / `BUILTIN_THEMES` in P0.5. Do not revive the retired `'gold'` name (`RETIRED_SKINS`).
 - Ops pane in `$layoutTree`, full-screen via `hot-hidden`, width key `hermes.desktop.opsSplit.v1` scoped by connection+profile, tabs hooked to `migrateTilesForProfile` / `dropTilesForProfile`.
-- Teach `composerFocusBlockedBySurface` (`composer-focus-keys.ts:149`) to treat `[data-ops-root]` like `[data-terminal]`, so G-chords and `/` do not type into the composer. Detail in `keymap.md`.
-- P2 filter on the existing picker when the opener is the Ops chip. Not a new picker.
+- Teach `composerFocusBlockedBySurface` (`composer-focus-keys.ts:149`) to treat `[data-ops-root]` like `[data-terminal]`, so G-chords and `/` do not type into the composer. Detail in `keymap.md` (BR-FOCUS-SURFACE).
+- P2 filter on the existing picker when the opener is the Ops chip. Not a new picker. Owner scope is BR-PICKER-OWNER, not a second dialog.
+- BR-R53: container queries at 1280/1024/800 on the Ops pane, not viewport `md:`. Detail in §3.
+- Close, dispatch, and Esc seams (BR-CLOSE, BR-DISPATCH, BR-ESC-REGISTER, BR-ESC-TIE, BR-ESC-SKIP) are specified in `keymap.md`. Owner phase P0.5. This card does not implement them.
 
 ## 6. Out of scope for this card
 
