@@ -68,7 +68,12 @@ export function NodeCard({
       }}
       onFocus={() => setRevealed(true)}
       onMouseEnter={() => setRevealed(true)}
-      onMouseLeave={() => setRevealed(false)}
+      onMouseLeave={event => {
+        const active = event.currentTarget.ownerDocument.activeElement
+        if (!event.currentTarget.contains(active)) {
+          setRevealed(false)
+        }
+      }}
       style={{ ...opsDensityStyle(), position: 'relative' }}
     >
       <header style={{ alignItems: 'center', display: 'flex', gap: 8, height: 28 }}>
@@ -125,6 +130,7 @@ export function NodeCard({
           >
             {onEdit && (
               <button
+                data-revealed={revealed ? 'true' : 'false'}
                 onClick={onEdit}
                 onKeyDown={event => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -132,6 +138,7 @@ export function NodeCard({
                     onEdit()
                   }
                 }}
+                style={{ opacity: revealed ? 1 : 0 }}
                 type="button"
               >
                 {editLabel}
