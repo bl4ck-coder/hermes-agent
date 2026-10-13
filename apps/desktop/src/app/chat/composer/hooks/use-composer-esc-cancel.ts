@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 
+import { activeElementInOpsRoot } from '@/app/ops/keymap'
 import { triggerHaptic } from '@/lib/haptics'
 import { composerFocusBlockedBySurface } from '@/lib/keybinds/composer-focus-keys'
-import { activeElementInOpsRoot } from '@/app/ops/keymap'
 
 import { type ComposerTarget, getActiveComposer } from '../focus'
 

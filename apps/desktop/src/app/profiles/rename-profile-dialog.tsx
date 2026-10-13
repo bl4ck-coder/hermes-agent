@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { ProfileScope } from '@/api/client'
+import { migrateOpsSplitForProfile } from '@/app/ops/layout-store'
 import { ActionStatus } from '@/components/ui/action-status'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,8 +20,6 @@ import { AlertTriangle } from '@/lib/icons'
 import { slug } from '@/lib/sanitize'
 import { retireLocalProfileGateways } from '@/store/gateway'
 import { migrateTilesForProfile } from '@/store/session-states'
-
-import { migrateOpsSplitForProfile } from '@/app/ops/layout-store'
 
 import { isValidProfileName } from './create-profile-dialog'
 

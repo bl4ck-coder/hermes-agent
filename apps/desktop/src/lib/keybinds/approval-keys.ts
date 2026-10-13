@@ -1,10 +1,10 @@
 import { getActiveComposer } from '@/app/chat/composer/focus'
 import { RICH_INPUT_SLOT } from '@/app/chat/composer/rich-editor'
+import { opsEscSkipsApproval } from '@/app/ops/keymap'
 import { queryAllVisible } from '@/components/pane-shell/pane-visibility'
 
 import { isEditableTarget } from './combo'
 import { composerFocusBlockedBySurface, isActivateOnEnterTarget } from './composer-focus-keys'
-import { opsEscSkipsApproval } from '@/app/ops/keymap'
 
 let heldStack: HTMLElement | null = null
 

@@ -18,13 +18,13 @@ export function ReadonlyModelPill({
 }) {
   return (
     <Button
+      aria-description={reason}
       aria-disabled="true"
       className={MODEL_PILL_CLASS}
       data-model-connection={connectionId}
       data-model-profile={profile}
       data-ops-model-chip=""
       disabled
-      aria-description={reason}
       type="button"
       variant="ghost"
     >
