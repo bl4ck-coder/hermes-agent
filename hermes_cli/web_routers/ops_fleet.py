@@ -20,7 +20,8 @@ from contextlib import closing
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from hermes_cli.ops_fleet import Observation, profile_result
@@ -146,3 +147,65 @@ async def build_fleet(board: Optional[str] = None) -> Dict[str, Any]:
 @router.get("/api/ops/fleet")
 async def get_ops_fleet(board: Optional[str] = None):
     return await build_fleet(board or None)
+
+
+# --- Push channel: GET /api/ops/fleet/stream (ops-panel P1-05) ---------------------------------
+# Server-sent fleet snapshots for the Office and the Needs-you badge (D12: push first, the 5s
+# poll is fallback only). A ``fleet`` message is sent on connect and whenever any profile's
+# presence/sub_state/precedence/active runs change; a ``needs_you`` message carries the sorted
+# profile list whenever that set changes. Each message's SSE id is a per-connection sequence.
+_FLEET_PUSH_INTERVAL_S = 2.0
+_FLEET_KEEPALIVE_S = 15.0
+_FLEET_MAX_TICKS: Optional[int] = None  # test seam
+
+
+def _fleet_signature(snapshot: Dict[str, Any]) -> Any:
+    return tuple(sorted(
+        (p["profile"], p["presence"], p.get("sub_state"), p.get("precedence"),
+         tuple(sorted(str(r.get("id")) for r in p.get("active_runs") or [])))
+        for p in snapshot.get("profiles", [])))
+
+
+async def _fleet_events(board: Optional[str], is_disconnected: Callable[[], Any]):
+    import json as _json
+    seq = 0
+    last_sig: Any = None
+    last_needs: Any = None
+    ticks = 0
+    idle = 0.0
+    yield "retry: 2000\n\n"
+    while True:
+        if await is_disconnected():
+            return
+        try:
+            snap = await build_fleet(board)
+        except Exception:
+            _log.debug("ops fleet stream: build failed", exc_info=True)
+            snap = None
+        if snap is not None:
+            sig = _fleet_signature(snap)
+            if sig != last_sig:
+                last_sig = sig
+                seq += 1
+                idle = 0.0
+                yield f"id: {seq}\nevent: fleet\ndata: {_json.dumps(snap, separators=(',', ':'))}\n\n"
+            needs = sorted(p["profile"] for p in snap["profiles"] if p["presence"] == "needs_you")
+            if needs != last_needs:
+                last_needs = needs
+                seq += 1
+                yield f"id: {seq}\nevent: needs_you\ndata: {_json.dumps({'profiles': needs})}\n\n"
+        ticks += 1
+        if _FLEET_MAX_TICKS is not None and ticks >= _FLEET_MAX_TICKS:
+            return
+        idle += _FLEET_PUSH_INTERVAL_S
+        if idle >= _FLEET_KEEPALIVE_S:
+            idle = 0.0
+            yield ": keepalive\n\n"
+        await asyncio.sleep(_FLEET_PUSH_INTERVAL_S)
+
+
+@router.get("/api/ops/fleet/stream")
+async def stream_ops_fleet(request: Request, board: Optional[str] = None):
+    return StreamingResponse(_fleet_events(board or None, request.is_disconnected),
+                             media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
