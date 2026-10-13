@@ -1,8 +1,17 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { routeCloseTabChord } from '@/app/chat/close-tab'
-import { $commandPalettePage, closeCommandPalette } from '@/store/command-palette'
+import { Command, CommandInput, CommandList } from '@/components/ui/command'
+import { I18nProvider } from '@/i18n'
+import {
+  $commandPaletteOpen,
+  $commandPalettePage,
+  closeCommandPalette,
+  openCommandPalettePage
+} from '@/store/command-palette'
 
 import {
   claimOpsFocusedChord,
@@ -10,13 +19,19 @@ import {
   focusNextApproval,
   G_LEADER_MS,
   opsFocusOwns,
+  type OpsKeymapHost,
+  type OpsTabClose,
   registerOpsKeymapHost,
   resetOpsKeymapForTests,
-  setOpsKeymapClock,
-  type OpsKeymapHost,
-  type OpsTabClose
+  setOpsKeymapClock
 } from './keymap'
-import { OpsPalettePage, readRecentSearches, rememberOpsSearch, setOpsPaletteScope } from './palette'
+import {
+  finishOpsPaletteCommand,
+  OpsPalettePage,
+  readRecentSearches,
+  rememberOpsSearch,
+  setOpsPaletteScope
+} from './palette'
 
 function key(target: EventTarget, init: KeyboardEventInit, combo: string): KeyboardEvent {
   const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init })
@@ -52,6 +67,7 @@ function opsButton(): HTMLButtonElement {
   root.dataset.opsRoot = ''
   const button = document.createElement('button')
   button.textContent = 'row'
+  button.dataset.opsRow = ''
   root.append(button)
   document.body.append(root)
   button.focus()
@@ -59,7 +75,13 @@ function opsButton(): HTMLButtonElement {
   return button
 }
 
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn()
+})
 afterEach(() => {
+  HTMLElement.prototype.scrollIntoView = originalScrollIntoView
+  setOpsPaletteScope({ connectionId: '', profile: '' })
   cleanup()
   closeCommandPalette()
   resetOpsKeymapForTests()
@@ -165,31 +187,117 @@ describe('Ops keymap', () => {
 })
 
 describe('Ops palette page', () => {
+  it('existing palette Dialog: ArrowDown selects an Ops cmdk item and closes before navigation/focus', async () => {
+    const { CommandPalette } = await import('@/app/command-palette')
+    setOpsPaletteScope({ connectionId: 'local', profile: 'judge' })
+
+    const go = vi.fn(() => {
+      expect($commandPaletteOpen.get()).toBe(false)
+    })
+
+    registerOpsKeymapHost(host({ go }))
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <I18nProvider>
+            <CommandPalette />
+          </I18nProvider>
+        </QueryClientProvider>
+      </MemoryRouter>
+    )
+    act(() => {
+      openCommandPalettePage('ops')
+    })
+    const input = screen.getByRole('combobox')
+    fireEvent.keyDown(input, { key: 'ArrowDown', code: 'ArrowDown' })
+    await waitFor(() => {
+      const id = input.getAttribute('aria-activedescendant')
+      expect(id).toBeTruthy()
+      expect(document.getElementById(id!)?.hasAttribute('data-ops-command')).toBe(true)
+    })
+    fireEvent.click(screen.getByRole('option', { name: 'Go to Runs' }))
+    expect($commandPaletteOpen.get()).toBe(false)
+    expect(go).not.toHaveBeenCalled()
+    await waitFor(() => expect(go).toHaveBeenCalledWith('runs'))
+    expect(document.querySelector('[cmdk-root]')).toBeNull()
+    const next = opsButton()
+    next.dataset.opsNextApproval = ''
+    const approve = vi.fn()
+    next.addEventListener('click', approve)
+    registerOpsKeymapHost(host({ focusNextApproval }))
+    act(() => {
+      openCommandPalettePage('ops')
+    })
+    fireEvent.click(screen.getByRole('option', { name: 'Go to next approval' }))
+    await waitFor(() => expect(document.activeElement).toBe(next))
+    expect(approve).not.toHaveBeenCalled()
+    act(() => {
+      openCommandPalettePage('ops', 'theme')
+    })
+    fireEvent.click(screen.getByRole('option', { name: 'Switch theme' }))
+    await waitFor(() => {
+      expect($commandPaletteOpen.get()).toBe(true)
+      expect(document.querySelector('[data-ops-palette-page]')).toBeNull()
+      expect(document.querySelectorAll('[cmdk-root]')).toHaveLength(1)
+    })
+    queryClient.clear()
+  }, 60_000)
+
+  it('malformed scoped recent-search arrays are repaired and scope changes cancel queued actions', async () => {
+    setOpsPaletteScope({ connectionId: 'local', profile: 'judge' })
+    localStorage.setItem('hermes.desktop.opsRecentSearch.v1', JSON.stringify({ ['local\0judge']: 7 }))
+    rememberOpsSearch('office')
+    expect(readRecentSearches()).toEqual(['office'])
+    const go = vi.fn()
+    registerOpsKeymapHost(host({ go }))
+    render(
+      <Command shouldFilter={false}>
+        <CommandList>
+          <OpsPalettePage search="runs" />
+        </CommandList>
+      </Command>
+    )
+    fireEvent.click(screen.getByRole('option', { name: 'Go to Runs' }))
+    setOpsPaletteScope({ connectionId: 'remote', profile: 'judge' })
+    finishOpsPaletteCommand(new Event('closeAutoFocus', { cancelable: true }))
+    await act(async () => {})
+    expect(go).not.toHaveBeenCalled()
+  })
   it('keeps future mutations disabled and scopes recent searches', () => {
     setOpsPaletteScope({ connectionId: 'local', profile: 'judge' })
     rememberOpsSearch('office', { connectionId: 'local', profile: 'judge' })
     rememberOpsSearch('secret', { connectionId: 'remote', profile: 'other' })
 
-    render(<OpsPalettePage search="" />)
+    render(
+      <Command shouldFilter={false}>
+        <CommandInput />
+        <CommandList>
+          <OpsPalettePage search="" />
+        </CommandList>
+      </Command>
+    )
 
-    expect(screen.getByRole('button', { name: /Create task/ }).hasAttribute('disabled')).toBe(true)
-    expect(screen.getByRole('button', { name: /Create task/ }).getAttribute('data-ops-disabled-reason')).toMatch(/A5\/A6/)
-    expect(screen.getByRole('button', { name: /Set model/ }).getAttribute('title')).toMatch(/A5\/A6/)
+    expect(screen.getByRole('option', { name: /Create task/ }).getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByRole('option', { name: /Create task/ }).getAttribute('data-ops-disabled-reason')).toMatch(
+      /A5\/A6/
+    )
+    expect(screen.getByRole('option', { name: /Set model/ }).getAttribute('title')).toMatch(/A5\/A6/)
     expect(screen.getByText('office')).toBeTruthy()
     expect(screen.queryByText('secret')).toBeNull()
     expect(readRecentSearches({ connectionId: 'remote', profile: 'other' })).toEqual(['secret'])
 
     const go = vi.fn()
     registerOpsKeymapHost(host({ go }))
-    fireEvent.click(screen.getByRole('button', { name: 'Go to Runs' }))
-    expect(go).toHaveBeenCalledWith('runs')
+    fireEvent.click(screen.getByRole('option', { name: 'Go to Runs' }))
+    expect(go).not.toHaveBeenCalled()
 
     const run = document.createElement('button')
     run.dataset.approvalRun = ''
     const onRun = vi.fn()
     run.addEventListener('click', onRun)
     document.body.append(run)
-    fireEvent.click(screen.getByRole('button', { name: 'Go to next approval' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Go to next approval' }))
     expect(onRun).not.toHaveBeenCalled()
   })
 })

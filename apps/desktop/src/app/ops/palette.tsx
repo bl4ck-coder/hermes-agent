@@ -2,14 +2,10 @@
 
 import { useMemo, useSyncExternalStore } from 'react'
 
-import {
-  focusNextApproval,
-  MODEL_EDIT_UNAVAILABLE,
-  MUTATION_UNAVAILABLE,
-  OPS_PALETTE_PAGE,
-  opsHost,
-  type OpsView
-} from './keymap'
+import { CommandGroup, CommandItem } from '@/components/ui/command'
+import { closeCommandPalette, openCommandPalettePage } from '@/store/command-palette'
+
+import { MODEL_EDIT_UNAVAILABLE, MUTATION_UNAVAILABLE, OPS_PALETTE_PAGE, opsHost, type OpsView } from './keymap'
 
 export { OPS_PALETTE_PAGE }
 
@@ -23,6 +19,18 @@ export interface OpsPaletteScope {
 
 let scope: OpsPaletteScope = { connectionId: '', profile: '' }
 const scopeListeners = new Set<() => void>()
+let pendingCommand: (() => void) | null = null
+
+/** Existing palette Dialog retires its focus trap before running an Ops action. */
+export function finishOpsPaletteCommand(event: Event): void {
+  const run = pendingCommand
+  pendingCommand = null
+
+  if (run) {
+    event.preventDefault()
+    queueMicrotask(run)
+  }
+}
 
 export function setOpsPaletteScope(next: OpsPaletteScope): void {
   if (next.connectionId === scope.connectionId && next.profile === scope.profile) {
@@ -30,6 +38,7 @@ export function setOpsPaletteScope(next: OpsPaletteScope): void {
   }
 
   scope = next
+  pendingCommand = null
   scopeListeners.forEach(listener => listener())
 }
 
@@ -76,7 +85,7 @@ export function rememberOpsSearch(query: string, value: OpsPaletteScope = scope)
 
   const store = readStore()
   const id = scopeId(value)
-  const next = [trimmed, ...(store[id] ?? []).filter(row => row !== trimmed)].slice(0, RECENT_LIMIT)
+  const next = [trimmed, ...readRecentSearches(value).filter(row => row !== trimmed)].slice(0, RECENT_LIMIT)
   store[id] = next
 
   try {
@@ -105,6 +114,12 @@ export function opsPaletteCommands(): OpsPaletteCommand[] {
     { id: 'go-skills', label: 'Go to Skills', keywords: ['skills', 'capabilities', 'g s'], run: go('skills') },
     { id: 'settings', label: 'Settings', keywords: ['settings', 'shortcuts'], run: () => opsHost()?.openSettings() },
     {
+      id: 'switch-theme',
+      label: 'Switch theme',
+      keywords: ['theme', 'appearance'],
+      run: () => openCommandPalettePage('theme')
+    },
+    {
       id: 'shortcut-sheet',
       label: 'Shortcut sheet',
       keywords: ['shortcuts', 'keymap', 'help'],
@@ -114,7 +129,7 @@ export function opsPaletteCommands(): OpsPaletteCommand[] {
       id: 'focus-next-approval',
       label: 'Go to next approval',
       keywords: ['approval', 'focus', 'needs you'],
-      run: focusNextApproval
+      run: () => opsHost()?.focusNextApproval()
     },
     {
       id: 'create-task',
@@ -149,15 +164,10 @@ export function opsPaletteCommands(): OpsPaletteCommand[] {
   ]
 }
 
-export function OpsPalettePage({
-  onSearch,
-  search
-}: {
-  onSearch?: (query: string) => void
-  search: string
-}) {
+export function OpsPalettePage({ onSearch, search }: { onSearch?: (query: string) => void; search: string }) {
   const liveScope = useSyncExternalStore(subscribeScope, readOpsPaletteScope, readOpsPaletteScope)
   const query = search.trim().toLowerCase()
+
   const commands = useMemo(() => {
     return opsPaletteCommands().filter(command => {
       if (!query) {
@@ -167,6 +177,7 @@ export function OpsPalettePage({
       return [command.label, ...command.keywords].some(part => part.toLowerCase().includes(query))
     })
   }, [query])
+
   const recent = query ? [] : readRecentSearches(liveScope)
 
   const select = (command: OpsPaletteCommand) => {
@@ -178,38 +189,48 @@ export function OpsPalettePage({
       rememberOpsSearch(search, liveScope)
     }
 
-    command.run()
+    const selectedScope = liveScope
+
+    pendingCommand = () => {
+      if (scopeId(selectedScope) === scopeId() && scope.connectionId && scope.profile) {
+        command.run?.()
+      }
+    }
+
+    closeCommandPalette()
   }
 
   return (
     <div data-ops-palette-page={OPS_PALETTE_PAGE}>
       {recent.length > 0 && (
-        <div data-ops-recent-searches={scopeId(liveScope)}>
+        <CommandGroup data-ops-recent-searches={scopeId(liveScope)} heading="Recent searches">
           {recent.map(row => (
-            <button key={row} onClick={() => onSearch?.(row)} type="button">
+            <CommandItem key={row} onSelect={() => onSearch?.(row)} value={`recent:${row}`}>
               {row}
-            </button>
+            </CommandItem>
           ))}
-        </div>
+        </CommandGroup>
       )}
-      <ul>
+      <CommandGroup heading="Ops">
         {commands.map(command => (
-          <li key={command.id}>
-            <button
-              aria-disabled={command.disabledReason ? true : undefined}
-              data-ops-command={command.id}
-              data-ops-disabled-reason={command.disabledReason}
-              disabled={Boolean(command.disabledReason)}
-              onClick={() => select(command)}
-              title={command.disabledReason}
-              type="button"
-            >
-              {command.label}
-              {command.disabledReason ? <span>{command.disabledReason}</span> : null}
-            </button>
-          </li>
+          <CommandItem
+            aria-disabled={command.disabledReason ? true : undefined}
+            className="flex-col items-start gap-1"
+            data-ops-command={command.id}
+            data-ops-disabled-reason={command.disabledReason}
+            disabled={Boolean(command.disabledReason)}
+            key={command.id}
+            onSelect={() => select(command)}
+            title={command.disabledReason}
+            value={command.id}
+          >
+            {command.label}
+            {command.disabledReason ? (
+              <span className="text-xs text-muted-foreground">{command.disabledReason}</span>
+            ) : null}
+          </CommandItem>
         ))}
-      </ul>
+      </CommandGroup>
     </div>
   )
 }
