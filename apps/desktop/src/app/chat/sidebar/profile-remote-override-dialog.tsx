@@ -220,7 +220,7 @@ export function ProfileRemoteOverrideDialog({ profileNames }: { profileNames: st
               <DialogTitle>{p.confirmTitle}</DialogTitle>
               <DialogDescription>{p.confirmNote(profile ?? '', host)}</DialogDescription>
             </DialogHeader>
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && <p className="text-xs text-gn-destructive-copy">{error}</p>}
             <DialogFooter>
               <Button disabled={saving} onClick={() => setConfirming(false)} type="button" variant="ghost">
                 {p.confirmBack}
@@ -250,7 +250,7 @@ export function ProfileRemoteOverrideDialog({ profileNames }: { profileNames: st
                   type="url"
                   value={url}
                 />
-                {trimmedUrl && !urlValid && <span className="text-destructive">{p.urlInvalid}</span>}
+                {trimmedUrl && !urlValid && <span className="text-gn-destructive-copy">{p.urlInvalid}</span>}
               </label>
 
               <label className="flex flex-col gap-1 text-xs">
@@ -280,7 +280,7 @@ export function ProfileRemoteOverrideDialog({ profileNames }: { profileNames: st
               )}
 
               {collision && <p className="text-xs text-(--ui-text-secondary)">{p.collisionWarning(collision)}</p>}
-              {error && <p className="text-xs text-destructive">{error}</p>}
+              {error && <p className="text-xs text-gn-destructive-copy">{error}</p>}
             </div>
 
             <DialogFooter>

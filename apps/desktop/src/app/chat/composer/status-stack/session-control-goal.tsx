@@ -501,7 +501,7 @@ export const SessionControlGoalSection = memo(function SessionControlGoalSection
               />
             </div>
             {addCriterionError && (
-              <div className="text-xs text-destructive" role="alert">
+              <div className="text-xs text-gn-destructive-copy" role="alert">
                 {addCriterionError}
               </div>
             )}

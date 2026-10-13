@@ -124,6 +124,37 @@
   src: url('./fonts/JetBrainsMono-Italic.woff2') format('woff2');
 }
 
+/* Geist / Geist Mono — local OFL faces for Gold Night. No runtime font fetch.
+   Regular and Medium are the already-local latin variable subset; Mono is
+   converted from the local canvas-fonts TTF. License: src/fonts/Geist-OFL.txt. */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/Geist-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/Geist-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/GeistMono-Regular.woff2') format('woff2');
+}
+
+/* Error copy. Gold Night sets --gn-destructive-copy; every other skin falls
+   back to the fill token so this class does not restyle them. */
+.text-gn-destructive-copy {
+  color: var(--gn-destructive-copy, var(--dt-destructive));
+}
+
 @theme inline {
   --color-background: var(--dt-background);
   --color-foreground: var(--dt-foreground);

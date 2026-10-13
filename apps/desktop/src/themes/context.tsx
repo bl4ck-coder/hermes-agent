@@ -37,6 +37,7 @@ import {
   DEFAULT_TYPOGRAPHY,
   goldNightHiTheme,
   goldNightTheme,
+  GOLD_NIGHT_CONSUMED_VARS,
   GOLD_NIGHT_CUSTOM_CSS,
   nousTheme,
   RETIRED_SKINS
@@ -437,7 +438,7 @@ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark', chatFontFamily 
     INJECTED_FONT_URLS.add(typo.fontUrl)
   }
 
-  applyGoldNightTokens(skinName)
+  applyGoldNightTokens(root, skinName)
 
   // Inject / clear customCSS from the skin (mirrors web/src/themes/context.tsx).
   // A theme carries the optional customCSS field; we inject/remove a single
@@ -481,13 +482,17 @@ if (typeof window !== 'undefined') {
   syncNativeTheme(pref, renderedModeFor(theme.colors, resolved))
 }
 
-function applyGoldNightTokens(skinName: string) {
+function applyGoldNightTokens(root: HTMLElement, skinName: string) {
   const id = 'hermes-gold-night-tokens'
   const active = skinName === 'gold-night' || skinName === 'gold-night-hi'
   const existing = document.getElementById(id) as HTMLStyleElement | null
 
   if (!active) {
     existing?.remove()
+
+    for (const key of Object.keys(GOLD_NIGHT_CONSUMED_VARS)) {
+      root.style.removeProperty(key)
+    }
 
     return
   }
@@ -499,6 +504,19 @@ function applyGoldNightTokens(skinName: string) {
 
   if (!existing) {
     document.head.appendChild(el)
+  }
+
+  // Inline hexes beat styles.css color-mix and the generic dark mix knobs
+  // applyTheme just wrote. applyTheme rewrites those knobs on the next skin,
+  // so they are not in the remove list.
+  root.style.setProperty('--theme-mix-chrome', '100%')
+  root.style.setProperty('--theme-mix-sidebar', '100%')
+  root.style.setProperty('--theme-mix-card', '100%')
+  root.style.setProperty('--theme-mix-elevated', '100%')
+  root.style.setProperty('--theme-mix-bubble', '100%')
+
+  for (const [key, value] of Object.entries(GOLD_NIGHT_CONSUMED_VARS)) {
+    root.style.setProperty(key, value)
   }
 }
 

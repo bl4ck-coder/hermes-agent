@@ -463,6 +463,14 @@ export const GOLD_NIGHT_HI = '#E8C77A'
 export const GOLD_NIGHT_BORDER = '#2F291C'
 export const GOLD_NIGHT_MUTED = '#9A8F7A'
 export const GOLD_NIGHT_GARNET = '#B4533C'
+/**
+ * Error copy on Gold Night. Garnet `#B4533C` stays the fill (`bg-destructive`,
+ * borders, destructiveForeground white). This lighter garnet is the copy token
+ * `text-destructive` resolves to on this skin, measured ≥4.5:1 on ink, panel,
+ * raised, and on a 10–30% garnet tint over those surfaces (the
+ * `bg-destructive/10` composite the boot overlay actually paints).
+ */
+export const GOLD_NIGHT_DESTRUCTIVE_COPY = '#D4A08C'
 
 /** O79 motion-row description. Ops does not render this row in this slice. */
 export const GOLD_NIGHT_MOTION_COPY = 'States still change and stay readable'
@@ -526,7 +534,42 @@ const GOLD_NIGHT_TYPOGRAPHY: DesktopThemeTypography = {
   fontUrl: undefined
 }
 
-/** Gutter (R32), focus ring, and text tokens. Not a route-specific skin. */
+/** Gutter (R32), focus ring, text tokens, and the consumed Desktop variables.
+ *  Not a route-specific skin. The consumed block is also written inline by
+ *  `applyGoldNightTokens` so it wins over styles.css color-mix, and removed
+ *  on switch so another skin keeps its own cascade. */
+export const GOLD_NIGHT_CONSUMED_VARS: Record<string, string> = {
+  '--ui-bg-chrome': GOLD_NIGHT_INK,
+  '--ui-bg-sidebar': GOLD_NIGHT_INK,
+  '--ui-sidebar-surface-background': GOLD_NIGHT_INK,
+  '--ui-chat-surface-background': GOLD_NIGHT_INK,
+  '--ui-editor-surface-background': GOLD_NIGHT_INK,
+  '--ui-terminal-surface-background': GOLD_NIGHT_INK,
+  '--dt-background': GOLD_NIGHT_INK,
+  '--ui-bg-editor': GOLD_NIGHT_PANEL,
+  '--ui-surface-background': GOLD_NIGHT_PANEL,
+  '--ui-widget-surface-background': GOLD_NIGHT_PANEL,
+  '--ui-chat-bubble-opaque-background': GOLD_NIGHT_PANEL,
+  '--ui-bg-card': GOLD_NIGHT_PANEL,
+  '--dt-card': GOLD_NIGHT_PANEL,
+  '--ui-bg-elevated': GOLD_NIGHT_RAISED,
+  '--ui-chat-bubble-background': GOLD_NIGHT_RAISED,
+  '--dt-popover': GOLD_NIGHT_RAISED,
+  '--ui-text-primary': GOLD_NIGHT_IVORY,
+  '--dt-foreground': GOLD_NIGHT_IVORY,
+  '--dt-card-foreground': GOLD_NIGHT_IVORY,
+  '--dt-popover-foreground': GOLD_NIGHT_IVORY,
+  '--ui-text-secondary': GOLD_NIGHT_TEXT.secondary,
+  '--ui-text-tertiary': GOLD_NIGHT_TEXT.tertiary,
+  '--dt-muted-foreground': GOLD_NIGHT_TEXT.tertiary,
+  '--ui-text-quaternary': GOLD_NIGHT_TEXT.offline,
+  '--gn-destructive-copy': GOLD_NIGHT_DESTRUCTIVE_COPY
+}
+
+const GOLD_NIGHT_CONSUMED_CSS = Object.entries(GOLD_NIGHT_CONSUMED_VARS)
+  .map(([key, value]) => `  ${key}: ${value};`)
+  .join('\n')
+
 export const GOLD_NIGHT_CUSTOM_CSS = `
 :root {
   --gn-gutter: 24px;
@@ -546,6 +589,18 @@ export const GOLD_NIGHT_CUSTOM_CSS = `
   --gn-highlight: ${GOLD_NIGHT_HI};
   --gn-hairline-separator: ${GOLD_NIGHT_HI};
   --gn-hairline-card: ${GOLD_NIGHT_HI};
+}
+html[data-hermes-theme^="gold-night"] {
+${GOLD_NIGHT_CONSUMED_CSS}
+  --theme-mix-chrome: 100%;
+  --theme-mix-sidebar: 100%;
+  --theme-mix-card: 100%;
+  --theme-mix-elevated: 100%;
+  --theme-mix-bubble: 100%;
+}
+html[data-hermes-theme^="gold-night"] .text-destructive,
+html[data-hermes-theme^="gold-night"] .text-gn-destructive-copy {
+  color: var(--gn-destructive-copy);
 }
 html[data-hermes-theme^="gold-night"] :focus-visible {
   outline: var(--gn-focus-width) solid var(--gn-focus-outer);
