@@ -15,13 +15,13 @@ import { useEffect, useMemo, useRef } from 'react'
 
 import { RightSidebarPane } from '@/app/right-sidebar'
 import { ReviewPane } from '@/app/right-sidebar/review'
-import type { GroupSetter } from '@/app/shell/group-setter'
+
 import type { StatusbarItem } from '@/app/shell/statusbar-controls'
 import type { TitlebarTool } from '@/app/shell/titlebar-controls'
 import { DecodeText } from '@/components/ui/decode-text'
 import { ContribBoundary, ContribRender } from '@/contrib/react/boundary'
 import { useContributions } from '@/contrib/react/use-contributions'
-import { registry } from '@/contrib/registry'
+
 import { getLogs } from '@/hermes'
 import { normalizeOrLocalPreviewTarget } from '@/lib/local-preview'
 import { cn } from '@/lib/utils'
@@ -198,29 +198,4 @@ export function useTitlebarToolContributions(side: 'left' | 'right'): TitlebarTo
  * as DATA contributions in `<prefix>.<side>`, so page-owned items flow through
  * the same pipe plugins use. Setting an empty list clears the group.
  */
-export function registryGroupSetter<T>(prefix: string): GroupSetter<T> {
-  const disposers = new Map<string, () => void>()
-
-  return (id, items, side = 'right') => {
-    const key = `${side}:${id}`
-
-    disposers.get(key)?.()
-    disposers.set(
-      key,
-      registry.registerMany(
-        items.map((item, i) => ({
-          id: `${id}-${i}`,
-          area: `${prefix}.${side}`,
-          source: 'core',
-          order: 100 + i,
-          data: item as object
-        }))
-      )
-    )
-  }
-}
-
-/** The app's page-facing setters — the same `GroupSetter` shape pages already
- *  take as props, backed by the registry instead of component state. */
-export const setStatusbarItemGroup = registryGroupSetter<StatusbarItem>('statusBar')
-export const setTitlebarToolGroup = registryGroupSetter<TitlebarTool>('titleBar.tools')
+export { registryGroupSetter, setStatusbarItemGroup, setTitlebarToolGroup } from './bar-groups'
