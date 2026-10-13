@@ -21,7 +21,7 @@
 import { THEME_PRESET_PALETTES } from '@hermes/shared'
 
 import { skinToDesktopTheme } from './skin'
-import type { DesktopTheme, DesktopThemeTypography } from './types'
+import type { DesktopTheme, DesktopThemeColors, DesktopThemeTypography } from './types'
 
 // Color-emoji fonts to append to every stack as a last resort. None of the UI
 // text/mono fonts carry emoji glyphs, so without this emoji render as tofu
@@ -441,7 +441,143 @@ export const slateTheme: DesktopTheme = {
   }
 }
 
+/**
+ * Gold Night — the app-wide Desktop default (D5, G18, G76).
+ *
+ * Hexes are the P0-05 freeze (`docs/ops-panel/gold-night-tokens.md` §5).
+ * `colors` and `darkColors` are the same object, so light, dark, and system
+ * all paint this sheet. The retired name `gold` stays retired. This is not
+ * the installed `aizurg-gold-night` plugin and does not edit it.
+ *
+ * Accent variants are `gold-night` (deep `#C9A55A`) and `gold-night-hi`
+ * (`#E8C77A`). Both keep the graphite surfaces. The dev scratch atom in
+ * `accent-override.ts` is not persisted; production paint uses these objects
+ * with the override null.
+ */
+export const GOLD_NIGHT_INK = '#0E0D0B'
+export const GOLD_NIGHT_IVORY = '#F2E8D5'
+export const GOLD_NIGHT_PANEL = '#16140F'
+export const GOLD_NIGHT_RAISED = '#1F1B14'
+export const GOLD_NIGHT_DEEP = '#C9A55A'
+export const GOLD_NIGHT_HI = '#E8C77A'
+export const GOLD_NIGHT_BORDER = '#2F291C'
+export const GOLD_NIGHT_MUTED = '#9A8F7A'
+export const GOLD_NIGHT_GARNET = '#B4533C'
+
+/** O79 motion-row description. Ops does not render this row in this slice. */
+export const GOLD_NIGHT_MOTION_COPY = 'States still change and stay readable'
+
+/** Text tiers from the freeze §6.1. Body copy, not action fills. */
+export const GOLD_NIGHT_TEXT = {
+  primary: GOLD_NIGHT_IVORY,
+  secondary: '#CDBB98',
+  tertiary: GOLD_NIGHT_MUTED,
+  working: GOLD_NIGHT_HI,
+  stale: '#A89880',
+  needsYou: '#D4893A',
+  blocked: '#BF6D59',
+  offline: '#8A8376',
+  connected: '#6F8F72'
+} as const
+
+export const GOLD_NIGHT_SURFACES = {
+  base: GOLD_NIGHT_INK,
+  panel: GOLD_NIGHT_PANEL,
+  raised: GOLD_NIGHT_RAISED
+} as const
+
+function goldNightColors(accent: string): DesktopThemeColors {
+  return {
+    background: GOLD_NIGHT_INK,
+    foreground: GOLD_NIGHT_IVORY,
+    card: GOLD_NIGHT_PANEL,
+    cardForeground: GOLD_NIGHT_IVORY,
+    muted: GOLD_NIGHT_PANEL,
+    mutedForeground: GOLD_NIGHT_MUTED,
+    popover: GOLD_NIGHT_RAISED,
+    popoverForeground: GOLD_NIGHT_IVORY,
+    primary: accent,
+    primaryForeground: GOLD_NIGHT_INK,
+    secondary: GOLD_NIGHT_RAISED,
+    secondaryForeground: GOLD_NIGHT_IVORY,
+    accent,
+    accentForeground: GOLD_NIGHT_INK,
+    border: GOLD_NIGHT_BORDER,
+    input: GOLD_NIGHT_RAISED,
+    ring: GOLD_NIGHT_HI,
+    midground: GOLD_NIGHT_HI,
+    midgroundForeground: GOLD_NIGHT_INK,
+    composerRing: GOLD_NIGHT_HI,
+    destructive: GOLD_NIGHT_GARNET,
+    destructiveForeground: '#FFFFFF',
+    sidebarBackground: GOLD_NIGHT_INK,
+    sidebarBorder: GOLD_NIGHT_BORDER,
+    userBubble: GOLD_NIGHT_RAISED,
+    userBubbleBorder: GOLD_NIGHT_BORDER
+  }
+}
+
+const GOLD_NIGHT_TYPOGRAPHY: DesktopThemeTypography = {
+  // Geist is named first, then the stacks already bundled with the app.
+  // `fontUrl` is set (to undefined) so the nous Google Fonts URL in the
+  // applyTheme merge cannot leak onto this skin. No remote stylesheet.
+  fontSans: `Geist, ${SYSTEM_SANS}`,
+  fontMono: `"Geist Mono", ${SYSTEM_MONO}`,
+  fontUrl: undefined
+}
+
+/** Gutter (R32), focus ring, and text tokens. Not a route-specific skin. */
+export const GOLD_NIGHT_CUSTOM_CSS = `
+:root {
+  --gn-gutter: 24px;
+  --gn-text-primary: ${GOLD_NIGHT_TEXT.primary};
+  --gn-text-secondary: ${GOLD_NIGHT_TEXT.secondary};
+  --gn-text-tertiary: ${GOLD_NIGHT_TEXT.tertiary};
+  --gn-text-working: ${GOLD_NIGHT_TEXT.working};
+  --gn-text-stale: ${GOLD_NIGHT_TEXT.stale};
+  --gn-text-needs-you: ${GOLD_NIGHT_TEXT.needsYou};
+  --gn-text-blocked: ${GOLD_NIGHT_TEXT.blocked};
+  --gn-text-offline: ${GOLD_NIGHT_TEXT.offline};
+  --gn-text-connected: ${GOLD_NIGHT_TEXT.connected};
+  --gn-focus-inner: ${GOLD_NIGHT_IVORY};
+  --gn-focus-outer: ${GOLD_NIGHT_HI};
+  --gn-focus-width: 2px;
+  --gn-focus-offset: 2px;
+  --gn-highlight: ${GOLD_NIGHT_HI};
+  --gn-hairline-separator: ${GOLD_NIGHT_HI};
+  --gn-hairline-card: ${GOLD_NIGHT_HI};
+}
+html[data-hermes-theme^="gold-night"] :focus-visible {
+  outline: var(--gn-focus-width) solid var(--gn-focus-outer);
+  outline-offset: var(--gn-focus-offset);
+  box-shadow: inset 0 0 0 var(--gn-focus-width) var(--gn-focus-inner);
+}
+`.trim()
+
+const goldNightDeepColors = goldNightColors(GOLD_NIGHT_DEEP)
+const goldNightHiColors = goldNightColors(GOLD_NIGHT_HI)
+
+export const goldNightTheme: DesktopTheme = {
+  name: 'gold-night',
+  label: 'Gold Night',
+  description: 'Ivory on graphite, deep gold accent',
+  colors: goldNightDeepColors,
+  darkColors: goldNightDeepColors,
+  typography: GOLD_NIGHT_TYPOGRAPHY
+}
+
+export const goldNightHiTheme: DesktopTheme = {
+  name: 'gold-night-hi',
+  label: 'Gold Night Hi',
+  description: 'Ivory on graphite, hi gold accent',
+  colors: goldNightHiColors,
+  darkColors: goldNightHiColors,
+  typography: GOLD_NIGHT_TYPOGRAPHY
+}
+
 export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
+  'gold-night': goldNightTheme,
+  'gold-night-hi': goldNightHiTheme,
   nous: nousTheme,
   github: githubTheme,
   catppuccin: catppuccinTheme,
@@ -458,11 +594,14 @@ export const BUILTIN_THEMES: Record<string, DesktopTheme> = {
 
 export const BUILTIN_THEME_LIST = Object.values(BUILTIN_THEMES)
 
-/** Skin used when nothing is persisted or the persisted name is retired. */
-export const DEFAULT_SKIN_NAME = 'nous'
+/** Skin used when nothing is persisted or the persisted name is retired.
+ *  Gold Night is the app-wide fallback (D5). An explicit stored pick of any
+ *  other built-in, including `nous`, is left alone — this constant is not a
+ *  migration. */
+export const DEFAULT_SKIN_NAME = 'gold-night'
 
 /** Names that no longer resolve to a skin of their own. A stored pick of one
  *  falls back to DEFAULT_SKIN_NAME, and a cached backend theme under one is
  *  dropped (the reverted #130015 build cached the CLI `default` skin as a
- *  second "Classic Hermes"). */
+ *  second "Classic Hermes"). `gold` stays retired; it is not `gold-night`. */
 export const RETIRED_SKINS = new Set(['nous-light', 'default', 'gold'])

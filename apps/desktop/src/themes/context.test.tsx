@@ -1,8 +1,9 @@
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { $accentOverride, selectGoldNightAccent } from './accent-override'
 import { $backendThemes, __resetBackendSkinSync, ingestBackendSkin } from './backend-sync'
-import { skinPref, ThemeProvider, useTheme } from './context'
+import { modePref, skinPref, ThemeProvider, useTheme } from './context'
 import { everforestTheme, midnightTheme } from './presets'
 import type { DesktopTheme } from './types'
 import { installUserTheme } from './user-themes'
@@ -413,3 +414,137 @@ function ThemeProbe({ onReady }: { onReady: (ctx: ReturnType<typeof useTheme>) =
 
   return null
 }
+
+describe('Gold Night default versus an explicit pick', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    __resetBackendSkinSync()
+    $accentOverride.set(null)
+  })
+
+  afterEach(() => {
+    cleanup()
+    $accentOverride.set(null)
+  })
+
+  it('paints gold-night when nothing is stored and does not write that fallback as a pick', () => {
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>
+    )
+
+    expect(window.document.documentElement.dataset.hermesTheme).toBe('gold-night')
+    expect(cssVar('--theme-background-seed')).toBe('#0E0D0B')
+    expect(cssVar('--theme-primary')).toBe('#C9A55A')
+    expect(window.localStorage.getItem('hermes-desktop-theme-v2')).toBeNull()
+    expect(document.getElementById('hermes-gold-night-tokens')?.textContent).toContain('--gn-gutter: 24px')
+  })
+
+  it('keeps an explicit nous pick and does not migrate it', () => {
+    window.localStorage.setItem('hermes-desktop-theme-v2', 'nous')
+
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>
+    )
+
+    expect(window.document.documentElement.dataset.hermesTheme).toBe('nous')
+    expect(window.localStorage.getItem('hermes-desktop-theme-v2')).toBe('nous')
+  })
+
+  it('falls a retired gold pick back to gold-night instead of reviving it', () => {
+    window.localStorage.setItem('hermes-desktop-theme-v2', 'gold')
+
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>
+    )
+
+    expect(skinPref.resolve('default')).toBe('gold-night')
+    expect(window.document.documentElement.dataset.hermesTheme).toBe('gold-night')
+  })
+
+  it('lists gold-night, the hi variant, and the other built-ins', () => {
+    let ctx: ReturnType<typeof useTheme>
+    render(
+      <ThemeProvider>
+        <ThemeProbe onReady={value => (ctx = value)} />
+      </ThemeProvider>
+    )
+
+    const names = ctx!.availableThemes.map(theme => theme.name)
+
+    expect(names).toContain('gold-night')
+    expect(names).toContain('gold-night-hi')
+    expect(names).toEqual(expect.arrayContaining(['nous', 'classic', 'mono', 'catppuccin']))
+    expect(names).not.toContain('gold')
+    expect(names).not.toContain('aizurg-gold-night')
+  })
+
+  it('selects the hi variant without touching graphite, and leaves system mode selectable', () => {
+    let ctx: ReturnType<typeof useTheme>
+    render(
+      <ThemeProvider>
+        <ThemeProbe onReady={value => (ctx = value)} />
+      </ThemeProvider>
+    )
+
+    expect(modePref.resolve('default')).toBe('system')
+
+    act(() => ctx!.setMode('dark'))
+    act(() => ctx!.setTheme('gold-night-hi'))
+
+    expect(window.document.documentElement.dataset.hermesTheme).toBe('gold-night-hi')
+    expect(cssVar('--theme-primary')).toBe('#E8C77A')
+    expect(cssVar('--theme-secondary')).toBe('#1F1B14')
+    expect(cssVar('--theme-bubble-seed')).toBe('#1F1B14')
+    expect(window.localStorage.getItem('hermes-desktop-theme-v2')).toBe('gold-night-hi')
+
+    act(() => ctx!.setTheme('nous'))
+    expect(window.document.documentElement.dataset.hermesTheme).toBe('nous')
+  })
+
+  it('paints the same gold-night sheet in light and dark', () => {
+    let ctx: ReturnType<typeof useTheme>
+    render(
+      <ThemeProvider>
+        <ThemeProbe onReady={value => (ctx = value)} />
+      </ThemeProvider>
+    )
+
+    act(() => ctx!.setMode('light'))
+    expect(cssVar('--theme-background-seed')).toBe('#0E0D0B')
+
+    act(() => ctx!.setMode('dark'))
+    expect(cssVar('--theme-background-seed')).toBe('#0E0D0B')
+    expect(cssVar('--theme-primary')).toBe('#C9A55A')
+  })
+
+  it('applies the scratch hi accent without persisting it, then restores the authored deep', () => {
+    let ctx: ReturnType<typeof useTheme>
+    render(
+      <ThemeProvider>
+        <ThemeProbe onReady={value => (ctx = value)} />
+      </ThemeProvider>
+    )
+
+    act(() => ctx!.setTheme('gold-night'))
+    const before = window.localStorage.getItem('hermes-desktop-theme-v2')
+
+    act(() => selectGoldNightAccent('hi'))
+
+    expect($accentOverride.get()).toBe('#e8c77a')
+    expect(cssVar('--theme-primary')).toBe('#E8C77A')
+    expect(cssVar('--theme-secondary')).toBe('#1F1B14')
+    expect(window.localStorage.getItem('hermes-desktop-theme-v2')).toBe(before)
+    expect(JSON.stringify(window.localStorage)).not.toContain('#e8c77a')
+
+    act(() => selectGoldNightAccent(null))
+
+    expect($accentOverride.get()).toBeNull()
+    expect(cssVar('--theme-primary')).toBe('#C9A55A')
+  })
+})
