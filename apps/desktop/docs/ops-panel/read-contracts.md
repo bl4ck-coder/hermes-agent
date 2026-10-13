@@ -1,7 +1,7 @@
 # Ops panel read contracts (P0-01)
 
-Status: documentation only. No adapters, no runtime config, no mutation probes.
-Repo: `hermes-agent` at `865ba906c1a` (`feat/ops-panel` / `ops/P0-01`).
+Status: documentation only. Round 2 corrects the r1 false negatives on gateway `session_id`/`usage`, the ACK-vs-settlement mix-up, the missing O24/G5/R2/`/links` inventory, and the A1 freshness gate. No adapters, no runtime config, no mutation probes.
+Repo: `hermes-agent` at `865ba906c1a` (`feat/ops-panel` base; `ops/P0-01` is docs on that tree).
 SPEC: vault `01-Projects/Hermes/desktop-ops-panel/SPEC.md` v4, sections 3-5 and 12.8.
 Model policy P2 is a write-time rule (SPEC section 4.4). This file does not install `ops-policy.yaml` and does not change any profile.
 
@@ -88,9 +88,34 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Status: verified. Cited by SPEC 3.1, O2, O13, O56, O76, G66.
 
 **GET /api/profiles/{name}**
-- The list item is the summary. There is no separate "get one profile" read beyond soul, description write, desktop-overlay, and setup-command. Desktop-overlay read: `profiles.py:1142` `get_profile_desktop_overlay`.
-- SPEC 4.1 "Description | `/api/profiles/{n}`" is the list/summary shape plus `PUT /api/profiles/{name}/description` (`profiles.py:1035`). The read side of description is the `description` field on the list item.
-- Status: verified as the list field, not as a dedicated GET-by-name document.
+- Handler: no dedicated GET-by-name document. The list item from `list_profiles_endpoint` is the summary. Desktop-overlay read, separate route: `profiles.py:1142` `get_profile_desktop_overlay`.
+- Request: path `name` on the overlay route. The summary has no per-name GET.
+- Response: the list-item shape in §4.1 `GET /api/profiles`. Description's read side is that `description` field. `PUT /api/profiles/{name}/description` (`profiles.py:1035`) is a write.
+- Scope: one profile for the overlay. The list is machine-wide.
+- Auth: session token. Inherited from the list route.
+- Storage: profile dir, same as the list.
+- Freshness: request-time. Events: none.
+- Status: verified as the list field, not as a dedicated GET-by-name document. SPEC 4.1 Description.
+
+**GET /api/config/defaults**
+- Handler: `config_env.py:94` `get_defaults`.
+- Request: none.
+- Response: `DEFAULT_CONFIG`, including `delegation` (`config_defaults.py:1330`).
+- Scope: process defaults. Not a profile, not a tenant.
+- Auth: public allowlist.
+- Storage: code constant, not a user file.
+- Freshness: process lifetime. Events: none.
+- Status: verified. Not a per-profile read.
+
+**GET /api/model/info**
+- Handler: `models.py:90` `get_model_info`.
+- Request: none.
+- Response observed live, no secrets: `{model, provider, auto_context_length, config_context_length, effective_context_length, capabilities}`.
+- Scope: the serve process profile. Not the fleet. Not `?profile=`.
+- Auth: public allowlist.
+- Storage: the process profile's model config. Not every profile.
+- Freshness: request-time. Events: none.
+- Status: verified, but it is not a per-profile fleet read.
 
 **GET /api/profiles/{name}/soul**
 - Handler: `profiles.py:998` `get_profile_soul`.
@@ -102,13 +127,14 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Status: verified. SPEC 4.1 Prompt node.
 
 **GET /api/profiles/projects/tree**
-- Handler: `profiles.py:717` `get_profiles_projects_tree` on `sessions_router`.
-- Request: none required. Walks profile homes (`profiles.py:734`).
-- Response: per-profile project tree. Authoritative store for project rows is `projects.db` via `hermes_cli/projects_db.py` (`projects_db_path` = `$HERMES_HOME/projects.db`, per profile home).
-- Scope: all profile homes the helper enumerates. Not a tenant filter.
+- Handler: `hermes_cli/web_routers/profiles.py:717` `get_profiles_projects_tree` on `sessions_router`. Wrapped by `@_sidebar_singleflight_cache` (`profiles.py:718`).
+- Request: `preview_limit` default 3, `session_limit` default 2000 (`profiles.py:719`). No `?profile=`.
+- Response (`profiles.py:746-747`): `{projects, active_id: null, scoped_session_ids, errors}`. `active_id` is always null (no single active project across homes). Each merged project is the sidebar builder's shape, not a raw `projects.db` row. The walk reads that profile's `state.db` and scopes `projects.db` through the home override (`profiles.py:722-739`). Discovery is off (`include_discovered=False`), so this GET does not write.
+- Scope: every profile home `_profile_targets` enumerates. Not a tenant filter.
 - Auth: session token.
-- Freshness: request-time.
-- Events: Desktop listens for `projects.changed` (`use-background-sync.ts` around the projects tick). JSON-RPC `projects.list` is the Desktop sidebar read; this REST tree is the SPEC O12 citation.
+- Storage: per-profile `state.db` and `projects.db`. The singleflight cache is process-local, not a published TTL.
+- Freshness: request-time, coalesced by the decorator. Not a server TTL.
+- Events: Desktop listens for `projects.changed`. JSON-RPC `projects.list` is the one-profile sidebar read; this REST tree is the SPEC O12 citation.
 - Status: verified. SPEC O12.
 
 **GET /api/config**
@@ -121,6 +147,17 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Freshness: request-time `load_config()`.
 - Events: none.
 - Status: verified. SPEC 4.1 A4 read, O41.
+
+**O24 `command_allowlist` (config key, not a route)**
+- Handler: no dedicated route. The list is a top-level key on `GET /api/config` (`config_env.py:80` `get_config` returns keys that do not start with `_`). Default `[]` (`config_defaults.py:1703`). Permanent allow matches are applied in `hermes_cli/approvals_test.py` (pattern match against this list); that module is not an Ops read.
+- Request: inherited from `GET /api/config` (`?profile=`, `include_defaults`).
+- Response: `command_allowlist: string[]` of command patterns when the key is in the loaded document. Not a toolset. Not a secret. Sibling O24 citations: profile summary is `GET /api/profiles` (no per-name document, section 4.1); toolsets are `GET /api/tools/toolsets`. `task_runs` count over 7 days is not exposed: no handler aggregates runs by profile and window. `workers/active` is currently-running only. Do not count board cards and call that a 7-day total.
+- Scope: one profile. Omitted profile = launch profile. Not tenant-scoped.
+- Auth: session token (same gate as `GET /api/config`).
+- Storage: `profiles/<name>/config.yaml` key `command_allowlist`.
+- Freshness: request-time `load_config()`.
+- Events: none.
+- Status: verified as a config field. The 7-day run count is `not exposed`, not verified, and not a Cut of the rest of O24.
 
 **GET /api/config/raw**
 - Handler: `hermes_cli/web_routers/analytics.py:34` `get_config_raw` (mounted with the analytics router, path is still `/api/config/raw`).
@@ -136,18 +173,12 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Auth: public allowlist. Storage: schema code, not user files. Freshness: request-time (dynamic provider options).
 - Status: verified. SPEC 4.3.
 
-**GET /api/config/defaults**
-- Handler: `config_env.py:94` `get_defaults`. Response: `DEFAULT_CONFIG`, including `delegation` (`config_defaults.py:1330`). Auth: public. Status: verified. Not a per-profile read.
-
 **GET /api/model/options**
 - Handler: `hermes_cli/web_routers/models.py:138` `get_model_options`.
 - Request: `?profile=`.
 - Response: provider/model options for that profile's credentials and catalog. P2 filtering is not in this handler. The picker must filter client-side until A6 exists, and must not treat this list as the allowlist.
 - Auth: session token. Storage: catalog + profile config + env presence. Freshness: request-time.
 - Status: verified. SPEC 4.1, O50, G2.
-
-**GET /api/model/info**
-- Handler: `models.py:90` `get_model_info`. Public. Response observed live: `{model, provider, auto_context_length, config_context_length, effective_context_length, capabilities}`. This is the serve process profile, not the fleet. Status: verified, but it is not a per-profile fleet read.
 
 **GET /api/env**
 - Handler: `config_env.py:259` `get_env_vars`.
@@ -182,7 +213,8 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 **GET /api/plugins/kanban/tasks/{task_id}**
 - Handler: `plugin_api.py:373` `get_task`.
 - Request: `board`, optional `run_state_type` + `run_state_name` (both or neither; type is `status` or `outcome`).
-- Response: `{task, comments, events, attachments, links, link_tasks, child_results, runs}` (`plugin_api.py:393`). `events` are `task_events` rows. `runs` are `task_runs` rows via `asdict`. There is no separate GET `/comments`.
+- Response: `{task, comments, events, attachments, links, link_tasks, child_results, runs}` (`plugin_api.py:393-403`). `events` are `task_events` rows. `runs` are `task_runs` rows via `asdict`. There is no separate GET `/comments`. There is no separate GET `/links`.
+- `links` is `{parents: string[], children: string[]}` from `task_links` (`plugin_api.py:263-266` `_links_for`). `link_tasks` is `{id, title, status}[]` for those ids (`plugin_api.py:270-279`). Dropped ids are absent from `link_tasks`; the id remains in `links`.
 - Task id format: `t_` + `secrets.token_hex(4)` (`kanban_db.py:1161`), 8 lowercase hex chars. Not `TASK-142`.
 - `tasks.session_id` is the originating `HERMES_SESSION_ID`, NULL when created from CLI/dashboard (`kanban_db.py:808`). `task_runs` has no `session_id` column (`kanban_db.py:1080`).
 - Scope: one board, one task. Tenant is a field on the task, not a query filter here.
@@ -217,19 +249,69 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 
 **GET /api/plugins/kanban/projects**
 - Handler: `plugin_api.py:1392` `list_kanban_projects`.
-- Response (`plugin_api.py:1399`): `{projects: [{id, slug, name, primary_path, icon, color}]}`. Non-archived only. This is `projects.db` for the serve process home, not a per-profile `?profile=` read and not workflow-studio `/projects`.
-- Auth: session token. Storage: `projects.db`. Freshness: request-time. Status: verified. SPEC R4's profile-scoped read is JSON-RPC `projects.list`, not this route.
+- Request: `board` query, inherited from the router. No `?profile=`.
+- Response (`plugin_api.py:1399`): `{projects: [{id, slug, name, primary_path, icon, color}]}`. Non-archived only.
+- Scope: the serve process home. Not a per-profile read. Not workflow-studio `/projects`.
+- Auth: session token.
+- Storage: `projects.db` for that home.
+- Freshness: request-time.
+- Events: none.
+- Status: verified. SPEC R4's profile-scoped read is JSON-RPC `projects.list`, not this route.
 
 **GET /api/plugins/kanban/tasks/{task_id}/log**
-- Handler: `plugin_api.py:1249` `get_task_log`. Worker log tail. Storage: `HERMES_HOME/kanban/logs`. Auth: session token. Status: verified. SPEC O35.
+- Handler: `plugin_api.py:1249` `get_task_log`.
+- Request: path `task_id`; query `tail` optional, integer 1..2,000,000 (`plugin_api.py:1250`); `board`.
+- Response (`plugin_api.py:1258-1260`): `{task_id, path, exists, size_bytes, content, truncated}`. `content` is `""` when the log does not exist. `truncated` is true only when `tail` was set and `size_bytes > tail`. 404 if the task was never spawned is the handler docstring's rule; the code path returns `exists: false` after `_require_task` when the file is missing. Do not invent a second schema.
+- Scope: one board, one task. Not profile-scoped via `?profile=`.
+- Auth: session token.
+- Storage: worker log file from `kanban_db.worker_log_path` (`HERMES_HOME/kanban/logs`). On-disk rotation is 2 MiB plus one `.log.1` (`plugin_api.py:1251`). Not `task_runs`.
+- Freshness: request-time file read.
+- Events: none. Not the kanban WS.
+- Status: verified. SPEC O35. Distinct from `GET /api/logs`.
 
 **GET /api/plugins/kanban/tasks/{task_id}/attachments**
-- Handler: `plugin_api.py:458` `list_task_attachments`. Also embedded in `get_task`. Storage: `kanban/attachments` + `task_attachments`. Auth: session token. Status: verified. SPEC O17, R11.
+- Handler: `plugin_api.py:458` `list_task_attachments`.
+- Request: path `task_id`; query `board`.
+- Response: `{attachments: [_attachment_dict...]}`. Each item (`plugin_api.py:191-195`): `{id, task_id, filename, content_type, size, uploaded_by, stored_path, created_at}`. The same list is embedded on `GET /tasks/{id}` as `attachments` without the wrapper key. `stored_path` is an absolute disk path. Ops must not render it as a navigable URL. Download is by `id`, not by echoing the path.
+- Scope: one board, one task.
+- Auth: session token.
+- Storage: `task_attachments` plus files under `kanban/attachments`.
+- Freshness: request-time.
+- Events: none on this GET.
+- Status: verified. SPEC O17, R11.
+
+**Links — embedded in GET /tasks/{id}; no GET `/links`**
+- Handler: none for GET. `_links_for` (`plugin_api.py:263`) and `_link_tasks` (`plugin_api.py:270`) run inside `get_task` (`plugin_api.py:389-399`). SPEC section 5 cites `/links` next to `/tasks/{id}`. That citation is this embedded object, not a list route.
+- Request: inherited from `GET /api/plugins/kanban/tasks/{task_id}` (`board`, optional run-state filters do not change `links`).
+- Response: inherited from that GET: `links` and `link_tasks`. There is no `{links: ...}` envelope on its own URL.
+- Scope: one board, one task. A link whose other end is on another board is still an id in `task_links`; this slice does not claim cross-board titles.
+- Auth: session token, same as `get_task`.
+- Storage: `kanban.db` table `task_links`.
+- Freshness: request-time, same read as the task.
+- Events: none. A later link write is `POST /links` (`plugin_api.py:811`) or `DELETE /links` (`plugin_api.py:818`). Those are writes. They are not reads and they are not implemented here.
+- Status: verified as an embedded field. A standalone `GET /links` is `not exposed`. Do not add one to fill SPEC section 5.
 
 **GET /api/plugins/kanban/orchestration**
 - Handler: `plugin_api.py:1627` `get_orchestration_settings`.
-- Response includes `orchestrator_profile`, `default_assignee`, `auto_decompose`, `auto_promote_children`, resolved names, `active_profile`.
-- This is configured orchestration, not a live sub-agent tree. Status: verified.
+- Request: none. Not `?profile=` and not `?board=`.
+- Response (`plugin_api.py:1646-1653`): `{orchestrator_profile, default_assignee, auto_decompose, auto_promote_children, resolved_orchestrator_profile, resolved_default_assignee, active_profile}`. Explicit strings may be `""`. Booleans default true when the key is missing. Resolved names fall back to the active profile when the explicit name is empty or unknown.
+- Scope: the serve process config, not one board and not one tenant.
+- Auth: session token.
+- Storage: `config.yaml` key `kanban` (`orchestrator_profile`, `default_assignee`, `auto_decompose`, `auto_promote_children`).
+- Freshness: request-time.
+- Events: none.
+- Status: verified. This is configured orchestration, not a live sub-agent tree. See section 7.
+
+**R2 `kanban_notify_subs` (table, not an Office list route)**
+- Handler: no list-all REST. Schema `hermes_cli/kanban_db.py:1127` `CREATE TABLE kanban_notify_subs`. Row reader `hermes_cli/kanban_db_notify.py:166` `list_notify_subs` (optional `task_id`, `notifier_profiles`, `include_unowned`). Gateway poller `gateway/kanban_watchers.py:61` reads the table to deliver terminal events. That poller is not an Ops endpoint.
+- Request: not exposed as a dashboard list. The only REST that consults the table is `GET /api/plugins/kanban/home-channels` (`plugin_api.py:1190` `get_home_channels`): optional `task_id`, `board`. Without `task_id`, every `subscribed` is false.
+- Response of that GET (`plugin_api.py:1201-1202`): `{home_channels: [{platform, chat_id, thread_id, name, subscribed}]}`. `subscribed` is a boolean against the table key `(platform, chat_id, thread_id)`. The route does not return `user_id`, `delivery_mode`, `delivery_metadata`, `last_event_id`, or `last_ping_event_id`. Those columns exist on the table (`kanban_db.py:1128-1141`) and are `not exposed` on this GET.
+- Scope: one board connection for the subscribe check; the table itself is per kanban db. Not a profile query param.
+- Auth: session token on `GET /home-channels`. The table has no HTTP auth of its own.
+- Storage: `kanban.db` `kanban_notify_subs`. Primary key `(task_id, platform, chat_id, thread_id)`.
+- Freshness: request-time for the home-channels boolean. The gateway poller is its own cadence, not this GET.
+- Events: none on the GET. Notifier delivery is a gateway side effect, not an Ops event source.
+- Status: table verified. Ops list of subscription rows is `not exposed`. R2's Needs-you half stays A3 (section 6). Do not paint an inbox from a table the renderer cannot list. Not a Cut of the table.
 
 **WS /api/plugins/kanban/events**
 - Handler: `plugin_api.py:1783` `stream_events`. Not SSE. Path is `/events`, not `/events/stream`.
@@ -252,7 +334,13 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 
 **GET /api/cron/blueprints**
 - Handler: `cron.py:858` `list_cron_blueprints`.
-- Response: `{blueprints: ...}` from `_blueprint_catalog_sync`. Auth: session token. Storage: blueprint catalog in the cron package, not user jobs. Status: verified. SPEC O4, G4, G61.
+- Request: none required by the citation.
+- Response: `{blueprints: ...}` from `_blueprint_catalog_sync`. Inner blueprint fields are the catalog's. Do not invent step counts.
+- Scope: the process catalog. Not a tenant. Not a user's jobs.json.
+- Auth: session token.
+- Storage: blueprint catalog in the cron package, not user jobs.
+- Freshness: request-time. Events: none.
+- Status: verified. SPEC O4, G4, G61. Kanban workflow templates are not this route.
 
 **GET /api/webhooks**
 - Handler: `hermes_cli/web_routers/ops.py:154` `list_webhooks`.
@@ -283,7 +371,15 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Status: verified. SPEC 3.1, O28, O70.
 
 **GET /api/sessions/{session_id}/messages**
-- Handler: `sessions.py:723` `get_session_messages`. Same ownership rule. Status: verified. Used by chat, not a separate Ops metric source.
+- Handler: `sessions.py:723` `get_session_messages`.
+- Request: path `session_id`; query `profile`, `limit` (ge 0; omitted means a latest page of 500, explicit limit capped at 500), `offset` (ge 0), `order` (`oldest` | `latest` | omitted), `include_compacted` default false, `inline_images` default true (`sessions.py:723-727`).
+- Response (`sessions.py:758-767`): `{session_id, profile, messages, pagination}`. `pagination` is `{limit, offset, order, returned}`. `messages` are display-projected rows (`_project_for_display`), including compaction display views. 404 if the session is not in that profile store. `order` outside `oldest|latest` is 400.
+- Scope: one profile, one session. Omitted profile = launch profile.
+- Auth: session token.
+- Storage: profile `state.db`.
+- Freshness: request-time. Not a live token stream. Missing token fields on a message are not a usage total.
+- Events: none.
+- Status: verified. Used by chat. Not a separate Ops metric source. SPEC does not cite this path in sections 3-5; it is the sibling of the timeline read those sections do cite.
 
 **GET /api/analytics/usage**
 - Handler: `hermes_cli/web_routers/analytics.py:145` `get_usage_analytics`.
@@ -343,8 +439,13 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 
 **GET /api/messaging/telegram/onboarding/{pairing_id}** and **GET /api/messaging/whatsapp/onboarding/{pairing_id}**
 - Handlers: `messaging.py:735` `get_telegram_onboarding_status`, `messaging.py:615` `get_whatsapp_onboarding_status`.
-- SPEC wrote `/api/messaging/*/onboarding`. Only telegram and whatsapp have these status reads. Other platforms do not match that glob.
-- Auth: session token. Status: verified for those two platforms only.
+- Request: path `pairing_id`. SPEC wrote `/api/messaging/*/onboarding`. Only these two platforms have status reads. Other platforms: `not exposed`.
+- Response: the handler's status object. This slice did not read a live body (401 without a token). Do not invent fields.
+- Scope: one pairing id on the serve process. Not a fleet read.
+- Auth: session token.
+- Storage: the onboarding session those handlers hold. Not `.env` values.
+- Freshness: request-time. Events: none on the GET.
+- Status: verified for those two platforms only.
 
 **GET /api/mcp/catalog**
 - Handler: `hermes_cli/web_routers/mcp.py:439` `list_mcp_catalog`.
@@ -395,17 +496,31 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 ### 4.6 Gateway run reads and approval events
 
 **GET /v1/runs/{run_id}**
-- Handler: `gateway/platforms/api_server_runs.py:1057` `_handle_get_run`.
-- Request: path `run_id`. Auth: Bearer API key, and the caller must own the run (`_request_owns_run`).
-- Response: the status dict from `_set_run_status` (`api_server_runs.py:258`): `object: "hermes.run"`, `run_id`, `status`, `updated_at`, `created_at`, plus fields the writer added. Not a token object. Not a session id.
-- Storage: gateway in-memory `_run_statuses` plus the durable run store the adapter owns. Freshness: poll. Events: none on GET; SSE is the stream.
-- Status: verified. SPEC 3.1 API-run approvals. There is no list-all-runs read in the route table (`api_server_runs.py:234`).
+- Handler: `gateway/platforms/api_server_runs.py:1057` `_handle_get_run`. It returns `web.json_response(status)` from `_load_owned_run` (`:1059-1061`).
+- Request: path `run_id`. No query schema.
+- Response: the status dict `_set_run_status` keeps (`:258-266`). Always: `object: "hermes.run"`, `run_id`, `status`, `updated_at`, `created_at`.
+- `session_id` is set at queued (`:718-719`: `_set_run_status(run_id, "queued", created_at=..., session_id=session_id, model=...)`). `session_id` is `selected_session_id or run_id` (`:703`). Later updates merge into the same dict, so the queued value stays unless a writer replaces it. Nullable only if a status object was built without that field. It is a gateway session id, not a kanban task id and not a token count.
+- `model` is also set at queued from the request body, else `self._model_name` (`:719`). Terminal native runs add `runtime` (`provider`, `model`, plus the sanitized route fields `_finish` passes at `:986`). `runtime` is the served pair, not the request echo (`_served_runtime`, `:769`).
+- `usage` is not on the queued object. A native terminal finish writes it (`:986` `_finish(..., usage=usage, runtime=served_runtime)`). Keys are `_USAGE_FIELDS` (`:88-91`): `input_tokens`, `output_tokens`, `total_tokens`, `cache_read_tokens`, `cache_write_tokens`. `_run_usage` (`:759-766`) reads session counters and coerces a missing or non-numeric counter to `0`. Those zeros are provenance `gateway.session_counters` (unverified-measured). A zero is not proof the counter was measured.
+- A live-owner settled run writes `usage={}` (`:895-896`), not the five keys and not a missing key. Empty object, same provenance family (the owner's receipt, not `_run_usage`). Do not sum `{}` and do not treat it as null.
+- If the `usage` key is absent (queued, or a failed/cancelled finish that did not pass `usage`), Ops reads null and provenance `unknown`. Do not coerce that absence to 0. Do not add a session total onto every run that shares `session_id` (provenance `shared-session`, tokens null, until a later adapter partitions by run). This slice does not add that partition.
+- Other fields the writers add, when they add them: `output`, `error`, `completed`, `partial`, `interrupted`, `delivery_id`, `last_event`, `shutdown_requested_at`, `reason`, `approval` (only while `status == waiting_for_approval`; `:270-271` pops it otherwise). Not a closed enum. Do not invent fields the dict does not have.
+- Scope: the caller's profile. Another profile's run id is not found (`_request_owns_run`), not leaked.
+- Auth: Bearer API key, permission `status`. 401 is auth failure, not an empty status.
+- Storage: in-memory `_run_statuses`, plus the durable idempotency record when the run was reserved (`:273-278`). Not `kanban.db`.
+- Freshness: poll. `updated_at` is the observation clock for A1.
+- Events: none on GET. The stream is `GET /v1/runs/{id}/events`.
+- Status: verified. SPEC 3.1 API-run approvals. There is no list-all-runs read in the route table (`api_server_runs.py:234`). Kanban `task_runs` still has no `session_id` (`kanban_db.py:1080`). That gap is the O66 Cut. It is not a claim that this GET lacks `session_id`.
 
 **GET /v1/runs/{run_id}/events**
 - Handler: `api_server_runs.py:1064` `_handle_run_events`. SSE.
-- Auth: Bearer API key + run ownership. 401/403 is auth failure, not an empty stream (SPEC section 11.6).
-- Events: structured agent lifecycle events for that run. Keepalive uses the chat-completions SSE keepalive constant. A slow subscriber is detached (`api_server_runs.py:1140`).
-- Freshness: live stream. Reconnect behavior is the gateway's stream attach, not kanban `since`.
+- Request: path `run_id`. Resume cursor: header `Last-Event-ID` or query `last_seq` (`:1084`). A missing cursor is `-1` (replay from the retained buffer). A non-integer cursor is also `-1` (`:1085-1088`).
+- Response: SSE frames. Each retained event is written with `seq` copied onto the payload (`:1101-1104`) and as the SSE id. If the oldest retained seq is greater than `last_seq + 1`, a `replay.truncated` frame is written first (`:1115-1123`) with `oldest_retained_seq`, and `requested_seq` when the client sent a cursor. Comment frames `: open`, `: keepalive`, `: stream closed` are not events. Keepalive uses `CHAT_COMPLETIONS_SSE_KEEPALIVE_SECONDS` (`:1135`). A slow subscriber is detached (`:1139-1141`).
+- Scope: one owned run. Not a kanban board stream. Not `since` on `task_events`.
+- Auth: Bearer API key + run ownership (`:1066-1071`). 401/403 is auth failure, not an empty stream (SPEC section 11.6).
+- Storage: the run's in-memory `_RunStream` buffer. Not durable across process restart.
+- Freshness: live stream. Reconnect is `Last-Event-ID` / `last_seq`, not kanban `since`.
+- Events: this is the event source. Includes `approval.responded` after a successful `POST /v1/runs/{id}/approval` (`:1213`). Does not include JSON-RPC `approval.received`.
 - Status: verified. SPEC 3.1, O46, G21, G23, G44. This is gateway runs, not kanban runs.
 
 **JSON-RPC `approval.pending`**
@@ -423,40 +538,132 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - This is a write. Listed because A3 dedupe is defined against it. Second resolution is a zero `resolved`, not a second side effect. Desktop must disable the button on send (SPEC 3.3) and treat `resolved == 0` as already resolved.
 - Status: verified method. Cross-profile routing is proposed (section 6).
 
-**JSON-RPC `approval.received` / `approval.cancelled`**
-- `approval.received` params: `{session_id, profile?, request_id}`, result `{acknowledged}` (`gateway-contract.generated.ts:2867`).
-- `approval.cancelled` is a server push (SPEC 3.2). Payload type `ApprovalCancelledPayload` at `gateway-contract.generated.ts:4776`.
-- These are the "resolved elsewhere" events. They are not a history list. SPEC R36 "last 50 resolved" has no read route. That history is proposed with A3.
-- Status: verified as events. Not a list API.
+**JSON-RPC `approval.received` — client ACK, not settlement**
+- Handler: `tui_gateway/methods_prompt.py:1193` `@method("approval.received")` calls `tools/approval.py:210` `ack_gateway_approval`.
+- Request: `{session_id, profile?, request_id}` (`gateway-contract.generated.ts:2867`). `request_id` required (`methods_prompt.py:1198`).
+- Response: `{acknowledged: boolean}` (`gateway-contract.generated.ts:2872`). True only when that `request_id` is still in the session queue (`approval.py:213-216`). False when it is already gone. False is not a settlement receipt.
+- Effect: sets `entry.acknowledged = True` and leaves the entry in `_gateway_queues` (`approval.py:210-217`). It does not pop the entry, does not set a choice, and does not expire the approval.
+- Scope: one session (`_sess`). Not cross-profile.
+- Auth: gateway socket.
+- Storage: in-memory gateway approval queue. Not durable history.
+- Freshness: the ACK is a write of a flag, not a read of status. A client must not treat its own ACK as "resolved".
+- Events: this method emits none. It is a JSON-RPC method (client → server), not a server push and not an SSE event.
+- Status: verified as an ACK. It must not drop a Needs-you card and must not show "Resolved elsewhere". SPEC §1, §3.2, and R36 name it beside settlement. That is a source discrepancy (see `source-verification.md`). Do not copy it.
+
+**Settlement signals (these retire a pending, or prove it is gone). `approval.received` is not one of them.**
+
+| Signal | Kind | What it proves | What it does not prove |
+|---|---|---|---|
+| `approval.respond` result `resolved > 0` | JSON-RPC method, client → server. `methods_prompt.py:1204` → `resolve_gateway_approval` (`approval.py:139-173`) pops the entry under `_lock` and returns the count. | This call settled that many queued entries. | A second device's click. `resolved == 0` means nothing matched (already gone, unknown id, or empty queue). |
+| `POST /v1/runs/{run_id}/approval` body `resolved > 0`, or 409 `approval_not_pending` | HTTP write. `api_server_runs.py:1168`. 409 when `resolve_gateway_approval` returns <= 0 (`:1209-1211`). | The run's approval session had a matching pending, or (409) it did not at this call. | Who settled it, if the code is 409. Not a JSON-RPC approval on another session. |
+| SSE `approval.responded` | Server push on that run's event stream, only after a successful resolve (`api_server_runs.py:1213`). Fields: `choice`, `resolved`, and `request_id` when the body had one. | That gateway run already settled. Drop that run's pending. Do not also call respond. | JSON-RPC approvals that never touched this run. Not a universal event. |
+| `approval.cancelled` | Server push (broadcast), not a method. `tui_gateway/session_lifecycle.py:505`. Payload (`gateway-contract.generated.ts:4776`): `session_id, stored_session_id, reason, cancelled_count, request_ids`. Desktop `lifecycle.ts:98` clears parked prompts for those ids. | Interrupt, reap, or teardown dropped those ids. | A user Approve/Deny. Not a history row of who resolved it. `cancelled_count` can disagree with `request_ids` when an entry has no id (contract comment at `:4775`). |
+| Re-read `approval.pending` | JSON-RPC method, pull. `methods_prompt.py:1184` → `list_gateway_approvals` (`approval.py:193`). | Absence of the `request_id` from that session's list. Authoritative for that session only. | Other sessions, other profiles, or why it left. |
+
+There is no universal resolution event. Do not invent one. SPEC R36 "last 50 resolved" has no read route. That history stays proposed with A3 (section 6) and must not be filled from ACK receipts.
+
+**JSON-RPC `approval.cancelled`**
+- Handler: no method. Producer `session_lifecycle.py:505` `_broadcast_global_event`. Consumer `apps/desktop/src/app/session/hooks/use-message-stream/gateway-event/lifecycle.ts:98`.
+- Request: none (push).
+- Response: payload above. Not `{acknowledged}`.
+- Scope: the session being interrupted or torn down.
+- Auth: gateway socket broadcast to clients that already hold the socket.
+- Storage: none. The queue entries are dropped by `unregister_gateway_notify` (`approval.py:130`); the push is the client's only signal.
+- Freshness: the event itself. A client that missed it must re-read `approval.pending`.
+- Events: this is the event.
+- Status: verified as a push. Not an ACK. Not a list API.
 
 **JSON-RPC `config.get` / `config.set`**
 - Desktop read of `approvals.mode`: `apps/desktop/src/store/approval-mode.ts:69`, key `approvals.mode`, profile param required for a non-launch profile.
 - Values: `manual | smart | off`. Unknown normalizes to `manual` (`approval-mode.ts:35`). UI cache default before a read is `smart` (`approval-mode.ts:44`). Those are different. Ops must show the read value, and `unknown` until the read returns. Do not paint `smart` as if it were confirmed.
 - Auth: gateway socket. Storage: `approvals.mode` in that profile's config.yaml. Status: verified. SPEC O41.
 
-**JSON-RPC `projects.list` / `projects.get` / `projects.create` / `projects.archive`**
-- Handlers: `tui_gateway/methods_projects.py:81` `projects.list`, `:86` `projects.get`, `:91` `projects.create`, `:104` `projects.archive`.
-- Storage: `hermes_cli/projects_db.py`. Columns: `id, slug, name, description, icon, color, board_slug, primary_path, created_at, archived`. No favourites column.
-- Scope: the profile on the RPC params (`methods_projects.py` profile scope). Create does not inherit "All profiles" (`projects.ts:1111`).
-- Auth: gateway socket. Status: verified. SPEC R4. `projects.create` is a write; the read is `projects.list` / `projects.get` and REST `GET /api/profiles/projects/tree`.
+**JSON-RPC `projects.list`**
+- Handler: `tui_gateway/methods_projects.py:81`, wrapped by `_projects_method` (`:27`) which is `profile_scoped` (`:32`).
+- Request: profile param. Blank profile = launch profile. No `id`.
+- Response: `{projects: Project.to_dict()[], active_id}` (`:20-24`, `include_archived=True`). `to_dict` (`projects_db.py:173-175`): `id, slug, name, description, icon, color, board_slug, primary_path, archived, created_at, folders[{path, label, is_primary, added_at}]`. No favourites column.
+- Scope: one profile's `projects.db`. Not "all profiles". The all-profiles read is REST `GET /api/profiles/projects/tree`.
+- Auth: gateway socket.
+- Storage: `hermes_cli/projects_db.py`. Schema columns at `projects_db.py:29`.
+- Freshness: request-time.
+- Events: none from this method. Desktop may listen for `projects.changed` elsewhere.
+- Status: verified. SPEC R4.
+
+**JSON-RPC `projects.get`**
+- Handler: `methods_projects.py:86` `_require_project`.
+- Request: `{id}` plus profile. Missing or unknown id → error 5062 `no such project` (`:13`, `:38-39`).
+- Response: `{project: to_dict()}`.
+- Scope, auth, storage, freshness, events: inherited from `projects.list` (same wrapper). Status: verified.
+
+**JSON-RPC `projects.create`** (write; listed so R4's create path is not mistaken for a read)
+- Handler: `methods_projects.py:91`.
+- Request: `name`, optional `folders, slug, primary_path, description, icon, color, board_slug, use`.
+- Response: `{project}` or `{project: null}` if the row cannot be re-read.
+- Scope: the profile on the RPC params. Create does not inherit "All profiles" (`apps/desktop/src/store/projects.ts:1111`). The writable owner is that profile.
+- Auth: gateway socket. Storage: same `projects.db`. Freshness: the returned row is the post-write read. Events: none from this method.
+- Status: verified write. Not implemented by this slice.
+
+**JSON-RPC `projects.archive`** (write)
+- Handler: `methods_projects.py:104`. Request: `{id, restore?}`. `restore` true calls `restore_project`, else `archive_project`.
+- Response: same payload as `projects.list` (`_projects_payload`).
+- Scope, auth, storage, freshness, events: inherited from `projects.list`. Status: verified write. Favourites stay a local pref. No server column.
 
 ### 4.7 Client event sources (not REST)
 
 **Live sub-agents**
-- Store: `apps/desktop/src/store/subagents.ts`. `$subagentsBySession` / `buildSubagentTree` (SPEC G24).
-- Fields include `id, parentId, goal, sessionId, delegationId, status, inputTokens, outputTokens, costUsd`. Tokens here are the live child stream when the event carried them. If the event has no token fields, the UI must show null, not 0.
-- Scope: one Desktop session on one connection. Not a profile config. Not durable across restart unless the session stream replays it.
-- This is not A4. See section 7.
-- Status: verified client store. No REST list.
+- Handler: none. Client store `apps/desktop/src/store/subagents.ts` (`$subagentsBySession`, `buildSubagentTree`). SPEC G24.
+- Request: none. Not a REST or RPC read.
+- Response: rows with `id, parentId, goal, sessionId, delegationId, status, inputTokens, outputTokens, costUsd` when the session event carried them. If the event omitted token fields, the UI must show null, not 0.
+- Scope: one Desktop session on one connection. Not a profile config. Not a tenant.
+- Auth: the Desktop session that already holds the gateway socket. No separate token.
+- Storage: in-memory client store. Not durable across restart unless the session stream replays it.
+- Freshness: the session stream. Lost on restart.
+- Events: the session stream is the source. This store does not emit a backend event.
+- Status: verified client store. No REST list. This is not A4. See section 7.
 
 **`store/notifications`**
-- Desktop toast queue. Not a backend read. SPEC O62, O90. Status: verified as a client store. No new route.
+- Handler: none. Desktop toast queue.
+- Request: none.
+- Response: not exposed as a schema in this slice. It is a client queue, not a backend list.
+- Scope: one Desktop process. Not profile-scoped on the server.
+- Auth: none. Local UI.
+- Storage: client memory. Not a db.
+- Freshness: the event that enqueued the toast.
+- Events: none of its own. SPEC O62 and O90 cite it as the toast surface for kanban blocked and A3.
+- Status: verified as a client store. No new route.
 
 **Local prefs**
-- Motion, pins, seen-state, recent searches, rail colour overrides (`$profileColors`), profile skins (`themes/context.tsx` key `hermes-desktop-profile-themes-v1`). Not server state. Status: client-only. SPEC O39, O47, R27, R35, R37, R60.
+- Handler: none.
+- Request: none.
+- Response: not a server document. Keys include motion, pins, seen-state, recent searches, rail colour overrides (`$profileColors`), profile skins (`themes/context.tsx` key `hermes-desktop-profile-themes-v1`).
+- Scope: local to the Desktop install, keyed by connection and profile where the SPEC says so (O47, R35, R60).
+- Auth: none.
+- Storage: client persistence. Not config.yaml and not kanban.db.
+- Freshness: local. Not a server TTL.
+- Events: none.
+- Status: client-only. SPEC O39, O47, R27, R35, R37, R60.
+
+**G5 `store/free-tier*` — client cache of `free_tier.status`**
+- Handler: JSON-RPC `free_tier.status` in `tui_gateway/methods_free_tier.py:20`, `@_profile_scoped`. Client cache: `apps/desktop/src/store/free-tier.ts:26` `$freeTierStatus`, refreshed by `refreshFreeTierStatus` (`:55`) which calls `free_tier.status`. Related files `store/free-tier-challenge` and `store/free-tier-sign-in` are UI around that atom, not a second status source. Glob `store/free-tier*` is these modules.
+- Request: profile param (`ProfileParams` in `gateway-contract.generated.ts:5079`). Blank profile = launch profile.
+- Response (`methods_free_tier.py:35-48`): `{has_guest, enabled, available, notice_pending, model, label}`. `available` is `has_guest and enabled`. When `enabled` and not `has_guest`, the payload also merges `last_mint_failure()` (`error, error_code, retryable, retry_after`) if that memo exists. `challenge` is present only while a browser challenge is pending. Desktop type `FreeTierStatus` (`apps/desktop/src/types/hermes.ts:164`) matches that shape. This is not a quota and not token usage.
+- Scope: one profile's auth store. Not a fleet aggregate. Not tenant-scoped.
+- Auth: gateway socket.
+- Storage: local auth / guest identity (`hermes_cli/anon_auth`). The atom is a cache, not the store of record.
+- Freshness: pull. The method is a local read with no network (`methods_free_tier.py:1-2`). `$freeTierStatus` starts `null` (`free-tier.ts:26`). Null means not asked yet. Every consumer must render as if there were no free tier until an answer lands (`free-tier.ts:23-24`). A failed refresh leaves the last answer (`:69-70`); it does not prove the tier turned off. Do not paint a usage banner from null.
+- Events: `free_tier.challenge` and `free_tier` bootstrap broadcasts exist on the gateway contract. They are not a quota stream. This slice does not subscribe Ops to them.
+- Status: verified RPC and verified client cache. No quota endpoint. The usage half of G5 remains `GET /api/analytics/usage` (section 4.3). A user-set budget in Ops settings is a local pref, `not exposed` on the server. Do not invent a percent-used field.
 
 **Profile sigil colour**
-- `apps/desktop/src/lib/profile-color.ts` `profileColor` / `resolveProfileColor`. Deterministic HSL from the profile name. Default/empty returns null. A user override wins. Not returned by `GET /api/profiles`. There is no `themes/profile-theme` module. Status: verified client source. SPEC O56.
+- Handler: none. `apps/desktop/src/lib/profile-color.ts` `profileColor` (`:21`) and `resolveProfileColor` (`:35`).
+- Request: profile name, plus the local override map.
+- Response: HSL from the name, or the override, or null for `default` and empty. Not a field on `GET /api/profiles`.
+- Scope: client. Not a server profile document.
+- Auth: none.
+- Storage: `$profileColors` for overrides. Skins are a different store (`themes/context.tsx`). There is no `themes/profile-theme` module.
+- Freshness: deterministic from the name, except the override which is local.
+- Events: none.
+- Status: verified client source. SPEC O56. Not a Cut.
 
 ## 5. Proposed contracts (not implemented)
 
@@ -473,32 +680,63 @@ Response, per profile:
 - `profile` (string)
 - `presence`: `working | needs_you | blocked | idle | offline | unknown | stale`
 - `sub_state`: `thinking | tool:<name> | waiting_approval | null`
-- `observed_at` (unix seconds, server clock)
-- `freshness_s` (now - observed_at)
+- `observed_at` (unix seconds, server clock) — required on every input that contributed, and on the profile result even for idle
+- `freshness_s` (now - newest presence input's `observed_at`, or null when every presence input is missing)
 - `next_run_at` (cron, or null)
 - `active_runs`: list of `{source: kanban|gateway, id, task_id|null, started_at}`
-- `precedence` (string, the rule that won)
+- `precedence` (string: `missing`, `stale`, or the operational rule that won)
 
-Precedence, first match wins:
+`observed_at` is per input, not one stamp reused for every axis:
 
-1. pending approval for that profile (`waiting_approval`, presence `needs_you`)
-2. kanban `workers/active` row or gateway run status `running` for that profile (`working`)
-3. assigned task `status=blocked` (`blocked`)
-4. gateway up, no work (`idle`)
-5. profile has gateway platforms configured and the backend cannot reach them (`offline`)
-6. last observation older than 5s (`stale`) — SPEC 3.3 presence agrees within 5s
-7. no observation (`unknown`)
+| Input | Clock | Missing means |
+|---|---|---|
+| kanban worker row | `checked_at` on `GET /api/plugins/kanban/workers/active` | no fresh read of that route for this connection |
+| gateway run status | `updated_at` on `GET /v1/runs/{id}` | no status object, not "not running" |
+| approval pending | time the client received `approval.pending` or the matching push for that profile | no list has been read for that profile. The payload has no `expires_at`. `approvals.timeout` (`approval_context.py:247`, default 300) is the queue timeout, not an observation clock |
+| gateway up | request time of `GET /api/status`, or `gateway_updated_at` when that field is the observation | `gateway_running` without a fresh read is missing, not up |
+| cron `next_run_at` | request time of `GET /api/cron/jobs` for that profile | the next-run timestamp is not the observation clock |
 
-Never map unknown to idle. `observed_at` is required even for idle.
+Validity is a gate. It is evaluated before any operational state. First match wins only among inputs that passed the gate.
+
+1. Every presence input missing → `unknown`. Never `idle`.
+2. Newest presence input older than 5 seconds (SPEC 3.3) → `stale`. A stale `running` snapshot is `stale`, not `working`. A stale gateway-up is `stale`, not `idle`.
+3. Only fresh inputs (observed_at within 5s) may select an operational state, first match:
+   1. fresh pending approval for that profile → `needs_you`, sub_state `waiting_approval`
+   2. fresh kanban `workers/active` row or fresh gateway run status `running` → `working`
+   3. fresh assigned task `status=blocked` → `blocked`
+   4. fresh gateway-up and no fresh work → `idle`
+   5. fresh observation that platforms are configured and the backend cannot reach them → `offline`
+
+A mixed profile does not collapse. A fresh running row stays `working` even if the approval list is missing. The missing list does not invent `needs_you` and does not demote the row to `unknown`. A missing gateway read does not become `idle`. An old running row is `stale` even if a fresh gateway-up would otherwise say idle: stale wins over a contradictory fresh idle, because the work observation is old. `precedence` records `stale` in that case.
+
+Decision table. Cells are presence, not sub_state. `running` is a kanban worker row or a gateway run status `running`. `pending approval` is a pending for that profile. `gateway-up idle` is gateway up and no work.
+
+| Input validity | running | pending approval | gateway-up, no work |
+|---|---|---|---|
+| fresh (≤5s) | working | needs_you | idle |
+| old (>5s) | stale | stale | stale |
+| missing | unknown | unknown | unknown |
+
+Never map unknown → idle. Never map old running → working. Never map a missing observation → idle.
 
 Storage: no new table. Aggregate of workers/active, tasks, approvals, cron, `/api/status`.
 Auth: session token. Scope: connection. Tenant is not a presence axis.
-Events: invalidate on kanban WS, `approval.pending` / `approval.received` / `approval.cancelled`, gateway run SSE. Polling 5s is fallback only (D12).
+Events: invalidate on kanban WS, a fresh re-read of `approval.pending`, the `approval.cancelled` push, and gateway run SSE including `approval.responded`. `approval.received` does not invalidate presence and does not clear `needs_you`. Polling 5s is fallback only (D12).
 Status: proposed.
 
 ### 5.2 A2 per-run usage — proposed
 
-There is no per-run token field. `task_runs.metadata` is unstructured. `GET /api/analytics/usage` is model/day. Gateway run status has no usage object. `tasks.session_id` is not a run-to-session map (NULL from CLI/dashboard; absent on `task_runs`).
+There is no per-run token column on `task_runs`. `task_runs.metadata` is unstructured JSON, not a usage contract.
+
+Gateway `GET /v1/runs/{id}` can carry `session_id` and, on a terminal finish, `usage`. That is not A2. The r1 claim that this GET has neither field was false.
+
+- `session_id` is set at queued (`api_server_runs.py:718-719`). It names the gateway session. It does not name a kanban task.
+- A native terminal finish writes `usage` with the `_USAGE_FIELDS` keys and `runtime` (`:986`). `_run_usage` (`:759-766`) coerces a missing counter to 0. Those zeros are provenance `gateway.session_counters` (unverified-measured). They are not A2's null, and they are not proof of measurement.
+- A live-owner settled run writes `usage={}` (`:895-896`). Empty object, not the five keys, not a missing key. Same provenance family. Do not sum it. Do not display it as measured tokens.
+- If the `usage` key is absent, Ops reads null and provenance `unknown`. Do not coerce that absence to 0.
+- Two runs that share a `session_id` must not each display the session counters as their own total. Provenance `shared-session`, tokens null, unless a later adapter partitions by run. This slice does not add that partition.
+
+Kanban `task_runs` has no `session_id` (`kanban_db.py:1080`). `tasks.session_id` (`kanban_db.py:808`) is the originating `HERMES_SESSION_ID` and is NULL for CLI/dashboard creates. No handler joins a kanban run id to a chat session id. That failed join is the O66 Cut. It is not a claim that gateway runs lack `session_id` or `usage`.
 
 Contract when built:
 
@@ -506,6 +744,7 @@ Contract when built:
 - Response: `{input_tokens: number|null, output_tokens: number|null, provenance: string, session_id: string|null}`.
 - If the session usage row is missing, both token fields are null and `provenance` is `unknown`. Never 0.
 - If two runs share a session, do not add the session total onto each run. Provenance `shared-session` and tokens null unless the usage row is partitioned by run.
+- Gateway zeros and `usage={}` stay provenance `gateway.session_counters`. A2 must not re-label them as measured per-run tokens.
 - Today-total for the status bar is a different read: `GET /api/analytics/usage?days=1` with provenance `analytics.usage:days=1`. Do not add it to per-run figures.
 - Cron output preview rows in `cron.py:262` hard-code `input_tokens: 0` and `output_tokens: 0`. Those zeros are placeholders for a file preview, not measured usage. Ops must not display them as tokens.
 
@@ -569,10 +808,16 @@ Kanban blocked/review and cron failures are not tool approvals. They are sibling
 **Dedupe**
 
 - Identity: `(connection, profile, session_id or run_id, request_id)`.
-- The server resolves at most once. `approval.respond` returns `resolved` count. Gateway returns 409 `approval_not_pending` when `resolve_gateway_approval` returns <= 0 (`api_server_runs.py:1209`).
-- A duplicate click, a second device, and `approval.received` for the same `request_id` are one resolution. The list drops the item. The UI shows "Resolved elsewhere" (SPEC 3.2). It does not send a second respond.
+- `approval.received` is not a resolution. A duplicate ACK, a second device's ACK, and `acknowledged: true` leave the entry queued (`ack_gateway_approval`, `approval.py:210-217`). The list does not drop the item. The UI does not show "Resolved elsewhere" for an ACK.
+- Settlement is one of the signals in section 4.6, by kind:
+  - JSON-RPC method `approval.respond`: `resolved > 0` means this call popped the entry (`resolve_gateway_approval`, `approval.py:139-173`). `resolved == 0` means it was already gone or never matched. The UI may show "Resolved elsewhere" only after that zero, or after a re-read that no longer lists the id. It does not send a second respond.
+  - HTTP write `POST /v1/runs/{id}/approval`: body `resolved > 0`, or 409 `approval_not_pending` when `resolve_gateway_approval` returns <= 0 (`api_server_runs.py:1209-1211`). Same rule. The 409 is not itself an event.
+  - SSE server push `approval.responded` on that gateway run (`api_server_runs.py:1213`): the run stream says the resolve already happened. Drop that run's pending. Do not also call respond.
+  - Server push `approval.cancelled` (`session_lifecycle.py:505`): interrupt/reap/teardown dropped those `request_ids`. Drop those ids. This is not a user resolution and not a "who approved" history row.
+  - Pull: re-read `approval.pending` for that session. Absence is authoritative for that session only.
 - `all: true` is scoped to that session's pending queue, never to every profile.
 - One click stays (D3). Idempotency is the server count, not a client lock alone.
+- No universal resolution event. SPEC §1, §3.2, and R36 conflate ACK with settlement. Recorded in `source-verification.md`. Do not invent an event to paper over that.
 
 Status of the list route: proposed. Status of the two respond methods: verified, session- or run-scoped, not cross-profile.
 
@@ -614,6 +859,8 @@ Recorded so a judge can see they were inventoried and left unimplemented.
 | POST .../reassign | `plugin_api.py:1033` `reassign_task_endpoint` | |
 | POST .../estimate | `plugin_api.py:1071` `estimate_task_endpoint` | |
 | POST /tasks/bulk | `plugin_api.py:852` `bulk_update` | |
+| POST /links | `plugin_api.py:811` | Write. No GET `/links`. The read is embedded in `GET /tasks/{id}`. |
+| DELETE /links | `plugin_api.py:818` | Write. |
 | POST /runs/{id}/terminate | `plugin_api.py:979` `terminate_run_endpoint` | |
 | POST /v1/runs/{id}/approval | `api_server_runs.py:1168` | |
 | POST /v1/runs/{id}/steer | `api_server_runs.py:1219` | |
@@ -626,25 +873,376 @@ Recorded so a judge can see they were inventoried and left unimplemented.
 
 ## 9. External plugin: workflow-studio
 
-Not in `hermes-agent`. Installed at `C:\Users\nachi\AppData\Local\hermes\plugins\workflow-studio`. Desktop drop-in: `HERMES_HOME\desktop-plugins\workflow-studio`. Live plugin list on the ephemeral serve included the name `workflow-studio`.
+Not in `hermes-agent`. Installed at `C:\Users\nachi\AppData\Local\hermes\plugins\workflow-studio`. Desktop drop-in: `HERMES_HOME\desktop-plugins\workflow-studio`. Live plugin list on the ephemeral serve included the name `workflow-studio`. Mount comment: `dashboard/plugin_api.py:1` — `/api/plugins/workflow-studio`.
 
-- Mount comment: `dashboard/plugin_api.py:1` — `/api/plugins/workflow-studio`.
-- Reads: `GET /projects` (`plugin_api.py:75`), `GET /workflows?project_id=` (`:107`), `GET /workflows/{id}` (`:128`), `GET /runs/{run_id}` (`:187`), `GET /health` (`:201`), `GET /decisions/{id}` (`:275`), `GET /memory` (`:315`), `GET /recovery` (`:321`).
-- Writes (not used here): POST/PUT workflows, POST runs, decisions, memory.
-- `workflow_template_id` does not appear in that plugin tree (search returned no matches). Compile-to-kanban is a write path in `workflow_studio/compile.py`. It is not a kanban template catalog.
-- Auth: same dashboard session token. Live `GET /api/plugins/workflow-studio/health` returned 401 without a token. Payload not read.
-- Storage: the plugin's own DB (`workflow_studio/db.py`), not `kanban.db` templates.
-- Status: verified as an external plugin with its own reads. Not a substitute for kanban `workflow_template_id`.
+Shared axes, unless an entry overrides them:
+
+- Scope: the plugin's own DB, not a Hermes profile query and not a kanban board. `project_id` is a workflow-studio project id, not `projects.db`.
+- Auth: dashboard session token, same gate as other plugins. Live `GET /api/plugins/workflow-studio/health` returned 401 without a token. Payload not read. 401 is not existence proof.
+- Storage: the plugin DB (`workflow_studio/db.py`), not `kanban.db` templates. `workflow_template_id` does not appear in that plugin tree.
+- Freshness: request-time. Events: none on these GETs.
+- Status: verified handlers in the external tree. Not a substitute for kanban `workflow_template_id`.
+
+**GET /projects**
+- Handler: `dashboard/plugin_api.py:75` `get_projects` → `list_projects` (`workflow_studio/db.py:140`).
+- Request: none.
+- Response: `{projects: [{id, name, paths}]}` (`db.py:156-157`).
+- Scope, auth, storage, freshness, events, status: inherited from the shared axes above.
+
+**GET /workflows**
+- Handler: `plugin_api.py:107` `get_workflows`.
+- Request: query `project_id` required. Unknown project → 404.
+- Response: `{workflows: [{id, project_id, name, version, nodes, edges}]}` (`db.py:169-177`, `:229`). Latest version per workflow.
+- Scope, auth, storage, freshness, events, status: inherited from the shared axes above.
+
+**GET /workflows/{workflow_id}**
+- Handler: `plugin_api.py:128` `get_workflow_route` → `get_workflow` (`db.py:211`).
+- Request: path `workflow_id`.
+- Response: the same workflow object, or 404. Not wrapped in `{workflow: ...}`.
+- Scope, auth, storage, freshness, events, status: inherited from the shared axes above.
+
+**GET /runs/{run_id}**
+- Handler: `plugin_api.py:187` `get_run` → `read_run` (`workflow_studio/compile.py:225`).
+- Request: path `run_id`.
+- Response (`compile.py:255-263`): `{id, workflow_id, version, kind, enqueued, tasks, context}` or 404. `tasks[]` is `{node_id, task_id, status, session_id}` and, when a kanban task exists, `assignee`. `session_id` here is `worker_session_id` from kanban metadata (`compile.py:220-222`), not a contract that `task_runs.session_id` exists. `context` is null when no capture row exists. Inner `context` keys are `not exposed` by this document (delegated to `context_metadata`).
+- Scope: one plugin run, joined to kanban task rows for status. Auth, storage, freshness, events: inherited. Status: verified handler. Not the O66 kanban-run-to-session join.
+
+**GET /health**
+- Handler: `plugin_api.py:201` `health`.
+- Request: none.
+- Response (`plugin_api.py:203-210`): `{ok, mode, dispatch, tasks_initial_status, prepare_only_default, node_model_pinning}`. Observed in source as `ok: true`, `mode: "shadow"`, `dispatch: "native-only"`. Not a Hermes `/api/health`.
+- Scope: process. Auth: session token (gated; live 401 without a token). Storage: none (constants). Freshness: request-time. Events: none. Status: verified handler, payload not read live.
+
+**GET /decisions/{decision_id}**
+- Handler: `plugin_api.py:275` `get_decision_route` → `get_decision` (`workflow_studio/scope.py:139`).
+- Request: path `decision_id`.
+- Response: `{id, project_id, question, choice, status, evidence_refs, supersedes, superseded_by, transitions, actor, verification, audit}` (`scope.py:109-171`) or 404. `audit` is `{claimed, verified}`.
+- Scope, auth, storage, freshness, events, status: inherited from the shared axes above.
+
+**GET /memory**
+- Handler: `plugin_api.py:315` `get_memory` → `search_memory` (`scope.py:399`).
+- Request: query `project_id` required, `q` default `""`. Empty `q` returns the latest 50. Bad FTS → 400. Unknown project → 404.
+- Response: `{items: [{id, project_id, session_id, source_ref, text}]}` (`scope.py:298-305`).
+- Scope, auth, storage, freshness, events, status: inherited from the shared axes above.
+
+**GET /recovery**
+- Handler: `plugin_api.py:321` `get_recovery` → `recovery_packet(..., do_judge=False)` (`scope.py:428`).
+- Request: query `project_id` required, `q` default `""`.
+- Response (`scope.py:485-493`): `{project: {id, name}, decisions, proposed, items, tasks, sessions, controller}`. `controller` is `{mode: "shadow", status: "not_called"}` on this GET (`do_judge=False`). `sessions` is `{session_id}[]`. `tasks` reuses the run-task shape plus `run_id`.
+- Scope, auth, storage, freshness, events, status: inherited from the shared axes above.
+
+Writes (not used here): POST/PUT workflows, POST runs, decisions, memory, `POST /recovery/judge`. Compile-to-kanban is a write path in `workflow_studio/compile.py`. It is not a kanban template catalog.
 
 ## 10. Null usage rule (all surfaces)
 
 | Surface | If the source has no usage | Forbidden display |
 |---|---|---|
 | A2 per-run | `null`, provenance `unknown` | `0` |
+| Gateway `GET /v1/runs/{id}` key absent | `null`, provenance `unknown` | coercing absence to `0` |
+| Gateway `_run_usage` zeros | keep the zeros, provenance `gateway.session_counters` (unverified-measured) | calling a coerced 0 measured, or summing it onto another run that shares `session_id` |
+| Gateway live-owner `usage={}` | empty object, same provenance family | treating `{}` as null, as measured zeros, or as a per-run total |
 | `GET /api/analytics/usage` | the aggregate's real zero, provenance `analytics.usage` | calling that zero a run's tokens |
 | cron output preview row | ignore `input_tokens: 0` (`cron.py:270`) | showing it as usage |
 | `GET /api/sessions/search` | coerced `input_tokens or 0` (`sessions.py:385`) | showing that zero as usage |
 | live sub-agent event | `null` when the event omitted tokens | `0` |
+| G5 `free_tier.status` / `$freeTierStatus` null | not a usage number | a percent banner |
 | status bar today-total | only `analytics.usage?days=1`, tooltip names that route | sum of run nulls |
 
-A missing number is null with a provenance string. It is not zero, and it is not hidden without the provenance tooltip (SPEC section 2 UI rule).
+A missing number is null with a provenance string. It is not zero, and it is not hidden without the provenance tooltip (SPEC section 2 UI rule). A present gateway zero is not that missing number.
+
+## 11. SPEC → source matrix
+
+Every route or source cited in SPEC sections 3-5 and 12.8 is either an entry above or an explicit "not a read" / "not exposed" / "not inventoried" reason. UI-only rows are classified, not skipped. This slice does not add endpoints to fill a cell.
+
+### 11.1 Sections 3-5
+
+| Citation | Anchor |
+|---|---|
+| `GET /api/profiles` | §4.1 |
+| presence via `workers/active`, session stream, approvals, blocked, gateway up | §4.2 workers, §4.7 live sub-agents (not a fleet presence read), §4.6 `approval.pending`, §4.3 `/api/status`. The aggregate is proposed A1 §5.1 |
+| `GET /api/ops/fleet` (A1) | §5.1 proposed |
+| `tasks.current_step_key`, `workflow_template_id` via `/api/plugins/kanban/board` | §4.2 board. The template id is a nullable column, not a catalog (source-verification O16) |
+| `GET /api/plugins/kanban/runs/{id}`, `/inspect` | §4.2 |
+| `GET /api/analytics/usage` | §4.3 |
+| Adapter A2 | §5.2 proposed |
+| `task_events` via board/task detail | §4.2 `get_task` / board |
+| `/api/sessions/{id}/timeline` | §4.3 |
+| `/api/status`, `gateway_state.json` | §4.3. The json is read inside status, not its own route |
+| `GET /api/cron/jobs` | §4.3 |
+| JSON-RPC `approval.pending` | §4.6 |
+| `server-requests.ts` | not a backend read. Desktop already subscribes. The read is `approval.pending` |
+| gateway `/v1/runs/{id}` | §4.6 |
+| `POST /v1/runs/{id}/approval` | §8 write. Settlement signal in §4.6, not a read |
+| kanban `status=blocked` / `status=review` | fields on §4.2 board/task. No separate list route |
+| cron `failure_streak>0` | field on §4.3 cron jobs |
+| policy violations §4.4 | not a read route. P2 is a write-time rule (header). No `GET /api/ops/policy` |
+| Adapter A3 `GET /api/approvals/pending` | §6 proposed |
+| `approval.respond` | §4.6 method (write) and §6 dedupe |
+| `PATCH /api/plugins/kanban/tasks/{id}` | §8 write |
+| `POST .../comments` | §8 write. No GET `/comments`. Comments are embedded in `GET /tasks/{id}` |
+| `POST .../reclaim` | §8 write |
+| `/v1/runs/{id}/steer`, `/stop` | §8 writes |
+| kanban `POST /runs/{id}/terminate` | §8 write |
+| `approval.cancelled` / `approval.received` (§3.2) | §4.6. `received` is an ACK, not settlement. Discrepancy recorded in source-verification. Do not copy SPEC §3.2's "Resolved elsewhere" onto the ACK |
+| `/api/dashboard/agent-plugins/{name}/enable` | §8. Write. Handler not opened this slice. Blocker for that CTA, not a verified read |
+| `GET /api/profiles/{n}/soul` | §4.1 |
+| Description `/api/profiles/{n}` | §4.1 list field. No dedicated GET-by-name |
+| `/api/model/options` | §4.1 |
+| `GET /api/tools/toolsets` | §4.4 |
+| `GET /api/skills` | §4.4 |
+| `GET /api/memory`, `/api/memory/providers/{n}/config` | §4.4 |
+| `GET /api/messaging/platforms` | §4.4 |
+| `GET /api/cron/jobs` origin filter | §4.3. Ownership is `origin`, not the listing profile |
+| `GET /api/webhooks` | §4.3 |
+| Adapter A4 `/api/config?profile=` | §4.1 raw read verified. Projection route §7 proposed |
+| `GET /api/config/raw` | §4.1 |
+| `POST /api/profiles/{n}/snapshot` (A5) | §8. Absent. Proposed. Not a read |
+| `/api/config/schema` | §4.1 |
+| `/api/gateway/restart` | not inventoried as a read: SPEC §4.3 cites it as a confirmed write. Handler not opened this slice |
+| `GET /api/plugins/kanban/board` | §4.2 |
+| `/api/plugins/kanban/config` | §4.2. Does not return a lanes array. Columns come from `GET /workflow` |
+| `POST /tasks/{id}/reassign` | §8 write |
+| `/tasks/{id}` | §4.2 |
+| `/comments` | not exposed as GET. Embedded in `GET /tasks/{id}` |
+| `/attachments` | §4.2 list route, also embedded |
+| `/links` | not exposed as GET. Embedded in `GET /tasks/{id}` (`links`, `link_tasks`). POST/DELETE only (§8) |
+| `/runs/{id}` | §4.2 kanban run. Distinct from gateway `/v1/runs/{id}` and from workflow-studio `/runs/{id}` (§9) |
+| `POST /tasks`, `POST /tasks/bulk`, `POST /tasks/{id}/estimate` | §8 writes |
+| `GET /api/plugins/kanban/events/stream` (A7) | §5.5 proposed. Existing socket is WS `/events` §4.2 |
+
+### 11.2 Section 12.8
+
+`not a read` means the citation is UI, a local pref, a Cut with no source, or an existing Desktop surface this slice does not re-specify. It is classified, not forgotten.
+
+| ID | Cited source | Anchor |
+|---|---|---|
+| O1 | A1 `/api/ops/fleet` | §5.1 |
+| O2 | A1 + `/api/profiles/{n}` | §5.1, §4.1 |
+| O3 | `POST /api/plugins/kanban/tasks` | §8 write |
+| O4 | `/api/cron/blueprints`, kanban tasks history | §4.3 blueprints. Task history is board/task events §4.2, not a template catalog |
+| O5 | A3 + kanban blocked/review + cron failures | §6, §4.2, §4.3 |
+| O6 | `/api/plugins/kanban/board` | §4.2 |
+| O7 | task_events, `/api/sessions` | §4.2, §4.3 |
+| O8 | D3 full-args rule | not a read. UI rule on A3 `exact_request` (§6) |
+| O9 | `app/routes.ts` | not a read. Desktop route table, not opened as a handler |
+| O10 | A1 | §5.1 |
+| O11 | A3 count | §6 |
+| O12 | `projects.db` via `/api/profiles/projects/tree` | §4.1 |
+| O13 | A1 + `/api/profiles` | §5.1, §4.1 |
+| O14 | `POST /api/profiles` | not a read. Write. Handler not opened this slice |
+| O15 | POST kanban `/tasks` | §8 |
+| O16 | `/api/cron/jobs/{id}/trigger`; workflow-studio | §8 trigger write. Plugin reads §9. Kanban template mapping failed (source-verification) |
+| O17 | kanban attachments, `/api/files/read` | §4.2, §4.5 |
+| O18 | `/api/sessions`; task_events | §4.3, §4.2 |
+| O19 | A2 | §5.2 |
+| O20 | `/api/sessions`; task_events | §4.3, §4.2. Same sources as O18, different lens |
+| O21 | A1 | §5.1 |
+| O22 | kanban task, `/api/env`, `/api/memory` | §4.2, §4.1 env, §4.4 memory |
+| O23 | A2 | §5.2 |
+| O24 | `/api/profiles/{n}`, toolsets, `command_allowlist`, task_runs count 7d | §4.1, §4.4 toolsets, §4.1 `command_allowlist`. 7d count `not exposed` |
+| O25 | Cut, no fake states | not a read |
+| O26 | `src/AGENTS.md` Bot Mode | not a read. Desktop invariant, not a route |
+| O27 | kanban tasks/links | §4.2 `links` embedded. No GET `/links` |
+| O28 | task_events + timeline | §4.2, §4.3 |
+| O29 | steer/stop, approval, comments, unblock | §8, §4.6, §6 |
+| O30 | UI expand | not a read |
+| O31 | UI tabs | not a read |
+| O32 | existing Desktop chat | not a new read |
+| O33 | `/api/git/review/diff`, `/api/git/file-diff` | §4.5 |
+| O34 | `/api/files/read` | §4.5 |
+| O35 | kanban logs, `/runs/{id}/inspect`, `/api/logs` | §4.2 log + inspect, §4.5 |
+| O36 | git status | §4.5 |
+| O37 | Cut | not a read |
+| O38 | `store/command-palette.ts` | not a backend read. Client store |
+| O39 | local pref | §4.7 |
+| O40 | `/api/model/set`, `ops-policy.yaml` | not a read. Model write is outside this slice. Policy is the header rule, not a GET. The picker read is `/api/model/options` §4.1 |
+| O41 | `approvals.mode` via `/api/config` | §4.1, JSON-RPC `config.get` §4.6 |
+| O42 | `/api/env` | §4.1 |
+| O43 | no source | not a read |
+| O44 | UI | not a read |
+| O45 | Desktop connection store | not a REST read. Scope axis §3 |
+| O46 | `/v1/runs/{id}/events` | §4.6, including `Last-Event-ID` / `last_seq` / `seq` / `replay.truncated` |
+| O47 | local last-seen, task_events | §4.7, §4.2 |
+| O48 | UI | not a read |
+| O49 | UI | not a read |
+| O50 | `/api/model/options`, PUT model | §4.1 read. PUT is §8 (Canvas writes, not opened line-by-line) |
+| O51 | UI | not a read |
+| O52 | command palette | not a backend read |
+| O53 | A1 | §5.1. Count only fresh observations (the gate) |
+| O54 | A1 | §5.1 |
+| O55 | UI | not a read |
+| O56 | `/api/profiles`; `themes/profile-theme` | §4.1 has no colour. Real source §4.7 `profile-color.ts`. Cited path does not exist |
+| O57 | A1, run events | §5.1, §4.6 |
+| O58 | POST kanban `/tasks` (triage) | §8. Triage column §4.2 workflow. Verdict in source-verification |
+| O59 | A3 + kanban + cron | §6, §4.2, §4.3 |
+| O60 | `current_step_key`, workflow template, `updated_at` | §4.2. Step count failed (source-verification). Do not invent n/m |
+| O61 | task_events | §4.2 |
+| O62 | kanban blocked; `store/notifications` | §4.2, §4.7 |
+| O63 | A1, kanban | §5.1, §4.2 |
+| O64 | kanban logs, run SSE, A6, cron; Desktop LogTail | §4.2, §4.6, §4.3. A6 is not this slice. LogTail component not opened. Interactive terminal not verified |
+| O65 | `/api/analytics/usage` | §4.3. Statusbar control is not a read |
+| O66 | run/session mapping (A2) | §5.2. Gateway `session_id` verified §4.6. Kanban join failed (source-verification) |
+| O67 | kanban id format | §4.2 `t_` + 8 hex. `TASK-NNN` is the display cut |
+| O68 | Desktop chat timeline | not a new read |
+| O69 | existing composer | not a new read |
+| O70 | task_events, timeline | §4.2, §4.3 |
+| O71 | reassign events, task_links, `store/subagents` | §4.2, §4.7 |
+| O72 | A3 | §6 |
+| O73 | session tool args; `/api/git/file-diff` | §4.3 timeline, §4.5 |
+| O74 | task_runs | §4.2 |
+| O75 | Cut, security §7 | not a read |
+| O76 | `/api/profiles/{n}` | §4.1 list field |
+| O77 | run events, session stream | §4.6, §4.7 |
+| O78 | cron `next_run_at` | §4.3 |
+| O79 | UI | not a read |
+| O80 | UI | not a read |
+| O81 | A1 | §5.1. One query key. Do not derive a second presence |
+| O82 | `task_runs.task_id` | §4.2 kanban run |
+| O83 | Cut | not a read |
+| O90 | `store/notifications`; A3 | §4.7, §6 |
+| G1 | no source | not a read |
+| G2 | `/api/model/options` + policy | §4.1. Policy is not a GET |
+| G3 | existing chat | not a new read |
+| G4 | `/api/cron/blueprints` | §4.3 |
+| G5 | `/api/analytics/usage`; `store/free-tier*` | §4.3, §4.7. Null until `free_tier.status` returns. No quota route |
+| G6 | capabilities view, messaging view, `/api/mcp/catalog`, `/api/messaging/platforms` | catalog and platforms §4.4. Desktop views are not new reads |
+| G7 | onboarding, `/api/mcp/servers/{n}/auth`, PUT enabled | onboarding §4.4 (telegram and whatsapp only). Server list §4.4. Auth and PUT are writes, not opened as reads |
+| G8 | Cut | not a read |
+| G9 | Cut | not a read |
+| G10 | `/api/skills/hub/official`, hub install | official list §4.4. Install is a write. Bundles are not that route |
+| G11 | `/api/skills` | §4.4 |
+| G12 | POST `/api/skills`, `/api/skills/content` | content §4.4. POST is a write, not opened |
+| G13 | sidebar profile groups | not a read |
+| G14 | palette | not a backend read |
+| G15 | see G6 | §4.4 |
+| G16 | `app/command-center` | not a new read. Desktop view, not opened |
+| G17 | local pref | §4.7 |
+| G18 | `src/themes` | not a backend read. Skins key in §4.7 |
+| G19 | Cut | not a read |
+| G20 | `/api/profiles/{n}/export` | not inventoried: write. Handler not opened this slice |
+| G21 | `POST /v1/runs` + `/events` | §8 write, §4.6 stream |
+| G22 | run events / A2 | §4.6, §5.2 |
+| G23 | `/v1/runs/{id}/events` | §4.6 |
+| G24 | `store/subagents` | §4.7. Not A4 |
+| G25 | `/v1/runs/{id}/stop`, `/steer` | §8 writes |
+| G26 | UI | not a read |
+| G27 | `/api/cron/jobs` | §4.3 |
+| G28 | `/api/webhooks` | §4.3. No filter field (source-verification) |
+| G29 | `/api/messaging/platforms` | §4.4 |
+| G30 | `/api/memory`, providers config | §4.4 |
+| G31 | `/api/profiles/{n}`, description | §4.1 |
+| G32 | A5 manifest | §8 snapshot absent. Proposed, not a read today |
+| G33 | toolsets, `/api/mcp/servers` | §4.4 |
+| G34 | A4 | §7 |
+| G35 | `/api/skills` | §4.4 |
+| G36 | `/api/profiles/{n}/model` | read side is `/api/model/options` §4.1 plus config. PUT is a Canvas write (§8), not opened line-by-line |
+| G37 | UI | not a read |
+| G38 | UI | not a read |
+| G39 | UI | not a read |
+| G40 | A5 manifest | proposed. Not a read today |
+| G41 | run events | §4.6 |
+| G42 | per-node endpoints | the node reads in §4.1 and §4.4 |
+| G43 | UI | not a read |
+| G44 | `/v1/runs/{id}/events` | §4.6 |
+| G45 | run events, A2 | §4.6, §5.2. Null tokens stay null |
+| G46 | `/v1/runs/{id}/steer` | §8 write |
+| G47 | UI | not a read |
+| G48 | UI | not a read |
+| G49 | A5, `/api/config/schema` | schema §4.1. A5 proposed |
+| G50 | A5 | proposed |
+| G51 | `/api/messaging/*/onboarding` | §4.4 telegram and whatsapp only. Other platforms do not match the glob |
+| G52 | UI | not a read |
+| G53 | UI | not a read |
+| G54 | per-node endpoints | §4 |
+| G55 | UI | not a read |
+| G56 | UI | not a read |
+| G57 | UI | not a read |
+| G58 | Desktop connection/profile atoms | not a REST read. Scope axis §3 |
+| G59 | UI | not a read |
+| G60 | A1 | §5.1 |
+| G61 | `/api/cron/blueprints`; kanban workflow templates | §4.3. Template half failed (source-verification) |
+| G62 | `/api/mcp/catalog`, platforms | §4.4 |
+| G63 | capabilities connectors, messaging | Desktop views, not new reads. Data reads §4.4 |
+| G64 | no featured flag | §4.4 catalog. Cut stands. No flag in the entry schema |
+| G65 | asset | not a read |
+| G66 | `/api/profiles`, projects | §4.1, §4.6 `projects.list` |
+| G67 | `/api/cron/blueprints` | §4.3 |
+| G68 | `/api/skills` category | §4.4. Path category, not a fixed enum |
+| G69 | per-profile aggregate | not exposed as its own route. Closest read is `GET /api/skills?profile=` §4.4. Do not invent a cross-profile count |
+| G70 | `/api/skills` author, updated | §4.4. Both absent (source-verification) |
+| G71 | UI DataTable | not a read |
+| G72 | `/api/skills/hub/` | official list §4.4. Install counts `not exposed` on that payload. Bundles are not this route |
+| G73 | org cut; profile settings | profile read §4.1. Org not a read |
+| G74 | command-center `updateHermes` | not a new read. Desktop view, not opened |
+| G75 | `app/routes.ts` | not a read. Proposed `/ops/...` paths are not handlers |
+| G76 | `src/themes` | not a backend read |
+| G77 | Cut | not a read |
+| G80 | `/api/skills` description | §4.4 |
+| G81 | `/api/skills` | §4.4 |
+| G82 | `/api/skills/hub` bundles | not exposed on `GET /api/skills/hub/official` (no bundle object). G82 is not this card's verify row. Do not invent bundles |
+| G83 | `/api/mcp/servers`, platforms | §4.4 |
+| G84 | provider/auth status | §4.4 `GET /api/providers/oauth`. Drop `token_preview` |
+| G85 | A3 | §6 |
+| G86 | A5 manifest | proposed. Not a read today |
+| G87 | Cut. `/v1/runs` has no time-window | §4.6 GET has no window param. Confirmed by the handler signature |
+| R1 | kanban + cron `next_run_at` | §4.2, §4.3. No due-date field |
+| R2 | A3, `kanban_notify_subs` | §6, §4.2 R2 entry. Table verified. Ops list of rows `not exposed` |
+| R3 | kanban `created_by` | field on the task in §4.2. No dedicated "mine" route |
+| R4 | `projects.db`; Desktop projects | §4.6 `projects.list` / `projects.get`, §4.1 tree. Favourites local |
+| R5 | kanban aggregate | not a named path in SPEC. Nearby `GET /api/plugins/kanban/stats` (`plugin_api.py` `get_stats`) was not the cited string and is not verified here as R5. Do not invent counts |
+| R6 | kanban PATCH | §8 write. Columns §4.2 workflow |
+| R7 | kanban | §4.2 board. List is a client view of that payload |
+| R8 | kanban | §4.2 |
+| R9 | cron `next_run_at`, executions.db, `tasks.completed_at` | cron §4.3. `completed_at` is a task field §4.2. `executions.db` is named as cron storage in §4.3 and has no separate Ops read |
+| R10 | task_runs | §4.2 |
+| R11 | kanban attachments | §4.2 |
+| R12 | kanban `/tasks/{id}` | §4.2 |
+| R13 | kanban fields, `/estimate` | fields §4.2. `/estimate` is a write §8 |
+| R14 | Cut, schema lacks fields | not a read |
+| R15 | task_links, `/links` | embedded §4.2. No GET `/links` |
+| R16 | task_links | embedded §4.2 |
+| R17 | PATCH body | §8 write |
+| R18 | comments, task_events | embedded in `GET /tasks/{id}` §4.2. No GET `/comments` |
+| R19 | PATCH status | §8 write. Pin is §4.7 local |
+| R20 | kanban; delete omitted | writes §8. Delete not offered |
+| R21 | `/tasks/bulk` | §8 write |
+| R22 | palette | not a backend read |
+| R23 | Desktop hotkeys | not a read. Not this card's verify row |
+| R24 | kanban + `/api/sessions/search` | board §4.2. Search §4.3. No kanban search route was cited by path; task search is not exposed as its own GET |
+| R25 | `lane_by_profile`, tenant | `lane_by_profile` is a boolean on §4.2 config, not a lane array. Tenant is a task field |
+| R26 | task_events | §4.2 |
+| R27 | local prefs | §4.7 |
+| R28 | Cut | not a read |
+| R29 | Cut | not a read |
+| R30 | UI | not a read |
+| R31 | UI tokens | not a read |
+| R32 | UI | not a read |
+| R33 | Cut | not a read |
+| R34 | kanban workflow templates | failed. `GET /workflow` is columns §4.2. Source-verification |
+| R35 | local pref | §4.7 |
+| R36 | `approval.received`/`cancelled`, task_events | §4.6. SPEC names the ACK as history. That is the discrepancy. No last-50 read exists. Do not fill it from ACKs |
+| R37 | local pref | §4.7. Not available on approvals |
+| R38 | `status=review`, `/api/git/review/diff` | §4.2, §4.5 |
+| R39 | kanban | writes §8. Legal transitions are `GET /workflow` §4.2 |
+| R40 | UI | not a read |
+| R41 | UI | not a read |
+| R42 | kanban PATCH | §8. Order field not verified this card (not a listed verify row). Do not invent a reorder column |
+| R43 | `@dnd-kit/core` | not a read |
+| R44 | react-query | not a read. Push source is WS §4.2 |
+| R45 | local pref | §4.7 |
+| R46 | kanban PATCH | §8 write. Undo is client. Never for approval or stop |
+| R47 | PATCH title | §8 write |
+| R48 | POST `/tasks` | §8 write |
+| R49 | `/tasks/bulk` | §8 write |
+| R50 | task_runs | §4.2 |
+| R51 | UI | not a read |
+| R52 | kanban | §4.2. No due dates. Stale heartbeat is a field on the worker/run, not a due date |
+| R53 | ResponsiveTabs | not a read |
+| R54 | Desktop notify | not a backend read. Trigger events are `approval.pending` §4.6 and blocked tasks §4.2 |
+| R55 | local pref | §4.7 |
+| R56 | lucide-react | not a read |
+| R57 | PATCH status | §8 write. Legality is `GET /workflow` §4.2. Not this card's verify row |
+| R58 | task_links | embedded §4.2 |
+| R60 | local pref | §4.7 |
+| R61 | UI | not a read |
+| R62 | kanban aggregate + project | same unnamed aggregate as R5. Project filter is `project_id` on the task §4.2, not a dedicated overview route |
