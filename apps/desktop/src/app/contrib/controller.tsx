@@ -225,6 +225,9 @@ registry.registerMany([
     data: {
       placement: 'main',
       minWidth: '22vw',
+      // Full-screen hot-hides this pane. Without the keep-alive host, TreeGroup
+      // drops a hidden pane and the chat remounts on the way back.
+      lifecycleKeepAlive: true,
       tabDrag: workspaceTabDrag,
       tabWrap: wrapWorkspaceTab,
       uncloseable: true
@@ -548,6 +551,7 @@ const syncWorkspaceTitle = () => {
           : undefined,
       placement: 'main',
       minWidth: '22vw',
+      lifecycleKeepAlive: true,
       tabDrag: workspaceTabDrag,
       tabWrap: wrapWorkspaceTab,
       uncloseable: true

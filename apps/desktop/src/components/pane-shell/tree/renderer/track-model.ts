@@ -163,6 +163,8 @@ export interface TrackContext {
   paneFor: (id: string) => Contribution | undefined
   paneGone: (id: string) => boolean
   overrides: Record<string, { widthOverride?: number; heightOverride?: number }>
+  /** Ops full-screen: collapse a hot-hidden main zone instead of reserving its floor. */
+  releaseMainFloor?: boolean
 }
 
 /** A group's panes that are actually on screen (not hidden / narrow-collapsed
@@ -310,10 +312,39 @@ export function fixedTrackSize(node: LayoutNode, axis: 'row' | 'column', ctx: Tr
  * toggles over a terminal, a review rail or an unregistered plugin pane still
  * collapse and still hand their space to their neighbors.
  */
+/** Chat panes stay out of `$hiddenTreePanes` during Ops full-screen. That set is
+ *  what TreeGroup drops from the inline tree. They must not pin the floor. */
+function fullscreenRetainedPane(id: string, ctx: TrackContext): boolean {
+  if (id === 'workspace' || id.startsWith('session-tile:')) {
+    return true
+  }
+
+  const chrome = paneChrome(ctx.paneFor(id))
+
+  return chrome.placement === 'main' && Boolean(chrome.lifecycleKeepAlive)
+}
+
 export function subtreeGone(node: LayoutNode, ctx: TrackContext): boolean {
   const ids = allPaneIds(node)
 
-  if (ids.length === 0 || !ids.every(ctx.paneGone)) {
+  if (ids.length === 0) {
+    return false
+  }
+
+  const blocking = ctx.releaseMainFloor ? ids.filter(id => !fullscreenRetainedPane(id, ctx)) : ids
+
+  if (blocking.length > 0 && !blocking.every(ctx.paneGone)) {
+    return false
+  }
+
+  // The floor is the default so a chrome toggle cannot erase the center.
+  // Full-screen opts in: the chat stays mounted and hot-hidden, and the
+  // sibling (Ops) must occupy the workspace. Other consumers leave the flag unset.
+  if (ctx.releaseMainFloor && ids.some(id => fullscreenRetainedPane(id, ctx) || paneChrome(ctx.paneFor(id)).placement === 'main')) {
+    return true
+  }
+
+  if (!ids.every(ctx.paneGone)) {
     return false
   }
 

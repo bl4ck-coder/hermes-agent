@@ -5,7 +5,7 @@ import { registry } from '@/contrib/registry'
 import { stubResizeObserver } from '@/test/jsdom'
 
 import { group, split } from '../model'
-import { $hiddenTreePanes, $layoutTree } from '../store'
+import { $hiddenTreePanes, $layoutTree, $releaseMainFloor } from '../store'
 
 import { subtreeGone, type TrackContext } from './track-model'
 import { TreeSplit } from './tree-split'
@@ -26,6 +26,7 @@ const disposers: (() => void)[] = []
 beforeEach(() => {
   window.localStorage.clear()
   $hiddenTreePanes.set(new Set())
+  $releaseMainFloor.set(false)
 
   for (const [id, data] of [
     ['sessions', { placement: 'left', width: '237px' }],
@@ -40,6 +41,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   $hiddenTreePanes.set(new Set())
+  $releaseMainFloor.set(false)
   $layoutTree.set(null)
   disposers.splice(0).forEach(dispose => dispose())
 })
@@ -71,6 +73,13 @@ describe('subtreeGone', () => {
     // the plugin loads rather than flashing an empty placeholder.
     expect(subtreeGone(group(['plugin-workspace:late'], { id: 'grp-late' }), ctx(['plugin-workspace:late']))).toBe(true)
   })
+
+  it('releases the main floor only when full-screen opts in', () => {
+    const main = group(['workspace', 'session-tile:a'], { id: 'grp-main' })
+
+    expect(subtreeGone(main, { ...ctx(['workspace', 'session-tile:a']), releaseMainFloor: true })).toBe(true)
+    expect(subtreeGone(main, ctx(['workspace', 'session-tile:a']))).toBe(false)
+  })
 })
 
 describe('the main placement floor in the renderer', () => {
@@ -94,6 +103,34 @@ describe('the main placement floor in the renderer', () => {
     expect(main!.style.display).not.toBe('none')
     expect(zoneWrapper('grp-sessions')?.style.display).not.toBe('none')
     expect(zoneWrapper('grp-tools')?.style.display).toBe('none')
+  })
+
+  it('collapses the main track when full-screen releases the floor, and Ops is not capped at 480', () => {
+    disposers.push(
+      registry.register({
+        area: 'panes',
+        data: { placement: 'right', width: '100%', minWidth: '0px' },
+        id: 'ops',
+        render: () => null,
+        title: 'Ops'
+      })
+    )
+
+    const tree = split('row', [group(['workspace'], { id: 'grp-main' }), group(['ops'], { id: 'grp-ops' })])
+
+    $layoutTree.set(tree)
+    $hiddenTreePanes.set(new Set(['workspace']))
+    $releaseMainFloor.set(true)
+    render(<TreeSplit node={tree} root rootRow />)
+
+    const main = zoneWrapper('grp-main')
+    const ops = zoneWrapper('grp-ops')
+
+    expect(main?.style.display).toBe('none')
+    expect(ops?.style.display).not.toBe('none')
+    expect(ops?.style.maxWidth).toBe('')
+    expect(ops?.style.flex).toContain('100%')
+    expect(ops?.style.flex).not.toContain('480px')
   })
 })
 

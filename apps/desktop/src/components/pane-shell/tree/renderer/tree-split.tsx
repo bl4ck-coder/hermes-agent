@@ -23,6 +23,7 @@ import {
   $collapsedTreeSides,
   $hiddenTreePanes,
   $narrowViewport,
+  $releaseMainFloor,
   isCollapsePane,
   paneRootSide,
   persistTree,
@@ -105,6 +106,7 @@ export function TreeSplit({
   const containerRef = useRef<HTMLDivElement>(null)
   const panes = useContributions('panes')
   const hiddenPanes = useStore($hiddenTreePanes)
+  const releaseMainFloor = useStore($releaseMainFloor)
   const narrow = useStore($narrowViewport)
   // Scoped to THIS subtree's panes: a sash drag writes size overrides on every
   // pointermove, but only the splits whose subtree actually resized should
@@ -144,7 +146,7 @@ export function TreeSplit({
   const paneGone = (id: string) =>
     !paneFor(id) || (!revealsHidden && hiddenPanes.has(id)) || (narrow && Boolean(paneChrome(paneFor(id)).collapsible))
 
-  const trackCtx: TrackContext = { paneFor, paneGone, overrides }
+  const trackCtx: TrackContext = { paneFor, paneGone, overrides, releaseMainFloor }
 
   // Chrome-toggle collapse: a subtree whose every pane is gone renders
   // display:none (content stays MOUNTED — toggling back is instant), and its
