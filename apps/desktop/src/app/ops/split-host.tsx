@@ -50,6 +50,7 @@ import {
   resolveOpsPaneBox,
   setOpsRail
 } from './layout-store'
+import { opsLivePanel } from './live-panels'
 import { setInspectorOpen, setRail } from './navigation-store'
 
 import { OpsShell } from './index'
@@ -898,6 +899,7 @@ export function OpsPane(): ReactNode {
       active={open}
       connections={connections && connections.length > 0 ? connections : undefined}
       fullscreen={fullscreen}
+      livePanel={opsLivePanel}
       modelLabel={observations?.modelLabel}
       onBackToChats={() => {
         if (fullscreen) {
