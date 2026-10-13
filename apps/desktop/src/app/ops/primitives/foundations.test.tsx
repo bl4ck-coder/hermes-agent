@@ -24,7 +24,9 @@ import {
   UNDO_MS,
   ToastQueue,
   approvalPreview,
+  approvalPreviewStyle,
   createDismissalStore,
+  previewIsCropped,
   type OpsToastItem,
   undoVisible
 } from './toast-queue'
@@ -71,7 +73,7 @@ function TabHarness({ maxVisible = 3 }: { maxVisible?: number }) {
     { id: 'board', label: 'Board', indicator: 'unread' as const },
     { id: 'one', label: 'Overflow one' },
     { id: 'two', label: 'Overflow two' },
-    { id: 'three', label: 'Overflow three' }
+    { id: 'three', label: 'Overflow three', icon: Box, indicator: 'unsaved' as const }
   ]
   const [activeId, setActiveId] = useState('office')
   const [open, setOpen] = useState(tabs)
@@ -175,6 +177,59 @@ describe('data table', () => {
     )
     expect((container.querySelector('[data-source-of-truth="native"]') as HTMLSelectElement).value).toBe('events')
     expect(container.querySelector('[data-radix="select"]')).toBeTruthy()
+    expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(1)
+    expect((native as HTMLSelectElement).style.width).toBe('0px')
+    expect((native as HTMLSelectElement).style.height).toBe('0px')
+    expect((native as HTMLSelectElement).style.clip).toContain('rect')
+    expect((native as HTMLSelectElement).classList.contains('sr-only')).toBe(true)
+    expect((native as HTMLSelectElement).querySelector('option[value="events"]')).toBeTruthy()
+  })
+
+  it('clips the native select so keyboard focus stays on the themed trigger', () => {
+    function Harness() {
+      const [value, setValue] = useState('log')
+
+      return (
+        <OpsSelect
+          label="Kind"
+          name="kind"
+          onValueChange={setValue}
+          options={[
+            { value: 'log', label: 'Log' },
+            { value: 'events', label: 'Events' },
+            { value: 'cut', label: 'Cut', disabled: true }
+          ]}
+          value={value}
+        />
+      )
+    }
+
+    const { container } = render(<Harness />)
+    const native = container.querySelector('[data-source-of-truth="native"]') as HTMLSelectElement
+    const cut = native.querySelector('option[value="cut"]') as HTMLOptionElement
+
+    expect(container.querySelectorAll('select')).toHaveLength(1)
+    expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(1)
+    expect(native.style.position).toBe('absolute')
+    expect(native.style.height).toBe('0px')
+    expect(native.style.opacity).toBe('0')
+    expect(cut.disabled).toBe(true)
+
+    const combo = screen.getByRole('combobox')
+    expect(screen.getAllByRole('combobox')).toHaveLength(1)
+    combo.focus()
+    expect(document.activeElement).toBe(combo)
+    expect(native.tabIndex).toBe(-1)
+    expect(native.style.width).toBe('0px')
+
+    fireEvent.keyDown(combo, { key: 'ArrowDown' })
+    const events = screen.getByRole('option', { name: 'Events' })
+    expect(screen.getByRole('option', { name: 'Cut' }).getAttribute('aria-disabled')).toBe('true')
+    events.focus()
+    fireEvent.keyDown(events, { key: 'Enter' })
+
+    expect(native.value).toBe('events')
+    expect(container.querySelector('[role="combobox"]')?.textContent).toContain('Events')
   })
 })
 
@@ -198,9 +253,13 @@ describe('tab strip', () => {
 
     fireEvent.keyDown(screen.getByRole('button', { name: /More tabs/ }), { key: 'Enter' })
     expect(screen.getByText('Overflow three')).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: /Overflow three/ }).querySelector('[data-kind-icon="true"]')).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: /Overflow three/ }).querySelector('[data-indicator="unsaved"]')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Close Overflow three' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Close Office' })).toBeNull()
   })
 
-  it('uses ResponsiveTabs when the strip is narrower than 800px', () => {
+  it('uses a mounted narrow menu that keeps icons, indicators, and close', () => {
     const original = window.matchMedia
     window.matchMedia = vi.fn((query: string) => ({
       matches: query.includes('800'),
@@ -213,19 +272,39 @@ describe('tab strip', () => {
       onchange: null
     })) as unknown as typeof window.matchMedia
 
+    const onClose = vi.fn()
+    const onActiveChange = vi.fn()
     const { container } = render(
       <TabStrip
-        activeId="office"
-        onActiveChange={() => undefined}
+        activeId="board"
+        onActiveChange={onActiveChange}
+        onClose={onClose}
         tabs={[
-          { id: 'office', label: 'Office', pinned: true },
-          { id: 'board', label: 'Board' }
+          { id: 'office', label: 'Office', pinned: true, icon: Box },
+          { id: 'canvas', label: 'Canvas', pinned: true, icon: Box, indicator: 'unsaved' },
+          { id: 'board', label: 'Board', icon: Box, indicator: 'unread' }
         ]}
       />
     )
+    const strip = container.querySelector('.ops-tab-strip') as HTMLElement
 
-    expect(container.querySelector('.ops-tab-strip')?.getAttribute('data-layout')).toBe('narrow')
+    expect(strip.getAttribute('data-layout')).toBe('narrow')
     expect(container.querySelector('[data-tour="tab-office"]')).toBeTruthy()
+    expect(container.querySelectorAll('[data-kind-icon="true"]').length).toBeGreaterThan(0)
+    expect(container.querySelector('[data-indicator="unsaved"]')).toBeTruthy()
+    expect(container.querySelector('[data-indicator="unread"]')).toBeTruthy()
+    expect(container.querySelector('[aria-label="Close Office"]')).toBeNull()
+    expect(container.querySelector('[aria-label="Close Canvas"]')).toBeNull()
+    expect(container.querySelector('[aria-label="Close Board"]')).toBeTruthy()
+
+    fireEvent.keyDown(strip, { key: 'w', ctrlKey: true })
+    expect(onClose).toHaveBeenCalledWith('board')
+
+    const trigger = screen.getByRole('button', { name: /Ops tabs, Board/ })
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    expect(container.querySelector('[data-narrow-menu]')?.hasAttribute('hidden')).toBe(false)
+    fireEvent.keyDown(screen.getByRole('menuitem', { name: /Office/ }), { key: 'Enter' })
+    expect(onActiveChange).toHaveBeenCalledWith('office')
     window.matchMedia = original
   })
 
@@ -316,6 +395,19 @@ describe('dock and node card', () => {
     expect(container.querySelector('[data-edge]')?.getAttribute('data-edge')).toBe('dashed')
     expect(edit.tabIndex).toBe(0)
     expect(child.tabIndex).toBe(0)
+    expect(edit.style.opacity).toBe('0')
+    expect(child.style.opacity).not.toBe('0')
+    expect(edit.getAttribute('data-revealed')).toBe('false')
+
+    fireEvent.mouseEnter(container.querySelector('.ops-node') as HTMLElement)
+    expect(edit.style.opacity).toBe('1')
+    expect(edit.getAttribute('data-revealed')).toBe('true')
+    edit.focus()
+    fireEvent.mouseLeave(container.querySelector('.ops-node') as HTMLElement)
+    expect(edit.style.opacity).toBe('1')
+    edit.blur()
+    fireEvent.mouseLeave(container.querySelector('.ops-node') as HTMLElement)
+    expect(edit.style.opacity).toBe('0')
     expect(overlay.style.pointerEvents).toBe('none')
     expect(Number(controls.style.zIndex)).toBeGreaterThan(Number(overlay.style.zIndex))
     expect(scroll.style.overflow).toBe('auto')
@@ -436,6 +528,74 @@ describe('toast queue', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(onOpen).toHaveBeenCalledOnce()
+  })
+
+  it('does not approve a short command that is geometrically cropped', () => {
+    const command = 'W'.repeat(60)
+    const mixed = 'go\n📦'
+    const onApprove = vi.fn()
+    const onReview = vi.fn()
+    const original = HTMLElement.prototype.getBoundingClientRect
+    const rect = (left: number, top: number, right: number, bottom: number) =>
+      ({
+        x: left,
+        y: top,
+        left,
+        top,
+        right,
+        bottom,
+        width: right - left,
+        height: bottom - top,
+        toJSON() {
+          return {}
+        }
+      }) as DOMRect
+
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      if (this.getAttribute('data-approval-preview')) {
+        return rect(161, 0, 946, 19)
+      }
+
+      if (this.getAttribute('data-toast-id')) {
+        return rect(24, 0, 616, 80)
+      }
+
+      return original.call(this)
+    }
+
+    try {
+      const { container, rerender } = render(
+        <ToastQueue
+          items={[item({ id: 'wide', kind: 'approval', command, onApprove, onReview })]}
+          now={now}
+        />
+      )
+      const preview = container.querySelector('[data-approval-preview]') as HTMLElement
+      const card = container.querySelector('[data-toast-id]') as HTMLElement
+
+      expect(command.length).toBeLessThanOrEqual(PREVIEW_BUDGET)
+      expect(previewIsCropped(preview, card)).toBe(true)
+      expect(preview.style.whiteSpace).toBe(approvalPreviewStyle.whiteSpace)
+      expect(preview.style.overflowWrap).toBe(approvalPreviewStyle.overflowWrap)
+      expect(preview.textContent).toBe(command)
+      expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Review' }))
+      expect(onApprove).not.toHaveBeenCalled()
+      expect(onReview).toHaveBeenCalledOnce()
+
+      rerender(
+        <ToastQueue
+          items={[item({ id: 'mixed', kind: 'approval', command: mixed, onApprove, onReview })]}
+          now={now}
+        />
+      )
+      const mixedPreview = container.querySelector('[data-approval-preview]') as HTMLElement
+      expect(mixedPreview.textContent).toContain('\n')
+      expect(mixedPreview.textContent).toContain('📦')
+      expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original
+    }
   })
 
   it('stores dismissal per item id and makes no mutation call', () => {
