@@ -3,13 +3,7 @@ import '../motion.css'
 import type { KeyboardEvent } from 'react'
 import { useState } from 'react'
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { ResponsiveTabs } from '@/components/ui/tab-dropdown'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import type { IconComponent } from '@/lib/icons'
 import { ChevronDown, X } from '@/lib/icons'
@@ -118,6 +112,47 @@ function Indicator({ indicator }: { indicator: TabIndicator }) {
   )
 }
 
+function TabFace({ tab }: { tab: TabStripTab }) {
+  const Icon = tab.icon
+
+  return (
+    <span data-kind-icon={Icon ? 'true' : 'false'} style={{ alignItems: 'center', display: 'inline-flex', gap: 6 }}>
+      {Icon ? <Icon aria-hidden data-icon="kind" size={14} strokeWidth={1.5} /> : null}
+      <span>{tab.label}</span>
+      {tab.indicator ? <Indicator indicator={tab.indicator} /> : null}
+    </span>
+  )
+}
+
+function CloseTab({ onClose, tab }: { onClose?: (id: string) => void; tab: TabStripTab }) {
+  if (!canClose(tab) || !onClose) {
+    return null
+  }
+
+  return (
+    <button
+      aria-label={`Close ${tab.label}`}
+      data-close-tab={tab.id}
+      onClick={event => {
+        event.preventDefault()
+        event.stopPropagation()
+        onClose(tab.id)
+      }}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          event.stopPropagation()
+          onClose(tab.id)
+        }
+      }}
+      onPointerDown={event => event.stopPropagation()}
+      type="button"
+    >
+      <X aria-hidden size={12} />
+    </button>
+  )
+}
+
 function TabButton({
   active,
   onClose,
@@ -161,25 +196,100 @@ function TabButton({
   )
 }
 
+function NarrowStrip({
+  active,
+  activeId,
+  onActiveChange,
+  onClose,
+  tabs
+}: {
+  active: TabStripTab | undefined
+  activeId: string
+  onActiveChange: (id: string) => void
+  onClose?: (id: string) => void
+  tabs: TabStripTab[]
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div
+      className="ops-tab-strip"
+      data-layout="narrow"
+      onKeyDown={event => onStripKeyDown(event, tabs, activeId, onActiveChange, onClose)}
+      style={opsDensityStyle()}
+    >
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={active ? `Ops tabs, ${active.label}` : 'Ops tabs'}
+        data-active="true"
+        onClick={() => setOpen(value => !value)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+            event.preventDefault()
+            event.stopPropagation()
+            setOpen(true)
+          }
+        }}
+        type="button"
+      >
+        {active ? <TabFace tab={active} /> : null}
+        <ChevronDown aria-hidden size={14} />
+      </button>
+      {active ? <CloseTab onClose={onClose} tab={active} /> : null}
+      <div data-narrow-menu hidden={!open} role="menu">
+        {tabs.map(tab => {
+          const selected = tab.id === activeId
+
+          return (
+            <div data-active={selected ? 'true' : 'false'} data-pinned={tab.pinned ? 'true' : 'false'} key={tab.id}>
+              <button
+                aria-selected={selected}
+                data-tour={`tab-${tab.id}`}
+                onClick={() => {
+                  onActiveChange(tab.id)
+                  setOpen(false)
+                }}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onActiveChange(tab.id)
+                    setOpen(false)
+                  }
+                }}
+                role="menuitem"
+                style={{
+                  borderBottom: selected ? '2px solid #C9A55A' : '2px solid transparent'
+                }}
+                type="button"
+              >
+                <TabFace tab={tab} />
+              </button>
+              <CloseTab onClose={onClose} tab={tab} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function TabStrip({ activeId, maxVisible = 6, onActiveChange, onClose, tabs }: TabStripProps) {
   const narrow = useMediaQuery(TAB_STRIP_NARROW)
   const { overflow, visible } = partitionTabs(tabs, activeId, maxVisible)
   const [overflowOpen, setOverflowOpen] = useState(false)
 
   if (narrow) {
+    const active = tabs.find(tab => tab.id === activeId) ?? tabs[0]
+
     return (
-      <div
-        className="ops-tab-strip"
-        data-layout="narrow"
-        onKeyDown={event => onStripKeyDown(event, tabs, activeId, onActiveChange, onClose)}
-        style={opsDensityStyle()}
-      >
-        <ResponsiveTabs
-          onChange={onActiveChange}
-          tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}
-          value={activeId}
-        />
-      </div>
+      <NarrowStrip
+        active={active}
+        activeId={activeId}
+        onActiveChange={onActiveChange}
+        onClose={onClose}
+        tabs={tabs}
+      />
     )
   }
 
@@ -216,8 +326,19 @@ export function TabStrip({ activeId, maxVisible = 6, onActiveChange, onClose, ta
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {overflow.map(tab => (
-                <DropdownMenuItem key={tab.id} onSelect={() => onActiveChange(tab.id)}>
-                  {tab.label}
+                <DropdownMenuItem
+                  key={tab.id}
+                  onSelect={event => {
+                    if ((event.target as HTMLElement | null)?.closest?.('[data-close-tab]')) {
+                      event.preventDefault()
+                      return
+                    }
+
+                    onActiveChange(tab.id)
+                  }}
+                >
+                  <TabFace tab={tab} />
+                  <CloseTab onClose={onClose} tab={tab} />
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
