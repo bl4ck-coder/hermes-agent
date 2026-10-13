@@ -6,11 +6,11 @@ Tree cited: `hermes-agent` `005b104a506` (`feat/ops-panel` at branch creation). 
 
 Authority: SPEC.md section 4.4 (the example), section 4.5 (pair outcomes), section 8 (capability check, not a version-string guess), section 11.3 (effective-policy read, one validator), section 11.6 (typed run ops), section 11.7 (presence and usage honesty), section 12.5 W10. PLAN.md P0 task 6. Decisions D8, D11, D13.
 
-Sibling matrices this card must not contradict (their worktrees; not re-specified here):
+Sibling matrices this card must not contradict. Consulted as commits, not assumed merged into `005b104a506` (that tree does not contain these files). A dirty worktree is not the citation.
 
-- P0-01 `read-contracts.md` section 4.3 `GET /api/status`, section 5.1 A1, section 5.2 A2, section 5.6 flags.
-- P0-02 `action-contracts.md` sections 2 and 3 (auth, unblock, typed runs). `source-verification.md` O41 and G84.
-- P0-03 `transaction-contract.md` sections 1, 3, 8, 9. Save stays disabled until the transaction capability exists. No renderer fallback.
+- P0-01 `read-contracts.md` @ `8dbd1f3859ade2f85db269109afc9be934914dbd` (`ops/P0-01`). Omitted `?profile=` is the process launch profile (`:38`, `:371`), not all profiles and not the focused Ops profile. Section 4.3 `GET /api/status`, section 5.1 A1, section 5.2 A2, section 5.6 flags.
+- P0-02 `action-contracts.md` @ `f11816a68ea213f446726293ee08335753430ad8` (`ops/P0-02`). `:28`: omitted `?profile=` is the process launch profile, not the focused Ops profile. Sections 2 and 3 (auth, unblock, typed runs).
+- P0-03 `transaction-contract.md` @ `6075f3dda5214aef094d813a56367d5d0ea3e230` (`ops/P0-03`, commit object; the worktree had uncommitted edits at consult time and those edits are not cited). Section 5 step 1 is the local gate (403, no backup). Section 5 step 5 is A6 on governed fields. Section 15 is restore. Section 16 is remote Canvas read-only. Save stays disabled until `ops.transaction` exists. No renderer fallback.
 
 Rows: O19, O40, O41, O50, O81, G2, G32, G34, G36, G40, G58, G84.
 
@@ -47,7 +47,34 @@ A parser of `ops-policy.yaml` yields exactly these fields. No other keys. Commen
 
 Those strings name the slots in section 4. They are not extra YAML keys.
 
-Root is in scope. The serve launch profile, an omitted `?profile=`, and the profile name `default` are the same root profile. There is no exempt profile. `sol-spec` is inside policy (D4) only when its pair matches section 2. The name does not grant a pass.
+Root is in scope. There is no exempt profile. `sol-spec` is inside policy (D4) only when its pair matches section 2. The name does not grant a pass. Launch, root, and the focused profile are not the same identity. Section 1.1.
+
+## 1.1 Profile identity
+
+Three identities. Collapsing them is the r1 defect. This section does not rewrite existing surface omit rules.
+
+| Identity | What it is | What it is not |
+|---|---|---|
+| root / `default` | The name `default` resolves to `_get_default_hermes_home()` (`hermes_cli/profiles.py:430-434`). `profile_exists("default")` is always true (`profiles.py:452-453`). SPEC `scope: all_profiles` includes this home and every named profile. | Not "whichever process launched". Not the focused Ops profile. Not the meaning of an omitted query. |
+| launch profile | The process home (`get_process_hermes_home()`). `_config_profile_scope`: `None`, `""`, and `"current"` are no home override (`web_server_profiles.py:277-303`). Existing routes keep that omit rule (P0-01 `:38` and `:371`, P0-02 `:28`). | Not automatically root. Not the focused profile. |
+| focused profile | The profile selected in the Ops connection switcher. Ops passes it on every effective-policy read, every Ops `GET /api/model/options`, and every Canvas write. | Not inferred from an omitted query. |
+
+New effective-read default, declared here and nowhere else: omitted `profile` on `GET /api/ops/policy/effective` is the launch profile, the same omit rule as `_config_profile_scope`. It is not forced to root. That declaration does not change `GET /api/config`, `GET /api/model/options`, or any other verified route. Ops does not omit. Ops sends `?profile=` equal to the focused profile.
+
+Switching the focused profile drops the previous body. Do not reuse `decisions`, `violations`, `allow`, or `candidates`. The cache key is the profile string Ops sent. A resolved directory that happens to equal the previous home is not a reason to reuse the body.
+
+`serve-from-root`: process home is the default hermes home (`get_active_profile_name()` is `default`). `serve-from-judge`: process home is `profiles/judge`. Request `omitted` means the query is absent, `""`, or `current`. Request `default` and `smoke` are explicit names. An unknown explicit name is 404. It does not fall back to launch.
+
+| Serve | Request | Resolved profile | Effective-read source | Model catalog | Writes |
+|---|---|---|---|---|---|
+| root | omitted | launch home, which is root in this row only. The request string is omitted, not the name `default`. | that process home's installed policy | existing `/api/model/options` with omitted profile reads the launch home. The Ops picker does not use this cell. It passes focused. | existing omitted write targets the launch home. An Ops write passes focused. |
+| root | `default` | name `default` → root home. Same directory as launch in this row. The identity is the explicit name. | root home, because the name resolved there | `?profile=default` | `?profile=default` |
+| root | `smoke` | `profiles/smoke` if that named profile is live, else 404. Not launch. | smoke home, or no body on 404 | smoke, or 404 | smoke, or 404. No write to root. |
+| judge | omitted | launch home `profiles/judge`. Not root. Not the name `default`. | judge home's installed policy | omitted options read judge. Not root's catalog. | omitted write targets judge. Ops must not use this cell when focused is not judge. |
+| judge | `default` | name `default` → root home. Not judge. | root installed policy. Drop any judge body first. | `?profile=default` is root's catalog. Not judge's. | writes with `?profile=default` hit root. Not judge. |
+| judge | `smoke` | `profiles/smoke` or 404. Not judge. Not root. | smoke, or 404 | smoke, or 404 | smoke, or 404 |
+
+A focus change from judge to smoke, or from omitted-launch to `default`, always refetches. Do not paint the previous chip, the previous allow rules, or the previous candidates. When serve-from-root and the request is `default`, directory equality with launch is not cache equality.
 
 ## 2. Pair match
 
@@ -142,7 +169,7 @@ No row uses token count `0` as a stand-in for deny, warn, or unknown.
 
 ## 4. Shared validator
 
-One validator. Name: A6. It is not implemented (`transaction-contract.md` section 13). When it exists it reads the installed policy, not this repository file, and it runs inside the P0-03 transaction at step 5, after backup, before replace.
+One validator. Name: A6. It is not implemented (P0-03 section 20 at `6075f3dda5214aef094d813a56367d5d0ea3e230`). When it exists it reads the installed policy, not this repository file, and it runs inside the P0-03 transaction at section 5 step 5, after backup, before replace.
 
 Slots, from the three `governed_fields` strings:
 
@@ -152,7 +179,7 @@ Slots, from the three `governed_fields` strings:
 | `fallback_providers[*]` | each entry's provider and model | raw YAML, any write that sets that list. There is no separate Canvas node. The same validator still runs. |
 | auxiliary | `auxiliary.<task>.provider` and `auxiliary.<task>.model` | `POST /api/model/set` when `scope=auxiliary`, raw YAML, a restore that writes those keys |
 
-`POST /api/model/set` is not a Canvas save (`transaction-contract.md` section 13). It is still a governed selection. Ops must not call it to skip A5 or A6. Until both `ops.transaction` and `ops.policy` are true, Ops does not send a model assignment. The existing handler remains for non-Ops callers. This card does not wrap it.
+`POST /api/model/set` is not a Canvas save (P0-03 section 20). It is still a governed selection. Ops must not call it to skip A5 or A6. Until both `ops.transaction` and `ops.policy` are boolean true, and the connection kind is `local`, Ops does not send a model assignment. That sentence is the model-assignment gate only. It does not forbid Prompt. The one write-gate table is section 7.5. The existing handler remains for non-Ops callers. This card does not wrap it.
 
 Selection versus existing violation:
 
@@ -160,15 +187,15 @@ Selection versus existing violation:
 - An existing violation is a live governed pair that is denied and that this write does not change and does not restore.
 - Disallowed selection: HTTP 400. No replace. P0-03 step 5: backup from step 4 stays, `outcome: aborted_validation`, live file unchanged. Not 403. Not 401.
 - Existing violation: do not return 400 for that pair. Response includes a warning the UI shows as the Policy chip (G40). Unrelated keys still save. The chip does not block.
-- Restore of a denied governed pair is a selection even if those bytes equal the live file (`transaction-contract.md` section 8). Block.
+- Restore of a denied governed pair is a selection even if those bytes equal the live file (P0-03 section 15). Block.
 - A raw YAML document sets every key. "Unchanged" means the submitted governed pair equals the live pair. Equal and denied: warn, proceed. Different and denied: block.
 - `tts` / `stt` / `wake_word` never enter the selection check.
 
-Unrelated means the mutation's governed payload is unchanged. Prompt, description, skill toggle, toolset flag, and a raw-YAML non-governed key are unrelated to a live violation. They warn and proceed. They do not clear the violation.
+Unrelated means the mutation's governed payload is unchanged. Prompt, description, skill toggle, toolset flag, and a raw-YAML non-governed key are unrelated to a live violation. When the loaded read has a violation, they warn and proceed. They do not clear the violation. When the policy flag is absent, they do not invent that violation; section 7.5 names the capability warn.
 
-Fail closed: if the installed policy is missing, unreadable, `enabled` is not bool `true`, or `version` is not int `2`, every selection blocks. That is not allow-all. An unrelated edit may proceed only with warning `policy_unreadable`, and only when the transaction capability is true. If `ops.policy` is absent or false, do not attempt the write at all (section 6). Do not invent a pass from this repository file.
+Fail closed applies only to a governed selection that was sent: installed file missing, unreadable, `enabled` not bool `true`, or `version` not int `2`. That selection blocks. That is not allow-all. It is not a client parse of this repository file. An unrelated edit that section 7.5 allows to be sent may proceed with warning `policy_unreadable` or `policy_absent`, and only when `ops.transaction` is boolean true and the kind is `local`. Flag missing is not installed-unreadable. If `ops.policy` is absent or not boolean true, do not attempt a governed selection, a model assignment, a raw YAML save, or a restore. That policy ban does not, by itself, cover Prompt. Prompt still follows section 7.5, including the transaction and local gates. Section 7.5 is the only write-gate table. This paragraph does not add a second one.
 
-The Policy chip text is the server warning. If the effective-policy read did not return a violation, the client does not draw the chip from a local copy of this YAML.
+The Policy chip is a violation on the effective-policy read. If that read did not return a violation, the client does not draw the chip from a local copy of this YAML and does not invent a provider/model pair. A capability warn ("policy unavailable") is not that chip.
 
 ## 5. Effective-policy read
 
@@ -176,7 +203,7 @@ Name: `GET /api/ops/policy/effective`.
 
 Status: proposed. No handler in `hermes_cli/web_routers` at `005b104a506`. Not `GET /api/ops/hooks`, not `POST /api/ops/config-migrate`, not `GET /api/config`. Owner: P2, same change as A6. Not P0. Not P0.5.
 
-- Schema, query: optional `profile`. Omitted means root (`default`).
+- Schema, query: optional `profile`. Omitted means the launch profile (section 1.1). It does not mean root unless the process was launched from root. Ops does not omit. Ops sends the focused profile. Switching that string drops the previous body.
 - Schema, response, `schema_version` 1:
 
 ```
@@ -189,23 +216,40 @@ Status: proposed. No handler in `hermes_cli/web_routers` at `005b104a506`. Not `
   scope: string | null,
   source: "loaded" | "absent" | "unreadable",
   policy_hash: string | null,
+  catalog_hash: string | null,
   enforcement: { on_select_disallowed, on_existing_violation, migrations } | null,
   decisions: [ { field, provider, model, decision: "allow"|"deny", reason } ],
-  violations: [ { field, provider, model, reason } ]
+  violations: [ { field, provider, model, reason } ],
+  allow: [ { provider: string | string[], models: string[] } ] | null,
+  candidates: [ { provider: string, model: string, decision: "allow"|"deny", reason: string, in_catalog: boolean } ] | null
 }
 ```
 
 - `source` is that enum. Do not return `hermes_home`, an absolute path, or file bytes. `policy_hash` is sha256 hex of the installed file, or null.
-- `decisions` are the live governed pairs for that profile. Empty when `loaded` is false. Empty is not allow-all.
-- `violations` are the denied rows of `decisions`. They feed the Policy chip. They do not themselves block a later unrelated edit.
-- Versioning: `schema_version` 1 is this object. Policy `version` 2 is the file. A client must not require them to be equal. An unknown `schema_version` is unreadable: treat as `loaded: false`, do not render decisions.
+- `decisions` are the live governed pairs for that profile only. They feed the Policy chip. They are not the picker. Empty when `loaded` is false. Empty is not allow-all. A live `nous` pair must not empty the repair menu.
+- `violations` are the denied rows of `decisions`. They feed the Policy chip. They do not themselves block a later unrelated edit. They do not filter `/api/model/options`.
+- `allow` is the loaded file's allow rules, serialized, same shape as section 1. Null unless `loaded` is true. There is no `providers` field. G84 flattens `allow[].provider` (a string contributes that string; a list contributes each member). Do not derive that set from live `decisions`.
+- `candidates` is the backend score of every concrete pair in that profile's `GET /api/model/options` catalog. Never the glob text `claude-*`. `in_catalog: true` for those rows. A live governed pair that is not in the catalog may appear with `in_catalog: false` so the chip can name it. It does not enter the picker. The client does not compute this list.
+- Version and hash coherence: `allow` and `candidates` are usable only when `loaded` is true, `enabled` is bool `true`, `version` is int `2`, `schema_version` is int `1`, and `policy_hash` is a non-null hex string. `catalog_hash` is sha256 hex of the UTF-8 canonical JSON of the options body that was scored (object keys sorted, no insignificant whitespace), excluding any eligibility fields a later options response might echo. The picker joins only when both calls used the same focused profile and the client's hash of the options body equals `catalog_hash`. Mismatch: refetch both once. Still mismatch: picker disabled. Do not show the unfiltered catalog as P2. Do not parse this repository file.
+- Cross-check: every `candidates` row with `decision: allow` has its provider in the flattened `allow` set. If not, the read is incoherent. Same recovery as a hash mismatch. Do not list a partial provider set.
+- Versioning: `schema_version` 1 is this object. Policy `version` 2 is the file. A client must not require them to be equal. An unknown `schema_version` is unreadable: do not render `decisions`, `allow`, or `candidates`.
 - Auth: dashboard session token (P0-02 section 2). Not on the public allowlist. 401 means auth failure. It does not mean "no policy" and it is not existence proof of this route (P0-01 section 5.6).
-- Scope: one profile on this serve connection. Not a tenant. Root is in scope (D8). A remote connection may call this read. The read does not authorize a Canvas write.
-- Dependencies: call it only when `ops.policy` is boolean true on a fresh `GET /api/status` 200. Otherwise do not call.
+- Scope: one profile on this serve connection. Not a tenant. Root is in scope (D8) when the request names it or the launch home is root. A remote connection may call this read. The read does not authorize a Canvas write.
+- Dependencies: call it only when `ops.policy` is boolean true on a fresh `GET /api/status` 200 with `ops_capabilities_schema` int `1`. Otherwise do not call. Absence of the flag is not `source: unreadable`.
 - Absent route behavior is the flag, not a probe. Do not `GET` this path to see if A6 exists.
-- Errors: 401 auth; 404 unknown profile; 200 with `loaded: false` and `source: absent` when the installed file is missing. Do not 404 the file. Do not 200 with `enabled: true` when the file was not read.
+- Errors: 401 auth; 404 unknown profile; 200 with `loaded: false`, `source: absent`, `allow: null`, `candidates: null`, `decisions: []` when the installed file is missing. Do not 404 the file. Do not 200 with `enabled: true` or with allow rules when the file was not read. `source: unreadable` uses the same nulls. Neither null list is allow-all. Neither is an empty repair menu presented as "nothing allowed".
 
-`/api/model/options?profile=` remains the picker catalog (G2, O50). When `ops.policy` is true, the options the picker shows are the intersection of that catalog and `decisions` whose `decision` is `allow`. The client does not intersect against this repository file. When `ops.policy` is false or absent, the picker is not shown as P2-filtered (G2 degrade in section 6).
+`/api/model/options?profile=` remains the catalog of concrete provider/model pairs (G2, O50). Ops calls it with the focused profile, the same string as the effective read. The picker offer list is `candidates` where `decision` is `allow` and `in_catalog` is true. It is not the intersection of the catalog and live `decisions`. The client does not re-run globs, `deny_default`, or `normalize_provider`. The client does not intersect against this repository file.
+
+Catalog countermodels, offer list only:
+
+| Live primary | Catalog also contains | Offer list |
+|---|---|---|
+| `openai` / `gpt-6.1-sol` | allowed `anthropic` / `claude-opus-4-6` and `xai-oauth` / `grok-4.7` | Sol, that Claude id, and `grok-4.7`. Not Sol-only. Live `decisions` may contain only the Sol pair. That list is the chip source, not the menu. |
+| `nous` / `hermes-3` | the same allowed Claude, Sol, and `grok-4.7` pairs | those allowed repairs. The menu is not empty. The chip shows the nous violation. |
+| any | `openrouter` / `claude-opus-4-6`, `xai` / `grok-4.6` | those pairs never appear. If the catalog listed them, `candidates` marks `deny` and the offer list excludes them. |
+
+G84 does not invent a field. Allowed providers are the flattened `allow[].provider` set, cross-checked against allow-decision `candidates` as above, then intersected with providers whose auth status was actually read (`GET /api/providers/oauth` plus `GET /api/env` `is_set`). A live nous pair does not remove `anthropic` from that set. A proxy provider is not in `allow`, so it is not listed. When `ops.policy` is false or absent, the category is "policy filter unavailable", not an unfiltered catalog labeled P2, and not an empty catalog labeled "nothing connected".
 
 ## 6. Capability flags on `GET /api/status`
 
@@ -224,9 +268,9 @@ Flag names are the P0-01 dotted names, plus the write and run flags this task re
 | `ops.usage` | A2 | `GET /api/ops/runs/{source}/{id}/usage` | P1 |
 | `ops.approvals` | A3 | `GET /api/approvals/pending`, `POST /api/approvals/{id}/respond` | P1 |
 | `ops.delegation` | A4 | read-only delegation projection | P1 |
-| `ops.transaction` | A5 transactional writes | mutation wrapper in `transaction-contract.md` section 3 | P2 |
+| `ops.transaction` | A5 transactional writes | mutation in P0-03 section 5 | P2 |
 | `ops.history` | history list | manifest list, no secret bytes | P2 |
-| `ops.restore` | restore | restore mutation, section 4 of this file and P0-03 section 8 | P2 |
+| `ops.restore` | restore | restore mutation, section 4 of this file and P0-03 section 15 | P2 |
 | `ops.policy` | A6 policy enforcement, and the effective-policy read | section 5 | P2 |
 | `ops.kanban_sse` | A7 | `GET /api/plugins/kanban/events/stream` | P1 |
 | `ops.unblock` | atomic unblock | `POST /api/plugins/kanban/tasks/{id}/unblock` | P1 |
@@ -244,11 +288,13 @@ Absent and false are the same action refusal: do not call that route, do not ena
 
 Dependencies, client-side, stricter than the advertisement:
 
-- `ops.restore` is usable only when `ops.restore`, `ops.history`, `ops.transaction`, and `ops.policy` are all boolean true. A6 runs on restore. A missing sibling forces restore off.
+- `ops.restore` is usable only when `ops.restore`, `ops.history`, `ops.transaction`, and `ops.policy` are all boolean true, and the kind is `local`. A6 runs on restore. A missing sibling forces restore off.
 - `ops.history` is usable only when `ops.history` and `ops.transaction` are both true.
-- Canvas model save is usable only when `ops.transaction` and `ops.policy` are both true, and the connection kind is `local`.
-- `ops.policy` true with `ops.transaction` false allows the effective-policy read and the chip. It does not allow a write. `atomic_write_text` on SOUL is not `ops.transaction` (P0-02 section 2).
+- Prompt save needs `ops.transaction` boolean true and kind `local`. It does not need `ops.policy`. Flag absent is a capability warn, not a block, and not an invented violation.
+- Model assignment, raw YAML, and restore need `ops.transaction` and `ops.policy` both boolean true, and kind `local`, before Ops sends. Raw is in that set because the client must not parse YAML to exempt a document.
+- `ops.policy` true with `ops.transaction` not true allows the effective-policy read and the chip. It does not allow Prompt, Model, raw, or restore. `atomic_write_text` on SOUL is not `ops.transaction` (P0-02 section 2).
 - No flag implies another. `ops.fleet` true does not imply `ops.usage`.
+- Section 7.5 is the one response per surface. These bullets match that table. They are not a second answer.
 
 Auth and scope, shared: flags describe this serve process. They are not a per-profile grant and not a Desktop connection permission. `?profile=` on `/api/status` does not change them (`status.py:471` is config scope for the gateway rollup, not a capability scope). `/api/status` stays on the public allowlist (P0-01). The object must not include tokens, paths, pids, or policy decisions. Per-flag route auth is the auth of that route, not the public status auth.
 
@@ -284,31 +330,31 @@ Remote is not a flag. See section 7. Write flags true do not make remote Canvas 
 
 ### 6.5 `ops.transaction` (A5)
 
-- Absent/false: Canvas Save, secret set/clear, and raw YAML save stay disabled. No renderer filesystem write. No snapshot-then-PUT. No "degraded write". `atomic_write_text` is not this flag.
-- Dependencies: model-node Save also needs `ops.policy`. Other nodes need this flag and `local` kind. They do not need `ops.policy` unless the mutation touches a governed field; if it might, both flags are required. Client rule: if the node is Model, raw YAML, or restore, require both.
-- Auth/scope: session token. Profile and object id on the mutation. Connection kind `local` or the backend returns 403 before backup (P0-03 section 3 step 1). A missing kind is remote.
-- W10: that node's Save shows "Save unavailable". Not a spinner that then writes. Loading of status: Save disabled. Reconnecting: Save disabled. Do not claim the in-flight write committed. Exhausted: still disabled. Disconnect after send is "outcome unknown" (P0-03 section 7), never "saved" and never "original intact".
+- Absent/false: Prompt, Model, raw YAML, restore, and secret set/clear stay disabled. No renderer filesystem write. No snapshot-then-PUT. No "degraded write". `atomic_write_text` is not this flag. This is the transaction gate. Policy absence does not add a second ban on Prompt. Section 7.5 is the write table.
+- Dependencies: section 7.5. This subsection does not restate a different rule.
+- Auth/scope: session token. Profile and object id on the mutation. Connection kind `local` or the backend returns 403 before backup (P0-03 section 5 step 1). A missing kind is remote.
+- W10: that node's Save shows "Save unavailable". Not a spinner that then writes. Loading of status: Save disabled. Reconnecting: Save disabled. Do not claim the in-flight write committed. Exhausted: still disabled. Disconnect after send is "outcome unknown" (P0-03 section 14), never "saved" and never "original intact". A disabled Model save does not take down Prompt, Office, or Board.
 
 ### 6.6 `ops.history`
 
 - Absent/false: no History drawer data. Do not list `backups/ops-panel` from the renderer. G32 owner and version show unavailable, not a guessed git user.
 - Dependencies: usable only with `ops.transaction` true. Otherwise treat as false.
-- Auth/scope: session token. One profile, one node. Manifest minus secret fields (P0-03 section 4).
+- Auth/scope: session token. One profile, one node. Manifest minus secret fields (P0-03 section 8).
 - W10: the History drawer fails alone. The node can still be read. Loading: drawer shimmer. Empty (flag true, no manifests) is a real empty, distinct from absent. Reconnecting: do not offer restore from a stale list. Exhausted: drawer unavailable.
 
 ### 6.7 `ops.restore`
 
 - Absent/false: no Restore control. Do not copy a backup onto the live file from Electron.
 - Dependencies: requires `ops.history`, `ops.transaction`, and `ops.policy` all true, and kind `local`. Otherwise treat as false.
-- Auth/scope: session token. Body is `backup_id` plus live `expected_hash` (P0-03 section 8). Not the backup's hash. Secret restore sends `backup_id` only.
+- Auth/scope: session token. Non-secret restore body is `{backup_id, expected_hash}` where `expected_hash` is the live composite (P0-03 section 15). Not the backup's hash. Secret restore sends `backup_id` only (same section). This card does not merge those two P0-03 sentences.
 - W10: Restore disabled with the reason (capability, remote, or policy). A blocked policy restore is 400, not a capability miss. Loading: disabled. There is no optimistic "restored" before read-back.
 
 ### 6.8 `ops.policy` (A6)
 
-- Absent/false: do not call `GET /api/ops/policy/effective`. Do not filter the picker from this repository YAML. Do not draw a Policy chip from a client parse. Model Save stays off (section 6.5). G84 does not claim a P2 filter.
-- Dependencies: the read needs only this flag. Enforcement on a write needs this flag and `ops.transaction`. Advertised true is not proof the installed file loaded. The read's `loaded` field is that proof.
-- Auth/scope: session token on the read. One profile, including root. The flag itself is process-wide.
-- W10: model picker and the Policy chip fail alone. Loading: picker disabled, not the full unfiltered catalog presented as P2. Reconnecting: chip stale, Save disabled. Exhausted: "policy unavailable". Do not switch to allow-all. `enabled: false` on a loaded file is a different state (section 2): not this flag, and not allow-all either. The example file is `enabled: true`.
+- Absent/false: do not call `GET /api/ops/policy/effective`. Do not filter the picker from this repository YAML. Do not draw a Policy badge. Do not invent a provider/model pair. Model, raw, and restore stay off (section 7.5). Prompt may still save when `ops.transaction` is boolean true and the kind is `local`, with a capability warn only. G84 does not claim a P2 filter.
+- Dependencies: the read needs only this flag. A governed send also needs `ops.transaction` and kind `local`. Advertised true is not proof the installed file loaded. `loaded` is that proof. `source: unreadable` is not this absent/false row.
+- Auth/scope: session token on the read. One profile, the focused profile Ops sent, including root when that is the request. The flag itself is process-wide.
+- W10: the model picker and the Policy chip fail alone. Loading: picker disabled, not the full unfiltered catalog presented as P2. Reconnecting: keep a chip only if the last loaded read had a violation, labeled stale; do not invent one. Model, raw, and restore Save stay disabled. Prompt follows section 7.5. Exhausted: "policy unavailable". Do not switch to allow-all. Not a full-page failure. `enabled: false` on a loaded file is a different state (section 2): not this flag, and not allow-all either. The example file is `enabled: true`.
 
 ### 6.9 `ops.kanban_sse` (A7)
 
@@ -360,7 +406,7 @@ One flag absent or false, siblings true. W10 is per feature. Do not infer the mi
 | `ops.transaction` | policy, history | Save disabled | renderer write, snapshot-then-PUT, claim that `atomic_write_text` is the transaction |
 | `ops.history` | transaction | drawer unavailable | renderer `readdir` of `backups/ops-panel` |
 | `ops.restore` | history, transaction, policy | Restore hidden | copy backup bytes from the client |
-| `ops.policy` | transaction | model Save off, picker not labeled P2 | filter with this repo YAML |
+| `ops.policy` | transaction | model, raw, and restore off; picker not labeled P2. Prompt still follows section 7.5 | filter with this repo YAML |
 | `ops.kanban_sse` | fleet | Board uses the verified WebSocket | invent SSE; or declare the board dead |
 | `ops.unblock` | approvals | Unblock disabled | three-call composition |
 | `ops.runs` | approvals | run controls unavailable | arbitrary gateway URL |
@@ -369,15 +415,15 @@ No row claims transactional support because a sibling flag is true. `ops.policy`
 
 ### 7.3 Remote
 
-`DesktopConnectionKind` is `cloud | local | remote | ssh` (`apps/desktop/src/global.d.ts:1134`). Canvas writes require `local` (D11, P0-03 section 9). Missing kind is remote. A tunneled loopback whose kind is not `local` is remote.
+`DesktopConnectionKind` is `cloud | local | remote | ssh` (`apps/desktop/src/global.d.ts:1134`). Canvas writes require `local` (D11, P0-03 section 16). Missing kind is remote. A tunneled loopback whose kind is not `local` is remote.
 
 Write flags do not override this. The renderer hides the controls. Hiding is not the gate. The backend 403 is the gate.
 
 | Kind | Read flags true | Write flags true (`transaction`, `history` list is a read, `restore`, `policy` enforcement) | Canvas |
 |---|---|---|---|
-| `local` | honor the read flag | honor the write flag and its dependencies | writes only when the write flag and dependencies say so |
-| `remote`, `ssh`, `cloud`, missing | reads allowed when their flag is true | ignored | read-only. Save, restore, secret set/clear, raw YAML save not sent. If sent, 403, no backup. |
-| any non-local | `ops.policy` true allows the effective-policy read | `ops.policy` true does not allow a model PUT | Policy chip may show. Save stays off. |
+| `local` | honor the read flag | honor the write flag and its dependencies | section 7.5 is the response. Not a second rule. |
+| `remote`, `ssh`, `cloud`, missing | reads allowed when their flag is true | ignored | read-only. Do not send Prompt, Model, raw, restore, or secret set/clear. If sent, 403, no backup. Same answer as section 7.5. |
+| any non-local | `ops.policy` true allows the effective-policy read | `ops.policy` true does not allow a model PUT | Policy chip may show. Do not send Prompt, Model, raw, or restore. Same answer as section 7.5, not a second one. |
 | any non-local | `ops.runs` true allows typed ops through main, key stays in main | `ops.unblock` is not offered in v1 (P0-02 section 3.1) | not a Canvas write |
 | any non-local | `ops.approvals` list may be read | respond that writes another machine's queue is out of v1 | not enabled by the flag |
 
@@ -401,23 +447,57 @@ Write flags do not override this. The renderer hides the controls. Hiding is not
 
 A policy deny is 400. A remote Canvas write is 403. An auth failure is 401. The three are not interchangeable, and none of them is "set the flag to false in the client cache".
 
+## 7.5 Write gates
+
+One table. Transaction × policy × local, four surfaces. Each cell is the only Ops response for that row. Section 4 is the validator after a send. It does not choose whether Ops sends. Section 6.5 does not restate a different rule. No cell is a full-page failure. No cell parses `ops-policy.yaml` from this repository or from a copied file in the renderer.
+
+Policy values:
+
+- `loaded`: `ops.policy` is boolean true, the effective read has `loaded: true`, `enabled` bool `true`, `version` int `2`.
+- `flag-absent`: `ops.policy` is missing, false, or not a boolean, or `ops_capabilities_schema` is not int `1`. Do not call the read. This is not `source: unreadable`.
+- `unreadable`: flag is boolean true and the read `source` is `unreadable`, or `version` / `enabled` is not the explicit value above. Warning code `policy_unreadable`. No invented pair.
+- `file-absent`: flag is boolean true and the read `source` is `absent`. Warning code `policy_absent`. No invented pair. Not the same as `flag-absent`.
+
+Transaction `false` means the flag is missing, false, or not a boolean. Kind `not-local` includes `remote`, `ssh`, `cloud`, and missing. A sent write on `not-local` is 403 with no backup (P0-03 section 5 step 1) if it reaches the backend. Ops still does not send.
+
+| txn | policy | kind | Prompt | Model | raw | restore |
+|---|---|---|---|---|---|---|
+| false | loaded | local | Do not send. | Do not send. | Do not send. | Do not send. |
+| false | loaded | not-local | Do not send. | Do not send. | Do not send. | Do not send. |
+| false | flag-absent | local | Do not send. | Do not send. | Do not send. | Do not send. |
+| false | flag-absent | not-local | Do not send. | Do not send. | Do not send. | Do not send. |
+| false | unreadable | local | Do not send. | Do not send. | Do not send. | Do not send. |
+| false | unreadable | not-local | Do not send. | Do not send. | Do not send. | Do not send. |
+| false | file-absent | local | Do not send. | Do not send. | Do not send. | Do not send. |
+| false | file-absent | not-local | Do not send. | Do not send. | Do not send. | Do not send. |
+| true | loaded | not-local | Do not send. | Do not send. | Do not send. | Do not send. |
+| true | flag-absent | not-local | Do not send. | Do not send. | Do not send. | Do not send. |
+| true | unreadable | not-local | Do not send. | Do not send. | Do not send. | Do not send. |
+| true | file-absent | not-local | Do not send. | Do not send. | Do not send. | Do not send. |
+| true | loaded | local | Send. If `violations` is non-empty, Policy chip and proceed. If empty, proceed with no chip. Never block Prompt for policy. | Send as a selection. Denied body: 400, no replace. Allowed body: proceed, including a repair off a live denied pair. Body equal to the live denied pair: 400. Not an unrelated edit. | Send. Client does not parse the document. Server returns one status: 400 if a governed pair changed and is denied; 200 warn and proceed if every governed pair equals live, including an existing violation. | Send as a selection. Denied restored governed pair: 400, even if those bytes equal live. Allowed restored pair: proceed. Not the unrelated path. |
+| true | flag-absent | local | Send. Capability warn only. No Policy badge. No invented pair. | Do not send. No repository YAML. | Do not send. No client YAML parse. | Do not send. No client copy of a backup. |
+| true | unreadable | local | Send. Warn `policy_unreadable`. No invented pair. Do not block. | Do not send. Warn `policy_unreadable`. Not allow-all. | Send. Client does not parse. Server returns one status: 400 `policy_unreadable` if any governed pair differs from live; 200 warn `policy_unreadable` and proceed if every governed pair equals live. | Do not send. Warn `policy_unreadable`. Not allow-all. |
+| true | file-absent | local | Send. Warn `policy_absent`. No invented pair. Do not block. | Do not send. Warn `policy_absent`. Not allow-all. | Send. Client does not parse. Server returns one status: 400 `policy_absent` if any governed pair differs from live; 200 warn `policy_absent` and proceed if every governed pair equals live. | Do not send. Warn `policy_absent`. Not allow-all. |
+
+existing-violation+unrelated-edit is the `true` / `loaded` / `local` Prompt cell and the same row's raw cell. It is not a second row and not a second answer. installed-unreadable is the `unreadable` policy value, not `flag-absent`. A disabled Model control does not disable Prompt, Office, or Board.
+
 ## 8. Rows
 
 | Row | What this card freezes | What it does not do |
 |---|---|---|
 | O19 | Tokens stay `""` with provenance `unknown` until `ops.usage` is true and A2 returns a value. Null is not `0`. | No usage route. |
-| O40 | Default-model menu is the P2 allowlist once `ops.policy` is true. The write is the shared validator, not a side path through `POST /api/model/set` that skips A6. | No settings UI. |
+| O40 | Default-model menu, once `ops.policy` is true and the read is coherent, is section 5 `candidates` with `decision: allow` and `in_catalog: true`. Not the live-decisions intersection. The write is the shared validator, not a side path through `POST /api/model/set` that skips A6. | No settings UI. |
 | O41 | `approvals.mode` is `manual` / `smart` / `off` (P0-02 verification). It is not a governed field. No flag invents Ask first / Safe / Full. | No autonomy control. |
-| O50 | The chip shows the focused profile's effective primary pair from the effective-policy read (or from the model read, labeled unfiltered, when the flag is false). The menu lists allowlisted pairs only when the flag is true. A write is one A5 transaction plus A6. | No chip component. |
+| O50 | The chip is `violations` from the effective-policy read for the focused profile, or absent when the flag is false. The menu is `candidates` with `decision: allow` and `in_catalog: true`, not the live-decisions intersection. A write follows section 7.5. | No chip component. |
 | O81 | One A1 body is the presence source when `ops.fleet` is true. When it is false, every surface shows the same `unknown`, not a private copy. | No fleet route. |
-| G2 | Picker lists only allowlisted pairs when `ops.policy` is true: direct `anthropic` `claude-*`, `openai`/`openai-codex` Sol and the two variants, `xai`/`xai-oauth` `grok-4.7`. | No picker. |
+| G2 | When `ops.policy` is true and the read is coherent, the offer list is allowed catalog candidates: direct `anthropic` `claude-*` ids, `openai`/`openai-codex` Sol and the two variants, `xai`/`xai-oauth` `grok-4.7`. Live Sol does not hide Claude or Grok. Live nous does not empty the menu. Proxy Anthropic and `grok-4.6` never appear in the offer list. | No picker. |
 | G32 | Owner is the A5 manifest `actor`. Version is `sequence`. Both require usable `ops.history`. Otherwise unavailable, not invented. | No manifest writer. |
 | G34 | Delegation stays read-only. `ops.delegation` false is unavailable, not an empty graph. No write flag enables Save on that node. | No projection route. |
 | G36 | Model node uses the same picker and the same validator as G2 and O50. | No node. |
-| G40 | Policy badge is a violation on the effective-policy read. New is "changed since last backup" and needs `ops.history`. Unset is not a policy decision. Absent policy flag: no Policy badge. | No badge component. |
+| G40 | Policy badge is a violation on the effective-policy read. New is "changed since last backup" and needs `ops.history`. Unset is not a policy decision. Flag absent: no Policy badge, and no invented pair. A capability warn is not that badge. | No badge component. |
 | G58 | Read-only badge is connection kind not `local` (D11). It stays on when write flags are true. | No switcher. |
-| G84 | Provider auth is the verified `GET /api/providers/oauth` card (`oauth.py:356`) plus `GET /api/env` `is_set`. Drop `token_preview`. When `ops.policy` is true, the Models category lists providers that appear in `allow` and whose auth status was actually read. When the flag is false, the category is "policy filter unavailable", not an unfiltered catalog labeled P2, and not an empty catalog labeled "nothing connected". | No new auth route. `token_preview` must not reach the renderer. |
+| G84 | Provider auth is the verified `GET /api/providers/oauth` card (`oauth.py:356`) plus `GET /api/env` `is_set`. Drop `token_preview`. When `ops.policy` is true, allowed providers are flattened `allow[].provider`, cross-checked with allow-decision `candidates` (section 5). No `providers` field. Intersect with providers whose auth status was actually read. When the flag is false, the category is "policy filter unavailable", not an unfiltered catalog labeled P2, and not an empty catalog labeled "nothing connected". | No new auth route. `token_preview` must not reach the renderer. |
 
 ## 9. Out of scope
 
-Not in this commit: installing `ops-policy.yaml` under `HERMES_HOME`, editing `status.py`, adding A1–A7, the unblock route, the typed Electron proxy, the transaction wrapper, history, restore, or a client filter. P0 and P0.5 do not implement those. A judge of this card parses the YAML, checks the fields against SPEC section 4.4, and evaluates the tables in sections 3 and 7. A missing route in the tree is expected.
+Not in this commit: installing `ops-policy.yaml` under `HERMES_HOME`, editing `status.py`, adding A1–A7, the unblock route, the typed Electron proxy, the transaction wrapper, history, restore, or a client filter. P0 and P0.5 do not implement those. A judge of this card parses the YAML, checks the fields against SPEC section 4.4, and evaluates the tables in sections 3, 7, and 7.5, plus the catalog countermodels in section 5 and the profile table in section 1.1. A missing route in the tree is expected.
