@@ -164,6 +164,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Request: `?profile=`.
 - Response: raw YAML text of that profile's config. Secret-bearing. Advanced drawer only. Never diff secrets in the UI (SPEC 4.2).
 - Auth: session token. Storage: same config.yaml. Freshness: request-time.
+- Events: none.
 - Status: verified. SPEC 4.1.
 
 **GET /api/config/schema**
@@ -171,6 +172,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Request: `?profile=` optional.
 - Response: `{fields, category_order}`. `approvals.mode` is a select of `manual`, `smart`, `off` (`web_server_config.py:143`).
 - Auth: public allowlist. Storage: schema code, not user files. Freshness: request-time (dynamic provider options).
+- Events: none.
 - Status: verified. SPEC 4.3.
 
 **GET /api/model/options**
@@ -178,6 +180,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Request: `?profile=`.
 - Response: provider/model options for that profile's credentials and catalog. P2 filtering is not in this handler. The picker must filter client-side until A6 exists, and must not treat this list as the allowlist.
 - Auth: session token. Storage: catalog + profile config + env presence. Freshness: request-time.
+- Events: none.
 - Status: verified. SPEC 4.1, O50, G2.
 
 **GET /api/env**
@@ -185,6 +188,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Request: `?profile=`.
 - Response rows include `is_set` and `redacted_value` (`config_env.py:278`). SPEC O22/O42/O7 say names and set/unset only. Ops must use `is_set` and must not render `redacted_value`.
 - Auth: session token. Storage: profile `.env`. Freshness: request-time.
+- Events: none.
 - Status: verified. The preview field is a contract hazard, not a license to show secrets.
 
 ### 4.2 Office fleet inputs (no presence endpoint)
@@ -219,6 +223,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - `tasks.session_id` is the originating `HERMES_SESSION_ID`, NULL when created from CLI/dashboard (`kanban_db.py:808`). `task_runs` has no `session_id` column (`kanban_db.py:1080`).
 - Scope: one board, one task. Tenant is a field on the task, not a query filter here.
 - Auth: session token. Storage: `kanban.db`. Freshness: request-time.
+- Events: none.
 - Status: verified. SPEC 3.1 timeline, section 5 drawer.
 
 **GET /api/plugins/kanban/runs/{run_id}**
@@ -226,12 +231,14 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Response: `{run: asdict(task_runs row)}`. Columns: `id, task_id, profile, step_key, status, claim_lock, claim_expires, worker_pid, worker_started_at, max_runtime_seconds, last_heartbeat_at, started_at, ended_at, outcome, summary, metadata, error`. `metadata` is JSON text, not a guaranteed usage object. No `session_id`.
 - `step_key` is nullable and unused by the v1 kernel (`kanban_db.py:1077`).
 - Auth: session token. Storage: `kanban.db`. Freshness: request-time.
+- Events: none.
 - Status: verified. SPEC 3.1. Tokens are not a column.
 
 **GET /api/plugins/kanban/runs/{run_id}/inspect**
 - Handler: `plugin_api.py:937` `inspect_run_endpoint`.
 - Response: live psutil stats, or `{alive: false, reason}` when the process is gone. Access denied is inline, not a 500.
 - Auth: session token. Storage: OS process table plus the run row. Freshness: request-time. Not tokens.
+- Events: none.
 - Status: verified. SPEC 3.1, O35.
 
 **GET /api/plugins/kanban/config**
@@ -245,6 +252,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Response: `kanban_workflow.DEFAULT_WORKFLOW.to_dict()`: `{columns: [{key, label, icon, drag_target}], manual, archived}`. Columns include `triage, todo, scheduled, ready, running, blocked, review, done`. `archived` is a filter, not a column (`kanban_workflow.py:27`).
 - This is the status machine. It is not a library of workflow templates and it has no step counts.
 - Auth: session token. Storage: code constant, same for every board today (`plugin_api.py:1622`). Freshness: process lifetime.
+- Events: none.
 - Status: verified. Do not cite this as R34/O16 templates.
 
 **GET /api/plugins/kanban/projects**
@@ -347,6 +355,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Request: `?profile=`.
 - Response: `{enabled, base_url, subscriptions[]}`. Each subscription from `_webhook_route_summary` (`ops.py:140`): `events, deliver, deliver_only, prompt, script, skills, created_at, url, secret_set, enabled`. `secret` is not returned on list (only `secret_set`). No `filter` field. Create body `WebhookCreate` (`web_models.py:376`) has `name, description, events, prompt, script, skills, deliver, deliver_only, deliver_chat_id, secret`. No filter.
 - Auth: session token. Storage: webhook subscription file in the profile home (`hermes_cli.webhook`). Freshness: request-time.
+- Events: none.
 - Status: verified. SPEC 4.1 Trigger, G28. Filter expression: absent. See source-verification G28.
 
 **GET /api/sessions**
@@ -355,6 +364,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Response (`sessions.py:239`): `{sessions, total, limit, offset, storage}`. Each row gets `is_active`, `profile`, `is_default_profile`, `archived`, `pinned`. Unless `full=1`, `system_prompt` and `model_config` are omitted (`sessions.py:187`). `storage` is `{profile: "corrupt"}` or `{}`.
 - Side effect: `_maybe_auto_archive_for_profile` runs before the read (`sessions.py:198`). This GET is not pure. Ops must not call it as a silent poll without accepting that archive write. This slice did not call it.
 - Auth: session token. Storage: profile `state.db`. Freshness: request-time. 503 on a busy store, not an empty list (`sessions.py:249`).
+- Events: none.
 - Status: verified. SPEC O18, O20.
 
 **GET /api/sessions/search**
@@ -368,6 +378,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Request: `profile`, `limit` (1-500, default 500), `after_row_id`.
 - Response: prompt metadata only, including compacted display history, never rewind rows. `next_cursor` for paging. 404 if the session is not owned by that profile (`sessions.py:770`).
 - Auth: session token. Storage: `state.db`. Freshness: request-time. Not a live token stream.
+- Events: none.
 - Status: verified. SPEC 3.1, O28, O70.
 
 **GET /api/sessions/{session_id}/messages**
@@ -396,6 +407,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - `gateway_state.json` is read inside `_resolve_gateway_status`, not as its own route.
 - Auth: public allowlist. Still must not be treated as a secret dump; this doc does not copy paths or pids from the live body.
 - Freshness: request-time plus 10s topology cache. `gateway_heartbeat_stale_s` null means fresh or not applicable.
+- Events: none.
 - Status: verified. SPEC 3.1 health strip. Capability flags for A1-A7 are not on this payload today. SPEC P0 task 6 (capability flag contract) is out of this slice.
 
 ### 4.4 Canvas node reads
@@ -412,6 +424,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Request: `?profile=`.
 - Response: list from `_find_all_skills` reduced to `{name, description, category}` (`tools/skills_tool.py:239`) plus `enabled`, `usage`, `provenance` (`skills.py:367`). `category` is the parent directory under the skills root when the path has at least 3 parts (`skills_tool.py:130`); otherwise null. `provenance` is `hub | bundled | external | agent`. No `author`. No `mtime` / `updated`.
 - Auth: session token. Storage: profile `skills/**/SKILL.md` plus bundled/hub/external dirs. Freshness: request-time scan.
+- Events: none.
 - Status: verified. SPEC 4.1, G11, G68. G70 fields are absent (see verification).
 
 **GET /api/skills/content**
@@ -465,6 +478,7 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Response: `{providers: [{id, name, flow, cli_command, docs_url, disconnect_hint, disconnect_command, disconnectable, status}]}`. `status` is `_status_card` (`oauth.py:356`): `logged_in, source, source_label, token_preview, expires_at, has_refresh_token`, optional `last_refresh`. Catalog dispatch includes `openai-codex` and `xai-oauth` (`oauth.py:383`, `oauth.py:394`). Anthropic is an external flow that Hermes still owns (`oauth.py:644`).
 - Ops must not render `token_preview`. Presence is `logged_in` boolean only (G84).
 - Auth: session token. Storage: auth store / provider credential files. Freshness: request-time. Not a P2 filter; the UI filters.
+- Events: none.
 - Status: verified. SPEC G84.
 
 ### 4.5 Files, git, logs
@@ -530,12 +544,14 @@ Status `verified` means the handler is in this tree at `865ba906c1a`.
 - Scope: one session + optional profile. This does not list other sessions or other profiles (SPEC 3.1, A3 gap).
 - Auth: gateway socket. Storage: `tools/approval.py` gateway queue for that session. Freshness: push. Desktop already subscribes (`server-requests.ts`, cited by SPEC).
 - Expiry: queue timeout is `approvals.timeout`, default 300 seconds (`tools/approval_context.py:247`). The pending payload has no `expires_at` field. A client must not invent one.
+- Events: the Desktop already subscribes to this as a push (`server-requests.ts`). The method is also a pull. It is not `approval.received` and it does not retire a pending.
 - Status: verified for the owning session. Not a cross-profile list.
 
 **JSON-RPC `approval.respond`**
 - Params: `{session_id, profile?, choice?, all?, request_id?}` (`gateway-contract.generated.ts:2876`). Result: `{resolved: number}`.
 - `choice` is one of the offered choices (`once`, `session`, `always`, `deny`). `request_id` resolves one. `all` resolves every pending approval in that session. Neither means the oldest.
 - This is a write. Listed because A3 dedupe is defined against it. Second resolution is a zero `resolved`, not a second side effect. Desktop must disable the button on send (SPEC 3.3) and treat `resolved == 0` as already resolved.
+- Events: the JSON-RPC method returns a count and does not broadcast. The HTTP path for the same queue emits SSE `approval.responded` (`api_server_runs.py:1213`). This method is not that event.
 - Status: verified method. Cross-profile routing is proposed (section 6).
 
 **JSON-RPC `approval.received` — client ACK, not settlement**
