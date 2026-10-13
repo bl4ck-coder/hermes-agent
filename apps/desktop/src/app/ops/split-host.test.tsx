@@ -1,5 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useEffect, type ReactNode } from 'react'
+import { MemoryRouter } from 'react-router'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { ChatView } from '@/app/chat'
+import { LayoutTreeRoot } from '@/components/pane-shell/tree/renderer'
+import { I18nProvider } from '@/i18n'
+import { $selectedStoredSessionId } from '@/store/session'
+import { stubResizeObserver } from '@/test/jsdom'
 
 import { $hiddenTreePanes, $layoutTree, $releaseMainFloor } from '@/components/pane-shell/tree/store'
 import { group, split } from '@/components/pane-shell/tree/model'
@@ -54,6 +63,21 @@ import {
 
 const localScope: OpsScope = { connectionId: 'local', profile: 'default', remote: false, label: 'local' }
 const remoteScope: OpsScope = { connectionId: 'remote-1', profile: 'judge', remote: true, label: 'bench' }
+
+let chatMounts = 0
+let chatUnmounts = 0
+
+function CountingChat({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    chatMounts += 1
+
+    return () => {
+      chatUnmounts += 1
+    }
+  }, [])
+
+  return children
+}
 
 afterEach(() => {
   cleanup()
@@ -159,36 +183,155 @@ describe('ops split host', () => {
     expect(registry.getArea('titleBar.center').some(entry => entry.id === 'ops-live-badge')).toBe(true)
   })
 
-  it('round-trips full screen without changing the chat session or the split width', () => {
-    $layoutTree.set(split('row', [group(['workspace']), group(['ops'])], [1, 1]))
+  it('keeps the real chat surface mounted across full-screen', async () => {
+    stubResizeObserver()
+    vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) => value })
+    const frames: FrameRequestCallback[] = []
+    const realFrame = window.requestAnimationFrame.bind(window)
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      frames.push(cb)
+      return frames.length
+    })
+    const flushFrames = () => {
+      for (let pass = 0; pass < 4 && frames.length > 0; pass += 1) {
+        const pending = frames.splice(0)
+        for (const cb of pending) {
+          cb(0)
+        }
+      }
+    }
+
+    chatMounts = 0
+    chatUnmounts = 0
+    const noop = () => undefined
+    const disposeChat = registry.register({
+      area: 'panes',
+      data: { lifecycleKeepAlive: true, placement: 'main', uncloseable: true },
+      id: 'workspace',
+      render: () => (
+        <CountingChat>
+          <ChatView
+            gateway={null}
+            onAddContextRef={noop}
+            onAddUrl={noop}
+            onAttachDroppedItems={noop}
+            onAttachImageBlob={noop}
+            onCancel={noop}
+            onDeleteSelectedSession={noop}
+            onEdit={async () => undefined}
+            onPasteClipboardImage={noop}
+            onPickFiles={noop}
+            onPickFolders={noop}
+            onPickImages={noop}
+            onReload={async () => undefined}
+            onRemoveAttachment={noop}
+            onRetryResume={noop}
+            onSteer={() => true}
+            onSubmit={() => true}
+            onThreadMessagesChange={noop}
+            onToggleSelectedPin={noop}
+          />
+        </CountingChat>
+      ),
+      source: 'core',
+      title: 'Chat'
+    })
+
+    writeOpsLayout('local', 'default', { widthPx: 510, rail: 'hidden' })
+    $opsWidthPx.set(510)
+    $selectedStoredSessionId.set('session-9')
     $opsChatSessionId.set('session-9')
-    resizeOpsSplit(480, 1600, localScope)
-    const before = document.createElement('textarea')
-    document.body.append(before)
-    before.focus()
+    ensureOpsSplitHost()
+    act(() => {
+      $layoutTree.set(split('row', [group(['workspace'], { id: 'grp-main' }), group(['ops'], { id: 'grp-ops' })]))
+    })
 
-    enterOpsFullscreen()
-    expect($hiddenTreePanes.get().has('workspace')).toBe(true)
-    expect($hiddenTreePanes.get().has('ops')).toBe(false)
-    expect($opsFullscreen.get()).toBe(true)
-    expect($releaseMainFloor.get()).toBe(true)
-    expect($opsChatSessionId.get()).toBe('session-9')
-    expect(document.activeElement).toBe(before)
-    const fullscreen = opsPaneRegistration()?.data as { width?: string; maxWidth?: string }
+    try {
+      render(
+        <MemoryRouter>
+          <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            <I18nProvider configClient={null} initialLocale="en">
+              <LayoutTreeRoot />
+            </I18nProvider>
+          </QueryClientProvider>
+        </MemoryRouter>
+      )
 
-    expect(fullscreen.width).toBe('100%')
-    expect(fullscreen.maxWidth).toBeUndefined()
+      const anchor = await waitFor(() => {
+        const node = document.querySelector<HTMLElement>('[data-session-anchor="workspace"]')
+        expect(node?.isConnected).toBe(true)
+        return node!
+      })
+      const composer = await waitFor(() => {
+        const node = anchor.querySelector<HTMLElement>('[data-slot="composer-rich-input"]')
+        expect(node).toBeTruthy()
+        return node!
+      })
+      const viewport = anchor.querySelector<HTMLElement>('[data-slot="aui_thread-viewport"]')
 
-    exitOpsFullscreen()
-    expect($hiddenTreePanes.get().has('workspace')).toBe(false)
-    expect($opsFullscreen.get()).toBe(false)
-    expect($releaseMainFloor.get()).toBe(false)
-    expect($opsWidthPx.get()).toBe(480)
-    expect((opsPaneRegistration()?.data as { width?: string }).width).toBe('480px')
-    expect($opsChatSessionId.get()).toBe('session-9')
-    expect(document.activeElement).toBe(before)
-    before.remove()
-  })
+      composer.textContent = 'draft-survives'
+      fireEvent.input(composer)
+      composer.focus()
+      if (viewport) {
+        viewport.scrollTop = 144
+      }
+
+      expect(document.activeElement).toBe(composer)
+      expect(chatMounts).toBe(1)
+      expect(chatUnmounts).toBe(0)
+
+      act(() => {
+        enterOpsFullscreen()
+      })
+      flushFrames()
+
+      expect($hiddenTreePanes.get().has('workspace')).toBe(false)
+      expect($hiddenTreePanes.get().has('ops')).toBe(false)
+      expect($opsFullscreen.get()).toBe(true)
+      expect($releaseMainFloor.get()).toBe(true)
+      expect(anchor.isConnected).toBe(true)
+      expect(document.querySelector('[data-session-anchor="workspace"]')).toBe(anchor)
+      expect(composer.isConnected).toBe(true)
+      expect(composer.textContent).toBe('draft-survives')
+      expect(anchor.contains(composer)).toBe(true)
+      if (viewport) {
+        expect(viewport.isConnected).toBe(true)
+        expect(viewport.scrollTop).toBe(144)
+      }
+      expect(chatUnmounts).toBe(0)
+      expect(anchor.closest('[data-pane-host="workspace"]')).toBeTruthy()
+      expect((opsPaneRegistration()?.data as { width?: string; maxWidth?: string }).width).toBe('100%')
+      expect((opsPaneRegistration()?.data as { maxWidth?: string }).maxWidth).toBeUndefined()
+      const mainWrap = document.querySelector('[data-tree-group="grp-main"]')?.parentElement
+      expect(mainWrap?.style.display).toBe('none')
+
+      const event = { key: 'Escape', defaultPrevented: false, preventDefault() { this.defaultPrevented = true } }
+      act(() => {
+        expect(handleOpsEscape(event)).toBe(true)
+      })
+      flushFrames()
+
+      expect($opsFullscreen.get()).toBe(false)
+      expect($releaseMainFloor.get()).toBe(false)
+      expect($hiddenTreePanes.get().has('workspace')).toBe(false)
+      expect($opsWidthPx.get()).toBe(510)
+      expect((opsPaneRegistration()?.data as { width?: string }).width).toBe('510px')
+      expect($opsChatSessionId.get()).toBe('session-9')
+      expect(anchor.isConnected).toBe(true)
+      expect(document.querySelector('[data-session-anchor="workspace"]')).toBe(anchor)
+      expect(composer.isConnected).toBe(true)
+      expect(composer.textContent).toBe('draft-survives')
+      expect(chatUnmounts).toBe(0)
+      expect(document.activeElement).toBe(composer)
+      if (viewport) {
+        expect(viewport.scrollTop).toBe(144)
+      }
+    } finally {
+      disposeChat()
+      $selectedStoredSessionId.set(null)
+      window.requestAnimationFrame = realFrame
+    }
+  }, 60_000)
 
   it('restores on Esc only when full-screen is the top layer', () => {
     $layoutTree.set(split('row', [group(['workspace']), group(['ops'])]))

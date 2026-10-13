@@ -1,6 +1,7 @@
 /**
  * Ops split host. Pane in `$layoutTree`, width override in the scoped key,
- * full-screen via `$hiddenTreePanes` (keep-alive, never parked).
+ * full-screen hot-hides the chat on the keep-alive host. The chat is not added
+ * to `$hiddenTreePanes` — TreeGroup drops that set and would remount the surface.
  *
  * The separator is the existing zone sash (`beginSashDrag` / pane `width`),
  * not a second splitter. Esc priority 5 restores the split. Model policy P2
@@ -63,6 +64,7 @@ let escapeDispose: (() => void) | null = null
 let storesWired = false
 let scopeHydrated = false
 let hostReady: Promise<void> = Promise.resolve()
+let chatFocusRestore: HTMLElement | null = null
 
 export function opsHostReady(): Promise<void> {
   return hostReady
@@ -121,8 +123,56 @@ let fitRailIds: string[] = []
 let fitRailWidth = 0
 let fitting = false
 
-/** Chat pane id. Its body lives in a keep-alive host, not in the split. */
+/** Chat pane id. Its body is keep-alive: full-screen hot-hides it, it does not leave the tree. */
 const CHAT_PANE_ID = 'workspace'
+
+/** Panes TreeGroup would unmount if they entered `$hiddenTreePanes`. Full-screen keeps them mounted. */
+function retainedFullscreenPane(id: string): boolean {
+  if (id === CHAT_PANE_ID || id.startsWith('session-tile:')) {
+    return true
+  }
+
+  const data = registry.getArea('panes').find(pane => pane.id === id)?.data as
+    | { lifecycleKeepAlive?: boolean; placement?: string }
+    | undefined
+
+  return data?.placement === 'main' && Boolean(data.lifecycleKeepAlive)
+}
+
+function rememberChatFocus(): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  const root = document.querySelector('[data-session-anchor="workspace"]')
+  const active = document.activeElement
+
+  if (active instanceof HTMLElement && root?.contains(active)) {
+    chatFocusRestore = active
+  }
+}
+
+function restoreChatFocus(): void {
+  const target = chatFocusRestore
+
+  chatFocusRestore = null
+
+  if (!target) {
+    return
+  }
+
+  const apply = () => {
+    if (target.isConnected) {
+      target.focus()
+    }
+  }
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => requestAnimationFrame(apply))
+  } else {
+    queueMicrotask(apply)
+  }
+}
 
 /**
  * The keep-alive host (`[data-ops-root]`) is an absolute sibling of the tree.
@@ -163,8 +213,8 @@ function childIsChatOrOps(child: Element): boolean {
     return true
   }
 
-  // Workspace is not keep-alive: the chat body stays in the split. Ops is the
-  // one that moved out, so its slot is the marker and this anchor is the chat's.
+  // Prefer the slot: keep-alive bodies (Ops, and the chat) live outside the
+  // split. The anchor fallback covers an inline chat that has not opted in.
   return Boolean(child.querySelector('[data-session-anchor="workspace"]'))
 }
 
@@ -358,6 +408,8 @@ export function enterOpsFullscreen(): void {
     return
   }
 
+  rememberChatFocus()
+
   const tree = $layoutTree.get()
   const ids = tree ? allPaneIds(tree) : []
 
@@ -365,13 +417,21 @@ export function enterOpsFullscreen(): void {
   const next = new Set(hiddenSnapshot)
 
   for (const id of ids) {
-    if (id !== OPS_PANE_ID) {
+    if (id !== OPS_PANE_ID && !retainedFullscreenPane(id)) {
       next.add(id)
     }
   }
 
   next.delete(OPS_PANE_ID)
+
+  for (const id of [...next]) {
+    if (retainedFullscreenPane(id)) {
+      next.delete(id)
+    }
+  }
+
   // Flag first so the hide render collapses the main floor instead of reserving it.
+  // The chat is not in this set: TreeGroup drops hidden panes, and that remounts the surface.
   $releaseMainFloor.set(true)
   $hiddenTreePanes.set(next)
   publishFullscreenPane()
@@ -395,6 +455,7 @@ export function exitOpsFullscreen(): void {
   escapeDispose?.()
   escapeDispose = null
   fitOpsFromStorage()
+  restoreChatFocus()
 }
 
 export function toggleOpsFullscreen(): void {
