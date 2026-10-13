@@ -866,6 +866,9 @@ export const host = {
         ? { connectionId: route.connectionId, profile: route.profile, targetProfile: route.targetProfile }
         : undefined
     )
+    const { dropOpsSplitForProfile } = await import('@/app/ops/layout-store')
+
+    dropOpsSplitForProfile(route ? route.profile : name, route?.connectionId)
 
     // The profile rail paints from the shared $profiles cache; without a
     // refresh the deleted profile's badge survives and clicking it starts a

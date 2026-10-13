@@ -212,6 +212,10 @@ export const ChatRoutesSurface = memo(function ChatRoutesSurface({
       ))}
       <Route element={<Navigate replace to={NEW_CHAT_ROUTE} />} path="new" />
       <Route element={<LegacySessionRedirect />} path="sessions/:sessionId" />
+      {/* Ops is a sibling pane, not a page that replaces chat. A deep link must
+          not fall through to `*` and Navigate to `/` (that would drop the session). */}
+      <Route element={chatView} path="ops" />
+      <Route element={chatView} path="ops/*" />
       <Route element={<Navigate replace to={NEW_CHAT_ROUTE} />} path="*" />
     </Routes>
   )

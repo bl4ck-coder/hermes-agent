@@ -6,6 +6,8 @@ import { registry } from '@/contrib/registry'
 import type { Contribution } from '@/contrib/types'
 import type { InterfaceTier } from '@/store/interface-mode'
 
+import { applyOpsLocation, bindOpsRoutes, ensureOpsSplitHost } from './ops/split-host'
+
 type NavigateLike = (to: string, options?: { replace?: boolean }) => void
 
 export const SESSION_ROUTE_PREFIX = '/'
@@ -22,6 +24,14 @@ export const PROFILES_ROUTE = '/profiles'
 export const AGENTS_ROUTE = '/agents'
 export const STARMAP_ROUTE = '/starmap'
 
+/** Native Ops area. `/ops/:view/:id?`. Not a `routes` plugin contribution. */
+export const OPS_ROUTE_PREFIX = '/ops'
+
+export interface OpsRoute {
+  view: string
+  id: string | null
+}
+
 export type AppView =
   | 'session-import'
   | 'agents'
@@ -36,6 +46,7 @@ export type AppView =
   // session-title dropdown while a plugin page was showing.
   | 'extension'
   | 'messaging'
+  | 'ops'
   | 'profiles'
   | 'settings'
   | 'starmap'
@@ -197,6 +208,51 @@ export function routePathname(to: string): string {
   return cut === -1 ? to : to.slice(0, cut)
 }
 
+const OPS_VIEW_SEGMENT = /^[a-z0-9-]+$/i
+
+/** `/ops`, `/ops/:view`, `/ops/:view/:id`. Anything else is not an Ops route. */
+export function parseOpsRoute(to: string): OpsRoute | null {
+  const path = routePathname(to)
+
+  if (path !== OPS_ROUTE_PREFIX && !path.startsWith(`${OPS_ROUTE_PREFIX}/`)) {
+    return null
+  }
+
+  const rest = path.slice(OPS_ROUTE_PREFIX.length).replace(/^\//, '')
+
+  if (!rest) {
+    return { view: 'office', id: null }
+  }
+
+  const parts = rest.split('/')
+
+  if (parts.length > 2) {
+    return null
+  }
+
+  const [view, id] = parts
+
+  if (!view || !OPS_VIEW_SEGMENT.test(view)) {
+    return null
+  }
+
+  if (id !== undefined && !id) {
+    return null
+  }
+
+  return { view, id: id === undefined ? null : decodeURIComponent(id) }
+}
+
+export function isOpsRoute(to: string): boolean {
+  return parseOpsRoute(to) !== null
+}
+
+export function opsRoute(view: string, id?: string | null): string {
+  const base = `${OPS_ROUTE_PREFIX}/${encodeURIComponent(view)}`
+
+  return id ? `${base}/${encodeURIComponent(id)}` : base
+}
+
 export function isNewChatRoute(pathname: string): boolean {
   return routePathname(pathname) === NEW_CHAT_ROUTE
 }
@@ -204,7 +260,7 @@ export function isNewChatRoute(pathname: string): boolean {
 export function routeSessionId(pathname: string): string | null {
   const path = routePathname(pathname)
 
-  if (!path.startsWith(SESSION_ROUTE_PREFIX) || RESERVED_PATHS.has(path) || isContributedPath(path)) {
+  if (!path.startsWith(SESSION_ROUTE_PREFIX) || RESERVED_PATHS.has(path) || isContributedPath(path) || isOpsRoute(path)) {
     return null
   }
 
@@ -241,6 +297,10 @@ export function appViewForPath(pathname: string): AppView {
     return 'chat'
   }
 
+  if (isOpsRoute(path)) {
+    return 'ops'
+  }
+
   if (isContributedPath(path)) {
     return 'extension'
   }
@@ -254,7 +314,7 @@ export function appViewForPath(pathname: string): AppView {
 export function isWorkspacePageRoute(to: string): boolean {
   const view = appViewForPath(to)
 
-  return view !== 'chat' && !isOverlayView(view)
+  return view !== 'chat' && view !== 'ops' && !isOverlayView(view)
 }
 
 /** True while the workspace pane shows a FULL PAGE (skills/messaging/
@@ -289,6 +349,14 @@ function revealWorkspacePane(): void {
  * statusbar/titlebar `to` targets, back/forward, and cold-start restore.
  */
 export function syncWorkspaceRoute(pathname: string): void {
+  ensureOpsSplitHost()
+
+  const ops = parseOpsRoute(pathname)
+
+  if (ops) {
+    applyOpsLocation(pathname)
+  }
+
   const isPage = isWorkspacePageRoute(pathname)
 
   if (isPage !== $workspaceIsPage.get()) {
@@ -316,3 +384,5 @@ export function navigateToWorkspacePage(navigate: NavigateLike, to: string, opti
     revealWorkspacePane()
   }
 }
+
+bindOpsRoutes({ isOpsRoute, opsRoute, parseOpsRoute })
