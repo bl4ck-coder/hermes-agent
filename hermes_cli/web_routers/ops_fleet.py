@@ -1,0 +1,148 @@
+"""A1 ``GET /api/ops/fleet`` (ops-panel P1-01): read-only per-profile presence aggregate.
+
+Contract: ``apps/desktop/docs/ops-panel/read-contracts.md`` section 5.1. The decision lives
+in :mod:`hermes_cli.ops_fleet`; this router only performs the reads and stamps each
+SUCCESSFUL read with its completion time (``observed_at``). A failed read leaves that input
+missing, so a disconnect yields ``unknown``/``stale``, never a false ``idle``.
+
+Inputs this serve process can observe today: kanban ``workers/active`` rows, assigned
+``blocked`` tasks, gateway liveness per profile, and cron ``next_run_at``. Gateway run status
+and pending approvals live in the gateway process; until a reader for them is wired they are
+reported missing, which by contract forbids ``idle`` (rule 3.4) but never invents work.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import time
+from contextlib import closing
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
+
+from fastapi import APIRouter
+from starlette.concurrency import run_in_threadpool
+
+from hermes_cli.ops_fleet import Observation, profile_result
+
+_log = logging.getLogger("hermes_cli.web_server")
+router = APIRouter()
+
+# Optional extra input providers: name -> callable(profiles, board) -> {profile: Observation}.
+# A3 (approvals) and gateway-run readers register here; tests use it as a seam.
+EXTRA_INPUT_PROVIDERS: Dict[str, Callable[[List[str], Optional[str]], Dict[str, Observation]]] = {}
+
+_clock: Callable[[], float] = time.time
+
+
+def _to_epoch(value: Any) -> Optional[float]:
+    if value is None or value == "":
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def _profile_names() -> List[str]:
+    from hermes_cli.web_server_cron import _cron_profile_dicts
+    names = [str(p.get("name") or "") for p in _cron_profile_dicts()]
+    return [n for n in dict.fromkeys(names) if n]
+
+
+def _read_kanban(board: Optional[str]) -> Dict[str, Any]:
+    """One successful read of active workers + assigned blocked tasks. Raises on failure."""
+    from hermes_cli import kanban_db_connect as kbc
+    with closing(kbc.connect(board=board)) as conn:
+        workers = [dict(r) for r in conn.execute(
+            "SELECT r.id AS run_id, r.task_id, r.profile, t.assignee, r.started_at, r.last_heartbeat_at "
+            "FROM task_runs r JOIN tasks t ON t.id = r.task_id "
+            "WHERE r.ended_at IS NULL AND r.worker_pid IS NOT NULL AND t.status = 'running' "
+            "ORDER BY r.started_at ASC").fetchall()]
+        blocked = {str(r[0]): int(r[1]) for r in conn.execute(
+            "SELECT assignee, COUNT(*) FROM tasks WHERE status = 'blocked' AND assignee IS NOT NULL "
+            "AND assignee != '' GROUP BY assignee").fetchall()}
+    return {"workers": workers, "blocked": blocked, "observed_at": _clock()}
+
+
+async def _read_gateway(profile: str) -> Optional[Observation]:
+    from hermes_cli.profiles import get_profile_dir
+    from hermes_cli.web_routers.status import _resolve_gateway_status
+    try:
+        gw = await _resolve_gateway_status(get_profile_dir(profile), None)
+    except Exception:
+        _log.debug("ops fleet: gateway read failed for %s", profile, exc_info=True)
+        return None  # missing: a failed read never stamps observed_at
+    running = bool(gw.get("gateway_running"))
+    return Observation(observed_at=_clock(), event_at=_to_epoch(gw.get("gateway_updated_at")),
+                       up=running, platforms_unreachable=(not running and bool(gw.get("gateway_platforms"))))
+
+
+def _read_cron(profile: str) -> Optional[Dict[str, Any]]:
+    from hermes_cli.web_server_cron import _call_cron_for_profile
+    try:
+        jobs = _call_cron_for_profile(profile, "list_jobs", True) or []
+    except Exception:
+        _log.debug("ops fleet: cron read failed for %s", profile, exc_info=True)
+        return None
+    nexts = [t for t in (_to_epoch(j.get("next_run_at")) for j in jobs
+                         if isinstance(j, dict) and j.get("enabled", True)) if t is not None]
+    return {"observed_at": _clock(), "next_run_at": min(nexts) if nexts else None}
+
+
+async def build_fleet(board: Optional[str] = None) -> Dict[str, Any]:
+    profiles = await run_in_threadpool(_profile_names)
+    try:
+        kanban = await run_in_threadpool(_read_kanban, board)
+    except Exception:
+        _log.debug("ops fleet: kanban read failed", exc_info=True)
+        kanban = None
+    if kanban:
+        for w in kanban["workers"]:
+            for name in (w.get("profile"), w.get("assignee")):
+                if name and name not in profiles:
+                    profiles.append(str(name))
+
+    gateways = await asyncio.gather(*(_read_gateway(p) for p in profiles))
+    crons = await asyncio.gather(*(run_in_threadpool(_read_cron, p) for p in profiles))
+    extras: Dict[str, Dict[str, Observation]] = {}
+    for key, provider in EXTRA_INPUT_PROVIDERS.items():
+        try:
+            extras[key] = await run_in_threadpool(provider, list(profiles), board) or {}
+        except Exception:
+            _log.debug("ops fleet: provider %s failed", key, exc_info=True)
+
+    now = _clock()
+    out = []
+    for name, gw, cron in zip(profiles, gateways, crons):
+        inputs: Dict[str, Observation] = {}
+        runs: List[Dict[str, Any]] = []
+        if kanban:
+            mine = [w for w in kanban["workers"] if (w.get("profile") or w.get("assignee")) == name]
+            runs = [{"source": "kanban", "id": w["run_id"], "task_id": w.get("task_id"),
+                     "started_at": w.get("started_at")} for w in mine]
+            beats = [_to_epoch(w.get("last_heartbeat_at") or w.get("started_at")) for w in mine]
+            beats = [b for b in beats if b is not None]
+            inputs["kanban_workers"] = Observation(observed_at=kanban["observed_at"], reports_work=bool(mine),
+                                                   event_at=max(beats) if beats else None)
+            inputs["blocked_tasks"] = Observation(observed_at=kanban["observed_at"],
+                                                  reports_work=kanban["blocked"].get(name, 0) > 0)
+        if gw is not None:
+            inputs["gateway_up"] = gw
+        if cron is not None:
+            inputs["cron"] = Observation(observed_at=cron["observed_at"])
+        for key, per_profile in extras.items():
+            if name in per_profile:
+                inputs[key] = per_profile[name]
+                for r in per_profile[name].detail.get("active_runs", []):
+                    runs.append(r)
+        out.append(profile_result(name, inputs, now, next_run_at=cron["next_run_at"] if cron else None,
+                                  active_runs=runs))
+    return {"profiles": out, "board": board, "now": now}
+
+
+@router.get("/api/ops/fleet")
+async def get_ops_fleet(board: Optional[str] = None):
+    return await build_fleet(board or None)
