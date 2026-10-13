@@ -24,7 +24,6 @@ export const OPS_TABS_DROPDOWN_PX = 800
 export const OPS_MIN_WIDTH_PX = 280
 export const CHAT_MIN_WIDTH_PX = 320
 export const OPS_DEFAULT_WIDTH_PX = 480
-const OPS_HARD_FLOOR_PX = 160
 
 export type OpsRailPreference = 'full' | 'icons' | 'hidden'
 
@@ -84,13 +83,64 @@ export function opsScopeKey(connectionId: string | null | undefined, profile: st
 
 export function clampOpsWidth(requested: number, containerWidth: number): number {
   const container = Number.isFinite(containerWidth) && containerWidth > 0 ? containerWidth : OPS_DEFAULT_WIDTH_PX + CHAT_MIN_WIDTH_PX
-  const chatMin = Math.min(CHAT_MIN_WIDTH_PX, Math.floor(container / 2))
-  const room = Math.max(OPS_HARD_FLOOR_PX, container - chatMin)
-  const opsMin = Math.min(OPS_MIN_WIDTH_PX, room)
-  const max = Math.max(opsMin, container - chatMin)
   const width = Number.isFinite(requested) ? requested : OPS_DEFAULT_WIDTH_PX
+  const maxForChat = container - CHAT_MIN_WIDTH_PX
 
-  return Math.round(Math.min(max, Math.max(opsMin, width)))
+  if (maxForChat >= OPS_MIN_WIDTH_PX) {
+    return Math.round(Math.min(maxForChat, Math.max(OPS_MIN_WIDTH_PX, width)))
+  }
+
+  // The split container cannot hold both floors. Never overflow it: chat keeps
+  // its floor when any room remains, and the host publishes this width as the
+  // pane max so a 280px CSS floor cannot spill past the viewport.
+  if (container <= CHAT_MIN_WIDTH_PX) {
+    return Math.round(Math.max(0, Math.min(width, container)))
+  }
+
+  return Math.round(Math.max(0, Math.min(width, maxForChat)))
+}
+
+export const OPS_SPLIT_PAIR_MIN_PX = CHAT_MIN_WIDTH_PX + OPS_MIN_WIDTH_PX
+
+export interface OpsPaneBox {
+  widthPx: number
+  minWidthPx: number
+  maxWidth: string
+}
+
+/** Applied pane box for a measured split room (chat + Ops), not window.innerWidth. */
+export function resolveOpsPaneBox(storedWidth: number, room: number): OpsPaneBox {
+  if (!(room > 0)) {
+    const widthPx = Number.isFinite(storedWidth) ? Math.round(storedWidth) : OPS_DEFAULT_WIDTH_PX
+
+    return { widthPx, minWidthPx: OPS_MIN_WIDTH_PX, maxWidth: '80vw' }
+  }
+
+  const widthPx = clampOpsWidth(storedWidth, room)
+  const fits = room >= OPS_SPLIT_PAIR_MIN_PX
+
+  if (fits) {
+    return { widthPx, minWidthPx: OPS_MIN_WIDTH_PX, maxWidth: '80vw' }
+  }
+
+  return { widthPx, minWidthPx: widthPx, maxWidth: `${widthPx}px` }
+}
+
+/**
+ * At a 640px viewport the docked sidebar (~237) leaves ~403 for chat+Ops.
+ * Freeing that rail grows the room to the viewport so both floors fit.
+ * Unhide only once the grown room can dock the rail again without crushing chat.
+ */
+export function planOpsFit(input: { room: number; railWidth: number; railsDocked: boolean }): { hideRails: boolean; room: number } {
+  if (input.railsDocked && input.railWidth > 0 && input.room > 0 && input.room < OPS_SPLIT_PAIR_MIN_PX) {
+    const freed = input.room + input.railWidth
+
+    if (freed >= OPS_SPLIT_PAIR_MIN_PX) {
+      return { hideRails: true, room: freed }
+    }
+  }
+
+  return { hideRails: false, room: input.room }
 }
 
 /** Effective rail: a hidden preference wins. Under 1024 a full rail becomes icons (R53). */
@@ -198,8 +248,8 @@ export function loadOpsScope(scope: OpsScope): void {
 
 /**
  * Local-connection counterpart of `migrateTilesForProfile`. Remote keys stay.
- * Callers outside this slice (rename dialog) should call this too; the dialog
- * is not in this hop's file list, so the function is the hook.
+ * Rename and delete dialogs call this (and `dropOpsSplitForProfile`) beside
+ * the tile hooks. SPEC audit §3.
  */
 export function migrateOpsSplitForProfile(oldProfile: string, newProfile: string): void {
   const from = (oldProfile ?? '').trim()

@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { $hiddenTreePanes, $layoutTree } from '@/components/pane-shell/tree/store'
+import { $hiddenTreePanes, $layoutTree, $releaseMainFloor } from '@/components/pane-shell/tree/store'
 import { group, split } from '@/components/pane-shell/tree/model'
 import { registry } from '@/contrib/registry'
 import { pushEscapeLayer } from '@/lib/escape-layers'
@@ -25,9 +25,13 @@ import {
   OPS_GUTTER_PX,
   OPS_MIN_WIDTH_PX,
   OPS_SPLIT_STORAGE_KEY,
+  planOpsFit,
   readOpsLayout,
+  resolveOpsPaneBox,
   resizeOpsSplit,
-  type OpsScope
+  writeOpsLayout,
+  $opsRail,
+  type OpsScope,
 } from './layout-store'
 import {
   activateLiveSessionBadge,
@@ -38,7 +42,11 @@ import {
   handleOpsEscape,
   LiveSessionBadge,
   noteOpsBackgroundEvent,
+  noteOpsScope,
+  openOpsSplit,
+  watchOpsLiveSession,
   opsPaneRegistration,
+  resetOpsScopeHydrationForTests,
   toggleOpsFullscreen
 } from './split-host'
 
@@ -52,8 +60,11 @@ afterEach(() => {
   $opsLiveSession.set(null)
   $opsView.set('office')
   $opsWidthPx.set(OPS_DEFAULT_WIDTH_PX)
+  $opsRail.set('full')
   $opsScope.set(localScope)
+  resetOpsScopeHydrationForTests()
   $hiddenTreePanes.set(new Set())
+  $releaseMainFloor.set(false)
   $layoutTree.set(null)
 })
 
@@ -62,6 +73,19 @@ describe('ops split layout store', () => {
     expect(clampOpsWidth(900, 1000)).toBe(1000 - CHAT_MIN_WIDTH_PX)
     expect(clampOpsWidth(10, 1000)).toBe(OPS_MIN_WIDTH_PX)
     expect(clampOpsWidth(OPS_DEFAULT_WIDTH_PX, 1600)).toBe(OPS_DEFAULT_WIDTH_PX)
+    expect(clampOpsWidth(480, 640)).toBe(320)
+    expect(clampOpsWidth(510, 403)).toBe(83)
+    expect(clampOpsWidth(480, 640) + CHAT_MIN_WIDTH_PX).toBeLessThanOrEqual(640)
+    expect(clampOpsWidth(510, 403) + CHAT_MIN_WIDTH_PX).toBeLessThanOrEqual(403)
+  })
+
+  it('frees a docked rail at a 640 viewport so both floors fit, and does not overflow a tighter room', () => {
+    const freed = planOpsFit({ room: 403, railWidth: 237, railsDocked: true })
+
+    expect(freed).toEqual({ hideRails: true, room: 640 })
+    expect(resolveOpsPaneBox(480, freed.room)).toEqual({ widthPx: 320, minWidthPx: OPS_MIN_WIDTH_PX, maxWidth: '80vw' })
+    expect(resolveOpsPaneBox(480, 403)).toEqual({ widthPx: 83, minWidthPx: 83, maxWidth: '83px' })
+    expect(resolveOpsPaneBox(510, 0).widthPx).toBe(510)
   })
 
   it('persists width per connection and profile and reloads it', () => {
@@ -145,13 +169,20 @@ describe('ops split host', () => {
     expect($hiddenTreePanes.get().has('workspace')).toBe(true)
     expect($hiddenTreePanes.get().has('ops')).toBe(false)
     expect($opsFullscreen.get()).toBe(true)
+    expect($releaseMainFloor.get()).toBe(true)
     expect($opsChatSessionId.get()).toBe('session-9')
     expect(document.activeElement).toBe(before)
+    const fullscreen = opsPaneRegistration()?.data as { width?: string; maxWidth?: string }
+
+    expect(fullscreen.width).toBe('100%')
+    expect(fullscreen.maxWidth).toBeUndefined()
 
     exitOpsFullscreen()
     expect($hiddenTreePanes.get().has('workspace')).toBe(false)
     expect($opsFullscreen.get()).toBe(false)
+    expect($releaseMainFloor.get()).toBe(false)
     expect($opsWidthPx.get()).toBe(480)
+    expect((opsPaneRegistration()?.data as { width?: string }).width).toBe('480px')
     expect($opsChatSessionId.get()).toBe('session-9')
     expect(document.activeElement).toBe(before)
     before.remove()
@@ -171,6 +202,40 @@ describe('ops split host', () => {
     expect(handleOpsEscape(event)).toBe(true)
     expect(event.defaultPrevented).toBe(true)
     expect($opsFullscreen.get()).toBe(false)
+  })
+
+  it('shows the badge when the real session dot goes idle to working, without seeding the live atom', async () => {
+    const { createClientSessionState } = await import('@/lib/chat-runtime')
+    const session = await import('@/store/session')
+    const states = await import('@/store/session-states')
+    const dots = await import('@/store/session-dot-state')
+
+    const stop = watchOpsLiveSession(session, dots)
+    $opsFullscreen.set(true)
+    session.$sessions.set([{ id: 'judge-synthetic', title: 'Badge probe', ended_at: null, input_tokens: 0, is_active: true } as never])
+    session.$selectedStoredSessionId.set('judge-synthetic')
+    states.$sessionStates.set({
+      rt: { ...createClientSessionState('judge-synthetic'), busy: false }
+    })
+
+    const { rerender } = render(<LiveSessionBadge />)
+
+    expect(screen.queryByRole('button', { name: 'Badge probe' })).toBeNull()
+    expect($opsLiveSession.get()?.working).not.toBe(true)
+
+    states.$sessionStates.set({
+      rt: { ...createClientSessionState('judge-synthetic'), busy: true }
+    })
+
+    await waitFor(() => expect($opsLiveSession.get()?.working).toBe(true))
+    rerender(<LiveSessionBadge />)
+    expect(screen.getByRole('button', { name: 'Badge probe' })).toBeTruthy()
+    expect(session.$busy.get()).toBe(false)
+    expect(session.$selectedStoredSessionId.get()).toBe('judge-synthetic')
+    stop()
+    session.$sessions.set([])
+    session.$selectedStoredSessionId.set(null)
+    states.$sessionStates.set({})
   })
 
   it('shows the live-session badge only in full screen and focuses chat without a new session', () => {
@@ -243,6 +308,32 @@ describe('ops split host', () => {
     expect(root?.textContent).not.toMatch(/182k|3 working|mock/)
     expect(root?.querySelector('textarea, [data-composer], [data-model-chip]')).toBeNull()
     expect(root?.querySelector('[data-titlebar], [data-statusbar]')).toBeNull()
+  })
+
+  it('applies a non-default stored width and rail on boot even when the scope matches the default atom', () => {
+    writeOpsLayout('local', 'default', { widthPx: 510, rail: 'hidden' })
+    $opsWidthPx.set(OPS_DEFAULT_WIDTH_PX)
+    $opsRail.set('full')
+    $opsScope.set(localScope)
+    resetOpsScopeHydrationForTests()
+
+    noteOpsScope(localScope)
+
+    expect($opsWidthPx.get()).toBe(510)
+    expect($opsRail.get()).toBe('hidden')
+    expect((opsPaneRegistration()?.data as { width?: string }).width).toBe('510px')
+    expect(readOpsLayout('local', 'default')).toEqual({ widthPx: 510, rail: 'hidden' })
+  })
+
+  it('open applies stored layout instead of the in-memory default', () => {
+    writeOpsLayout('local', 'default', { widthPx: 510, rail: 'hidden' })
+    $opsWidthPx.set(OPS_DEFAULT_WIDTH_PX)
+    $opsRail.set('full')
+
+    openOpsSplit()
+
+    expect($opsWidthPx.get()).toBe(510)
+    expect($opsRail.get()).toBe('hidden')
   })
 
   it('focusExistingChat does not clear the session id', () => {

@@ -163,6 +163,8 @@ export interface TrackContext {
   paneFor: (id: string) => Contribution | undefined
   paneGone: (id: string) => boolean
   overrides: Record<string, { widthOverride?: number; heightOverride?: number }>
+  /** Ops full-screen: collapse a hot-hidden main zone instead of reserving its floor. */
+  releaseMainFloor?: boolean
 }
 
 /** A group's panes that are actually on screen (not hidden / narrow-collapsed
@@ -315,6 +317,13 @@ export function subtreeGone(node: LayoutNode, ctx: TrackContext): boolean {
 
   if (ids.length === 0 || !ids.every(ctx.paneGone)) {
     return false
+  }
+
+  // The floor is the default so a chrome toggle cannot erase the center.
+  // Full-screen opts in: every pane is hot-hidden on purpose, and the sibling
+  // (Ops) must occupy the workspace. Other consumers leave the flag unset.
+  if (ctx.releaseMainFloor) {
+    return true
   }
 
   return !ids.some(id => paneChrome(ctx.paneFor(id)).placement === 'main')

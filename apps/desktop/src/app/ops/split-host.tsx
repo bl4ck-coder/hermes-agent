@@ -15,6 +15,7 @@ import { allPaneIds, findGroupOfPane, findParentSplit } from '@/components/pane-
 import {
   $hiddenTreePanes,
   $layoutTree,
+  $releaseMainFloor,
   persistTree,
   revealTreePane,
   setTreePaneHidden,
@@ -35,14 +36,16 @@ import {
   $opsView,
   $opsViewId,
   $opsWidthPx,
-  loadOpsScope,
   narrowStrategy,
   OPS_FULLSCREEN_ESCAPE_PRIORITY,
   OPS_MIN_WIDTH_PX,
   OPS_PANE_ID,
+  CHAT_MIN_WIDTH_PX,
   type OpsScope,
+  planOpsFit,
   readOpsLayout,
   resizeOpsSplit,
+  resolveOpsPaneBox,
   setOpsRail
 } from './layout-store'
 
@@ -58,6 +61,12 @@ let hiddenSnapshot: ReadonlySet<string> | null = null
 let baselineWeights: { splitId: string; weights: number[] } | null = null
 let escapeDispose: (() => void) | null = null
 let storesWired = false
+let scopeHydrated = false
+let hostReady: Promise<void> = Promise.resolve()
+
+export function opsHostReady(): Promise<void> {
+  return hostReady
+}
 
 export function bindOpsRoutes(fns: OpsRouteBinding): void {
   routeFns = fns
@@ -67,7 +76,10 @@ function renderOpsPane(): ReactNode {
   return <OpsPane />
 }
 
-function publishPane(widthPx: number): void {
+function publishPane(widthPx: number, box?: { minWidthPx?: number; maxWidth?: string | null }): void {
+  const minWidthPx = box?.minWidthPx ?? OPS_MIN_WIDTH_PX
+  const maxWidth = box && 'maxWidth' in box ? box.maxWidth : '80vw'
+
   registry.register({
     id: OPS_PANE_ID,
     area: 'panes',
@@ -80,10 +92,172 @@ function publishPane(widthPx: number): void {
       lifecycleKeepAlive: true,
       hideOnly: true,
       width: `${Math.round(widthPx)}px`,
-      minWidth: `${OPS_MIN_WIDTH_PX}px`,
-      maxWidth: '80vw'
+      minWidth: `${Math.round(minWidthPx)}px`,
+      ...(maxWidth ? { maxWidth } : {})
     }
   })
+}
+
+/** Full-bleed: no fixed px and no maxWidth, or the track stays ~480 beside a live main floor. */
+function publishFullscreenPane(): void {
+  registry.register({
+    id: OPS_PANE_ID,
+    area: 'panes',
+    source: 'core',
+    title: 'Ops',
+    render: renderOpsPane,
+    data: {
+      placement: 'right',
+      dock: { pane: 'workspace', pos: 'right' },
+      lifecycleKeepAlive: true,
+      hideOnly: true,
+      width: '100%',
+      minWidth: '0px'
+    }
+  })
+}
+
+let fitRailIds: string[] = []
+let fitRailWidth = 0
+let fitting = false
+
+function measureSplitRoom(): number {
+  if (typeof document === 'undefined') {
+    return 0
+  }
+
+  const marker = document.querySelector('[data-ops-root]')
+  const split = marker?.closest('[data-tree-split]')
+
+  if (!(split instanceof HTMLElement) || split.clientWidth <= 0) {
+    return 0
+  }
+
+  let reserved = 0
+
+  for (const child of Array.from(split.children)) {
+    if (!(child instanceof HTMLElement) || child.style.display === 'none') {
+      continue
+    }
+
+    if (child.querySelector('[data-ops-root]')) {
+      continue
+    }
+
+    if (child.querySelector('[data-session-anchor="workspace"]')) {
+      continue
+    }
+
+    reserved += child.getBoundingClientRect().width
+  }
+
+  return Math.max(0, Math.round(split.clientWidth - reserved))
+}
+
+function leftRailIds(): string[] {
+  const tree = $layoutTree.get()
+
+  if (!tree) {
+    return []
+  }
+
+  const panes = registry.getArea('panes')
+
+  return allPaneIds(tree).filter(id => {
+    if (id === OPS_PANE_ID) {
+      return false
+    }
+
+    const data = panes.find(pane => pane.id === id)?.data as { placement?: string; collapsible?: boolean } | undefined
+
+    return data?.placement === 'left' && data.collapsible !== false
+  })
+}
+
+function zoneWidth(paneId: string): number {
+  const tree = $layoutTree.get()
+  const group = tree ? findGroupOfPane(tree, paneId) : null
+
+  if (!group) {
+    return 0
+  }
+
+  const node = document.querySelector(`[data-tree-group="${group.id}"]`)
+  const width = node?.parentElement?.getBoundingClientRect().width ?? node?.getBoundingClientRect().width ?? 0
+
+  return Number.isFinite(width) ? width : 0
+}
+
+function releaseFitRails(): void {
+  if (fitRailIds.length === 0) {
+    return
+  }
+
+  const next = new Set($hiddenTreePanes.get())
+
+  for (const id of fitRailIds) {
+    next.delete(id)
+  }
+
+  fitRailIds = []
+  fitRailWidth = 0
+  $hiddenTreePanes.set(next)
+}
+
+function hideFitRails(ids: string[]): void {
+  fitRailWidth = ids.reduce((sum, id) => sum + zoneWidth(id), 0)
+  fitRailIds = ids
+  const next = new Set($hiddenTreePanes.get())
+
+  for (const id of ids) {
+    next.add(id)
+  }
+
+  $hiddenTreePanes.set(next)
+}
+
+/** Apply the stored preference to the measured split room. Does not write storage. */
+export function fitOpsFromStorage(): number {
+  if (fitting || $opsFullscreen.get()) {
+    return $opsWidthPx.get()
+  }
+
+  fitting = true
+
+  try {
+    const scope = $opsScope.get()
+    const stored = readOpsLayout(scope.connectionId, scope.profile)
+    let room = measureSplitRoom()
+    const hidden = $hiddenTreePanes.get()
+    const docked = leftRailIds().filter(id => !hidden.has(id) && !fitRailIds.includes(id))
+    const railWidth = docked.reduce((sum, id) => sum + zoneWidth(id), 0)
+    const plan = planOpsFit({ room, railWidth, railsDocked: docked.length > 0 })
+
+    if (plan.hideRails) {
+      hideFitRails(docked)
+      room = plan.room
+    } else if (fitRailIds.length > 0 && room >= CHAT_MIN_WIDTH_PX + OPS_MIN_WIDTH_PX + fitRailWidth) {
+      releaseFitRails()
+      room = measureSplitRoom()
+    }
+
+    $opsRail.set(stored.rail)
+
+    if ($opsFullscreen.get()) {
+      publishFullscreenPane()
+
+      return $opsWidthPx.get()
+    }
+
+    const box = resolveOpsPaneBox(stored.widthPx, room)
+
+    $opsWidthPx.set(box.widthPx)
+    publishPane(box.widthPx, { minWidthPx: box.minWidthPx, maxWidth: box.maxWidth })
+
+    return box.widthPx
+  } finally {
+    fitting = false
+  }
 }
 
 function rememberBaseline(): void {
@@ -136,14 +310,17 @@ export function enterOpsFullscreen(): void {
   }
 
   next.delete(OPS_PANE_ID)
+  // Flag first so the hide render collapses the main floor instead of reserving it.
+  $releaseMainFloor.set(true)
   $hiddenTreePanes.set(next)
+  publishFullscreenPane()
   $opsFullscreen.set(true)
   escapeDispose?.()
   escapeDispose = pushEscapeLayer(OPS_FULLSCREEN_ESCAPE_PRIORITY)
 }
 
 export function exitOpsFullscreen(): void {
-  if (!$opsFullscreen.get() && !hiddenSnapshot) {
+  if (!$opsFullscreen.get() && !hiddenSnapshot && !$releaseMainFloor.get()) {
     return
   }
 
@@ -152,9 +329,11 @@ export function exitOpsFullscreen(): void {
   }
 
   hiddenSnapshot = null
+  $releaseMainFloor.set(false)
   $opsFullscreen.set(false)
   escapeDispose?.()
   escapeDispose = null
+  fitOpsFromStorage()
 }
 
 export function toggleOpsFullscreen(): void {
@@ -186,10 +365,10 @@ export function activateLiveSessionBadge(): void {
 }
 
 export function openOpsSplit(): void {
+  hydrateOpsSplit($opsScope.get())
   $opsOpen.set(true)
   setTreePaneHidden(OPS_PANE_ID, false)
   revealTreePane(OPS_PANE_ID)
-  publishPane($opsWidthPx.get())
   rememberBaseline()
 }
 
@@ -199,6 +378,7 @@ export function closeOpsSplit(): void {
   }
 
   $opsOpen.set(false)
+  releaseFitRails()
   setTreePaneHidden(OPS_PANE_ID, true)
 }
 
@@ -262,6 +442,69 @@ function onOpsKey(event: KeyboardEvent): void {
   }
 }
 
+type LiveSessionSource = {
+  $busy: { get: () => boolean; subscribe: (fn: () => void) => () => void }
+  $selectedStoredSessionId: { get: () => string | null; subscribe: (fn: () => void) => () => void }
+  $activeSessionId: { get: () => string | null; subscribe: (fn: () => void) => () => void }
+  $sessions: { get: () => { id: string; title?: string | null }[]; subscribe: (fn: () => void) => () => void }
+}
+
+type DotSource = {
+  $sessionDotStateById: { get: () => Record<string, string | undefined>; subscribe: (fn: () => void) => () => void }
+}
+
+/** Subscribe the badge to the real dot / active-id sources. Sync, so a later
+ *  idle→working edge cannot be overwritten by an older async read. */
+export function watchOpsLiveSession(sessionMod: LiveSessionSource, dots: DotSource): () => void {
+  let liveToken = 0
+
+  const pullLive = () => {
+    const token = ++liveToken
+    const selected = sessionMod.$selectedStoredSessionId.get()
+    const active = sessionMod.$activeSessionId.get()
+    const id = selected || active
+
+    if (!id) {
+      if (token === liveToken) {
+        $opsLiveSession.set(null)
+      }
+
+      return
+    }
+
+    const row = sessionMod.$sessions.get().find(session => session.id === id)
+    const title = row?.title?.trim() || id
+    const state = dots.$sessionDotStateById.get()[id]
+    const working =
+      state === 'working' ||
+      state === 'stalled' ||
+      state === 'background' ||
+      (sessionMod.$busy.get() && (active === id || selected === id))
+
+    if (token !== liveToken) {
+      return
+    }
+
+    $opsLiveSession.set({ id, title, working })
+  }
+
+  const stops = [
+    sessionMod.$busy.subscribe(pullLive),
+    sessionMod.$selectedStoredSessionId.subscribe(pullLive),
+    sessionMod.$activeSessionId.subscribe(pullLive),
+    sessionMod.$sessions.subscribe(pullLive),
+    dots.$sessionDotStateById.subscribe(pullLive)
+  ]
+
+  pullLive()
+
+  return () => {
+    for (const stop of stops) {
+      stop()
+    }
+  }
+}
+
 async function wireStores(): Promise<void> {
   if (storesWired) {
     return
@@ -287,14 +530,8 @@ async function wireStores(): Promise<void> {
       remote,
       label: connection?.remoteHost || connectionId
     }
-    const previous = $opsScope.get()
 
-    if (previous.connectionId === next.connectionId && previous.profile === next.profile && previous.remote === next.remote) {
-      return
-    }
-
-    loadOpsScope(next)
-    publishPane($opsWidthPx.get())
+    noteOpsScope(next)
   }
 
   profileMod.$activeProfile.subscribe(pullScope)
@@ -307,47 +544,58 @@ async function wireStores(): Promise<void> {
   })
   $opsChatSessionId.set(sessionMod.$selectedStoredSessionId.get())
 
-  const pullLive = async () => {
-    const dots = await import('@/store/session-dot-state')
-    const id = sessionMod.$selectedStoredSessionId.get() || sessionMod.$activeSessionId.get()
+  const dots = await import('@/store/session-dot-state')
 
-    if (!id) {
-      $opsLiveSession.set(null)
-
-      return
-    }
-
-    const row = sessionMod.$sessions.get().find(session => session.id === id)
-    const title = row?.title?.trim() || id
-    const state = dots.$sessionDotStateById.get()[id]
-    const active = sessionMod.$activeSessionId.get()
-    const working =
-      state === 'working' ||
-      state === 'stalled' ||
-      (sessionMod.$busy.get() && (active === id || sessionMod.$selectedStoredSessionId.get() === id))
-
-    $opsLiveSession.set({ id, title, working })
-  }
-
-  sessionMod.$busy.subscribe(() => void pullLive())
-  sessionMod.$selectedStoredSessionId.subscribe(() => void pullLive())
-  sessionMod.$sessions.subscribe(() => void pullLive())
-  void pullLive()
+  watchOpsLiveSession(sessionMod, dots)
 
   panesMod.$paneStates.subscribe(states => {
     const override = states[OPS_PANE_ID]?.widthOverride
 
-    if (typeof override !== 'number') {
+    if ($opsFullscreen.get() || typeof override !== 'number') {
       return
     }
 
-    const container = typeof window === 'undefined' ? override + 640 : window.innerWidth
+    const room = measureSplitRoom()
+    const container = room > 0 ? room : override + CHAT_MIN_WIDTH_PX
     const width = resizeOpsSplit(override, container)
+    const box = resolveOpsPaneBox(width, container)
 
     panesMod.setPaneWidthOverride(OPS_PANE_ID, undefined)
-    publishPane(width)
+    publishPane(box.widthPx, { minWidthPx: box.minWidthPx, maxWidth: box.maxWidth })
     queueMicrotask(() => restoreBaselineWeights())
   })
+}
+
+export function hydrateOpsSplit(scope: OpsScope = $opsScope.get()): void {
+  $opsScope.set(scope)
+  scopeHydrated = true
+
+  if ($opsFullscreen.get()) {
+    $opsRail.set(readOpsLayout(scope.connectionId, scope.profile).rail)
+    publishFullscreenPane()
+
+    return
+  }
+
+  fitOpsFromStorage()
+}
+
+/** Boot and scope changes. The first call always applies storage, even when the
+ *  scope identity already matches the default atom (local/default 510/hidden). */
+export function noteOpsScope(next: OpsScope): void {
+  const previous = $opsScope.get()
+  const same =
+    previous.connectionId === next.connectionId && previous.profile === next.profile && previous.remote === next.remote
+
+  if (same && scopeHydrated) {
+    return
+  }
+
+  hydrateOpsSplit(next)
+}
+
+export function resetOpsScopeHydrationForTests(): void {
+  scopeHydrated = false
 }
 
 export function ensureOpsSplitHost(): void {
@@ -356,7 +604,7 @@ export function ensureOpsSplitHost(): void {
   }
 
   installed = true
-  publishPane(readOpsLayout($opsScope.get().connectionId, $opsScope.get().profile).widthPx)
+  hydrateOpsSplit($opsScope.get())
 
   registry.register({
     id: 'ops-open',
@@ -391,7 +639,31 @@ export function ensureOpsSplitHost(): void {
   }
 
   window.addEventListener('keydown', onOpsKey)
-  void wireStores().catch(() => {
+  window.addEventListener('resize', () => {
+    if (!$opsFullscreen.get()) {
+      fitOpsFromStorage()
+    }
+  })
+
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(() => {
+      if (!$opsFullscreen.get()) {
+        fitOpsFromStorage()
+      }
+    })
+    const attach = () => {
+      const split = document.querySelector('[data-ops-root]')?.closest('[data-tree-split]')
+
+      if (split instanceof HTMLElement) {
+        observer.observe(split)
+      }
+    }
+
+    $layoutTree.subscribe(attach)
+    attach()
+  }
+
+  hostReady = wireStores().catch(() => {
     storesWired = false
   })
 }

@@ -6,6 +6,8 @@ import { retireLocalProfileGateways } from '@/store/gateway'
 import { $activeGatewayProfile, normalizeProfileKey, selectProfile, setActiveProfile } from '@/store/profile'
 import { dropTilesForProfile } from '@/store/session-states'
 
+import { dropOpsSplitForProfile } from '@/app/ops/layout-store'
+
 // Thin wrapper over ConfirmDialog: owns the deleteProfile call, inherits
 // Enter-to-confirm + busy/done/error from the shared dialog. The single choke
 // point for every delete entry point (rail + Profiles view).
@@ -75,6 +77,7 @@ export function DeleteProfileDialog({
         // profile's backend, whose ensure_hermes_home() re-creates the
         // directory the delete just removed (hermes-agent#94235).
         dropTilesForProfile(profile.name)
+        dropOpsSplitForProfile(profile.name)
         await onDeleted?.()
 
         if (wasActive) {
