@@ -28,6 +28,8 @@ export interface DockProps {
   logEmptyLabel?: string
   events?: ReactNode
   problems: DockProblem[]
+  /** Host's authoritative observation; null means unavailable. */
+  problemsCount?: number | null
 }
 
 const SLOT_LABEL: Record<DockSlot, string> = {
@@ -44,23 +46,19 @@ export function Dock({
   onClose,
   onSlotChange,
   problems,
+  problemsCount,
   slot
 }: DockProps) {
   const narrow = useMediaQuery(TAB_STRIP_NARROW)
-  const count = problems.length
+  const count = problemsCount === undefined ? problems.length : problemsCount
   const tabs = (Object.keys(SLOT_LABEL) as DockSlot[]).map(id => ({
     id,
     label: SLOT_LABEL[id],
-    meta: id === 'problems' ? count : undefined
+    meta: id === 'problems' ? (count ?? 'unavailable') : undefined
   }))
 
   return (
-    <section
-      aria-label="Ops dock"
-      className="ops-dock"
-      data-terminal="cut"
-      style={opsDensityStyle()}
-    >
+    <section aria-label="Ops dock" className="ops-dock" data-terminal="cut" style={opsDensityStyle()}>
       <header style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
         {narrow ? (
           <ResponsiveTabs onChange={id => onSlotChange(id as DockSlot)} tabs={tabs} value={slot} />
@@ -70,7 +68,9 @@ export function Dock({
               <TextTab active={tab.id === slot} key={tab.id} onClick={() => onSlotChange(tab.id)} role="tab">
                 {tab.label}
                 {tab.id === 'problems' && (
-                  <TextTabMeta data-problems-count={String(count)}>{count}</TextTabMeta>
+                  <TextTabMeta data-problems-count={count === null ? 'unavailable' : String(count)}>
+                    {count ?? 'unavailable'}
+                  </TextTabMeta>
                 )}
               </TextTab>
             ))}
@@ -84,12 +84,12 @@ export function Dock({
         )}
       </header>
       {slot === 'log' && <LogTail emptyLabel={logEmptyLabel} lines={logLines} />}
-      {slot === 'events' && (
-        <div data-slot="events">{events ?? <p data-empty="true">No events</p>}</div>
-      )}
+      {slot === 'events' && <div data-slot="events">{events ?? <p data-empty="true">No events</p>}</div>}
       {slot === 'problems' && (
         <ul data-slot="problems">
-          {problems.length === 0 ? (
+          {count === null ? (
+            <li data-unavailable="true">Problems unavailable</li>
+          ) : problems.length === 0 ? (
             <li data-empty="true">No problems</li>
           ) : (
             problems.map(problem => <li key={problem.id}>{problem.summary}</li>)

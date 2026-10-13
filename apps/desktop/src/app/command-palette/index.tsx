@@ -49,6 +49,7 @@ import {
   Pin,
   Plus,
   RefreshCw,
+  Search,
   Settings,
   Settings2,
   SlidersHorizontal,
@@ -112,6 +113,7 @@ import { SECTIONS } from '../settings/constants'
 import { type SettingsSearchEntry, settingsSearchTargetQuery } from '../settings/settings-search'
 import { useSettingsSearchCatalog } from '../settings/use-settings-search'
 
+import { OpsPalettePage, finishOpsPaletteCommand } from '@/app/ops/palette'
 import { usePaletteContributions } from './contrib'
 import { HighlightWatcher } from './highlight-watcher'
 import { MarketplaceThemePage } from './marketplace-theme-page'
@@ -525,6 +527,14 @@ function themeSupportsMode(name: string, target: 'light' | 'dark'): boolean {
  */
 export function CommandPalette() {
   const open = useStore($commandPaletteOpen)
+  // Capture before the exiting body can consume the next deep-link request.
+  // Reopening/remounting must retain the Ops page and its search seed.
+  const launch = useRef({ open: false, page: null as string | null, seed: null as string | null })
+  if (open && !launch.current.open) {
+    launch.current = { open, page: $commandPalettePage.get(), seed: $commandPaletteSeed.get() }
+  } else if (!open) {
+    launch.current.open = false
+  }
   const [mounted, setMounted] = useState(open)
   const [openCount, setOpenCount] = useState(0)
 
@@ -554,12 +564,27 @@ export function CommandPalette() {
 
   return (
     <DialogPrimitive.Root onOpenChange={setCommandPaletteOpen} open={open}>
-      {mounted && <CommandPaletteBody key={openCount} onExited={retire} />}
+      {mounted && (
+        <CommandPaletteBody
+          initialPage={launch.current.page}
+          initialSearch={launch.current.seed}
+          key={openCount}
+          onExited={retire}
+        />
+      )}
     </DialogPrimitive.Root>
   )
 }
 
-function CommandPaletteBody({ onExited }: { onExited: () => void }) {
+function CommandPaletteBody({
+  initialPage,
+  initialSearch,
+  onExited
+}: {
+  initialPage: string | null
+  initialSearch: string | null
+  onExited: () => void
+}) {
   const { t } = useI18n()
   const pendingPage = useStore($commandPalettePage)
   const pendingSeed = useStore($commandPaletteSeed)
@@ -582,8 +607,8 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
     [systemDark]
   )
 
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState<string | null>(null)
+  const [search, setSearch] = useState(initialSearch ?? '')
+  const [page, setPage] = useState<string | null>(initialPage)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // The Update row names the same install the statusbar names — same target
@@ -849,6 +874,18 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
     // worktree named bb/yolo-* as a whole word. So this order IS the priority:
     // where you're going, then what you can do, then what you can configure.
     return [
+      {
+        heading: 'Ops',
+        items: [
+          {
+            icon: Search,
+            id: 'ops-search',
+            keywords: ['ops', 'search', 'office', 'canvas', 'board', 'palette'],
+            label: 'Search Ops',
+            to: 'ops'
+          }
+        ]
+      },
       {
         heading: cc.goTo,
         items: [
@@ -1502,6 +1539,11 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
         title: t.commandCenter.nav.settings.title,
         placeholder: t.settings.search.placeholder,
         groups: settingsPageGroups
+      },
+      ops: {
+        title: 'Ops',
+        placeholder: 'Search Ops',
+        groups: []
       }
     }),
     [
@@ -1609,6 +1651,7 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
       <DialogPrimitive.Overlay className="fixed inset-0 z-(--z-over-modal)" />
       <DialogPrimitive.Content
         aria-describedby={undefined}
+        onCloseAutoFocus={finishOpsPaletteCommand}
         className={cn(
           HUD_POSITION,
           HUD_SURFACE,
@@ -1668,7 +1711,9 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
           />
           <CommandList className="dt-portal-scrollbar max-h-[min(20rem,56vh)]">
             {/* Server-driven pages render their own list; the rest show groups. */}
-            {page === 'pets' ? (
+            {page === 'ops' ? (
+              <OpsPalettePage onSearch={setSearch} search={search} />
+            ) : page === 'pets' ? (
               <PetPalettePage
                 onGenerate={() => {
                   closeCommandPalette()

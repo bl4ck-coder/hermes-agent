@@ -16,7 +16,7 @@ import {
 
 import { OpsShell, publishBackgroundDot } from './index'
 import { DocumentTabs } from './document-tabs'
-import { $opsInspectorOpen, $opsRail, $opsScope, $opsView, $opsViewId, $opsWidthPx } from './layout-store'
+import { $opsOpen, $opsInspectorOpen, $opsRail, $opsScope, $opsView, $opsViewId, $opsWidthPx } from './layout-store'
 import { OpsPane } from './split-host'
 import {
   type FleetFeed,
@@ -453,6 +453,7 @@ describe('ops host scope r3', () => {
     $opsView.set('office')
     $opsViewId.set(null)
     $opsWidthPx.set(1440)
+    $opsOpen.set(true)
     $opsRail.set('full')
     $opsInspectorOpen.set(true)
   })
@@ -517,7 +518,7 @@ describe('ops host scope r3', () => {
     const registry = await import('@/store/connection-registry-state')
     const selectConnection = vi.spyOn(connections, 'selectConnection').mockResolvedValue(undefined)
     const selectProfile = vi.spyOn(profiles, 'selectProfile').mockImplementation(() => undefined)
-    const openPalette = vi.spyOn(palette, 'openCommandPalette').mockImplementation(() => undefined)
+    const openPalette = vi.spyOn(palette, 'openCommandPalettePage').mockImplementation(() => undefined)
 
     registry.$connectionsRegistry.set({
       version: 1,
@@ -546,7 +547,7 @@ describe('ops host scope r3', () => {
     await waitFor(() => {
       expect(selectConnection).toHaveBeenCalledWith('homelab')
       expect(selectProfile).toHaveBeenCalledWith('judge')
-      expect(openPalette).toHaveBeenCalled()
+      expect(openPalette).toHaveBeenCalledWith('ops')
     })
 
     fireEvent.click(view.getByRole('button', { name: 'Runs' }))
@@ -672,7 +673,7 @@ describe('ops host scope r3', () => {
     const view = render(<OpsPane />)
     const root = view.container.querySelector('[data-ops-root]') as HTMLElement
 
-    fireEvent.keyDown(root, { key: 'ArrowLeft', altKey: true })
+    fireEvent.keyDown(root, { key: 'ArrowLeft', code: 'ArrowLeft', altKey: true })
 
     const scope = loadScope('local', 'mirror')
 

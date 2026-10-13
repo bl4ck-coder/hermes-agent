@@ -241,12 +241,14 @@ export function FindBar() {
         return
       }
 
+      if (action === 'close') {
+        return
+      }
+
       event.preventDefault()
       event.stopPropagation()
 
-      if (action === 'close') {
-        closeFindBar()
-      } else if (action === 'next') {
+      if (action === 'next') {
         findNext()
       } else {
         findPrevious()

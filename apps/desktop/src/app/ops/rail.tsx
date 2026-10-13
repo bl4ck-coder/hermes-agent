@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 
 import { PresenceGlyph } from './primitives/presence-glyph'
 import { Sigil } from './primitives/sigil'
+import { useOpsEscapeLayer } from './keymap'
 import { resolvePresence, type PresenceState } from './motion'
 
 import {
@@ -160,7 +161,7 @@ export function FleetList({
           const painted = presencePaint(row.member.presence ?? 'unknown')
 
           return (
-            <div data-ops-fleet-row={row.member.id} data-presence={painted.state} key={row.id} style={{ height: FLEET_ROW_PX }}>
+            <div data-ops-fleet-row={row.member.id} data-presence={painted.state} key={row.id} style={{ height: FLEET_ROW_PX }} tabIndex={-1}>
               <PresenceGlyph
                 copyColor={painted.copyColor}
                 glyphColor={painted.glyphColor}
@@ -206,6 +207,8 @@ export function Rail({
   const [filterOpen, setFilterOpen] = useState(false)
   const switcherRef = useRef<HTMLButtonElement>(null)
   const filterRef = useRef<HTMLButtonElement>(null)
+  useOpsEscapeLayer(filterOpen && rail === 'icons', () => { setFilterOpen(false); filterRef.current?.focus() })
+  useOpsEscapeLayer(switcherOpen && rail === 'icons', () => { setSwitcherOpen(false); switcherRef.current?.focus() })
   const icons = rail === 'icons'
   const primary = LENS_CATALOG.filter(lens => !lens.more)
   const more = LENS_CATALOG.filter(lens => lens.more)
@@ -401,14 +404,14 @@ export function Rail({
             <button aria-label="Clear filter" data-ops-filter-clear="" onClick={() => onFilter('')} type="button">
               ×
             </button>
-            <button aria-keyshortcuts="K" data-ops-palette="" onClick={onOpenPalette} type="button">
+            <button aria-keyshortcuts="Control+K" data-ops-palette="" onClick={onOpenPalette} type="button">
               Palette
-              <kbd>K</kbd>
+              <kbd>Ctrl+K</kbd>
             </button>
           </>
         )}
         {icons ? (
-          <button aria-keyshortcuts="K" aria-label="Palette" data-ops-palette="" onClick={onOpenPalette} style={fit} type="button">
+          <button aria-keyshortcuts="Control+K" aria-label="Palette" data-ops-palette="" onClick={onOpenPalette} style={fit} type="button">
             K
           </button>
         ) : null}
