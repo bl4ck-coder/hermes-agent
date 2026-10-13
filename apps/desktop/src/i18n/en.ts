@@ -8,6 +8,7 @@ import { enCatalogInstall } from './en_catalog_install'
 import { enLocalModels } from './en_local_models'
 import { enModelMenu } from './en_model_menu'
 import { enNotices } from './en_notices'
+import { enOpsStates } from './en_ops_states'
 import { enSharedMetrics } from './en_shared_metrics'
 import { enUninstallSection } from './en_uninstall_section'
 import type { Translations } from './types'
@@ -508,6 +509,8 @@ export const en: Translations = {
   },
 
   ...enNotices,
+
+  ...enOpsStates,
 
   ...enBilling,
 
