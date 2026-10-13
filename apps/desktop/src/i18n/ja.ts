@@ -1,3 +1,4 @@
+import { opsLocaleEntry } from '@/app/ops/locales'
 import { defineFieldCopy } from '@/app/settings/field-copy'
 
 import { defineLocale } from './define-locale'
@@ -10,6 +11,7 @@ import { jaPluginSettings } from './ja_plugins'
 import { jaSharedMetrics } from './ja_shared_metrics'
 
 export const ja = defineLocale({
+  ...opsLocaleEntry('ja'),
   externalOpenFailed: {
     title: 'このリンクを開けませんでした',
     message: 'このアドレスを開くブラウザが登録されていません。リンクをコピーして手動で開いてください。',
