@@ -540,10 +540,25 @@ export function closeTab(
   delete dots[tabId]
   delete lastSeen[tabId]
 
-  const history = scope.history.filter(entry => entry.tabId !== tabId)
+  const filteredHistory = scope.history.filter(entry => entry.tabId !== tabId)
   const selected = tabs.find(item => item.id === selectedTabId)
   const slots = selected ? slotsForKind(selected.kind) : slotsForKind('office')
   const arriving = snapshots[selectedTabId] ?? emptySnapshot()
+  // The remaining selected tab is the history cursor. A clamped index can
+  // point at a different tab than the one the shell is showing.
+  let history = filteredHistory.length > 0 ? filteredHistory : [{ tabId: selectedTabId, snapshot: arriving }]
+  let historyIndex = -1
+
+  for (let i = 0; i < history.length; i += 1) {
+    if (history[i].tabId === selectedTabId) {
+      historyIndex = i
+    }
+  }
+
+  if (historyIndex < 0) {
+    history = [...history, { tabId: selectedTabId, snapshot: arriving }]
+    historyIndex = history.length - 1
+  }
 
   return saveScope(connectionId, profile, {
     ...scope,
@@ -552,8 +567,8 @@ export function closeTab(
     snapshots,
     dots,
     lastSeen,
-    history: history.length > 0 ? history : [{ tabId: selectedTabId, snapshot: arriving }],
-    historyIndex: history.length > 0 ? Math.min(scope.historyIndex, history.length - 1) : 0,
+    history,
+    historyIndex,
     inspectorSlot: slots.includes(scope.inspectorSlot) ? scope.inspectorSlot : slots[0],
     filter: arriving.filter
   })

@@ -611,5 +611,77 @@ describe('ops host scope r3', () => {
     expect(rail?.querySelector('select')).toBeNull()
     expect(document.querySelector('[data-ops-filter-overlay] input')).not.toBeNull()
   })
+
+  it('pins Connect and Settings in a compact-rail footer and scrolls the fleet list', () => {
+    const view = shell({ paneWidth: 640 })
+    const rail = view.container.querySelector('[data-ops-rail-list]')
+    const scroll = rail?.querySelector('[data-ops-rail-scroll]')
+    const footer = rail?.querySelector('[data-ops-rail-footer]')
+
+    expect(rail?.getAttribute('data-ops-rail')).toBe('icons')
+    expect(scroll?.getAttribute('data-ops-rail-scroll')).toBe('true')
+    expect((scroll as HTMLElement | null)?.style.overflowY).toBe('auto')
+    expect(scroll?.querySelector('[data-ops-fleet]')).not.toBeNull()
+    expect(scroll?.querySelector('[data-ops-connect]')).toBeNull()
+    expect(scroll?.querySelector('[data-ops-settings]')).toBeNull()
+    expect(footer?.querySelector('[data-ops-connect]')).not.toBeNull()
+    expect(footer?.querySelector('[data-ops-settings]')).not.toBeNull()
+    expect((rail as HTMLElement | null)?.style.overflow).not.toBe('hidden')
+    expect(scroll?.querySelector('[data-ops-fleet-window]')?.getAttribute('style')).toContain('overflow: auto')
+  })
+
+  it('keeps host, panel, crumb, and copy-link on the tab that remains after closing Runs', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    act(() => {
+      openLens('local', 'mirror', 'runs')
+      $opsView.set('runs')
+      $opsViewId.set('stale-run')
+    })
+
+    const view = render(<OpsPane />)
+    const close = view.container.querySelector('[data-ops-tab-close="lens:runs"]')
+
+    expect(close).not.toBeNull()
+    fireEvent.click(close!)
+
+    const scope = loadScope('local', 'mirror')
+
+    expect(scope.selectedTabId).toBe('office')
+    expect(scope.history[scope.historyIndex]?.tabId).toBe('office')
+    expect($opsView.get()).toBe('office')
+    expect($opsViewId.get()).toBeNull()
+    expect(view.container.querySelector('[data-ops-view-name]')?.textContent).toBe('Office')
+    expect(view.container.querySelector('[data-ops-view-id]')).toBeNull()
+    expect(view.container.querySelector('[data-ops-active-panel]')?.getAttribute('data-ops-active-panel')).toBe('office')
+    expect(view.container.querySelector('[data-ops-panel="office"]')?.hasAttribute('hidden')).toBe(false)
+    expect(view.container.querySelector('[data-ops-panel="lens:runs"]')).toBeNull()
+
+    fireEvent.click(view.container.querySelector('[data-ops-copy-link]')!)
+    expect(writeText).toHaveBeenCalledWith('/ops/office')
+  })
+
+  it('recomputes host identity when back/forward moves the selected tab', () => {
+    act(() => {
+      openLens('local', 'mirror', 'runs')
+      $opsView.set('runs')
+      $opsViewId.set(null)
+    })
+
+    const view = render(<OpsPane />)
+    const root = view.container.querySelector('[data-ops-root]') as HTMLElement
+
+    fireEvent.keyDown(root, { key: 'ArrowLeft', altKey: true })
+
+    const scope = loadScope('local', 'mirror')
+
+    expect(scope.selectedTabId).toBe('office')
+    expect(scope.history[scope.historyIndex]?.tabId).toBe('office')
+    expect($opsView.get()).toBe('office')
+    expect($opsViewId.get()).toBeNull()
+    expect(view.container.querySelector('[data-ops-active-panel]')?.getAttribute('data-ops-active-panel')).toBe('office')
+    expect(view.container.querySelector('[data-ops-view-name]')?.textContent).toBe('Office')
+  })
 })
 

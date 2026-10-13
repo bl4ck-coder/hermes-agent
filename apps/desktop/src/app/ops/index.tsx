@@ -235,6 +235,19 @@ export function OpsShell({
     onInspector?.(next)
   }
 
+  const publishSelectedIdentity = () => {
+    const current = loadScope(connectionId, profile)
+    const tab = current.tabs.find(item => item.id === current.selectedTabId)
+
+    if (!tab) {
+      return
+    }
+
+    const identity = hostIdentityFromTab(tab)
+
+    onView?.(identity.view, identity.id)
+  }
+
   const onShellKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.defaultPrevented || isTypingTarget(event.target)) {
       return
@@ -243,6 +256,7 @@ export function OpsShell({
     if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
       event.preventDefault()
       goHistory(connectionId, profile, event.key === 'ArrowLeft' ? -1 : 1)
+      publishSelectedIdentity()
 
       return
     }
@@ -416,7 +430,10 @@ export function OpsShell({
           <DocumentTabs
             dots={nav.dots}
             narrow={narrow.tabs}
-            onClose={id => closeTab(connectionId, profile, id)}
+            onClose={id => {
+              closeTab(connectionId, profile, id)
+              publishSelectedIdentity()
+            }}
             onSelect={(id, snapshot) => {
               selectTab(connectionId, profile, id, snapshot)
               const tab = loadScope(connectionId, profile).tabs.find(item => item.id === id)

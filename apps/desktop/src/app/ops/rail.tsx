@@ -244,16 +244,40 @@ export function Rail({
       data-ops-rail={rail}
       data-ops-rail-list=""
       data-ops-rail-width={String(railWidth)}
-      style={{
-        boxSizing: 'border-box',
-        flex: `0 0 ${railWidth}px`,
-        maxWidth: railWidth,
-        minWidth: railWidth,
-        overflow: 'hidden',
-        position: 'relative',
-        width: railWidth
-      }}
+      style={
+        icons
+          ? {
+              boxSizing: 'border-box',
+              display: 'flex',
+              flex: `0 0 ${railWidth}px`,
+              flexDirection: 'column',
+              height: '100%',
+              maxHeight: '100%',
+              maxWidth: railWidth,
+              minHeight: 0,
+              minWidth: railWidth,
+              position: 'relative',
+              width: railWidth
+            }
+          : {
+              boxSizing: 'border-box',
+              flex: `0 0 ${railWidth}px`,
+              maxWidth: railWidth,
+              minWidth: railWidth,
+              overflow: 'hidden',
+              position: 'relative',
+              width: railWidth
+            }
+      }
     >
+      <div
+        data-ops-rail-scroll={icons ? 'true' : undefined}
+        style={
+          icons
+            ? { flex: '1 1 auto', minHeight: 0, overflowX: 'hidden', overflowY: 'auto' }
+            : { display: 'contents' }
+        }
+      >
       <div data-ops-switcher="">
         {icons ? (
           <button
@@ -507,14 +531,28 @@ export function Rail({
       </button>
 
       <FleetList compact={icons} feed={fleet} filter={filter} />
-
-      <button data-ops-connect="" onClick={onConnect} style={fit} type="button">
-        {icons ? '+' : '+ Connect'}
-      </button>
-      <button aria-keyshortcuts="Control+," data-ops-settings="" onClick={onOpenSettings} style={fit} type="button">
-        {icons ? '⚙' : 'Settings'}
-        {icons ? null : <kbd>Ctrl+,</kbd>}
-      </button>
+      {icons ? null : (
+        <>
+          <button data-ops-connect="" onClick={onConnect} style={fit} type="button">
+            {icons ? '+' : '+ Connect'}
+          </button>
+          <button aria-keyshortcuts="Control+," data-ops-settings="" onClick={onOpenSettings} style={fit} type="button">
+            {icons ? '⚙' : 'Settings'}
+            {icons ? null : <kbd>Ctrl+,</kbd>}
+          </button>
+        </>
+      )}
+      </div>
+      {icons ? (
+        <div data-ops-rail-footer="" style={{ flex: '0 0 auto' }}>
+          <button data-ops-connect="" onClick={onConnect} style={fit} type="button">
+            +
+          </button>
+          <button aria-keyshortcuts="Control+," data-ops-settings="" onClick={onOpenSettings} style={fit} type="button">
+            ⚙
+          </button>
+        </div>
+      ) : null}
     </nav>
   )
 }
