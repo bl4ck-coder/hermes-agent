@@ -2,7 +2,7 @@ import { useStore } from '@nanostores/react'
 import { useEffect, useRef } from 'react'
 
 import { resumeAccountConnect } from '@/app/capabilities/connectors/data/deep-link'
-import { closeActiveTab } from '@/app/chat/close-tab'
+import { routeCloseTabChord } from '@/app/chat/close-tab'
 import { commandFocusedPreview } from '@/app/chat/right-rail/preview-nav'
 import { openSession } from '@/app/open-session'
 import { commandFocusedTerminal, wordEraseFocusedTerminal } from '@/app/right-sidebar/terminal/terminal-context-menu'
@@ -505,21 +505,17 @@ export function useDesktopIntegrations({
     return () => unsubscribe?.()
   }, [navigate, runtimeIdByStoredSessionId])
 
-  // ⌘W via the macOS menu accelerator → close the focused tab; if nothing is
-  // closeable, fall back to closing the window (so ⌘W still works as the
-  // OS-standard window close, esp. secondary windows). The Win/Linux keyboard
-  // path is the `view.closeTab` keybind (use-keybinds), sharing closeActiveTab.
+  // Close-tab IPC. Main already claimed the key. Relay ^W once when the PTY
+  // owns it; otherwise routeCloseTabChord. Ops focus consumes the chord and
+  // never closes the Electron window. Win/Linux keydown is use-keybinds.
   useEffect(() => {
     const unsubscribe = window.hermesDesktop?.onClosePreviewRequested?.(() => {
-      // A focused user terminal owns the chord as the shell's word erase: main
-      // claimed the keystroke (before-input-event), so re-deliver the ^W byte
-      // to the PTY instead of closing the pane and killing the shell (#65457).
-      // Read-only agent mirrors and everything else keep the close meaning.
-      if (wordEraseFocusedTerminal()) {
-        return
-      }
+      const load = (id: string) => navigate(sessionRoute(id))
+      const routed = routeCloseTabChord('bare', load)
 
-      void closeActiveTab(id => navigate(sessionRoute(id)))
+      if (routed === 'pty' && !wordEraseFocusedTerminal()) {
+        routeCloseTabChord('after-pty', load)
+      }
     })
 
     return () => unsubscribe?.()

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
-import { closeActiveTab } from '@/app/chat/close-tab'
+import { routeCloseTabChord } from '@/app/chat/close-tab'
+import { claimOpsFocusedChord, claimOpsRootKey } from '@/app/ops/keymap'
 import { hudTargetSessionId } from '@/app/hud/handoff'
 import { setTerminalTakeover } from '@/app/right-sidebar/store'
 import { toggleTerminalPane } from '@/app/right-sidebar/terminal/reveal-focus'
@@ -33,6 +34,7 @@ import { $commandPaletteOpen, openCommandPalettePage, toggleCommandPalette } fro
 import { recordAction, recordDislike } from '@/store/desktop-metrics'
 import {
   $findInPage,
+  closeFindBar,
   findNext as findNextMatch,
   findPrevious as findPreviousMatch,
   openFindBar
@@ -371,7 +373,9 @@ export function useKeybinds(deps: KeybindRuntimeDeps): void {
     // macOS the menu accelerator owns ⌘W and routes through the same
     // closeActiveTab via IPC (see use-desktop-integrations); this binding is
     // the Win/Linux path where ⌘W reaches the renderer directly.
-    'view.closeTab': () => void closeActiveTab(id => navigate(sessionRoute(id))),
+    'view.closeTab': () => {
+      routeCloseTabChord('rebind', id => navigate(sessionRoute(id)))
+    },
     'view.reopenTab': reopenLastClosedTile,
     'view.findInPage': () => {
       // Suppress on overlay routes so it doesn't collide with overlay-specific
@@ -515,10 +519,21 @@ export function useKeybinds(deps: KeybindRuntimeDeps): void {
       // listeners are on `window`, so stopPropagation in the bar can't
       // suppress this one — the dispatcher has to yield explicitly.
       if ($findInPage.get().active && findBarClaimsCombo(combo)) {
+        if (combo === 'escape') {
+          closeFindBar()
+          event.preventDefault()
+        }
+
         return
       }
 
       if (handleApprovalKey(event)) {
+        return
+      }
+
+      if (claimOpsFocusedChord(event, combo) || claimOpsRootKey(event, combo)) {
+        event.preventDefault()
+
         return
       }
 
@@ -572,6 +587,23 @@ export function useKeybinds(deps: KeybindRuntimeDeps): void {
           !event.shiftKey &&
           isFocusWithin('[data-interactive-terminal]')
         ) {
+          return
+        }
+
+        if (actionId === 'view.closeTab') {
+          const bare =
+            event.key.toLowerCase() === 'w' &&
+            (IS_MAC ? event.metaKey : event.ctrlKey) &&
+            !event.altKey &&
+            !event.shiftKey
+          routeCloseTabChord(
+            bare ? 'after-pty' : 'rebind',
+            id => navigate(sessionRoute(id)),
+            event.target instanceof Element ? event.target : document.activeElement
+          )
+          event.preventDefault()
+          recordAction(actionId, 'shortcut')
+
           return
         }
 
