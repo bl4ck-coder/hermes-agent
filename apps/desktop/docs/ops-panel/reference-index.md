@@ -261,7 +261,7 @@ No shot shows the icon rail (O44 middle state, G17, R53 under 1024 px). Entry 17
 | Row | Entries that carry it | Depicted? |
 |---|---|---|
 | O23 | 13, 14, 15, 16, 17, 18, 19 | Footer visible because a run is focused. Hide rule is the freeze, not a missing file. |
-| O44 | 02, 04, 12, 13, 14, 15, 16, 17 | Full and hidden only. Icons are B3. |
+| O44 | 02, 04, 12, 13, 14, 15, 16, 17, 18, 19 | Full and hidden only. Icons are B3. |
 | O47 | 13, 14, 15, 17, 18 | Dots depicted in orange/blue. Freeze colours differ. Scope is not a pixel in the shot. |
 | G17 | 02, 04, 09, 12 | Full sidebar. Persisted icon collapse is B3. |
 | G37 | 01, 03, 05, 07, 08 | Collapsible node headers depicted. |
