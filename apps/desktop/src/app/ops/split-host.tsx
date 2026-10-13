@@ -121,15 +121,71 @@ let fitRailIds: string[] = []
 let fitRailWidth = 0
 let fitting = false
 
+/** Chat pane id. Its body lives in a keep-alive host, not in the split. */
+const CHAT_PANE_ID = 'workspace'
+
+/**
+ * The keep-alive host (`[data-ops-root]`) is an absolute sibling of the tree.
+ * The empty slot inside the split is the only marker `closest` can walk.
+ */
+function opsSlot(): Element | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return document.querySelector(`[data-pane-slot="${OPS_PANE_ID}"]`)
+}
+
+function opsSplitElement(): HTMLElement | null {
+  const split = opsSlot()?.closest('[data-tree-split]')
+
+  return split instanceof HTMLElement ? split : null
+}
+
+function outermostSplitWidth(): number {
+  let node: Element | null = opsSplitElement()
+  let outermost: HTMLElement | null = null
+
+  while (node instanceof HTMLElement) {
+    outermost = node
+    node = node.parentElement?.closest('[data-tree-split]') ?? null
+  }
+
+  return outermost && outermost.clientWidth > 0 ? outermost.clientWidth : 0
+}
+
+function childHoldsSlot(child: Element, paneId: string): boolean {
+  return Boolean(child.querySelector(`[data-pane-slot="${paneId}"]`))
+}
+
+function childIsChatOrOps(child: Element): boolean {
+  if (childHoldsSlot(child, OPS_PANE_ID) || childHoldsSlot(child, CHAT_PANE_ID)) {
+    return true
+  }
+
+  // Workspace is not keep-alive: the chat body stays in the split. Ops is the
+  // one that moved out, so its slot is the marker and this anchor is the chat's.
+  return Boolean(child.querySelector('[data-session-anchor="workspace"]'))
+}
+
+function childHoldsHiddenPane(child: Element): boolean {
+  for (const id of $hiddenTreePanes.get()) {
+    if (id !== OPS_PANE_ID && id !== CHAT_PANE_ID && childHoldsSlot(child, id)) {
+      return true
+    }
+  }
+
+  return false
+}
+
 function measureSplitRoom(): number {
   if (typeof document === 'undefined') {
     return 0
   }
 
-  const marker = document.querySelector('[data-ops-root]')
-  const split = marker?.closest('[data-tree-split]')
+  const split = opsSplitElement()
 
-  if (!(split instanceof HTMLElement) || split.clientWidth <= 0) {
+  if (!split || split.clientWidth <= 0) {
     return 0
   }
 
@@ -140,11 +196,10 @@ function measureSplitRoom(): number {
       continue
     }
 
-    if (child.querySelector('[data-ops-root]')) {
-      continue
-    }
-
-    if (child.querySelector('[data-session-anchor="workspace"]')) {
+    // Bodies are portaled out. Skip the slot tracks, sum rails and gutters.
+    // A rail we already hid is about to leave the track; don't reserve it
+    // again or the follow-up fit publishes a collapsed Ops over a freed room.
+    if (childIsChatOrOps(child) || childHoldsHiddenPane(child)) {
       continue
     }
 
@@ -182,10 +237,11 @@ function zoneWidth(paneId: string): number {
     return 0
   }
 
-  const node = document.querySelector(`[data-tree-group="${group.id}"]`)
+  // The keep-alive host also wears data-tree-group; its parent is the shell, not the rail.
+  const node = document.querySelector(`[data-tree-group="${group.id}"]:not([data-pane-host])`)
   const width = node?.parentElement?.getBoundingClientRect().width ?? node?.getBoundingClientRect().width ?? 0
 
-  return Number.isFinite(width) ? width : 0
+  return Number.isFinite(width) && width > 0 ? width : 0
 }
 
 function releaseFitRails(): void {
@@ -236,6 +292,11 @@ export function fitOpsFromStorage(): number {
     if (plan.hideRails) {
       hideFitRails(docked)
       room = plan.room
+      const cap = outermostSplitWidth()
+
+      if (cap > 0) {
+        room = Math.min(room, cap)
+      }
     } else if (fitRailIds.length > 0 && room >= CHAT_MIN_WIDTH_PX + OPS_MIN_WIDTH_PX + fitRailWidth) {
       releaseFitRails()
       room = measureSplitRoom()
@@ -651,16 +712,41 @@ export function ensureOpsSplitHost(): void {
         fitOpsFromStorage()
       }
     })
+    let observed: Element | null = null
     const attach = () => {
-      const split = document.querySelector('[data-ops-root]')?.closest('[data-tree-split]')
+      const split = opsSplitElement()
 
-      if (split instanceof HTMLElement) {
-        observer.observe(split)
+      if (split === observed) {
+        return
+      }
+
+      if (observed) {
+        observer.unobserve(observed)
+      }
+
+      observed = split
+
+      if (!split) {
+        return
+      }
+
+      observer.observe(split)
+
+      if (!$opsFullscreen.get()) {
+        fitOpsFromStorage()
+      }
+    }
+    const scheduleAttach = () => {
+      attach()
+      queueMicrotask(attach)
+
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(attach)
       }
     }
 
-    $layoutTree.subscribe(attach)
-    attach()
+    $layoutTree.subscribe(scheduleAttach)
+    scheduleAttach()
   }
 
   hostReady = wireStores().catch(() => {

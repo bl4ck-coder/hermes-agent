@@ -38,12 +38,14 @@ import {
   ensureOpsSplitHost,
   enterOpsFullscreen,
   exitOpsFullscreen,
+  fitOpsFromStorage,
   focusExistingChat,
   handleOpsEscape,
   LiveSessionBadge,
   noteOpsBackgroundEvent,
   noteOpsScope,
   openOpsSplit,
+  closeOpsSplit,
   watchOpsLiveSession,
   opsPaneRegistration,
   resetOpsScopeHydrationForTests,
@@ -236,7 +238,7 @@ describe('ops split host', () => {
     session.$sessions.set([])
     session.$selectedStoredSessionId.set(null)
     states.$sessionStates.set({})
-  })
+  }, 60_000)
 
   it('shows the live-session badge only in full screen and focuses chat without a new session', () => {
     $opsLiveSession.set({ id: 'session-9', title: 'mirror thread', working: true })
@@ -340,5 +342,281 @@ describe('ops split host', () => {
     $opsChatSessionId.set('keep-me')
     focusExistingChat()
     expect($opsChatSessionId.get()).toBe('keep-me')
+  })
+})
+
+function stubBox(el: HTMLElement, width: number, left = 0) {
+  Object.defineProperty(el, 'clientWidth', { configurable: true, get: () => width })
+  el.getBoundingClientRect = () =>
+    ({
+      x: left,
+      y: 0,
+      left,
+      top: 0,
+      right: left + width,
+      bottom: 80,
+      width,
+      height: 80,
+      toJSON() {
+        return {}
+      }
+    }) as DOMRect
+}
+
+/**
+ * Real keep-alive topology: Ops and chat bodies sit in absolute hosts OUTSIDE
+ * [data-tree-split]. Only the empty slot divs live inside the split.
+ */
+function mountKeepAliveSplit(viewport: number, railWidth: number) {
+  const shell = document.createElement('div')
+  const opsHost = document.createElement('div')
+  opsHost.setAttribute('data-pane-host', 'ops')
+  opsHost.setAttribute('data-ops-root', '')
+  opsHost.style.position = 'absolute'
+  const chatHost = document.createElement('div')
+  chatHost.setAttribute('data-pane-host', 'workspace')
+  chatHost.setAttribute('data-session-anchor', 'workspace')
+  chatHost.style.position = 'absolute'
+  shell.append(opsHost, chatHost)
+
+  const split = document.createElement('div')
+  split.setAttribute('data-tree-split', 'spl-root')
+
+  const rail = document.createElement('div')
+  const railSlot = document.createElement('div')
+  railSlot.setAttribute('data-pane-slot', 'sessions')
+  const railGroup = document.createElement('div')
+  railGroup.setAttribute('data-tree-group', 'g-sessions')
+  rail.append(railSlot, railGroup)
+
+  const gutter = document.createElement('div')
+  gutter.setAttribute('data-ops-gutter-track', '')
+
+  const main = document.createElement('div')
+  const mainSlot = document.createElement('div')
+  mainSlot.setAttribute('data-pane-slot', 'workspace')
+  main.append(mainSlot)
+
+  const ops = document.createElement('div')
+  const opsSlot = document.createElement('div')
+  opsSlot.setAttribute('data-pane-slot', 'ops')
+  ops.append(opsSlot)
+
+  split.append(rail, gutter, main, ops)
+
+  const tree = document.createElement('div')
+  tree.append(split)
+  const root = document.createElement('div')
+  root.append(tree, shell)
+  document.body.append(root)
+
+  stubBox(split, viewport)
+  stubBox(rail, railWidth, 0)
+  stubBox(railGroup, railWidth, 0)
+  stubBox(gutter, 0, railWidth)
+  stubBox(main, Math.max(0, viewport - railWidth - 280), railWidth)
+  stubBox(ops, 280, viewport - 280)
+  stubBox(opsHost, 280, viewport - 280)
+
+  return { split, opsHost, chatHost, rail }
+}
+
+function publishedOpsBox() {
+  return opsPaneRegistration()?.data as { width?: string; minWidth?: string; maxWidth?: string }
+}
+
+describe('ops split room follows the keep-alive slot', () => {
+  let disposeRail: (() => void) | null = null
+
+  afterEach(() => {
+    disposeRail?.()
+    disposeRail = null
+    closeOpsSplit()
+    document.body.replaceChildren()
+  })
+
+  function installRail() {
+    disposeRail = registry.register({
+      id: 'sessions',
+      area: 'panes',
+      source: 'core',
+      title: 'Sessions',
+      data: { placement: 'left', collapsible: true }
+    })
+    $layoutTree.set(
+      split('row', [group(['sessions'], { id: 'g-sessions' }), group(['workspace'], { id: 'g-main' }), group(['ops'], { id: 'g-ops' })], undefined, 'spl-root')
+    )
+  }
+
+  it('clamps a 640px viewport when the Ops body is outside the split', async () => {
+    writeOpsLayout('local', 'default', { widthPx: 510, rail: 'hidden' })
+    installRail()
+    const { split, opsHost } = mountKeepAliveSplit(640, 237)
+
+    expect(opsHost.closest('[data-tree-split]')).toBeNull()
+    expect(document.querySelector('[data-pane-slot="ops"]')?.closest('[data-tree-split]')).toBe(split)
+
+    fitOpsFromStorage()
+    await Promise.resolve()
+
+    const box = publishedOpsBox()
+    const published = Number.parseInt(box.width ?? '', 10)
+    const railHidden = $hiddenTreePanes.get().has('sessions')
+    const rail = railHidden ? 0 : 237
+    const chat = 640 - rail - published
+    const opsRight = rail + chat + published
+
+    expect(published).not.toBe(510)
+    expect(chat).toBeGreaterThanOrEqual(CHAT_MIN_WIDTH_PX)
+    expect(opsRight).toBeLessThanOrEqual(640)
+    expect(railHidden || chat >= CHAT_MIN_WIDTH_PX).toBe(true)
+    expect(box.minWidth).toBe(railHidden ? `${OPS_MIN_WIDTH_PX}px` : box.width)
+  })
+
+  it('clamps a nested 640px split the same way, with hosts outside the inner split', () => {
+    writeOpsLayout('local', 'default', { widthPx: 510, rail: 'hidden' })
+    installRail()
+
+    const shell = document.createElement('div')
+    const opsHost = document.createElement('div')
+    opsHost.setAttribute('data-pane-host', 'ops')
+    opsHost.setAttribute('data-ops-root', '')
+    opsHost.style.position = 'absolute'
+    shell.append(opsHost)
+
+    const outer = document.createElement('div')
+    outer.setAttribute('data-tree-split', 'spl-root')
+    const rail = document.createElement('div')
+    const railSlot = document.createElement('div')
+    railSlot.setAttribute('data-pane-slot', 'sessions')
+    const railGroup = document.createElement('div')
+    railGroup.setAttribute('data-tree-group', 'g-sessions')
+    rail.append(railSlot, railGroup)
+    const inner = document.createElement('div')
+    inner.setAttribute('data-tree-split', 'spl-main')
+    const main = document.createElement('div')
+    const mainSlot = document.createElement('div')
+    mainSlot.setAttribute('data-pane-slot', 'workspace')
+    main.append(mainSlot)
+    const ops = document.createElement('div')
+    const opsSlot = document.createElement('div')
+    opsSlot.setAttribute('data-pane-slot', 'ops')
+    ops.append(opsSlot)
+    inner.append(main, ops)
+    outer.append(rail, inner)
+    document.body.append(outer, shell)
+
+    stubBox(outer, 640)
+    stubBox(rail, 237)
+    stubBox(railGroup, 237)
+    stubBox(inner, 403)
+    stubBox(main, 141)
+    stubBox(ops, 280)
+
+    expect(opsHost.closest('[data-tree-split]')).toBeNull()
+    expect(document.querySelector('[data-pane-slot="ops"]')?.closest('[data-tree-split]')).toBe(inner)
+
+    const applied = fitOpsFromStorage()
+    const railHidden = $hiddenTreePanes.get().has('sessions')
+    const railPx = railHidden ? 0 : 237
+    const chat = 640 - railPx - applied
+    const opsRight = railPx + chat + applied
+
+    expect(applied).toBe(320)
+    expect(railHidden).toBe(true)
+    expect(chat).toBeGreaterThanOrEqual(CHAT_MIN_WIDTH_PX)
+    expect(opsRight).toBeLessThanOrEqual(640)
+  })
+
+  it('does not reserve the in-split chat when workspace has no keep-alive slot', () => {
+    writeOpsLayout('local', 'default', { widthPx: 510, rail: 'hidden' })
+    installRail()
+
+    const splitEl = document.createElement('div')
+    splitEl.setAttribute('data-tree-split', 'spl-root')
+    const rail = document.createElement('div')
+    const railGroup = document.createElement('div')
+    railGroup.setAttribute('data-tree-group', 'g-sessions')
+    rail.append(railGroup)
+    const main = document.createElement('div')
+    const chat = document.createElement('div')
+    chat.setAttribute('data-session-anchor', 'workspace')
+    main.append(chat)
+    const ops = document.createElement('div')
+    const opsSlot = document.createElement('div')
+    opsSlot.setAttribute('data-pane-slot', 'ops')
+    ops.append(opsSlot)
+    const host = document.createElement('div')
+    host.setAttribute('data-pane-host', 'ops')
+    host.setAttribute('data-ops-root', '')
+    host.style.position = 'absolute'
+    splitEl.append(rail, main, ops)
+    document.body.append(splitEl, host)
+    stubBox(splitEl, 640)
+    stubBox(rail, 260)
+    stubBox(railGroup, 260)
+    stubBox(main, 141, 260)
+    stubBox(chat, 141, 260)
+    stubBox(ops, 280, 401)
+    stubBox(host, 280, 401)
+
+    expect(host.closest('[data-tree-split]')).toBeNull()
+    expect(chat.closest('[data-tree-split]')).toBe(splitEl)
+    expect(document.querySelector('[data-pane-slot="workspace"]')).toBeNull()
+
+    const applied = fitOpsFromStorage()
+    const railHidden = $hiddenTreePanes.get().has('sessions')
+    const railPx = railHidden ? 0 : 260
+    const chatWidth = 640 - railPx - applied
+    const opsRight = railPx + chatWidth + applied
+
+    expect(applied).toBe(320)
+    expect(railHidden).toBe(true)
+    expect(chatWidth).toBeGreaterThanOrEqual(CHAT_MIN_WIDTH_PX)
+    expect(opsRight).toBeLessThanOrEqual(640)
+  })
+
+  it('keeps stored 510 at 1280px and does not hide the desktop rail', () => {
+    writeOpsLayout('local', 'default', { widthPx: 510, rail: 'hidden' })
+    installRail()
+    mountKeepAliveSplit(1280, 237)
+
+    const applied = fitOpsFromStorage()
+
+    expect(applied).toBe(510)
+    expect(publishedOpsBox().width).toBe('510px')
+    expect($opsRail.get()).toBe('hidden')
+    expect($hiddenTreePanes.get().has('sessions')).toBe(false)
+    expect(readOpsLayout('local', 'default')).toEqual({ widthPx: 510, rail: 'hidden' })
+  })
+
+  it('publishes min=max when the measured room cannot hold both floors', () => {
+    writeOpsLayout('local', 'default', { widthPx: 510, rail: 'full' })
+    const split = document.createElement('div')
+    split.setAttribute('data-tree-split', 'spl-tight')
+    const main = document.createElement('div')
+    const mainSlot = document.createElement('div')
+    mainSlot.setAttribute('data-pane-slot', 'workspace')
+    main.append(mainSlot)
+    const ops = document.createElement('div')
+    const opsSlot = document.createElement('div')
+    opsSlot.setAttribute('data-pane-slot', 'ops')
+    ops.append(opsSlot)
+    const host = document.createElement('div')
+    host.setAttribute('data-ops-root', '')
+    host.style.position = 'absolute'
+    split.append(main, ops)
+    document.body.append(split, host)
+    stubBox(split, 500)
+    stubBox(main, 320)
+    stubBox(ops, 180)
+
+    const applied = fitOpsFromStorage()
+    const box = publishedOpsBox()
+
+    expect(host.closest('[data-tree-split]')).toBeNull()
+    expect(applied).toBe(180)
+    expect(box).toMatchObject({ width: '180px', minWidth: '180px', maxWidth: '180px' })
+    expect(applied + CHAT_MIN_WIDTH_PX).toBeLessThanOrEqual(500)
   })
 })
