@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { contrastRatio } from '@hermes/shared/color'
 import { describe, expect, it } from 'vitest'
@@ -7,6 +8,7 @@ import { GOLD_NIGHT_ACCENT_VARIANTS, selectGoldNightAccent } from './accent-over
 import {
   goldNightHiTheme,
   goldNightTheme,
+  GOLD_NIGHT_DESTRUCTIVE_COPY,
   GOLD_NIGHT_GARNET,
   GOLD_NIGHT_INK,
   GOLD_NIGHT_SURFACES,
@@ -53,6 +55,13 @@ describe('gold-night contrast', () => {
     expect(contrastRatio(goldNightTheme.colors.ring, goldNightTheme.colors.popover)!).toBeGreaterThanOrEqual(3)
   })
 
+  it('keeps garnet as a fill and measures a separate copy token on tinted surfaces', () => {
+    expect(goldNightTheme.colors.destructive).toBe(GOLD_NIGHT_GARNET)
+    expect(contrastRatio('#FFFFFF', GOLD_NIGHT_GARNET)).toBeGreaterThanOrEqual(4.5)
+    expect(minOnSurfaces(GOLD_NIGHT_DESTRUCTIVE_COPY)).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(GOLD_NIGHT_GARNET, GOLD_NIGHT_SURFACES.raised)!).toBeLessThan(4.5)
+  })
+
   it('offers exactly the two approved accent variants', () => {
     expect(GOLD_NIGHT_ACCENT_VARIANTS.map(variant => variant.hex)).toEqual(['#C9A55A', '#E8C77A'])
     expect(GOLD_NIGHT_ACCENT_VARIANTS.map(variant => variant.themeName)).toEqual(['gold-night', 'gold-night-hi'])
@@ -68,5 +77,22 @@ describe('gold-night contrast', () => {
     expect(goldNightTheme.typography?.fontUrl).toBeUndefined()
     expect(JSON.stringify(goldNightTheme)).not.toContain('fonts.googleapis.com')
     expect(JSON.stringify(goldNightHiTheme)).not.toContain('fonts.googleapis.com')
+  })
+
+  it('ships local OFL Geist faces and does not fetch them', () => {
+    const fonts = join(process.cwd(), 'src/fonts')
+    const regular = readFileSync(join(fonts, 'Geist-Regular.woff2'))
+    const medium = readFileSync(join(fonts, 'Geist-Medium.woff2'))
+    const mono = readFileSync(join(fonts, 'GeistMono-Regular.woff2'))
+    const ofl = readFileSync(join(fonts, 'Geist-OFL.txt'), 'utf8')
+
+    expect(regular.subarray(0, 4).toString()).toBe('wOF2')
+    expect(medium.subarray(0, 4).toString()).toBe('wOF2')
+    expect(mono.subarray(0, 4).toString()).toBe('wOF2')
+    expect(regular.byteLength).toBeGreaterThan(1000)
+    expect(mono.byteLength).toBeGreaterThan(1000)
+    expect(ofl).toContain('SIL Open Font License')
+    expect(ofl).toContain('Geist Project Authors')
+    expect(goldNightTheme.typography?.fontUrl).toBeUndefined()
   })
 })
