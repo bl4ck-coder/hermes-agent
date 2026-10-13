@@ -17,7 +17,7 @@ All Hermes model providers are out of tokens, so the judge and meta reviews for 
 Commands run in `apps/desktop` on Windows (Ignacio):
 
 - `npm run lint`: exit 0. This card fixes the perfectionist sort errors and one `import()` type annotation in files touched by the ops panel.
-- `npm run test:ui`: see the merge comment on the card for the final counts. Known failure that is not from ops: `src/store/voice-prefs.test.ts` fails 2 tests identically on upstream base `865ba906c1a` (localStorage quota spy). The gateway reconnect suites (`use-gateway-request`, `gateway-background-reconnect`) only time out under full-suite load and pass in isolation on both the branch and the base.
+- `npm run test:ui` (full, at `8bbf2a102a7`): 1207/1218 files, 10842/10889 tests pass, 30 fail, 17 skipped. All 30 are outside ops: (a) 4 fail identically on upstream base `865ba906c1a` (`store/voice-prefs.test.ts` x2, `plugins/hermes-bots/cron-detail.test.tsx` x1 and `cron-prompt.test.ts` x1, which are date and localStorage dependent); (b) 26 are 15 s timeouts plus cascades under full-suite load in `use-gateway-request`, `gateway-background-reconnect`, `tutorial-lifetime`, `session-states-profile-rename`, `branch-owner-routing.integration` and `providers-settings.terminal-disconnect`, and every one of those files passes when re-run in isolation on this branch.
 - Typecheck plus the targeted vitest suites: `src/app/ops/shell.test.tsx` (10), `states.test.tsx` (11), `locales.test.ts` (45), `keymap.test.tsx`, `chrome.test.tsx`, plus `src/themes/gold-night.test.ts` and `presets.test.ts`.
 
 | Id | Result | Pointer |
