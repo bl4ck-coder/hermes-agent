@@ -422,6 +422,7 @@ import {
   withoutInteractiveOauthLogin
 } from './oauth-rest-request'
 import { wireOauthSessionResponse } from './oauth-session-response'
+import { opsRequestHeaders, withOpsHeaders } from './ops-write-guard'
 import { listWindowsProcesses, reapPackageRootedProcesses } from './package-process-reap'
 import { createParentStartMarkerResolver, parentWatchdogEnv } from './parent-process-identity'
 import { bundledPayload, installIdForRoot, type PayloadInfo, payloadPythonPath } from './payload-backend'
@@ -16785,6 +16786,9 @@ async function fetchJsonForBackend(
   opts: { method?: string; body?: unknown; upload?: unknown; timeoutMs?: number } = {}
 ) {
   const url = `${descriptor.baseUrl}${path}`
+  // ops-panel P2-04 (D11): main stamps the Ops connection kind and refuses Ops writes
+  // against a non-local backend before anything is sent.
+  const headers = withOpsHeaders(descriptor.headers, opsRequestHeaders(descriptor, opts.method, path))
 
   if (descriptor.authMode === 'oauth') {
     // The OAuth cookie path rides electron.net with JSON headers; multipart
@@ -16797,7 +16801,7 @@ async function fetchJsonForBackend(
       method: opts.method,
       body: opts.body,
       timeoutMs: opts.timeoutMs,
-      headers: descriptor.headers
+      headers
     }
 
     return requestWithOauthFallback(descriptor.baseUrl, {
@@ -16812,7 +16816,7 @@ async function fetchJsonForBackend(
     body: opts.body,
     upload: opts.upload,
     timeoutMs: opts.timeoutMs,
-    headers: descriptor.headers
+    headers
   })
 }
 
