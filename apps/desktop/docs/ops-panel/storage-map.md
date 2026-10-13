@@ -1,4 +1,4 @@
-# Ops panel storage map (P0-03 r2)
+# Ops panel storage map (P0-03 r3)
 
 Status: documentation only. This file freezes the Canvas mutation-to-storage map. It does not implement A5, does not add routes, and does not edit any profile file.
 Repo tree for handler lines: `feat/ops-panel` at `005b104a506`, which this branch still contains. No handler in that tree is an Ops transaction yet.
@@ -6,7 +6,8 @@ SPEC: vault `01-Projects/Hermes/desktop-ops-panel/SPEC.md` v4, sections 4.1, 4.2
 PLAN: P2 transactional writes. The step order, lock, journal, encryption, and restore byte-writer live in `transaction-contract.md`. This file is the inventory that contract wraps.
 Model policy P2 is a write-time rule (SPEC section 4.4). This file does not install `ops-policy.yaml`.
 
-Round 2 closes META IMPROVE r1 F1–F4. F1 (lock, composite hash, journal, read-back) and F3 (encrypted recoverable backups) are in `transaction-contract.md` sections 3–7 and 10. F2 (absence and byte-exact restore) is section 4 of this file plus `transaction-contract.md` sections 4 and 9. F4 (setup versus write-set) is the per-node Canvas-save line below and `transaction-contract.md` section 11.
+Round 2 closed META IMPROVE r1 F1–F4. F2 (absence and byte-exact restore) is section 4 of this file plus `transaction-contract.md` sections 4 and 9. F4 (setup versus write-set) is the per-node Canvas-save line below and `transaction-contract.md` section 11. This round does not reopen F2 or F4.
+Round 3 closes META IMPROVE r2. F1a (durable per-member hashes before the first live replace, and idempotent recovery that ignores the published flag), F3 (secret-bearing staged blobs are OPSBAK1 envelopes), and F1b (document, per-file, and composite hash domains) live in `transaction-contract.md` sections 5, 6, 7, and 10.
 
 `status: handler` means the route exists and names a real store. It does not mean Canvas may call that route intact. `status: read-only` means Canvas must not call a write. `status: disabled` means the route exists but Canvas Save must not use it. `status: proposed` means the hash, lock, journal, protector, or byte-writer is not in this tree.
 
@@ -46,7 +47,7 @@ Ops backup root, retain-all (D10), is always `<profile home>/backups/ops-panel/`
 
 Operator dirs already under `backups/ops-panel/` (SPEC section 0 model-migration and policy-cleanup) stay. D10 applies to the whole `backups/ops-panel` tree, not only to new A5 dirs.
 
-Secret-bearing backups are encrypted envelopes, not mode-`0o600` copies. The class and the protector are in `transaction-contract.md` section 10. A missing protector disables the write. It does not fall back to a plaintext copy.
+Secret-bearing backups and secret-bearing staged post-images are encrypted envelopes, not mode-`0o600` copies. The class, the AAD role (`pre` or `post`), and the protector are in `transaction-contract.md` section 10. A missing protector disables the write before any stage. It does not fall back to a plaintext copy.
 
 ## 3. Shared files
 
@@ -213,7 +214,7 @@ Absence is a real pre-image. A missing coverage file is a tombstone, not `backup
 - Read: `hermes_cli/web_routers/analytics.py:34` `get_config_raw` returns `yaml` and `path`. The GET text is not the hash input. Hash the raw file bytes.
 - Write-set: `config.yaml` only. Secret-bearing class: the backup is encrypted even when the editor did not touch a secret key. The editor does not write `.env`.
 - Post-commit effects: gateway session-info broadcast when approvals mode changed (`hermes_cli/web_routers/analytics.py:67`) only after manifest commit. It does not run on `backup_failed`.
-- Forward save: semantic. Staged bytes are the normalize/strip output. Outcome is `normalized` when those bytes differ from the submitted document and the read-back matches the staged bytes. The UI may say the server normalized. It must not say that for any other mismatch.
+- Forward save: semantic. Staged bytes are the normalize/strip output, computed in memory and validated before the staged blob is persisted. Outcome is `normalized` only when the document-domain hash differs from the staged per-file hash of `config.yaml` and the read-back per-file hash matches that staged per-file hash. It is not a comparison against the composite hash. The UI may say the server normalized. It must not say that for any other mismatch. An identical-bytes document is `committed`.
 - Restore: byte-exact of the decrypted backup via the byte-writer. Do not call `update_config_raw` or `save_config`. Validation parses a copy of the backup bytes. If the copy is not a mapping, or A6 rejects a governed field, restore aborts. The backup bytes are not rewritten. The live file is not rewritten.
 - Scope: local connection, profile home.
 - A6 runs on governed fields before publish (SPEC section 4.4). A disallowed model in the document blocks the save, including a restore of those bytes.
@@ -263,3 +264,5 @@ F2: Prompt, Identity, and Skills name absence. Raw YAML and Trigger no longer cl
 F3: `.env`, `webhook_subscriptions.json`, `config.yaml`, and memory provider config files are secret-bearing. Mode `0o600` is not their backup.
 
 F4: Memory setup and opaque `save_config` are disabled. Restart, hot-serve, post-setup spawn, and MCP telemetry are post-commit effects, not write-set members.
+
+Round 3 does not reopen F2 or F4. F1a: recovery no longer trusts the published flag; a crash between replace and flag still restores the pre-image. F1b: Prompt and raw YAML compare the document hash to the per-file hash, not to the composite. F3: secret-bearing staged blobs are envelopes, same as backups.
