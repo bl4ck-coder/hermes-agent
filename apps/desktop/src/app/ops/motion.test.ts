@@ -1,29 +1,31 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createElement } from 'react'
+
 import { act, cleanup, render } from '@testing-library/react'
+import { createElement } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { OpsMotionReadout, OpsMotionScope, OpsStreamText, ThinkingReadout } from './primitives/presence-glyph'
 import {
   EASE,
   EASE_DRAWER,
   GLOW_DECAY_MS,
+  keyframePlan,
   KEYFRAMES,
   MOTION_MS,
   MOTION_ROW_DESCRIPTION,
-  PULSE_PERIOD_MS,
-  keyframePlan,
   motionFeatureOn,
+  PULSE_PERIOD_MS,
   resolveMotion
 } from './motion'
+import { OpsMotionReadout, OpsMotionScope, OpsStreamText, ThinkingReadout } from './primitives/presence-glyph'
 
 const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'motion.css'), 'utf8')
 
 function installMatchMedia(initial: boolean) {
   let matches = initial
   const listeners = new Set<() => void>()
+
   const query = {
     addEventListener: (_event: string, cb: () => void) => {
       listeners.add(cb)
@@ -45,7 +47,8 @@ function installMatchMedia(initial: boolean) {
   return {
     set(next: boolean) {
       matches = next
-      for (const listener of listeners) listener()
+
+      for (const listener of listeners) {listener()}
     }
   }
 }
@@ -157,6 +160,7 @@ describe('motion resolution', () => {
 
   it('pauses the reused spinner when System flips to reduce, and keeps stream text', () => {
     const media = installMatchMedia(false)
+
     const view = render(
       createElement(OpsMotionScope, {
         preference: 'system',
@@ -166,6 +170,7 @@ describe('motion resolution', () => {
         ]
       })
     )
+
     const spinner = () => view.container.querySelector('.glyph-spinner')
 
     expect(view.container.querySelector('[data-ops-motion]')?.getAttribute('data-ops-motion')).toBe('full')

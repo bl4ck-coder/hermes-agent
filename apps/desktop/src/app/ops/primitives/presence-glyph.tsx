@@ -1,23 +1,23 @@
 import '../motion.css'
 
-import { createContext, useContext, type ReactNode } from 'react'
 import { Brain, Circle, Clock, Cpu, FileText, Radio, Sparkles, Users, Webhook, Wrench } from 'lucide-react'
+import { createContext, type ReactNode, useContext } from 'react'
 
-import { GlyphSpinner } from '@/components/ui/glyph-spinner'
-import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
 import { ActivityTimerText } from '@/components/chat/activity-timer-text'
+import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
+import { GlyphSpinner } from '@/components/ui/glyph-spinner'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useI18n } from '@/i18n'
 import { resolveBrandIcon } from '@/lib/brand-icon'
 import { cn } from '@/lib/utils'
 
 import {
   type GlyphState,
+  motionFeatureOn,
   type MotionPreference,
   type PresenceShape,
-  type ResolvedMotion,
-  SHAPE_NAME,
-  motionFeatureOn,
   presenceShape,
+  type ResolvedMotion,
   resolveMotion,
   tokensText
 } from '../motion'
@@ -156,7 +156,7 @@ export function PresenceGlyph({
   const motion = scoped ?? motionProp
   const shape = presenceShape(state, motion)
   const pulsing = pulse && motionFeatureOn(motion, 'pulse') && visible && state === 'working'
-  const shapeName = SHAPE_NAME[shape]
+  const shapeName = useI18n().t.ops.shapes[shape]
   const paused = !visible || motion === 'reduced'
 
   return (

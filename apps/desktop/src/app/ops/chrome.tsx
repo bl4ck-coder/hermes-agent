@@ -11,18 +11,19 @@ import type { TitlebarTool } from '@/app/shell/titlebar-controls'
 import { ReadonlyModelPill } from '@/components/model-pill-control'
 import { Button } from '@/components/ui/button'
 import { Contribute } from '@/contrib/react/contribute'
+import { useI18n } from '@/i18n'
 import { PanelBottom, PanelLeftIcon, SearchIcon } from '@/lib/icons'
 import { TITLEBAR_AREAS } from '@/sdk/areas'
 import { openCommandPalettePage } from '@/store/command-palette'
 import type { AnalyticsResponse, ModelInfoResponse, StatusResponse } from '@/types/hermes'
 
 import {
-  MODEL_EDIT_UNAVAILABLE,
   OPS_PALETTE_PAGE,
   type OpsKeymapHost,
   type OpsTabClose,
   registerOpsKeymapHost
 } from './keymap'
+import type { OpsCopy } from './locales'
 import { setOpsPaletteScope } from './palette'
 import { OpsShortcutSheet } from './shortcut-sheet'
 
@@ -166,7 +167,8 @@ function textItem(id: string, label: string, title?: string): StatusbarItem {
 export function opsStatusbarItems(
   sources: OpsStatusSources,
   profileLabel: string | null | undefined,
-  actions: { onCycleMotion?: () => void; onToggleDock?: () => void }
+  actions: { onCycleMotion?: () => void; onToggleDock?: () => void },
+  copy: OpsCopy
 ): { left: StatusbarItem[]; right: StatusbarItem[] } {
   const left: StatusbarItem[] = []
   const right: StatusbarItem[] = []
@@ -176,19 +178,19 @@ export function opsStatusbarItems(
   }
 
   if (sources.focusedRunId) {
-    left.push(textItem('ops-run', `run #${sources.focusedRunId}`))
+    left.push(textItem('ops-run', copy.chrome.focusedRun(sources.focusedRunId)))
   }
 
   if (sourcedNumber(sources.workingCount)) {
-    left.push(textItem('ops-working', `${sources.workingCount} working`, 'Fresh A1 fleet observation'))
+    left.push(textItem('ops-working', copy.chrome.working(sources.workingCount), copy.chrome.workingSource))
   }
 
   if (sourcedNumber(sources.needsYouCount)) {
-    left.push(textItem('ops-needs-you', `${sources.needsYouCount} needs you`, 'Fresh A1/A3 fleet observation'))
+    left.push(textItem('ops-needs-you', copy.chrome.needsYou(sources.needsYouCount), copy.chrome.needsYouSource))
   }
 
   if (sources.todayTokens && sources.todayTokens.provenance && sourcedNumber(sources.todayTokens.total)) {
-    left.push(textItem('ops-tokens', `${sources.todayTokens.total} tok`, sources.todayTokens.provenance))
+    left.push(textItem('ops-tokens', copy.chrome.tokens(sources.todayTokens.total), sources.todayTokens.provenance))
   }
 
   if (sources.worktreeFocused && sources.branch) {
@@ -200,7 +202,7 @@ export function opsStatusbarItems(
       textItem(
         'ops-gateway',
         `${sources.gateway.health} ${sources.gateway.version}`,
-        '/api/status gateway state + backend version · pinned owner'
+        copy.chrome.gatewaySource
       )
     )
   }
@@ -217,7 +219,7 @@ export function opsStatusbarItems(
   if (typeof sources.dockOpen === 'boolean') {
     right.push({
       id: 'ops-dock',
-      label: sources.dockOpen ? 'Dock open' : 'Dock',
+      label: sources.dockOpen ? copy.chrome.dockOpen : copy.chrome.dock,
       onSelect: actions.onToggleDock,
       variant: 'action'
     })
@@ -226,7 +228,7 @@ export function opsStatusbarItems(
   if (sourcedNumber(sources.problemsCount)) {
     right.push({
       id: 'ops-problems',
-      label: `Problems ${sources.problemsCount}`,
+      label: copy.chrome.problems(sources.problemsCount),
       render: () => <span data-ops-problems={sources.problemsCount}>{sources.problemsCount}</span>,
       variant: 'text'
     })
@@ -253,6 +255,7 @@ export function OpsChrome({
   viewLabel
 }: OpsChromeProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
+  const copy = useI18n().t.ops
   const problemsCount = useStore($opsProblemsCount)
   const hostRef = useRef(host)
   hostRef.current = host
@@ -303,23 +306,23 @@ export function OpsChrome({
   }, [connectionId, profile, sources.problemsCount])
 
   useEffect(() => {
-    const items = opsStatusbarItems({ ...sources, problemsCount }, profileLabel, { onCycleMotion, onToggleDock })
+    const items = opsStatusbarItems({ ...sources, problemsCount }, profileLabel, { onCycleMotion, onToggleDock }, copy)
     setStatusbarItemGroup(OPS_STATUSBAR_GROUP, items.left, 'left')
     setStatusbarItemGroup(OPS_STATUSBAR_GROUP, items.right, 'right')
     setTitlebarToolGroup(
       'ops-rail',
-      [tool('ops-rail', 'Toggle rail', <PanelLeftIcon className="size-4" />, () => hostRef.current?.toggleRail?.())],
+      [tool('ops-rail', copy.chrome.toggleRail, <PanelLeftIcon className="size-4" />, () => hostRef.current?.toggleRail?.())],
       'left'
     )
     setTitlebarToolGroup(
       'ops-dock',
-      [tool('ops-dock', 'Toggle dock', <PanelBottom className="size-4" />, () => hostRef.current?.toggleDock?.())],
+      [tool('ops-dock', copy.chrome.toggleDock, <PanelBottom className="size-4" />, () => hostRef.current?.toggleDock?.())],
       'right'
     )
     setTitlebarToolGroup(
       'ops-inspector',
       [
-        tool('ops-inspector', 'Toggle inspector', <PanelLeftIcon className="size-4 rotate-180" />, () =>
+        tool('ops-inspector', copy.chrome.toggleInspector, <PanelLeftIcon className="size-4 rotate-180" />, () =>
           hostRef.current?.toggleInspector?.()
         )
       ],
@@ -333,7 +336,7 @@ export function OpsChrome({
       setTitlebarToolGroup('ops-inspector', [], 'right')
       setTitlebarToolGroup('ops-dock', [], 'right')
     }
-  }, [connectionId, profile, onCycleMotion, onToggleDock, profileLabel, problemsCount, sources])
+  }, [connectionId, copy, profile, onCycleMotion, onToggleDock, profileLabel, problemsCount, sources])
 
   // Escape belongs to the actual sheet, dock, inspector and split host.
   useEffect(() => {
@@ -348,7 +351,7 @@ export function OpsChrome({
       <Contribute area={TITLEBAR_AREAS.center} id="ops-chrome">
         <div className="flex min-w-0 items-center gap-2" data-ops-titlebar="">
           {crumb ? (
-            <nav aria-label="Ops breadcrumb" data-ops-breadcrumb="">
+            <nav aria-label={copy.chrome.breadcrumb} data-ops-breadcrumb="">
               {crumb}
             </nav>
           ) : null}
@@ -358,14 +361,14 @@ export function OpsChrome({
             size="sm"
             variant="ghost"
           >
-            <SearchIcon className="size-4" /> Search Ops
+            <SearchIcon className="size-4" /> {copy.chrome.searchOps}
           </Button>
           {showChip ? (
             <ReadonlyModelPill
               connectionId={connectionId}
               label={modelLabel!}
               profile={profile}
-              reason={MODEL_EDIT_UNAVAILABLE}
+              reason={copy.reasons.modelEdit}
             />
           ) : null}
         </div>

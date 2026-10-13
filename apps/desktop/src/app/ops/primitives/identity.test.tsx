@@ -1,21 +1,21 @@
+import { contrastRatio } from '@hermes/shared/color'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-
-import { contrastRatio } from '@hermes/shared/color'
 
 import {
   DONE_HOLD_MS,
   FRESH_MS,
-  MISSING_REASON,
-  SIGIL_DISCS,
-  SIGIL_INK,
-  type PresenceInput,
   hashString,
+  MISSING_REASON,
+  type PresenceInput,
   resolvePresence,
   resolveSigil,
+  SIGIL_DISCS,
+  SIGIL_INK,
   whyFooterContrast,
   whyFooterText
 } from '../motion'
+
 import { CanvasKindIcon, OpsMotionScope, PresenceGlyph, ThinkingReadout } from './presence-glyph'
 import { Sigil } from './sigil'
 import { WhyFooter } from './why-footer'
@@ -44,6 +44,7 @@ function facts(partial: Partial<PresenceInput> & Pick<PresenceInput, 'now' | 'ob
 
 function paint(input: PresenceInput, motion: 'full' | 'reduced' = 'full') {
   const resolved = resolvePresence(input)
+
   const view = render(
     <PresenceGlyph
       copyColor={resolved.copyColor}
@@ -134,6 +135,7 @@ describe('presence states', () => {
     const stale = paint(
       facts({ now: t0 + 6_000, observedAt: t0, eventAt: t0, completion: true, gatewayUp: true, noWork: true })
     )
+
     expect(stale.resolved.state).toBe('stale')
     expect(stale.resolved.state).not.toBe('idle')
     expect(stale.container.querySelector('[data-shape]')?.getAttribute('data-shape')).not.toBe('dot')
@@ -141,9 +143,11 @@ describe('presence states', () => {
 
   it('follows the S1–S4 freshness sequence', () => {
     const s1a = resolvePresence(facts({ now: t0, observedAt: t0, eventAt: t0, completion: true }))
+
     const s1b = resolvePresence(
       facts({ now: t0 + 6_000, observedAt: t0 + 6_000, eventAt: t0, completion: true, gatewayUp: true, noWork: true })
     )
+
     const s1c = resolvePresence(
       facts({
         now: t0 + DONE_HOLD_MS,
@@ -154,6 +158,7 @@ describe('presence states', () => {
         noWork: true
       })
     )
+
     const s2b = resolvePresence(facts({ now: t0 + 6_000, observedAt: t0, eventAt: t0, completion: true }))
     const s2c = resolvePresence(facts({ now: t0 + DONE_HOLD_MS, observedAt: t0, eventAt: t0, completion: true }))
     const s3 = resolvePresence(facts({ now: t0, observedAt: t0, eventAt: t0 - 10 * 60_000, needsYou: true }))
@@ -173,9 +178,11 @@ describe('presence states', () => {
     const named = resolvePresence(
       facts({ now: t0, observedAt: t0, eventAt: t0, working: true, subState: 'tool', toolName: 'read_file' })
     )
+
     const unnamed = resolvePresence(
       facts({ now: t0, observedAt: t0, eventAt: t0, working: true, subState: 'tool', toolName: '  ' })
     )
+
     const quiet = resolvePresence(facts({ now: t0, observedAt: t0, eventAt: t0, working: true }))
 
     expect(named.label).toBe('tool:read_file')
@@ -189,6 +196,7 @@ describe('presence states', () => {
       facts({ now: t0, observedAt: t0, eventAt: t0, working: true, subState: 'thinking' }),
       'reduced'
     )
+
     const glyph = container.querySelector('.ops-presence__glyph')
 
     expect(container.querySelector('.ops-presence')?.getAttribute('data-pulse')).toBe('off')
@@ -218,6 +226,7 @@ describe('sigil identity', () => {
   it('matches the frozen hash, disc, and monogram vectors', () => {
     const emile = '\u00C9mile'
     const flame = '\u{1F525}ops'
+
     const vectors = [
       { name: '', hash: 0, index: null, disc: null, monogram: '' },
       { name: 'default', hash: 1544803905, index: null, disc: null, monogram: '' },
@@ -298,6 +307,7 @@ describe('why footer', () => {
       purpose: 'approve to resume worker',
       observedAt: '18:31:04'
     })
+
     expect(both).toContain('/api/plugins/kanban/tasks/t1')
     expect(both).toContain('observed 18:31:04')
     expect(both).toContain('approve to resume worker')
@@ -305,7 +315,7 @@ describe('why footer', () => {
   })
 
   it('measures footer contrast at or above 4.5:1 on panel and raised', () => {
-    const view = render(<WhyFooter source="/api/ops/fleet" purpose="fleet presence" />)
+    const view = render(<WhyFooter purpose="fleet presence" source="/api/ops/fleet" />)
     const node = view.container.querySelector('.ops-why-footer')
     const ink = node?.getAttribute('data-ink') ?? ''
     const surface = node?.getAttribute('data-surface') ?? ''
@@ -334,6 +344,7 @@ describe('reused readout and kind icons', () => {
         <ThinkingReadout seconds={66} tokens={null} />
       </OpsMotionScope>
     )
+
     expect(reduced.container.querySelector('.glyph-spinner')?.getAttribute('data-paused')).toBe('true')
     expect(reduced.container.querySelector('.ops-thinking')?.getAttribute('data-ops-motion')).toBe('reduced')
     reduced.unmount()

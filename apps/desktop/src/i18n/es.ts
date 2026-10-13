@@ -1,3 +1,4 @@
+import { opsLocaleEntry } from '@/app/ops/locales'
 import { defineFieldCopy } from '@/app/settings/field-copy'
 
 import { defineLocale, type TranslationOverrides } from './define-locale'
@@ -10,6 +11,7 @@ import { esSharedMetrics } from './es_shared_metrics'
 import { introEs } from './intro-es'
 
 export const esOverrides = {
+  ...opsLocaleEntry('es'),
   sharedMetrics: esSharedMetrics,
   intro: introEs,
   connectors: {

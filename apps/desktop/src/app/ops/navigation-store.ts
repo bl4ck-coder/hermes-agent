@@ -501,10 +501,12 @@ export function selectTab(
   }
 
   const previous = leaving ?? scope.snapshots[scope.selectedTabId] ?? emptySnapshot()
+
   const withLeave = {
     ...scope,
     snapshots: { ...scope.snapshots, [scope.selectedTabId]: previous }
   }
+
   const arriving = withLeave.snapshots[tabId] ?? emptySnapshot()
   const next = remember(withLeave, tabId, arriving)
   const slots = slotsForKind(tab.kind)
@@ -588,6 +590,7 @@ export function openLens(
 
   const id = `lens:${lens.id}`
   const existing = scope.tabs.find(tab => tab.id === id)
+
   const tab: OpsTab = existing ?? {
     id,
     kind: 'lens',
@@ -597,6 +600,7 @@ export function openLens(
     closable: true,
     unavailable: lens.unavailable
   }
+
   const tabs = existing ? scope.tabs : [...scope.tabs, tab]
 
   saveScope(connectionId, profile, { ...scope, tabs })
@@ -612,6 +616,7 @@ export function openTaskTab(
 ): ScopeNav {
   const id = `task:${taskId}`
   const scope = loadScope(connectionId, profile)
+
   const tab: OpsTab = {
     id,
     kind: 'task',
@@ -620,6 +625,7 @@ export function openTaskTab(
     pinned: false,
     closable: true
   }
+
   const tabs = scope.tabs.some(item => item.id === id) ? scope.tabs : [...scope.tabs, tab]
 
   saveScope(connectionId, profile, { ...scope, tabs })
@@ -634,6 +640,7 @@ export function openRunTab(
 ): ScopeNav {
   const id = `run:${runId}`
   const scope = loadScope(connectionId, profile)
+
   const tab: OpsTab = {
     id,
     kind: 'run',
@@ -642,6 +649,7 @@ export function openRunTab(
     pinned: false,
     closable: true
   }
+
   const tabs = scope.tabs.some(item => item.id === id) ? scope.tabs : [...scope.tabs, tab]
 
   saveScope(connectionId, profile, { ...scope, tabs })
@@ -656,6 +664,7 @@ export function openProfileTab(
 ): ScopeNav {
   const id = `profile:${name}`
   const scope = loadScope(connectionId, profile)
+
   const tab: OpsTab = {
     id,
     kind: 'profile',
@@ -664,6 +673,7 @@ export function openProfileTab(
     pinned: false,
     closable: true
   }
+
   const tabs = scope.tabs.some(item => item.id === id) ? scope.tabs : [...scope.tabs, tab]
 
   saveScope(connectionId, profile, { ...scope, tabs })
@@ -933,6 +943,7 @@ export function flattenFleet(groups: FleetGroup[], idleExpanded: boolean): Fleet
         count: group.rows.length,
         presence: 'idle'
       })
+
       continue
     }
 

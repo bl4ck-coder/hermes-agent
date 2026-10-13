@@ -2,7 +2,6 @@ import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { I18nProvider } from '@/i18n'
 import {
   AGENTS_ROUTE,
   CAPABILITIES_ROUTE,
@@ -13,26 +12,28 @@ import {
   STARMAP_ROUTE,
   WEBHOOKS_ROUTE
 } from '@/app/routes'
+import { I18nProvider } from '@/i18n'
 
-import { OpsShell, publishBackgroundDot } from './index'
 import { DocumentTabs } from './document-tabs'
-import { $opsOpen, $opsInspectorOpen, $opsRail, $opsScope, $opsView, $opsViewId, $opsWidthPx } from './layout-store'
-import { OpsPane } from './split-host'
+import { $opsInspectorOpen, $opsOpen, $opsRail, $opsScope, $opsView, $opsViewId, $opsWidthPx } from './layout-store'
 import {
-  type FleetFeed,
-  OPS_NAV_STORAGE_KEY,
   arrangeFleet,
   closeTab,
+  type FleetFeed,
   fleetWindow,
   loadScope,
   narrowFromPane,
   openLens,
+  OPS_NAV_STORAGE_KEY,
   resetOpsNavigationForTests,
   runFooter,
   saveScope,
   setInspectorOpen,
   setRail
 } from './navigation-store'
+import { OpsPane } from './split-host'
+
+import { OpsShell, publishBackgroundDot } from './index'
 
 const emptyFleet: FleetFeed = { a1: 'ready', a3: 'ready', rows: [] }
 
@@ -124,6 +125,7 @@ describe('ops navigation shell', () => {
         { id: 'builder', label: 'builder', presence: 'idle', fresh: true }
       ]
     }
+
     const view = shell({ fleet })
     fireEvent.change(view.getByLabelText('Filter fleet and lenses'), { target: { value: 'ski' } })
     expect(view.container.querySelector('[data-ops-rail-list] [data-ops-lens="skills"]')).not.toBeNull()
@@ -147,6 +149,7 @@ describe('ops navigation shell', () => {
         fresh: true
       }))
     ]
+
     const virtualRows = [
       ...rows,
       ...Array.from({ length: 40 }, (_, index) => ({
@@ -156,6 +159,7 @@ describe('ops navigation shell', () => {
         fresh: true
       }))
     ]
+
     const missing = arrangeFleet({ a1: 'missing', a3: 'missing', rows: virtualRows })
     expect(missing.onlineLabel).toBe('unavailable')
     expect(missing.needsYouLabel).toBe('unavailable')
@@ -171,9 +175,11 @@ describe('ops navigation shell', () => {
     expect(folded.container.querySelector('[data-ops-rail-list] [data-ops-needs-you]')?.getAttribute('data-ops-needs-you')).toBe('unavailable')
     expect(folded.container.querySelector('[data-ops-rail-list] [data-ops-fleet-folded="28"]')?.textContent).toContain('28 idle')
     expect(folded.container.querySelectorAll('[data-ops-rail-list] [data-ops-fleet-row^="idle-"]')).toHaveLength(0)
+
     const groups = [...folded.container.querySelectorAll('[data-ops-rail-list] [data-ops-fleet-group]')].map(node =>
       node.getAttribute('data-ops-fleet-group')
     )
+
     expect(groups.indexOf('needs-you')).toBeLessThan(groups.indexOf('working'))
     expect(groups.indexOf('working')).toBeLessThan(groups.indexOf('blocked'))
     expect(groups.indexOf('blocked')).toBeLessThan(groups.indexOf('idle'))

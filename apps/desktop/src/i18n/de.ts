@@ -1,3 +1,4 @@
+import { opsLocaleEntry } from '@/app/ops/locales'
 import { defineFieldCopy } from '@/app/settings/field-copy'
 
 import { deAuxTasks } from './de_aux_tasks'
@@ -10,6 +11,7 @@ import { defineLocale, type TranslationOverrides } from './define-locale'
 import { introDe } from './intro-de'
 
 export const deOverrides = {
+  ...opsLocaleEntry('de'),
   sharedMetrics: deSharedMetrics,
   intro: introDe,
   connectors: {

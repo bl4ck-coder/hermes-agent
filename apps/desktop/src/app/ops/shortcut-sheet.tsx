@@ -3,12 +3,14 @@ import { useEffect, useRef } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useI18n } from '@/i18n'
 import { type EscapeLayerHandle, pushEscapeLayer } from '@/lib/escape-layers'
 import { Keyboard } from '@/lib/icons'
 
 import { OPS_LAYER_PRIORITY, OPS_SHORTCUTS } from './keymap'
 
 export function OpsShortcutSheet({ onClose }: { onClose: () => void }) {
+  const copy = useI18n().t.ops.shortcuts
   const layer = useRef<EscapeLayerHandle | null>(null)
   const restore = useRef(document.activeElement)
   const userClosed = useRef(false)
@@ -59,22 +61,19 @@ export function OpsShortcutSheet({ onClose }: { onClose: () => void }) {
         }}
       >
         <DialogHeader>
-          <DialogTitle icon={Keyboard}>Ops shortcuts</DialogTitle>
-          <DialogDescription>
-            Ctrl+J stays the Desktop sidebar. Toggle the dock in the titlebar or status bar. No shortcut approves unseen
-            content.
-          </DialogDescription>
+          <DialogTitle icon={Keyboard}>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
         <ul className="space-y-2">
           {OPS_SHORTCUTS.map(row => (
             <li className="grid grid-cols-[10rem_1fr] items-start gap-3 text-sm" key={row.chord}>
               <kbd className="rounded border border-border bg-muted px-2 py-1 text-xs">{row.chord}</kbd>
-              <span className="py-1">{row.action}</span>
+              <span className="py-1">{copy.actions[row.id]}</span>
             </li>
           ))}
         </ul>
         <Button onClick={close} type="button" variant="outline">
-          Close
+          {copy.close}
         </Button>
       </DialogContent>
     </Dialog>

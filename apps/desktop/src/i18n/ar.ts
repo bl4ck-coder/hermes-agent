@@ -1,3 +1,5 @@
+import { opsLocaleEntry } from '@/app/ops/locales'
+
 import { arArtifacts } from './ar_artifacts'
 import { arAssistant } from './ar_assistant'
 import { arBoot } from './ar_boot'
@@ -12,6 +14,7 @@ import { arSettings } from './ar_settings'
 import { defineLocale } from './define-locale'
 
 export const ar = defineLocale({
+  ...opsLocaleEntry('ar'),
   sharedMetrics: arCommon.sharedMetrics,
   externalOpenFailed: arChrome.externalOpenFailed,
   sessionImport: arConnectors.sessionImport,

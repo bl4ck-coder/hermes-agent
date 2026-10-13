@@ -5,6 +5,7 @@
 // partial locales should use `defineLocale()` so missing desktop-only strings
 // fall back to English while new keys remain type-checked.
 
+import type { OpsCopy } from '@/app/ops/locales'
 import type { ErrorCodeKey } from '@/lib/error-surface'
 import type { TipId } from '@/lib/tips/catalog'
 
@@ -72,6 +73,8 @@ interface ModeOptionCopy {
 }
 
 export interface Translations extends NoticeTranslations, OpsStatesTranslations {
+  /** Ops shell (P0.5) copy; catalog in app/ops/locales.ts. */
+  ops: OpsCopy
   /** Shared-metrics consent: first-run dialog + Settings › Safety toggles. */
   sharedMetrics: SharedMetricsTranslations
   appTour: AppTourTranslations

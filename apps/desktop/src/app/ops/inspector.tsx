@@ -5,20 +5,22 @@
  * the Inspector toggle.
  */
 
-import { WhyFooter } from './primitives/why-footer'
-import { FleetList } from './rail'
-import { useOpsEscapeLayer } from './keymap'
+import { useI18n } from '@/i18n'
 
+import { useOpsEscapeLayer } from './keymap'
+import { opsNavLabel } from './locales'
 import {
+  activeInspectorSlot,
   type FleetFeed,
   type FocusedRun,
   type InspectorSlot,
   type OpsTab,
-  activeInspectorSlot,
   runFooter,
-  slotsForKind,
-  type ScopeNav
+  type ScopeNav,
+  slotsForKind
 } from './navigation-store'
+import { WhyFooter } from './primitives/why-footer'
+import { FleetList } from './rail'
 
 export interface InspectorProps {
   scope: ScopeNav
@@ -29,18 +31,10 @@ export interface InspectorProps {
   onClose?: () => void
 }
 
-const SLOT_LABEL: Record<InspectorSlot, string> = {
-  fleet: 'Fleet',
-  context: 'Context',
-  task: 'Task',
-  node: 'Node',
-  history: 'History',
-  events: 'Events',
-  row: 'Row'
-}
-
 export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }: InspectorProps) {
+  const copy = useI18n().t.ops
   useOpsEscapeLayer(scope.inspectorOpen && overlay && Boolean(onClose), onClose)
+
   if (!scope.inspectorOpen) {
     return null
   }
@@ -52,7 +46,7 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
 
   return (
     <aside
-      aria-label="Inspector"
+      aria-label={copy.inspector.label}
       data-ops-inspector={overlay ? 'overlay' : 'docked'}
       data-ops-inspector-slot={active}
       style={
@@ -82,17 +76,17 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
             role="tab"
             type="button"
           >
-            {SLOT_LABEL[slot]}
+            {copy.inspector.slots[slot]}
           </button>
         ))}
         {onClose ? (
-          <button aria-label="Close inspector" data-ops-inspector-close="" onClick={onClose} type="button">
+          <button aria-label={copy.inspector.close} data-ops-inspector-close="" onClick={onClose} type="button">
             ×
           </button>
         ) : null}
       </div>
       {active === 'unknown' ? (
-        <p data-ops-unknown-slot="">unknown</p>
+        <p data-ops-unknown-slot="">{copy.unknown}</p>
       ) : (
         <InspectorBody active={active} fleet={fleet} tab={tab} />
       )}
@@ -108,6 +102,8 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
 }
 
 function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: FleetFeed; tab: OpsTab | null }) {
+  const copy = useI18n().t.ops
+
   if (active === 'fleet') {
     return <FleetList feed={fleet} filter="" />
   }
@@ -116,7 +112,7 @@ function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: F
     return (
       <section data-ops-inspector-body={active}>
         <p data-ops-unavailable="">
-          {tab ? tab.label : 'Selection'} detail is not built in this shell. No Office, Canvas, or Board business view.
+          {copy.inspector.detailUnavailable(tab ? opsNavLabel(copy, tab.id, tab.label) : copy.inspector.selection)}
         </p>
         <WhyFooter observedAt={null} purpose={null} source={null} why={null} />
       </section>
@@ -125,7 +121,7 @@ function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: F
 
   return (
     <section data-ops-inspector-body="events">
-      <p data-ops-unavailable="">Run events stay empty until a focused run supplies them.</p>
+      <p data-ops-unavailable="">{copy.inspector.runEventsEmpty}</p>
     </section>
   )
 }

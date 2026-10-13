@@ -1,26 +1,25 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useEffect, type ReactNode } from 'react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { type ReactNode, useEffect } from 'react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ChatView } from '@/app/chat'
+import { group, split } from '@/components/pane-shell/tree/model'
 import { LayoutTreeRoot } from '@/components/pane-shell/tree/renderer'
+import { $hiddenTreePanes, $layoutTree, $releaseMainFloor } from '@/components/pane-shell/tree/store'
+import { registry } from '@/contrib/registry'
 import { I18nProvider } from '@/i18n'
+import { pushEscapeLayer } from '@/lib/escape-layers'
+import { onPersistenceEvent } from '@/lib/storage'
 import { $selectedStoredSessionId } from '@/store/session'
 import { stubResizeObserver } from '@/test/jsdom'
 
-import { $hiddenTreePanes, $layoutTree, $releaseMainFloor } from '@/components/pane-shell/tree/store'
-import { group, split } from '@/components/pane-shell/tree/model'
-import { registry } from '@/contrib/registry'
-import { pushEscapeLayer } from '@/lib/escape-layers'
-import { onPersistenceEvent } from '@/lib/storage'
-
-import { OpsShell } from './index'
 import {
   $opsChatSessionId,
   $opsFullscreen,
   $opsLiveSession,
+  $opsRail,
   $opsScope,
   $opsView,
   $opsWidthPx,
@@ -34,19 +33,17 @@ import {
   OPS_GUTTER_PX,
   OPS_MIN_WIDTH_PX,
   OPS_SPLIT_STORAGE_KEY,
+  type OpsScope,
   planOpsFit,
   readOpsLayout,
-  resolveOpsPaneBox,
   resizeOpsSplit,
+  resolveOpsPaneBox,
   writeOpsLayout,
-  $opsRail,
-  type OpsScope,
 } from './layout-store'
 import {
-  activateLiveSessionBadge,
+  closeOpsSplit,
   ensureOpsSplitHost,
   enterOpsFullscreen,
-  exitOpsFullscreen,
   fitOpsFromStorage,
   focusExistingChat,
   handleOpsEscape,
@@ -54,12 +51,13 @@ import {
   noteOpsBackgroundEvent,
   noteOpsScope,
   openOpsSplit,
-  closeOpsSplit,
-  watchOpsLiveSession,
   opsPaneRegistration,
   resetOpsScopeHydrationForTests,
-  toggleOpsFullscreen
+  toggleOpsFullscreen,
+  watchOpsLiveSession
 } from './split-host'
+
+import { OpsShell } from './index'
 
 const localScope: OpsScope = { connectionId: 'local', profile: 'default', remote: false, label: 'local' }
 const remoteScope: OpsScope = { connectionId: 'remote-1', profile: 'judge', remote: true, label: 'bench' }
@@ -130,6 +128,7 @@ describe('ops split layout store', () => {
 
   it('writes only the scoped ops key, not the global layout tree key', () => {
     const keys: string[] = []
+
     const stop = onPersistenceEvent(event => {
       if (event.op === 'write') {
         keys.push(event.key)
@@ -190,11 +189,14 @@ describe('ops split host', () => {
     const realFrame = window.requestAnimationFrame.bind(window)
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       frames.push(cb)
+
       return frames.length
     })
+
     const flushFrames = () => {
       for (let pass = 0; pass < 4 && frames.length > 0; pass += 1) {
         const pending = frames.splice(0)
+
         for (const cb of pending) {
           cb(0)
         }
@@ -204,6 +206,7 @@ describe('ops split host', () => {
     chatMounts = 0
     chatUnmounts = 0
     const noop = () => undefined
+
     const disposeChat = registry.register({
       area: 'panes',
       data: { lifecycleKeepAlive: true, placement: 'main', uncloseable: true },
@@ -260,18 +263,23 @@ describe('ops split host', () => {
       const anchor = await waitFor(() => {
         const node = document.querySelector<HTMLElement>('[data-session-anchor="workspace"]')
         expect(node?.isConnected).toBe(true)
+
         return node!
       })
+
       const composer = await waitFor(() => {
         const node = anchor.querySelector<HTMLElement>('[data-slot="composer-rich-input"]')
         expect(node).toBeTruthy()
+
         return node!
       })
+
       const viewport = anchor.querySelector<HTMLElement>('[data-slot="aui_thread-viewport"]')
 
       composer.textContent = 'draft-survives'
       fireEvent.input(composer)
       composer.focus()
+
       if (viewport) {
         viewport.scrollTop = 144
       }
@@ -294,10 +302,12 @@ describe('ops split host', () => {
       expect(composer.isConnected).toBe(true)
       expect(composer.textContent).toBe('draft-survives')
       expect(anchor.contains(composer)).toBe(true)
+
       if (viewport) {
         expect(viewport.isConnected).toBe(true)
         expect(viewport.scrollTop).toBe(144)
       }
+
       expect(chatUnmounts).toBe(0)
       expect(anchor.closest('[data-pane-host="workspace"]')).toBeTruthy()
       expect((opsPaneRegistration()?.data as { width?: string; maxWidth?: string }).width).toBe('100%')
@@ -323,6 +333,7 @@ describe('ops split host', () => {
       expect(composer.textContent).toBe('draft-survives')
       expect(chatUnmounts).toBe(0)
       expect(document.activeElement).toBe(composer)
+
       if (viewport) {
         expect(viewport.scrollTop).toBe(144)
       }

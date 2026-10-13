@@ -48,26 +48,27 @@ export function useOpsEscapeLayer(open: boolean, close: (() => void) | undefined
   }, [open])
 }
 
+/** English reference copy; rendered text comes from `t.ops.shortcuts.actions[id]` (locales.ts). */
 export const OPS_SHORTCUTS = [
-  { chord: 'G O', action: 'Office' },
-  { chord: 'G C', action: 'Canvas' },
-  { chord: 'G B', action: 'Board' },
-  { chord: 'G R', action: 'Runs' },
-  { chord: 'G S', action: 'Skills' },
-  { chord: 'N', action: 'Focus the create surface. Does not create a task.' },
-  { chord: '/', action: 'Rail filter' },
-  { chord: '?', action: 'Shortcut sheet' },
-  { chord: 'E', action: 'Edit the focused Ops object' },
-  { chord: '[', action: 'Toggle rail' },
-  { chord: ']', action: 'Toggle inspector' },
-  { chord: 'J / K', action: 'Move selection' },
-  { chord: 'Enter', action: 'Open the focused row. Does not approve.' },
-  { chord: 'Ctrl+W', action: 'Close the active non-pinned Ops tab. Never the window.' },
-  { chord: 'Ctrl+Tab', action: 'Cycle Ops document tabs' },
-  { chord: 'Alt+Left / Alt+Right', action: 'Tab history' },
-  { chord: 'Ctrl+,', action: 'Ops settings' },
-  { chord: 'Ctrl+K', action: 'Search Ops in the existing palette' },
-  { chord: 'Esc', action: 'Close the innermost layer, then full-screen' }
+  { id: 'goOffice', chord: 'G O', action: 'Office' },
+  { id: 'goCanvas', chord: 'G C', action: 'Canvas' },
+  { id: 'goBoard', chord: 'G B', action: 'Board' },
+  { id: 'goRuns', chord: 'G R', action: 'Runs' },
+  { id: 'goSkills', chord: 'G S', action: 'Skills' },
+  { id: 'create', chord: 'N', action: 'Focus the create surface. Does not create a task.' },
+  { id: 'filter', chord: '/', action: 'Rail filter' },
+  { id: 'sheet', chord: '?', action: 'Shortcut sheet' },
+  { id: 'edit', chord: 'E', action: 'Edit the focused Ops object' },
+  { id: 'rail', chord: '[', action: 'Toggle rail' },
+  { id: 'inspector', chord: ']', action: 'Toggle inspector' },
+  { id: 'move', chord: 'J / K', action: 'Move selection' },
+  { id: 'open', chord: 'Enter', action: 'Open the focused row. Does not approve.' },
+  { id: 'closeTab', chord: 'Ctrl+W', action: 'Close the active non-pinned Ops tab. Never the window.' },
+  { id: 'cycleTabs', chord: 'Ctrl+Tab', action: 'Cycle Ops document tabs' },
+  { id: 'history', chord: 'Alt+Left / Alt+Right', action: 'Tab history' },
+  { id: 'settings', chord: 'Ctrl+,', action: 'Ops settings' },
+  { id: 'search', chord: 'Ctrl+K', action: 'Search Ops in the existing palette' },
+  { id: 'escape', chord: 'Esc', action: 'Close the innermost layer, then full-screen' }
 ] as const
 
 export type OpsView = 'office' | 'canvas' | 'board' | 'runs' | 'skills'

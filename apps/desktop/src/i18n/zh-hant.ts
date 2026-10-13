@@ -1,3 +1,5 @@
+import { opsLocaleEntry } from '@/app/ops/locales'
+
 import { defineLocale } from './define-locale'
 import { introZhHant } from './intro-zh-hant'
 import { zhHantArtifacts } from './zh-hant_artifacts'
@@ -13,6 +15,7 @@ import { zhHantDiagnostics } from './zh-hant_diagnostics'
 import { zhHantSettings } from './zh-hant_settings'
 
 export const zhHant = defineLocale({
+  ...opsLocaleEntry('zh-hant'),
   skillDeepLink: {
     installTitle: (name: string) => `安裝「${name}」？`,
     installDescription: '此技能將於新的工作階段中可用。請僅安裝可信來源的內容。',
