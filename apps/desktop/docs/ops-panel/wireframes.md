@@ -74,7 +74,7 @@ Narrow pane on this shell:
 - 1280 and above: inspector docked, as drawn.
 - under 1280: inspector overlays. The 24 px gutter stays in the view. The overlay adds none.
 - under 1024: the left rail becomes icons (O44 middle state, G17 persisted). ← Chats stays reachable. This drawing is the full rail, so it is the 1024-and-above drawing.
-- under 800: the tab row (view switch plus doc tabs) becomes one dropdown. Dots move with the tabs into that dropdown. Do not keep a full strip and a dropdown.
+- under 800: the tab strip (pinned Office/Canvas/Board plus doc tabs, O31) becomes one dropdown. Dots move with the tabs into that dropdown. Do not keep a full strip and a dropdown.
 
 O23: the inspector footer `Run 1866 · 0:27 · 14.2k` is the focused run. The drawing includes tab `run 1866`, so a run is focused. With nothing focused, that footer cell is absent. It is not `0` and not the last run. Orbit shots always show `Run #218` because the mock always has a run. That is not a license to show the footer with no focus.
 
@@ -227,7 +227,7 @@ G49, the colour law, over the frozen caption `colour = kind`:
 
 The shots colour ports blue ("new") and orange ("needs setup"), and Channels shows an orange `Set identity`. Those hues are not copied. Amber is the unset state. Edges are not coloured by kind (G38 already says the shots colour ports by state).
 
-G54: each node has its own skeleton (gold shimmer) tied to that node's query, and its own failure. Entries 01, 05, 07, 08, and 09 do not show a node spinner. The absence is not a cut. A slow Tools query does not shimmer Identity.
+G54: each node has its own skeleton (gold shimmer) tied to that node's query, and its own failure. Entries 01, 05, 08, and 09 do not show a node spinner (verified on the originals). The absence is not a cut. Entry 07 is the reference: a slow Tools query does not shimmer Identity. The Tools node there shows a per-node loading spinner and shimmer; neighbours render normally. The shot hue is not copied. The freeze is gold shimmer.
 
 Narrow pane:
 
@@ -260,7 +260,7 @@ SPEC, kept. No Gr8r screenshot exists. Do not redraw this from Orbit's task list
 └──── drawer ▸ [Full page][Copy link][✕]  Status·Priority·Assignee·Project·Skills·Estimate │ Body Comments Events Runs Attachments Links ┘
 ```
 
-Narrow pane: under 1280 the drawer overlays instead of sitting in a side inspector. Under 800 the view switch (Board|List|Table|Calendar|Timeline) is the tab dropdown, not a second row of buttons plus a dropdown. Columns scroll inside the 24 px gutter. They do not wrap into a new board. A blocked card is a card state, not a page error (entry 19 shows `Blocked` on one row while other rows stay completed).
+Narrow pane: under 1280 the drawer overlays instead of sitting in a side inspector. Under 800 the Board doc tab is inside the shell tab dropdown (W1); the in-view view switch stays one in-view control row inside the 24 px gutter (same rule as W8:293); no other narrow behaviour for it is frozen here. Columns scroll inside the 24 px gutter. They do not wrap into a new board. A blocked card is a card state, not a page error (entry 19 shows `Blocked` on one row while other rows stay completed).
 
 `0` on a heartbeat age is only a real zero. Unknown age is `unknown`.
 
@@ -342,7 +342,7 @@ Entries 11 and 10 are the Skills packs and table, including a Show tooltip on a 
 
 Templates/Workflows has no Desktop route (P0-04 named gap). The lens name stays in the rail. This freeze does not invent the page. Projects and Files embed the existing Desktop views. They are not redrawn.
 
-Narrow pane: the category rail follows the shell rail rule (icons under 1024). The table keeps one 24 px gutter. Under 800 the lens tab is in the shell dropdown. Filters do not become a second toolbar gutter.
+Narrow pane: R53's rail rule is the Ops rail only (P0-04 desktop-surface-audit.md:109,114, O44; SPEC.md:673). The Channels/MCP category rail is in-view content, stays inside the one gutter, and its narrow behaviour is not frozen here. No category icons are invented. Open question for Planner: whether that in-view rail has any narrow behaviour. The table keeps one 24 px gutter. Under 800 the lens tab is in the shell dropdown. Filters do not become a second toolbar gutter.
 
 ## 16. Invariants the freeze keeps
 
