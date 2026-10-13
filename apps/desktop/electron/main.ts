@@ -554,6 +554,10 @@ import { loadRendererLoadErrorPage } from './renderer-load-error-page'
 import { attachRendererConsoleCapture, formatRendererBoundaryReport } from './renderer-log'
 import { fetchRosterSourceData } from './roster-source-fetch'
 import { rosterSourceStatus } from './roster-source-status'
+import { createRunKeyStore, RUN_KEY_STORE_FILE } from './run-key-store'
+import { createRunsProxy, localGatewayTarget, RunsProxyError } from './runs-proxy'
+import { registerRunsProxyIpc } from './runs-proxy-ipc'
+import { createNodeRunsTransport } from './runs-transport'
 import {
   classifyStoredSecret,
   readSecretStoragePolicy,
@@ -18665,6 +18669,95 @@ registerFsIpc({
 })
 
 // Git-driven features (worktrees, review pane, repo scan) — see git-ipc.ts.
+// ops-panel P1-06 (decision 2026-10-13 19:47 ART): /v1/runs/* goes through a typed
+// main-process proxy. Local connection: API_SERVER_KEY is read from the profile's
+// .env on every call. Remote/SSH connections: the key lives in safeStorage under
+// userData. The key never crosses IPC to the renderer.
+{
+  const runsTransport = createNodeRunsTransport()
+  const runKeyStorePath = () => path.join(app.getPath('userData'), RUN_KEY_STORE_FILE)
+
+  const runKeyStore = createRunKeyStore({
+    isEncryptionAvailable: () => Boolean(safeStorage.isEncryptionAvailable()),
+    encryptString: plain => safeStorage.encryptString(plain),
+    decryptString: blob => safeStorage.decryptString(Buffer.from(blob)),
+    readStoreText: () => {
+      try {
+        return fs.readFileSync(runKeyStorePath(), 'utf8')
+      } catch {
+        return ''
+      }
+    },
+    writeStoreText: text => {
+      fs.mkdirSync(path.dirname(runKeyStorePath()), { recursive: true })
+      fs.writeFileSync(runKeyStorePath(), text, { mode: 0o600 })
+    }
+  })
+
+  const runsProfileHome = (profile: string | null | undefined) => {
+    const name = profile && String(profile).trim() ? String(profile).trim().toLowerCase() : 'default'
+
+    if (name === 'default') {
+      return HERMES_HOME
+    }
+
+    if (!PROFILE_NAME_RE.test(name)) {
+      throw new RunsProxyError('invalid_profile', 'invalid profile name')
+    }
+
+    return path.join(HERMES_HOME, 'profiles', name)
+  }
+
+  const runsProxy = createRunsProxy({
+    transport: runsTransport,
+    resolveTarget: async ref => {
+      const connectionId = ref.connectionId && ref.connectionId !== 'local' ? ref.connectionId : null
+
+      if (connectionId) {
+        const stored = runKeyStore.get(connectionId)
+
+        if (!stored) {
+          throw new RunsProxyError('gateway_key_missing', 'no API_SERVER_KEY stored for this connection')
+        }
+
+        return stored
+      }
+
+      let envText = ''
+
+      try {
+        envText = fs.readFileSync(path.join(runsProfileHome(ref.profile), '.env'), 'utf8')
+      } catch {
+        envText = ''
+      }
+
+      const local = localGatewayTarget(envText)
+
+      if (!local.key) {
+        throw new RunsProxyError('gateway_key_missing', 'API_SERVER_KEY is not set in the profile .env')
+      }
+
+      return { baseUrl: local.baseUrl, key: local.key }
+    }
+  })
+
+  registerRunsProxyIpc({
+    ipcMain,
+    proxy: runsProxy,
+    keyStore: runKeyStore,
+    transport: runsTransport,
+    resolveServeTarget: async profile => {
+      const descriptor: any = await ensureBackend(profile, { passive: true })
+
+      if (!descriptor?.baseUrl || descriptor.authMode === 'oauth' || !descriptor.token) {
+        throw new RunsProxyError('sse_unsupported_backend', 'ops SSE needs a session-token dashboard backend')
+      }
+
+      return { baseUrl: String(descriptor.baseUrl), token: String(descriptor.token) }
+    }
+  })
+}
+
 registerGitIpc({ resolveGitBinary, resolveGhBinary })
 
 // Client-side loopback callback for MCP OAuth against remote backends — see

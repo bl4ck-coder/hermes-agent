@@ -466,6 +466,38 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
   renamePath: (targetPath, newName) => ipcRenderer.invoke('hermes:fs:rename', targetPath, newName),
   writeTextFile: (filePath, content) => ipcRenderer.invoke('hermes:fs:writeText', filePath, content),
   trashPath: targetPath => ipcRenderer.invoke('hermes:fs:trash', targetPath),
+  // ops-panel P1-06: typed /v1/runs/* proxy + ops SSE. The gateway API key never
+  // reaches the renderer; remoteKey.set is write-only and status never returns it.
+  runs: {
+    get: (ref, runId) => ipcRenderer.invoke('hermes:runs:get', ref, runId),
+    create: (ref, body) => ipcRenderer.invoke('hermes:runs:create', ref, body),
+    approve: (ref, runId, body) => ipcRenderer.invoke('hermes:runs:approve', ref, runId, body),
+    steer: (ref, runId, body) => ipcRenderer.invoke('hermes:runs:steer', ref, runId, body),
+    stop: (ref, runId) => ipcRenderer.invoke('hermes:runs:stop', ref, runId),
+    openEvents: (ref, runId, opts) => ipcRenderer.invoke('hermes:runs:events:open', ref, runId, opts),
+    closeEvents: subscriptionId => ipcRenderer.invoke('hermes:runs:events:close', subscriptionId),
+    onEvent: callback => {
+      const listener = (_event, payload) => callback(payload)
+      ipcRenderer.on('hermes:runs:event', listener)
+
+      return () => ipcRenderer.removeListener('hermes:runs:event', listener)
+    },
+    remoteKey: {
+      set: (connectionId, baseUrl, key) => ipcRenderer.invoke('hermes:runs:remoteKey:set', connectionId, baseUrl, key),
+      status: connectionId => ipcRenderer.invoke('hermes:runs:remoteKey:status', connectionId),
+      clear: connectionId => ipcRenderer.invoke('hermes:runs:remoteKey:clear', connectionId)
+    }
+  },
+  opsSse: {
+    open: request => ipcRenderer.invoke('hermes:ops:sse:open', request),
+    close: subscriptionId => ipcRenderer.invoke('hermes:ops:sse:close', subscriptionId),
+    onEvent: callback => {
+      const listener = (_event, payload) => callback(payload)
+      ipcRenderer.on('hermes:ops:sse:event', listener)
+
+      return () => ipcRenderer.removeListener('hermes:ops:sse:event', listener)
+    }
+  },
   git: {
     worktreeList: repoPath => ipcRenderer.invoke('hermes:git:worktreeList', repoPath),
     worktreeAdd: (repoPath, options) => ipcRenderer.invoke('hermes:git:worktreeAdd', repoPath, options),
