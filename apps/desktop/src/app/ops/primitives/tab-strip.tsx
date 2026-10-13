@@ -26,6 +26,7 @@ export interface TabStripTab {
   closable?: boolean
   icon?: IconComponent
   indicator?: TabIndicator | null
+  route?: string
 }
 
 export interface TabStripProps {
@@ -35,6 +36,8 @@ export interface TabStripProps {
   onClose?: (id: string) => void
   /** Pinned tabs always stay. Extra unpinned tabs go to the overflow chevron. */
   maxVisible?: number
+  /** Pane-aware override. Viewport media query is the fallback. */
+  layout?: 'strip' | 'dropdown'
 }
 
 export const TAB_STRIP_NARROW = '(max-width: 800px)'
@@ -100,6 +103,7 @@ function Indicator({ indicator }: { indicator: TabIndicator }) {
       aria-label={indicator}
       data-indicator={indicator}
       data-indicator-color={TAB_INDICATOR_COLOR[indicator]}
+      data-ops-dot={indicator}
       role="img"
       style={{
         backgroundColor: TAB_INDICATOR_COLOR[indicator],
@@ -141,6 +145,7 @@ function CloseTab({ onClose, tab }: { onClose?: (id: string) => void; tab: TabSt
     <button
       aria-label={`Close ${tab.label}`}
       data-close-tab={tab.id}
+      data-ops-tab-close={tab.id}
       onClick={event => {
         event.preventDefault()
         event.stopPropagation()
@@ -183,6 +188,9 @@ function TabButton({
       <button
         aria-selected={active}
         data-kind-icon={Icon ? 'true' : 'false'}
+        data-ops-tab={tab.id}
+        data-pinned={tab.pinned ? 'true' : 'false'}
+        data-route={tab.route ?? ''}
         onClick={() => onSelect(tab.id)}
         role="tab"
         style={{
@@ -199,7 +207,7 @@ function TabButton({
         {tab.indicator && <Indicator indicator={tab.indicator} />}
       </button>
       {closable && onClose && (
-        <button aria-label={`Close ${tab.label}`} onClick={() => onClose(tab.id)} type="button">
+        <button aria-label={`Close ${tab.label}`} data-ops-tab-close={tab.id} onClick={() => onClose(tab.id)} type="button">
           <X aria-hidden size={12} />
         </button>
       )}
@@ -263,6 +271,7 @@ function NarrowStrip({
     <div
       className="ops-tab-strip"
       data-layout="narrow"
+      data-ops-tab-dropdown=""
       onKeyDown={event => onStripKeyDown(event, tabs, activeId, onActiveChange, onClose)}
       style={opsDensityStyle()}
     >
@@ -272,6 +281,7 @@ function NarrowStrip({
             aria-label={active ? `Ops tabs, ${active.label}` : 'Ops tabs'}
             data-active="true"
             data-narrow-trigger=""
+            style={{ borderBottom: '2px solid #C9A55A' }}
             onKeyDown={event => {
               if (event.key === 'ArrowDown' && focusOpenMenuItem(event.currentTarget)) {
                 event.preventDefault()
@@ -327,8 +337,9 @@ function NarrowStrip({
   )
 }
 
-export function TabStrip({ activeId, maxVisible = 6, onActiveChange, onClose, tabs }: TabStripProps) {
-  const narrow = useMediaQuery(TAB_STRIP_NARROW)
+export function TabStrip({ activeId, layout, maxVisible = 6, onActiveChange, onClose, tabs }: TabStripProps) {
+  const mediaNarrow = useMediaQuery(TAB_STRIP_NARROW)
+  const narrow = layout ? layout === 'dropdown' : mediaNarrow
   const { overflow, visible } = partitionTabs(tabs, activeId, maxVisible)
   const [overflowOpen, setOverflowOpen] = useState(false)
 
@@ -365,6 +376,7 @@ export function TabStrip({ activeId, maxVisible = 6, onActiveChange, onClose, ta
               <button
                 aria-expanded={overflowOpen}
                 aria-label={`More tabs, ${overflow.length} overflow`}
+                data-ops-tab-overflow=""
                 onKeyDown={event => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault()

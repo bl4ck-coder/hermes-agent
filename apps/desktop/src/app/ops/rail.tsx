@@ -48,6 +48,7 @@ export interface RailProps {
   onSelectConnection: (id: string) => void
   onSelectProfile: (name: string) => void
   onOpenView: (id: string) => void
+  onOpenPin: (id: string) => void
   onOpenLens: (id: string) => void
   onTogglePin: (id: string) => void
   onConnect: () => void
@@ -183,6 +184,7 @@ export function Rail({
   onFilter,
   onOpenLens,
   onOpenPalette,
+  onOpenPin,
   onOpenSettings,
   onOpenView,
   onSelectConnection,
@@ -205,8 +207,23 @@ export function Rail({
     return null
   }
 
+  const railWidth = icons ? 72 : 240
+
   return (
-    <nav aria-label="Ops" data-ops-rail-list="" data-ops-rail={rail}>
+    <nav
+      aria-label="Ops"
+      data-ops-rail={rail}
+      data-ops-rail-list=""
+      data-ops-rail-width={String(railWidth)}
+      style={{
+        boxSizing: 'border-box',
+        flex: `0 0 ${railWidth}px`,
+        maxWidth: railWidth,
+        minWidth: railWidth,
+        overflow: 'hidden',
+        width: railWidth
+      }}
+    >
       <div data-ops-switcher="">
         <label>
           Connection
@@ -223,7 +240,7 @@ export function Rail({
           </select>
         </label>
         <span data-ops-connection="">{connectionLabel || connectionId}</span>
-        {remote ? <span data-ops-readonly="">read-only</span> : null}
+        {remote ? <span aria-label="read-only" data-ops-readonly="" /> : null}
         <label>
           Profile
           <select aria-label="Profile" onChange={event => onSelectProfile(event.target.value)} value={profile}>
@@ -271,25 +288,39 @@ export function Rail({
       <div data-ops-section="pinned">Pinned</div>
       {pins.length === 0 ? <div data-ops-pins-empty="">No pins</div> : null}
       {pins.filter(id => matches(id, filter)).map(id => (
-        <button data-ops-pin={id} key={id} onClick={() => onTogglePin(id)} type="button">
-          {icons ? '★' : pinLabel(id)}
-        </button>
+        <div data-ops-pin-row={id} key={id} style={{ alignItems: 'center', display: 'flex', maxWidth: '100%' }}>
+          <button data-ops-pin={id} onClick={() => onOpenPin(id)} type="button">
+            {icons ? '★' : pinLabel(id)}
+          </button>
+          <button aria-label={`Unpin ${pinLabel(id)}`} data-ops-unpin={id} onClick={() => onTogglePin(id)} type="button">
+            ×
+          </button>
+        </div>
       ))}
 
       <div data-ops-section="lenses">LENSES</div>
       {visiblePrimary.map(lens => (
-        <button
-          aria-label={lens.label}
-          data-ops-lens={lens.id}
-          data-route={lens.route}
-          data-unavailable={lens.unavailable ? 'true' : 'false'}
-          key={lens.id}
-          onClick={() => onOpenLens(lens.id)}
-          type="button"
-        >
-          {icons ? lens.label.slice(0, 1) : lens.label}
-          {icons || !lens.hint ? null : <kbd>{lens.hint}</kbd>}
-        </button>
+        <div key={lens.id} style={{ alignItems: 'center', display: 'flex', maxWidth: '100%' }}>
+          <button
+            aria-label={lens.label}
+            data-ops-lens={lens.id}
+            data-route={lens.route}
+            data-unavailable={lens.unavailable ? 'true' : 'false'}
+            onClick={() => onOpenLens(lens.id)}
+            type="button"
+          >
+            {icons ? lens.label.slice(0, 1) : lens.label}
+            {icons || !lens.hint ? null : <kbd>{lens.hint}</kbd>}
+          </button>
+          <button
+            aria-label={pins.includes(`lens:${lens.id}`) ? `Unpin ${lens.label}` : `Pin ${lens.label}`}
+            data-ops-pin-toggle={`lens:${lens.id}`}
+            onClick={() => onTogglePin(`lens:${lens.id}`)}
+            type="button"
+          >
+            {icons ? '★' : pins.includes(`lens:${lens.id}`) ? 'Unpin' : 'Pin'}
+          </button>
+        </div>
       ))}
       <button aria-expanded={moreOpen} data-ops-more="" onClick={() => setMoreOpen(open => !open)} type="button">
         {icons ? '…' : 'More'}
@@ -309,6 +340,23 @@ export function Rail({
             </button>
           ))
         : null}
+
+      <button
+        data-ops-g85=""
+        data-ops-needs-you-entry=""
+        data-ops-needs-you-state={fleet.a3 === 'missing' || fleet.a1 === 'missing' ? 'unavailable' : 'ready'}
+        onClick={() => {
+          if (fleet.a3 === 'missing' || fleet.a1 === 'missing') {
+            return
+          }
+        }}
+        type="button"
+      >
+        {icons ? '◉' : 'Needs-you'}
+        <span data-ops-g85-count="">
+          {fleet.a3 === 'missing' || fleet.a1 === 'missing' ? 'unavailable' : arrangeFleet(fleet).needsYouLabel}
+        </span>
+      </button>
 
       <FleetList feed={fleet} filter={filter} />
 

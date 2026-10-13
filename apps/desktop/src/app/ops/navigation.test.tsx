@@ -244,7 +244,7 @@ describe('ops navigation shell', () => {
     expect(closable).not.toBeNull()
     fireEvent.click(closable!)
     expect(loadScope('local', 'mirror').tabs.some(tab => tab.id === 'lens:skills')).toBe(false)
-    expect(view.container.querySelector('[data-ops-unavailable]')?.textContent).toContain('not available yet')
+    expect(view.container.querySelector('[data-ops-open-route]')?.getAttribute('data-ops-open-route')).toBeTruthy()
   })
 
   it('restores tab navigation state and ignores background focus and scroll resets', () => {
@@ -303,6 +303,136 @@ describe('ops navigation shell', () => {
     )
     expect(shown.container.querySelector('[data-ops-inspector-slot]')?.getAttribute('data-ops-inspector-slot')).toBe('unknown')
     expect(shown.container.querySelector('[data-ops-unknown-slot]')?.textContent).toBe('unknown')
+  })
+
+  it('keeps the inspector toggle hittable, compacts the rail, and anchors the dock to the bottom', () => {
+    const view = shell({ paneWidth: 640 })
+    const root = view.container.querySelector('[data-ops-root]') as HTMLElement
+    const rail = view.container.querySelector('[data-ops-rail-list]') as HTMLElement
+    const toggle = view.container.querySelector('[data-ops-inspector-toggle]') as HTMLElement
+
+    expect(root.getAttribute('data-ops-inspector')).toBe('overlay')
+    expect(rail.getAttribute('data-ops-rail')).toBe('icons')
+    expect(rail.style.width).toBe('72px')
+    expect(rail.style.maxWidth).toBe('72px')
+    expect(view.container.querySelector('[data-ops-view-slot] [data-ops-inspector="overlay"]')).not.toBeNull()
+    expect(view.container.querySelector('[data-ops-toolbar] [data-ops-inspector="overlay"]')).toBeNull()
+    expect(view.container.querySelector('[data-ops-rail-list] [data-ops-inspector="overlay"]')).toBeNull()
+    const aside = view.container.querySelector('[data-ops-view-slot] aside') as HTMLElement
+    expect(toggle.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.click(view.getByRole('button', { name: 'Dock' }))
+    const dock = view.container.querySelector('[data-ops-dock]') as HTMLElement
+    expect(dock.getAttribute('data-ops-dock-anchor')).toBe('bottom')
+    expect(dock.style.width).toBe('100%')
+    expect(root.compareDocumentPosition(dock) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(view.container.querySelector('[data-ops-body] [data-ops-dock]')).toBeNull()
+  })
+
+  it('toggles the rail from [ without stealing a composer or filter key', () => {
+    const view = shell()
+    const toggle = view.getByRole('button', { name: 'Rail' })
+
+    fireEvent.keyDown(toggle, { key: '[' })
+    expect(loadScope('local', 'mirror').rail).toBe('icons')
+
+    fireEvent.change(view.getByLabelText('Filter fleet and lenses'), { target: { value: 'runs' } })
+    fireEvent.keyDown(view.getByLabelText('Filter fleet and lenses'), { key: '[' })
+    expect(loadScope('local', 'mirror').rail).toBe('icons')
+    expect(loadScope('local', 'mirror').filter).toBe('runs')
+
+    const composer = document.createElement('textarea')
+    composer.setAttribute('data-composer', '')
+    document.body.append(composer)
+    composer.focus()
+    fireEvent.keyDown(composer, { key: '[' })
+    expect(loadScope('local', 'mirror').rail).toBe('icons')
+    expect(document.activeElement).toBe(composer)
+    composer.remove()
+  })
+
+  it('navigates from a pin and unpins only from the explicit control', () => {
+    const view = shell()
+
+    fireEvent.click(view.container.querySelector('[data-ops-pin-toggle="lens:runs"]')!)
+    expect(loadScope('local', 'mirror').pins).toEqual(['lens:runs'])
+    expect(loadScope('local', 'mirror').selectedTabId).not.toBe('lens:runs')
+
+    fireEvent.click(view.container.querySelector('[data-ops-pin="lens:runs"]')!)
+    expect(loadScope('local', 'mirror').selectedTabId).toBe('lens:runs')
+    expect(loadScope('local', 'mirror').pins).toEqual(['lens:runs'])
+
+    fireEvent.click(view.container.querySelector('[data-ops-unpin="lens:runs"]')!)
+    expect(loadScope('local', 'mirror').pins).toEqual([])
+    expect(loadScope('local', 'mirror').selectedTabId).toBe('lens:runs')
+  })
+
+  it('shows Needs-you unavailable when A1 or A3 is missing and a real count when both are ready', () => {
+    const missing = shell({ fleet: { a1: 'missing', a3: 'missing', rows: [{ id: 'need', label: 'need', presence: 'needs_you', fresh: true }] } })
+    expect(missing.container.querySelector('[data-ops-g85]')?.getAttribute('data-ops-needs-you-state')).toBe('unavailable')
+    expect(missing.container.querySelector('[data-ops-g85-count]')?.textContent).toBe('unavailable')
+    missing.unmount()
+
+    const ready = shell({ fleet: { a1: 'ready', a3: 'ready', rows: [{ id: 'need', label: 'need', presence: 'needs_you', fresh: true }] } })
+    expect(ready.container.querySelector('[data-ops-g85-count]')?.textContent).toBe('1')
+    expect(ready.container.querySelector('[data-ops-g85-count]')?.textContent).not.toBe('0')
+  })
+
+  it('rewrites every profile-keyed reference and restores scroll and filter after rename', async () => {
+    saveScope('local', 'rename-before', {
+      ...loadScope('local', 'rename-before'),
+      selectedTabId: 'profile:rename-before',
+      rail: 'icons',
+      inspectorOpen: false,
+      dockOpen: true,
+      filter: 'abc',
+      pins: ['profile:rename-before', 'lens:skills'],
+      tabs: [
+        ...loadScope('local', 'rename-before').tabs,
+        {
+          id: 'profile:rename-before',
+          kind: 'profile',
+          label: 'rename-before',
+          route: '/profiles?profile=rename-before',
+          pinned: false,
+          closable: true
+        }
+      ],
+      history: [{ tabId: 'profile:rename-before', snapshot: { scrollTop: 88, focusId: 'row-1', selectionId: 'sel-1', filter: 'abc' } }],
+      historyIndex: 0,
+      dots: { 'profile:rename-before': 'unread' },
+      lastSeen: { 'profile:rename-before': 9 },
+      snapshots: {
+        ...loadScope('local', 'rename-before').snapshots,
+        'profile:rename-before': { scrollTop: 88, focusId: 'row-1', selectionId: 'sel-1', filter: 'abc' }
+      }
+    })
+    saveScope('remote-1', 'rename-before', {
+      ...loadScope('remote-1', 'rename-before'),
+      pins: ['profile:rename-before']
+    })
+
+    const { migrateTilesForProfile } = await import('@/store/session-states')
+    migrateTilesForProfile('rename-before', 'rename-after')
+
+    const moved = loadScope('local', 'rename-after')
+    const dumped = JSON.stringify(moved)
+
+    expect(dumped).not.toContain('profile:rename-before')
+    expect(dumped).not.toContain('rename-before')
+    expect(moved.selectedTabId).toBe('profile:rename-after')
+    expect(moved.snapshots['profile:rename-after']?.scrollTop).toBe(88)
+    expect(moved.snapshots['profile:rename-after']?.filter).toBe('abc')
+    expect(moved.filter).toBe('abc')
+    expect(moved.dots['profile:rename-after']).toBe('unread')
+    expect(moved.lastSeen['profile:rename-after']).toBe(9)
+    expect(moved.history.map(entry => entry.tabId)).toContain('profile:rename-after')
+    expect(moved.pins).toContain('profile:rename-after')
+    expect(moved.rail).toBe('icons')
+    expect(moved.dockOpen).toBe(true)
+    expect(moved.inspectorOpen).toBe(false)
+    expect(loadScope('remote-1', 'rename-before').pins).toEqual(['profile:rename-before'])
+    expect(loadScope('local', 'rename-before').pins).toEqual([])
   })
 })
 

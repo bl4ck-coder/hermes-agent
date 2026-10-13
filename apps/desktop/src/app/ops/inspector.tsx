@@ -1,6 +1,8 @@
 /**
  * Inspector slots follow the selected tab. The focused-run footer is absent
  * when nothing is focused. Unknown token counts stay unknown — never 0.
+ * An overlay covers the view slot only. It does not cover the rail, tabs, or
+ * the Inspector toggle.
  */
 
 import { WhyFooter } from './primitives/why-footer'
@@ -23,6 +25,7 @@ export interface InspectorProps {
   fleet: FleetFeed
   focusedRun: FocusedRun | null
   onSlot: (slot: InspectorSlot) => void
+  onClose?: () => void
 }
 
 const SLOT_LABEL: Record<InspectorSlot, string> = {
@@ -35,7 +38,7 @@ const SLOT_LABEL: Record<InspectorSlot, string> = {
   row: 'Row'
 }
 
-export function Inspector({ fleet, focusedRun, onSlot, overlay, scope }: InspectorProps) {
+export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }: InspectorProps) {
   if (!scope.inspectorOpen) {
     return null
   }
@@ -50,7 +53,22 @@ export function Inspector({ fleet, focusedRun, onSlot, overlay, scope }: Inspect
       aria-label="Inspector"
       data-ops-inspector={overlay ? 'overlay' : 'docked'}
       data-ops-inspector-slot={active}
-      style={overlay ? { position: 'absolute', inset: 0, zIndex: 2 } : undefined}
+      style={
+        overlay
+          ? {
+              background: 'var(--surface, #161616)',
+              bottom: 0,
+              boxSizing: 'border-box',
+              left: 0,
+              overflow: 'auto',
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              width: '100%',
+              zIndex: 1
+            }
+          : { boxSizing: 'border-box', flex: '0 0 280px', maxWidth: 280, minWidth: 280, width: 280 }
+      }
     >
       <div role="tablist">
         {slots.map(slot => (
@@ -65,6 +83,11 @@ export function Inspector({ fleet, focusedRun, onSlot, overlay, scope }: Inspect
             {SLOT_LABEL[slot]}
           </button>
         ))}
+        {onClose ? (
+          <button aria-label="Close inspector" data-ops-inspector-close="" onClick={onClose} type="button">
+            ×
+          </button>
+        ) : null}
       </div>
       {active === 'unknown' ? <p data-ops-unknown-slot="">unknown</p> : <InspectorBody active={active} fleet={fleet} tab={tab} />}
       {footer ? (

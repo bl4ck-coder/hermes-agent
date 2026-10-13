@@ -533,9 +533,30 @@ export function closeTab(
   const tabs = scope.tabs.filter(item => item.id !== tabId)
   const selectedTabId = scope.selectedTabId === tabId ? 'office' : scope.selectedTabId
   const snapshots = { ...scope.snapshots }
-  delete snapshots[tabId]
+  const dots = { ...scope.dots }
+  const lastSeen = { ...scope.lastSeen }
 
-  return saveScope(connectionId, profile, { ...scope, tabs, selectedTabId, snapshots })
+  delete snapshots[tabId]
+  delete dots[tabId]
+  delete lastSeen[tabId]
+
+  const history = scope.history.filter(entry => entry.tabId !== tabId)
+  const selected = tabs.find(item => item.id === selectedTabId)
+  const slots = selected ? slotsForKind(selected.kind) : slotsForKind('office')
+  const arriving = snapshots[selectedTabId] ?? emptySnapshot()
+
+  return saveScope(connectionId, profile, {
+    ...scope,
+    tabs,
+    selectedTabId,
+    snapshots,
+    dots,
+    lastSeen,
+    history: history.length > 0 ? history : [{ tabId: selectedTabId, snapshot: arriving }],
+    historyIndex: history.length > 0 ? Math.min(scope.historyIndex, history.length - 1) : 0,
+    inspectorSlot: slots.includes(scope.inspectorSlot) ? scope.inspectorSlot : slots[0],
+    filter: arriving.filter
+  })
 }
 
 export function openLens(
@@ -633,6 +654,33 @@ export function openProfileTab(
   saveScope(connectionId, profile, { ...scope, tabs })
 
   return selectTab(connectionId, profile, id)
+}
+
+/** Open a pin. Unpin is a separate control — this never removes the pin. */
+export function openPin(
+  connectionId: string | null | undefined,
+  profile: string | null | undefined,
+  pinId: string
+): ScopeNav {
+  if (pinId.startsWith('lens:')) {
+    return openLens(connectionId, profile, pinId.slice(5))
+  }
+
+  if (pinId.startsWith('task:')) {
+    const taskId = pinId.slice(5)
+
+    return openTaskTab(connectionId, profile, taskId, taskId)
+  }
+
+  if (pinId.startsWith('run:')) {
+    return openRunTab(connectionId, profile, pinId.slice(4))
+  }
+
+  if (pinId.startsWith('profile:')) {
+    return openProfileTab(connectionId, profile, pinId.slice(8))
+  }
+
+  return selectTab(connectionId, profile, pinId)
 }
 
 export function togglePin(
@@ -830,8 +878,26 @@ export function activeInspectorSlot(scope: ScopeNav): InspectorSlot | 'unknown' 
   return slotsForKind(tab.kind).includes(scope.inspectorSlot) ? scope.inspectorSlot : 'unknown'
 }
 
+function rewriteProfileKey(value: string, from: string, to: string): string {
+  return value === `profile:${from}` ? `profile:${to}` : value
+}
+
+function rewriteRecord<T>(record: Record<string, T>, from: string, to: string): Record<string, T> {
+  const next: Record<string, T> = {}
+
+  for (const [key, value] of Object.entries(record)) {
+    next[rewriteProfileKey(key, from, to)] = value
+  }
+
+  return next
+}
+
+/** Every profile-keyed reference moves. Scroll, filter, and chrome stay with the scope. */
 function rewriteProfileRefs(scope: ScopeNav, from: string, to: string): ScopeNav {
-  const rewrite = (value: string) => (value === `profile:${from}` ? `profile:${to}` : value)
+  const rewrite = (value: string) => rewriteProfileKey(value, from, to)
+  const snapshots = rewriteRecord(scope.snapshots, from, to)
+  const selectedTabId = rewrite(scope.selectedTabId)
+  const selected = snapshots[selectedTabId]
 
   return {
     ...scope,
@@ -841,7 +907,40 @@ function rewriteProfileRefs(scope: ScopeNav, from: string, to: string): ScopeNav
         ? { ...tab, id: `profile:${to}`, label: to, route: `/profiles?profile=${encodeURIComponent(to)}` }
         : tab
     ),
-    selectedTabId: scope.selectedTabId === `profile:${from}` ? `profile:${to}` : scope.selectedTabId
+    selectedTabId,
+    history: scope.history.map(entry => ({ ...entry, tabId: rewrite(entry.tabId) })),
+    snapshots,
+    dots: rewriteRecord(scope.dots, from, to),
+    lastSeen: rewriteRecord(scope.lastSeen, from, to),
+    filter: selected?.filter ?? scope.filter
+  }
+}
+
+function mergeMovedScope(existing: ScopeNav, incoming: ScopeNav): ScopeNav {
+  const tabs = [...existing.tabs]
+
+  for (const tab of incoming.tabs) {
+    if (!tabs.some(item => item.id === tab.id)) {
+      tabs.push(tab)
+    }
+  }
+
+  const history = [...existing.history]
+
+  for (const entry of incoming.history) {
+    if (!history.some(item => item.tabId === entry.tabId)) {
+      history.push(entry)
+    }
+  }
+
+  return {
+    ...existing,
+    tabs,
+    pins: [...existing.pins, ...incoming.pins.filter(id => !existing.pins.includes(id))],
+    history,
+    snapshots: { ...incoming.snapshots, ...existing.snapshots },
+    dots: { ...incoming.dots, ...existing.dots },
+    lastSeen: { ...incoming.lastSeen, ...existing.lastSeen }
   }
 }
 
@@ -867,13 +966,7 @@ export function migrateOpsNavigationForProfile(oldProfile: string, newProfile: s
   const rewritten = rewriteProfileRefs(sanitizeScope(moved), from, to)
   const existing = file.scopes[targetKey]
 
-  file.scopes[targetKey] = existing
-    ? {
-        ...existing,
-        tabs: [...existing.tabs, ...rewritten.tabs.filter(tab => !existing.tabs.some(item => item.id === tab.id))],
-        pins: [...existing.pins, ...rewritten.pins.filter(id => !existing.pins.includes(id))]
-      }
-    : rewritten
+  file.scopes[targetKey] = existing ? mergeMovedScope(sanitizeScope(existing), rewritten) : rewritten
   writeFile(file)
 }
 
