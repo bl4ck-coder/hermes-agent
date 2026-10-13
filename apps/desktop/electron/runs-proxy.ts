@@ -177,11 +177,13 @@ export function createSseParser(onEvent: (event: SseEvent) => void, onComment?: 
 
         if (line === '') {
           dispatch()
+
           continue
         }
 
         if (line.startsWith(':')) {
           onComment?.(line.slice(1).trim())
+
           continue
         }
 
@@ -358,6 +360,7 @@ export function createRunsProxy({ resolveTarget, transport, timeoutMs = 20_000 }
           }
 
           let serverClosed = false
+
           const parser = createSseParser(
             ev => {
               if (ev.id !== null) {

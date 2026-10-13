@@ -7,7 +7,7 @@
  * the sender and torn down when its webContents is destroyed.
  */
 
-import { type OpsSseOpenRequest, followOpsSse, type ServeTarget } from './ops-sse-bridge'
+import { followOpsSse, type OpsSseOpenRequest, type ServeTarget } from './ops-sse-bridge'
 import type { RunKeyStore } from './run-key-store'
 import type { RunsProxy, RunsTargetRef, RunsTransport, SseEvent } from './runs-proxy'
 
@@ -106,6 +106,7 @@ export function registerRunsProxyIpc({ ipcMain, proxy, keyStore, transport, reso
   ipcMain.handle(RUNS_IPC.eventsOpen, (event, ref, runId, opts) => {
     let id = ''
     let ended = false
+
     const handle = proxy.openEvents(
       refOf(ref),
       String(runId),
@@ -117,6 +118,7 @@ export function registerRunsProxyIpc({ ipcMain, proxy, keyStore, transport, reso
         safeSend(event.sender, RUNS_IPC.event, { subscriptionId: id, type: 'end', ...reason })
       }
     )
+
     id = ended ? 'ended' : track(event.sender, handle.close)
 
     return { subscriptionId: id, ended }
@@ -138,6 +140,7 @@ export function registerRunsProxyIpc({ ipcMain, proxy, keyStore, transport, reso
   ipcMain.handle(RUNS_IPC.opsSseOpen, (event, request: OpsSseOpenRequest) => {
     let id = ''
     let ended = false
+
     const handle = followOpsSse({
       request,
       resolveTarget: resolveServeTarget,
@@ -149,6 +152,7 @@ export function registerRunsProxyIpc({ ipcMain, proxy, keyStore, transport, reso
         safeSend(event.sender, RUNS_IPC.opsSseEvent, { subscriptionId: id, type: 'end', ...reason })
       }
     })
+
     id = ended ? 'ended' : track(event.sender, handle.close)
 
     return { subscriptionId: id, ended }

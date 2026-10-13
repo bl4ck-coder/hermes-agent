@@ -16,6 +16,7 @@ const KEY = 'sk-local-secret-123'
 function fakeTransport(responses: Array<{ status: number; text: string }>, streams: Array<(req: TransportStream) => number> = []) {
   const requests: TransportRequest[] = []
   const streamReqs: TransportStream[] = []
+
   const transport: RunsTransport = {
     async request(req) {
       requests.push(req)
@@ -83,6 +84,7 @@ describe('runs proxy', () => {
       { status: 200, text: '{"resolved":1}' },
       { status: 409, text: '{"error":{"code":"approval_not_pending","message":"nothing"}}' }
     ])
+
     const proxy = createRunsProxy({ resolveTarget: target, transport })
     expect(await proxy.approve({}, 'r1', { choice: 'approve', request_id: 'q1' })).toMatchObject({ ok: true, data: { resolved: 1 } })
     expect(JSON.parse(requests[0].body!)).toEqual({ choice: 'approve', request_id: 'q1' })
@@ -101,6 +103,7 @@ describe('runs proxy', () => {
       { status: 200, text: '{}' },
       { status: 202, text: '{"run_id":"r9"}' }
     ])
+
     const proxy = createRunsProxy({ resolveTarget: target, transport })
     await proxy.stop({}, 'r1')
     await proxy.steer({}, 'r1', { text: 'go' })
@@ -123,6 +126,7 @@ describe('runs proxy', () => {
 
   it('missing key resolves to a typed error, not a throw', async () => {
     const { transport } = fakeTransport([])
+
     const proxy = createRunsProxy({
       resolveTarget: async () => {
         const { RunsProxyError } = await import('./runs-proxy')
@@ -130,6 +134,7 @@ describe('runs proxy', () => {
       },
       transport
     })
+
     expect(await proxy.getRun({}, 'r1')).toMatchObject({ ok: false, code: 'gateway_key_missing' })
   })
 
@@ -156,6 +161,7 @@ describe('SSE parser + run events', () => {
 
   it('reconnects with Last-Event-ID after a drop: no gap, no duplicate; ends on stream closed', async () => {
     const delivered: string[] = []
+
     const { transport, streamReqs } = fakeTransport(
       [],
       [
@@ -171,6 +177,7 @@ describe('SSE parser + run events', () => {
         }
       ]
     )
+
     const proxy = createRunsProxy({ resolveTarget: target, transport })
     let end: any
     const h = proxy.openEvents({}, 'r1', { backoffMs: 1 }, e => delivered.push(e.id!), r => (end = r))

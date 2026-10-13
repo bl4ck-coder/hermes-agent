@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
+import { followOpsSse, opsSsePath } from './ops-sse-bridge'
 import { createRunKeyStore } from './run-key-store'
 import { createRunsProxy, type RunsTransport, type TransportStream } from './runs-proxy'
-import { RUNS_IPC, registerRunsProxyIpc } from './runs-proxy-ipc'
-import { followOpsSse, opsSsePath } from './ops-sse-bridge'
+import { registerRunsProxyIpc, RUNS_IPC } from './runs-proxy-ipc'
 
 const KEY = 'sk-main-only'
 const TOKEN = 'session-token-main-only'
@@ -12,6 +12,7 @@ function harness(streams: Array<(r: TransportStream) => number> = []) {
   const handlers = new Map<string, (...a: any[]) => any>()
   const sent: Array<{ channel: string; payload: any }> = []
   let destroyed: (() => void) | null = null
+
   const sender = {
     id: 7,
     send: (channel: string, payload: unknown) => sent.push({ channel, payload }),
@@ -20,7 +21,9 @@ function harness(streams: Array<(r: TransportStream) => number> = []) {
       destroyed = cb
     }
   }
+
   const streamReqs: TransportStream[] = []
+
   const transport: RunsTransport = {
     request: async () => ({ status: 200, text: `{"run_id":"r1","echo":"ok"}` }),
     stream: async req => {
@@ -37,7 +40,9 @@ function harness(streams: Array<(r: TransportStream) => number> = []) {
       return { status: s(req) }
     }
   }
+
   let text = ''
+
   const keyStore = createRunKeyStore({
     isEncryptionAvailable: () => true,
     encryptString: s => Buffer.from([...Buffer.from(s)].map(b => b ^ 0x55)),
@@ -47,7 +52,9 @@ function harness(streams: Array<(r: TransportStream) => number> = []) {
       text = t
     }
   })
+
   const proxy = createRunsProxy({ resolveTarget: async () => ({ baseUrl: 'http://127.0.0.1:8642', key: KEY }), transport })
+
   const reg = registerRunsProxyIpc({
     ipcMain: { handle: (c, fn) => handlers.set(c, fn) },
     proxy,
@@ -55,6 +62,7 @@ function harness(streams: Array<(r: TransportStream) => number> = []) {
     transport,
     resolveServeTarget: async () => ({ baseUrl: 'http://127.0.0.1:5000', token: TOKEN })
   })
+
   const invoke = (c: string, ...a: any[]) => handlers.get(c)!({ sender }, ...a)
 
   return { invoke, sent, streamReqs, reg, destroy: () => destroyed?.(), handlers, keyText: () => text }
@@ -68,11 +76,13 @@ describe('runs proxy IPC', () => {
         .filter(c => !c.endsWith(':event'))
         .sort()
     )
+
     const results = [
       await h.invoke(RUNS_IPC.get, { connectionId: 'local' }, 'r1'),
       await h.invoke(RUNS_IPC.keySet, 'homelab', 'https://gw.example', 'sk-remote'),
       await h.invoke(RUNS_IPC.keyStatus, 'homelab')
     ]
+
     const blob = JSON.stringify(results)
     expect(blob).not.toContain(KEY)
     expect(blob).not.toContain('sk-remote')
@@ -97,6 +107,7 @@ describe('runs proxy IPC', () => {
         return 401
       }
     ])
+
     await h.invoke(RUNS_IPC.opsSseOpen, { path: '/api/plugins/kanban/events/stream', board: 'ops' })
     await new Promise(r => setTimeout(r, 20))
     expect(h.streamReqs[0].headers['X-Hermes-Session-Token']).toBe(TOKEN)
@@ -120,6 +131,7 @@ describe('ops SSE reconnect', () => {
   it('resumes with Last-Event-ID after a drop: no lost, no repeated events', async () => {
     const got: string[] = []
     const reqs: TransportStream[] = []
+
     const plan = [
       (r: TransportStream) => {
         r.onChunk('id: 10\ndata: a\n\nid: 11\ndata: b\n\n')
@@ -132,6 +144,7 @@ describe('ops SSE reconnect', () => {
         return 404
       }
     ]
+
     const transport: RunsTransport = {
       request: async () => ({ status: 200, text: '{}' }),
       stream: async r => {
@@ -140,6 +153,7 @@ describe('ops SSE reconnect', () => {
         return { status: plan.shift()!(r) }
       }
     }
+
     let end: any
     await followOpsSse({
       request: { path: '/api/ops/fleet/stream', lastEventId: '9' },

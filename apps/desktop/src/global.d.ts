@@ -31,10 +31,60 @@ export {}
 
 export type DesktopMachineProfile = MachineProfile
 
+export interface HermesRunsRef {
+  connectionId?: string | null
+  profile?: string | null
+}
+export type HermesRunsResult =
+  | { ok: true; status: number; data: unknown }
+  | { ok: false; status: number; code: string; message?: string; data?: unknown }
+export interface HermesRunKeyStatus {
+  configured: boolean
+  baseUrl: string | null
+}
+export interface HermesSsePayload {
+  subscriptionId: string
+  type: 'event' | 'end'
+  id?: string | null
+  event?: string
+  data?: string
+  code?: string
+  status?: number
+}
+
 declare global {
   interface Window {
     hermesDesktop: {
-      // Resolve a backend connection. Omit `profile` (or pass the primary) for
+      // ops-panel P1-06: typed /v1/runs/* proxy and ops SSE (keys stay in main).
+      runs: {
+        get: (ref: HermesRunsRef, runId: string) => Promise<HermesRunsResult>
+        create: (ref: HermesRunsRef, body: Record<string, unknown>) => Promise<HermesRunsResult>
+        approve: (ref: HermesRunsRef, runId: string, body: { choice: string; [k: string]: unknown }) => Promise<HermesRunsResult>
+        steer: (ref: HermesRunsRef, runId: string, body: Record<string, unknown>) => Promise<HermesRunsResult>
+        stop: (ref: HermesRunsRef, runId: string) => Promise<HermesRunsResult>
+        openEvents: (
+          ref: HermesRunsRef,
+          runId: string,
+          opts?: { lastEventId?: string | null }
+        ) => Promise<{ subscriptionId: string; ended: boolean }>
+        closeEvents: (subscriptionId: string) => Promise<unknown>
+        onEvent: (callback: (payload: HermesSsePayload) => void) => () => void
+        remoteKey: {
+          set: (connectionId: string, baseUrl: string, key: string) => Promise<HermesRunKeyStatus>
+          status: (connectionId: string) => Promise<HermesRunKeyStatus>
+          clear: (connectionId: string) => Promise<HermesRunKeyStatus>
+        }
+      }
+      opsSse: {
+        open: (request: {
+          path: '/api/plugins/kanban/events/stream' | '/api/ops/fleet/stream'
+          profile?: string | null
+          board?: string | null
+          lastEventId?: string | null
+        }) => Promise<{ subscriptionId: string; ended: boolean }>
+        close: (subscriptionId: string) => Promise<unknown>
+        onEvent: (callback: (payload: HermesSsePayload) => void) => () => void
+      }      // Resolve a backend connection. Omit `profile` (or pass the primary) for
       // the window's backend; pass a named profile to lazily spawn/reuse that
       // profile's backend from the pool.
       getConnection: (

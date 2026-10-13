@@ -4,6 +4,7 @@ import { createRunKeyStore, type KeychainIo } from './run-key-store'
 
 function io(available = true) {
   let text = ''
+
   const fake: KeychainIo & { text: () => string } = {
     isEncryptionAvailable: () => available,
     encryptString: s => Buffer.from(`enc(${Buffer.from(s).toString('hex')})`),

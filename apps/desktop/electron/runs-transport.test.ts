@@ -32,6 +32,7 @@ describe('node transport against a real http server', () => {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ run_id: req.url!.split('/').pop(), status: 'running' }))
     })
+
     const transport = createNodeRunsTransport()
     const good = createRunsProxy({ resolveTarget: async () => ({ baseUrl: base, key: 'good' }), transport })
     const bad = createRunsProxy({ resolveTarget: async () => ({ baseUrl: base, key: 'bad' }), transport })
@@ -43,6 +44,7 @@ describe('node transport against a real http server', () => {
     const events = Array.from({ length: 6 }, (_, i) => i + 1)
     const seenHeaders: Array<string | undefined> = []
     let connections = 0
+
     const base = await listen((req, res) => {
       connections += 1
       seenHeaders.push(req.headers['last-event-id'] as string | undefined)
@@ -63,6 +65,7 @@ describe('node transport against a real http server', () => {
 
       res.end() // server drops the stream without the close sentinel
     })
+
     const got: string[] = []
     let end: any
     await followOpsSse({

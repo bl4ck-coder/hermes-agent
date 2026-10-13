@@ -30,6 +30,7 @@ export function createNodeRunsTransport(): RunsTransport {
       return new Promise((resolve, reject) => {
         const url = new URL(req.url)
         const body = req.body === undefined ? undefined : Buffer.from(req.body)
+
         const r = clientFor(url).request(
           url,
           {
@@ -43,6 +44,7 @@ export function createNodeRunsTransport(): RunsTransport {
             res.on('end', () => resolve({ status: res.statusCode || 0, text: Buffer.concat(chunks).toString('utf8') }))
           }
         )
+
         r.setTimeout(req.timeoutMs ?? 20_000, () => r.destroy(new Error('request timed out')))
         r.on('error', reject)
         r.end(body)
@@ -59,6 +61,7 @@ export function createNodeRunsTransport(): RunsTransport {
 
         let status = 0
         let settled = false
+
         const finish = () => {
           if (!settled) {
             settled = true
@@ -67,6 +70,7 @@ export function createNodeRunsTransport(): RunsTransport {
         }
 
         const url = new URL(req.url)
+
         const r = clientFor(url).request(url, { method: 'GET', headers: req.headers }, res => {
           status = res.statusCode || 0
           res.setEncoding('utf8')
@@ -81,6 +85,7 @@ export function createNodeRunsTransport(): RunsTransport {
           res.on('close', finish)
           res.on('error', finish)
         })
+
         r.on('error', finish)
         req.signal.addEventListener('abort', () => {
           r.destroy()
