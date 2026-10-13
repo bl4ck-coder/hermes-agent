@@ -1,6 +1,6 @@
 # Ops panel read contracts (P0-01)
 
-Status: documentation only. Round 2 corrected the r1 false negatives on gateway `session_id`/`usage`, the ACK-vs-settlement mix-up, the missing O24/G5/R2/`/links` inventory, and the A1 freshness gate. Round 3 completes usable axes (including onboarding schemas, `?board=` on runs/inspect, cron blueprint profile scope, and `config.get` Params/Result) and makes the A1 mixed-input gate a single policy with `observed_at` separate from `event_at`/`updated_at`. Those round-2 repairs stay. No adapters, no runtime config, no mutation probes.
+Status: documentation only. Round 2 corrected the r1 false negatives on gateway `session_id`/`usage`, the ACK-vs-settlement mix-up, the missing O24/G5/R2/`/links` inventory, and the A1 freshness gate. Round 3 completes usable axes (including onboarding schemas, `?board=` on runs/inspect, cron blueprint profile scope, and `config.get` Params/Result) and makes the A1 mixed-input gate a single policy with `observed_at` separate from `event_at`/`updated_at`. Those round-2 repairs stay. Round 4 states the A2 and A7 axes that round 3 left unlabeled. Unknown parts of those axes are `incomplete`, not guessed. No adapters, no runtime config, no mutation probes.
 Repo: `hermes-agent` at `865ba906c1a` (`feat/ops-panel` base; `ops/P0-01` is docs on that tree).
 SPEC: vault `01-Projects/Hermes/desktop-ops-panel/SPEC.md` v4, sections 3-5 and 12.8.
 Model policy P2 is a write-time rule (SPEC section 4.4). This file does not install `ops-policy.yaml` and does not change any profile.
@@ -22,7 +22,7 @@ Each entry below carries these axes as labeled lines, or an explicit `inherited 
 - Events: what the read emits, or `none`
 - Status: `verified` (handler exists at this SHA), `proposed` (named in SPEC, not implemented), or `incomplete` (an axis that could not be read from source)
 
-No entry in this round is marked `incomplete`. That is a claim about the labeled axes below, not about unread gated JSON. Writes cited in those sections are listed in section 8 so they are not mistaken for reads. They are not implemented here.
+Axes marked `incomplete` are only the parts source and exact inheritance do not decide: A2 cache TTL, the authoritative per-run store for a kanban id (the O66 join is absent), which board an unqualified kanban id belongs to on the proposed A2 path, A7 SSE freshness, and an A7 tenant filter. Those parts are not verified. Every other labeled axis is stated or inherited exactly. Unread gated JSON stays a blocker, not an `incomplete` axis. Writes cited in those sections are listed in section 8 so they are not mistaken for reads. They are not implemented here.
 
 ## 2. Authentication boundaries
 
@@ -913,8 +913,15 @@ Contract when built:
 - Gateway zeros and `usage={}` stay provenance `gateway.session_counters`. A2 must not re-label them as measured per-run tokens.
 - Today-total for the status bar is a different read: `GET /api/analytics/usage?days=1` with provenance `analytics.usage:days=1`. Do not add it to per-run figures.
 - Cron output preview rows in `cron.py:262` hard-code `input_tokens: 0` and `output_tokens: 0`. Those zeros are placeholders for a file preview, not measured usage. Ops must not display them as tokens.
-
-Status: proposed. SPEC O19, O23, G22, G45, O66.
+- Handler: none. `GET /api/ops/runs/{source}/{id}/usage` is not in this tree. Not `GET /v1/runs/{id}` (`_handle_get_run`). Not `get_run_endpoint`. Do not point an existing symbol at this path.
+- Request: path `source` (`kanban` or `gateway`) and `id`. No query is specified. Do not add `?profile=`, `?board=`, or `?tenant=`.
+- Response: `{input_tokens: number|null, output_tokens: number|null, provenance: string, session_id: string|null}`, as above. No field added in this round.
+- Scope: connection = the serve process. SPEC places A2 in `hermes_cli/web_server` routers with A1–A5. Not a tenant filter. `source=gateway`: Scope inherits §4.6 `GET /v1/runs/{id}` Scope exactly (the caller's profile; another profile's run id is not found, not leaked). `source=kanban`: Scope inherits §4.2 `GET /api/plugins/kanban/runs/{run_id}` Scope exactly (one board, one run; profile is a column on the row, not `?profile=`). This path does not copy that route's `?board=`. Which board an unqualified kanban id belongs to: incomplete. Do not invent a board query.
+- Auth: session token. Inherits §2 dashboard session boundary exactly. Not the gateway Bearer key. §4.6 Bearer + permission `status` is the producer boundary, not this route's.
+- Storage: no new table. Gateway producer store inherits §4.6 Storage exactly (in-memory `_run_statuses`, plus the durable idempotency record when the run was reserved). Not `kanban.db`. Kanban `task_runs` has no token column and no `session_id` (`kanban_db.py:1080`). `metadata` is not a usage contract. SPEC names per-session usage in `state.db` via run→session_id. That join does not exist (O66 Cut). Authoritative per-run store for a kanban id: incomplete. Do not invent a column or a join.
+- Freshness: request-time observation of the producer, not a presence gate. Gateway source inherits §4.6 Freshness exactly for the producer clock (`updated_at` is `event_at`; a successful read's completion is the observation; a failed read does not stamp it and does not coerce a missing `usage` key to 0). Kanban source inherits §4.2 `GET /runs/{run_id}` Freshness exactly (request-time, not a push) for the run row, which still has no token column. Cache TTL for this route: incomplete. Do not invent one. Do not apply the A1 5s gate.
+- Events: none. This GET emits nothing. Gateway run SSE (§4.6) is not this route's event axis. Do not invent an invalidation event.
+- Status: proposed. SPEC O19, O23, G22, G45, O66. Cache TTL incomplete. Kanban per-run store incomplete. Unqualified kanban board incomplete.
 
 ### 5.3 A3 — see section 6
 
@@ -922,16 +929,19 @@ Status: proposed. SPEC O19, O23, G22, G45, O66.
 
 ### 5.5 A7 SSE `GET /api/plugins/kanban/events/stream` — proposed path, existing socket
 
-SPEC names an SSE route. The tree has a WebSocket at `/api/plugins/kanban/events` with `since`. Do not implement a second stream in this slice.
+SPEC names an SSE route. The tree has a WebSocket at `/api/plugins/kanban/events` with `since`. Do not implement a second stream in this slice. Do not bind `stream_events` to this path.
 
-If a later slice adds the SSE path, it must:
+- Handler: none for `GET /api/plugins/kanban/events/stream`. Proposed. The existing symbol is §4.2 only (`@router.websocket("/events")` at `plugin_api.py:1783`, `stream_events` at `:1784`). It is not this route.
+- Request: query `board` (required if this path is added). Resume cursor `Last-Event-ID` equal to `task_events.id`. An omitted cursor must not replay the whole table — the same rule as a missing WS `since` (§4.2). No `?profile=`. No other query is specified. Do not add one.
+- Response: inherits the verified WS frame exactly. `stream_events` sends `{"events": [...], "cursor": int}` (`plugin_api.py:1809`). Each event is the selected `task_events` row `id, task_id, run_id, kind, payload, created_at` (`plugin_api.py:1744-1753`); `payload` is parsed JSON or null. Do not add fields that frame does not have. SSE `id`, if the path is added, is `task_events.id`. This is the producer schema to inherit, not a second handler and not an implemented SSE envelope.
+- Scope: inherits §4.2 Scope exactly (one board, not every board, not `?profile=`). `board` in the query is the same constraint as the WS `board` query; it is not a new param. Tenant filter: incomplete. §4.2 does not name one. Do not invent one.
+- Auth: inherits §4.2 Auth exactly (WS upgrade gate, `plugin_api.py:50` `_ws_upgrade_authorized`). Same credential boundary. Not a new token.
+- Storage: inherits §4.2 Storage exactly (`task_events`, `kanban_db.py:1064-1071`). Not a second table.
+- Freshness: incomplete. Does not inherit §4.2 Freshness. That 300ms poll (`plugin_api.py:1694`) is the WS implementation, not this absent route. Do not invent an SSE interval or heartbeat.
+- Events: inherits §4.2 Events exactly for the role (this is the event source; `GET /board` `latest_event_id` is the snapshot cursor). The SSE path emits nothing at this SHA. Handler absent.
+- Status: SSE path proposed. WebSocket verified in §4.2. Freshness incomplete. Tenant filter incomplete.
 
-- resume from `Last-Event-ID` equal to `task_events.id`
-- include board in the query
-- use the same auth as the WS upgrade
-- not replay the whole table when the cursor is omitted
-
-Until that route exists, Board push uses the verified WebSocket. Status of the SSE path: proposed. Status of the WebSocket: verified.
+Until that route exists, Board push uses the verified WebSocket.
 
 ### 5.6 Capability flags
 
