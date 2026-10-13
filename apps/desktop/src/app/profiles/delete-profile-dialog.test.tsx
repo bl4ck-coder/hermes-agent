@@ -14,7 +14,7 @@ afterEach(() => {
 })
 
 vi.mock('@/hermes', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/hermes')>()
+  const actual = await importOriginal<Record<string, unknown>>()
 
   return {
     ...actual,

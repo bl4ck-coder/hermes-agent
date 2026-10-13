@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { BUILTIN_THEME_LIST, BUILTIN_THEMES, DEFAULT_SKIN_NAME, DEFAULT_TYPOGRAPHY, goldNightHiTheme, goldNightTheme, GOLD_NIGHT_CUSTOM_CSS, GOLD_NIGHT_MOTION_COPY, nousTheme, RETIRED_SKINS } from './presets'
+import { BUILTIN_THEME_LIST, BUILTIN_THEMES, DEFAULT_SKIN_NAME, DEFAULT_TYPOGRAPHY, GOLD_NIGHT_CUSTOM_CSS, GOLD_NIGHT_MOTION_COPY, goldNightHiTheme, goldNightTheme, nousTheme, RETIRED_SKINS } from './presets'
 
 // #40364: none of the UI text/mono fonts carry emoji glyphs, so every font
 // stack must end with a color-emoji fallback or emoji render as tofu on

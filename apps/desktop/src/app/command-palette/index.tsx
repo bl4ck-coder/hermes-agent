@@ -13,6 +13,7 @@ import {
   HUD_SURFACE,
   HUD_TEXT
 } from '@/app/floating-hud'
+import { finishOpsPaletteCommand, OpsPalettePage } from '@/app/ops/palette'
 import { SESSION_IMPORT_ROUTE } from '@/app/routes'
 import { codiconIcon } from '@/components/ui/codicon'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -113,7 +114,6 @@ import { SECTIONS } from '../settings/constants'
 import { type SettingsSearchEntry, settingsSearchTargetQuery } from '../settings/settings-search'
 import { useSettingsSearchCatalog } from '../settings/use-settings-search'
 
-import { OpsPalettePage, finishOpsPaletteCommand } from '@/app/ops/palette'
 import { usePaletteContributions } from './contrib'
 import { HighlightWatcher } from './highlight-watcher'
 import { MarketplaceThemePage } from './marketplace-theme-page'
@@ -530,11 +530,13 @@ export function CommandPalette() {
   // Capture before the exiting body can consume the next deep-link request.
   // Reopening/remounting must retain the Ops page and its search seed.
   const launch = useRef({ open: false, page: null as string | null, seed: null as string | null })
+
   if (open && !launch.current.open) {
     launch.current = { open, page: $commandPalettePage.get(), seed: $commandPaletteSeed.get() }
   } else if (!open) {
     launch.current.open = false
   }
+
   const [mounted, setMounted] = useState(open)
   const [openCount, setOpenCount] = useState(0)
 
@@ -1651,7 +1653,6 @@ function CommandPaletteBody({
       <DialogPrimitive.Overlay className="fixed inset-0 z-(--z-over-modal)" />
       <DialogPrimitive.Content
         aria-describedby={undefined}
-        onCloseAutoFocus={finishOpsPaletteCommand}
         className={cn(
           HUD_POSITION,
           HUD_SURFACE,
@@ -1666,6 +1667,7 @@ function CommandPaletteBody({
             onExited()
           }
         }}
+        onCloseAutoFocus={finishOpsPaletteCommand}
       >
         <DialogPrimitive.Title className="sr-only">{t.commandCenter.paletteTitle}</DialogPrimitive.Title>
         <Command className="bg-transparent" loop shouldFilter={false}>

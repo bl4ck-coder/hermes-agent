@@ -6,13 +6,13 @@ import { describe, expect, it } from 'vitest'
 
 import { GOLD_NIGHT_ACCENT_VARIANTS, selectGoldNightAccent } from './accent-override'
 import {
-  goldNightHiTheme,
-  goldNightTheme,
   GOLD_NIGHT_DESTRUCTIVE_COPY,
   GOLD_NIGHT_GARNET,
   GOLD_NIGHT_INK,
   GOLD_NIGHT_SURFACES,
-  GOLD_NIGHT_TEXT
+  GOLD_NIGHT_TEXT,
+  goldNightHiTheme,
+  goldNightTheme
 } from './presets'
 
 const SURFACES = [GOLD_NIGHT_SURFACES.base, GOLD_NIGHT_SURFACES.panel, GOLD_NIGHT_SURFACES.raised]

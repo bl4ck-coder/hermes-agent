@@ -35,10 +35,10 @@ import {
   BUILTIN_THEME_LIST,
   DEFAULT_SKIN_NAME,
   DEFAULT_TYPOGRAPHY,
-  goldNightHiTheme,
-  goldNightTheme,
   GOLD_NIGHT_CONSUMED_VARS,
   GOLD_NIGHT_CUSTOM_CSS,
+  goldNightHiTheme,
+  goldNightTheme,
   nousTheme,
   RETIRED_SKINS
 } from './presets'
@@ -250,6 +250,7 @@ function paintGoldNightAccent(theme: DesktopTheme, override: string | null): Des
   }
 
   const graphite = goldNightTheme.colors
+
   const fix = (colors: DesktopThemeColors): DesktopThemeColors => ({
     ...colors,
     secondary: graphite.secondary,

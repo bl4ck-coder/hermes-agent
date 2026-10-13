@@ -15,13 +15,11 @@ import { useEffect, useMemo, useRef } from 'react'
 
 import { RightSidebarPane } from '@/app/right-sidebar'
 import { ReviewPane } from '@/app/right-sidebar/review'
-
 import type { StatusbarItem } from '@/app/shell/statusbar-controls'
 import type { TitlebarTool } from '@/app/shell/titlebar-controls'
 import { DecodeText } from '@/components/ui/decode-text'
 import { ContribBoundary, ContribRender } from '@/contrib/react/boundary'
 import { useContributions } from '@/contrib/react/use-contributions'
-
 import { getLogs } from '@/hermes'
 import { normalizeOrLocalPreviewTarget } from '@/lib/local-preview'
 import { cn } from '@/lib/utils'

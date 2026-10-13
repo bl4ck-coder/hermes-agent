@@ -20,6 +20,7 @@ import { backendScopeKey, type GatewayEvent, LOCAL_CONNECTION_ID, registryBacken
 import { atom, computed } from 'nanostores'
 
 import { setSessionOwnerResolver } from '@/api/client'
+import { dropOpsNavigationForProfile, migrateOpsNavigationForProfile } from '@/app/ops/navigation-store'
 import { routeSessionId } from '@/app/routes'
 import type { ClientSessionState } from '@/app/types'
 import { findGroupOfPane, type LayoutNode } from '@/components/pane-shell/tree/model'
@@ -38,7 +39,6 @@ import type { ErrorSurface } from '@/lib/error-surface'
 import { tileFocusStampOnFocusChange } from '@/lib/session-timer-since'
 import { stableArray } from '@/lib/stable-array'
 import { readJson, writeJson } from '@/lib/storage'
-import { dropOpsNavigationForProfile, migrateOpsNavigationForProfile } from '@/app/ops/navigation-store'
 import type { SessionInfo } from '@/types/hermes'
 
 import { dropStatusDrawersForProfile, migrateStatusDrawersForProfile } from './composer-status-drawer'

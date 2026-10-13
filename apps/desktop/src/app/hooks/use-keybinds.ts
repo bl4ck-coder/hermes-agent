@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
 import { routeCloseTabChord } from '@/app/chat/close-tab'
-import { claimOpsFocusedChord, claimOpsRootKey } from '@/app/ops/keymap'
 import { hudTargetSessionId } from '@/app/hud/handoff'
+import { claimOpsFocusedChord, claimOpsRootKey } from '@/app/ops/keymap'
 import { setTerminalTakeover } from '@/app/right-sidebar/store'
 import { toggleTerminalPane } from '@/app/right-sidebar/terminal/reveal-focus'
 import { closeActiveTerminal, createTerminal, cycleTerminal } from '@/app/right-sidebar/terminal/terminals'
@@ -596,6 +596,7 @@ export function useKeybinds(deps: KeybindRuntimeDeps): void {
             (IS_MAC ? event.metaKey : event.ctrlKey) &&
             !event.altKey &&
             !event.shiftKey
+
           routeCloseTabChord(
             bare ? 'after-pty' : 'rebind',
             id => navigate(sessionRoute(id)),

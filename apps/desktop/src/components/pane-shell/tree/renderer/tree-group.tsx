@@ -50,9 +50,9 @@ import {
   $dropHint,
   $hiddenTreePanes,
   $narrowViewport,
-  $releaseMainFloor,
   $newSessionTabAction,
   $panesWithCloser,
+  $releaseMainFloor,
   $treeDragging,
   $treePaneEpochs,
   activateTreePane,
@@ -384,6 +384,7 @@ export function TreeGroup({
 
   const hostedPanes = stableHosts ? node.panes.filter(id => paneChrome(paneFor(id)).lifecycleKeepAlive) : []
   const inlinePanes = mountedPanes.filter(id => !stableHosts || !paneChrome(paneFor(id)).lifecycleKeepAlive)
+
   // Ops full-screen collapses the main track without putting the chat in
   // `$hiddenTreePanes` (that set unmounts a non-hosted body). The keep-alive
   // slot goes hot-hidden so the same host stays mounted.

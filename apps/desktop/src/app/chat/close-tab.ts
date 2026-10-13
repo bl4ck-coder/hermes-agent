@@ -1,5 +1,5 @@
-import { consumeOpsClose, opsOwnsCloseTarget } from '@/app/ops/keymap'
 import { mainChatOccupied } from '@/app/open-session'
+import { consumeOpsClose, opsOwnsCloseTarget } from '@/app/ops/keymap'
 import { focusedInteractiveTerminalOwnsWordErase } from '@/app/right-sidebar/terminal/terminal-context-menu'
 import { closeActiveTerminal } from '@/app/right-sidebar/terminal/terminals'
 import { $workspaceIsPage } from '@/app/routes'
