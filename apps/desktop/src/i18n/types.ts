@@ -15,6 +15,7 @@ import type { BootTranslations } from './types_boot'
 import type { CatalogInstallTranslations } from './types_catalog_install'
 import type { ModelMenuTranslations } from './types_model_menu'
 import type { NoticeTranslations } from './types_notices'
+import type { OpsStatesTranslations } from './types_ops_states'
 import type { SharedMetricsTranslations } from './types_shared_metrics'
 import type { UninstallSectionTranslations } from './types_uninstall_section'
 
@@ -70,7 +71,7 @@ interface ModeOptionCopy {
   description: string
 }
 
-export interface Translations extends NoticeTranslations {
+export interface Translations extends NoticeTranslations, OpsStatesTranslations {
   /** Shared-metrics consent: first-run dialog + Settings › Safety toggles. */
   sharedMetrics: SharedMetricsTranslations
   appTour: AppTourTranslations
