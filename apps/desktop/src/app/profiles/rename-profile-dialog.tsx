@@ -20,6 +20,8 @@ import { slug } from '@/lib/sanitize'
 import { retireLocalProfileGateways } from '@/store/gateway'
 import { migrateTilesForProfile } from '@/store/session-states'
 
+import { migrateOpsSplitForProfile } from '@/app/ops/layout-store'
+
 import { isValidProfileName } from './create-profile-dialog'
 
 // Display names are free text (Unicode fine) — no slug sanitizing.
@@ -102,6 +104,7 @@ export function RenameProfileDialog({
       // dials a backend that no longer exists (#111868).
       if (!isDefault && scope == null) {
         migrateTilesForProfile(currentName, trimmed)
+        migrateOpsSplitForProfile(currentName, trimmed)
       }
 
       await onRenamed?.(trimmed)

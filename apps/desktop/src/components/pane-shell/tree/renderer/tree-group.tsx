@@ -50,6 +50,7 @@ import {
   $dropHint,
   $hiddenTreePanes,
   $narrowViewport,
+  $releaseMainFloor,
   $newSessionTabAction,
   $panesWithCloser,
   $treeDragging,
@@ -277,6 +278,7 @@ export function TreeGroup({
   const wcOverlap = useWindowControlsOverlap(ref, !topEdge)
 
   const hiddenPanes = useStore($hiddenTreePanes)
+  const releaseMainFloor = useStore($releaseMainFloor)
   const narrow = useStore($narrowViewport)
   const workspaceMode = useStore($workspaceMode)
   const workspaceOwnerKey = useStore($workspaceOwnerKey)
@@ -382,6 +384,12 @@ export function TreeGroup({
 
   const hostedPanes = stableHosts ? node.panes.filter(id => paneChrome(paneFor(id)).lifecycleKeepAlive) : []
   const inlinePanes = mountedPanes.filter(id => !stableHosts || !paneChrome(paneFor(id)).lifecycleKeepAlive)
+  // Ops full-screen collapses the main track without putting the chat in
+  // `$hiddenTreePanes` (that set unmounts a non-hosted body). The keep-alive
+  // slot goes hot-hidden so the same host stays mounted.
+  const fullscreenHotHidden = (paneId: string) =>
+    releaseMainFloor &&
+    (paneId === 'workspace' || paneId.startsWith('session-tile:') || paneChrome(paneFor(paneId)).placement === 'main')
 
   // ONE header style: the app's compact pane-header. Whether this zone shows
   // it is the resolver's call, not this component's — see strip-visibility.ts
@@ -818,7 +826,7 @@ export function TreeGroup({
               headerVisible={headerVisible}
               key={paneId}
               paneId={paneId}
-              visible={paneId === activeId && !node.minimized}
+              visible={paneId === activeId && !node.minimized && !fullscreenHotHidden(paneId)}
             />
           ))}
           {isEmpty ? (
@@ -829,7 +837,7 @@ export function TreeGroup({
           ) : (
             inlinePanes.map(paneId => {
               const pane = paneFor(paneId)
-              const isActive = paneId === activeId && !node.minimized
+              const isActive = paneId === activeId && !node.minimized && !fullscreenHotHidden(paneId)
 
               return (
                 <div

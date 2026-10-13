@@ -25,12 +25,12 @@ Two locked sentences disagree. This file does not edit SPEC or PLAN.
 | Source | Stop / crew sentence |
 |---|---|
 | SPEC.md:46, D15 rev. 19:47 ART | planner (Sol) → meta-opus plan review → builder (Grok 4.7) → judge (Sol) → meta-opus reviews build + verdict → sandhi auto-merges into `feat/ops-panel` on JUDGE PASS + META PASS. Escalate to Nacho only after 3 failed rounds. |
-| PLAN.md:9 and PLAN.md:24, amended 2026-10-13 | Meta seat is Sandhi (Grok Bot), external. `meta-opus` is unused. Sandhi auto-merges on JUDGE PASS + META PASS (PLAN.md:32). Nacho is the 3-round escalation and the upstream/`main` signer (PLAN.md:13, PLAN.md:34). |
-| This card's acceptance | Preserve meta-opus Opus with a declared Grok fallback. Stop only at meta PASS plus Judge PASS followed by Nacho's gate. Nacho approves every merge and every phase exit. |
+| PLAN.md:9 and PLAN.md:24, amended 2026-10-13 | Meta seat is Sandhi (Grok Bot), external. `meta-opus` is unused. Sandhi auto-merges on JUDGE PASS + META PASS (PLAN.md:32). Nacho receives the 3-round escalation as a heads-up; push to `origin` stays locked (PLAN.md:13, PLAN.md:34). |
+| Rule 2026-10-13 13:00 ART (Nacho) | Merging is free for every agent. Stop at meta PASS plus Judge PASS; the merge into `feat/ops-panel` and the push to `fork` follow automatically, with no human approval. Push to `origin` stays locked (`no_push`). |
 
-Walker used below: the card acceptance. Reason: P0-07's verify is a walk of that sentence. Dropping Nacho's gate, or dropping the meta-opus seat, would be a PASS without the evidence the acceptance named. That is lenient (section 6).
+Walker used below: SPEC.md:46 and PLAN.md:32 as amended by the 2026-10-13 rule. Dropping the meta-opus seat would be a PASS without the evidence the loop names. That is lenient (section 6).
 
-What the walker does **not** do: it does not restore a pre-19:47 SPEC. The 19:47 sentence stays quoted. A later planner delta may put sandhi auto-merge back into this file and into SPEC together. Until that delta exists, a merge that treats JUDGE PASS + META PASS as sufficient, with no `NACHO GATE PASS`, is not a stop under this freeze.
+The 2026-10-13 rule resolves the tension: JUDGE PASS + META PASS is sufficient. Any agent merges into `feat/ops-panel` and pushes to `fork` with no human approval.
 
 Current holder of the meta-opus seat: the declared Grok fallback is active, because PLAN.md:9 recorded Anthropic out of the loop on 2026-10-13. The seat name in every packet stays `meta-opus`. The holder line is `grok-fallback`. The fallback person is Sandhi (Grok Bot), external, not a Hermes profile. The `meta-opus` profile is kept and unused. A Hermes profile that fills in must be `xai-oauth` / `grok-4.7`. It must not be a non-allowlisted model.
 
@@ -42,9 +42,9 @@ Current holder of the meta-opus seat: the declared Grok fallback is active, beca
 | meta-opus | Opus, Anthropic direct, with declared Grok fallback | P2 when a Hermes profile holds it | Plan review, then build + judge-verdict review. Grades leniency. Sends one delta packet. Never merges. Never builds. |
 | builder | `builder`, `xai-oauth` / `grok-4.7` | P2 | Implements in a worktree outside the install (`ops/<key>` from `feat/ops-panel`). The review surface is that branch (the card's PR). Never commits to `main`. Never pushes. |
 | Judge | Sol (`judge`, `openai-codex` / `gpt-6.1-sol`) | P2 | PASS or FAIL per acceptance item, each with evidence. Self-reviews the verdict for leniency. |
-| Nacho | Nacho | — | Approves every task merge and every phase exit. Also the only escalation sink at round 3. Upstream / `main` stays his. |
+| Nacho | Nacho | — | Not a merge gate and not a phase-exit gate. Receives the round-3 escalation and the phase-exit summary as heads-ups only. Push to `origin` stays locked (`no_push`). |
 
-Integrator `sandhi` (Hermes profile, `grok-4.7`) may merge into `feat/ops-panel` only after the stop set in section 5, including `NACHO GATE PASS` with `object: task-merge`. That is narrower than SPEC.md:46. The narrowing is the tension in section 2, not a silent edit of SPEC.
+Any agent (integrator `sandhi`, Hermes profile `grok-4.7`, by default) merges into `feat/ops-panel` freely once the stop set in section 5 holds, then pushes to `fork`. No human approval. This matches SPEC.md:46.
 
 Every role self-reviews before handoff. The self-review comment starts with `SELF-REVIEW` and lists each item as pass or fail with a pointer.
 
@@ -56,29 +56,28 @@ A recursive round is one pass that can return a delta. Budget is 3. `rounds_used
 2. Plan review sits inside the round. It is not a free pass before the budget, and it is not a fourth round after the budget. That is how plan review counts toward the three.
 3. Round 1 always includes plan review, before the builder runs.
 4. A later round includes a new plan review only when the incoming delta `target` is `planner`, or the plan's row IDs changed. Otherwise the round cites the prior `PLAN REVIEW PASS` (task, row IDs, comment pointer) and does not spend an extra round to do it.
-5. Order inside a round that builds: plan review (or the citation) → builder → Judge → meta-opus build/verdict review → Nacho's gate, and only if Judge and meta both passed.
+5. Order inside a round that builds: plan review (or the citation) → builder → Judge → meta-opus build/verdict review → automatic merge, only if Judge and meta both passed.
 6. A plan-review FAIL closes the round as failed. The builder does not run. The delta target is `planner`.
-7. A `JUDGE FAIL`, a `META IMPROVE`, or a `NACHO GATE FAIL` closes the round as failed.
+7. A `JUDGE FAIL` or a `META IMPROVE` closes the round as failed.
 8. One open delta per failed round. Do not stack a second delta in the same round.
 
 `plan_review: cited-r1` still counts. The citation proves the plan review was not dropped. The round number still went up. A walker who adds a fourth build after three citations has left this file.
 
 ## 5. Stop and escalation
 
-Stop only when the open round has all four:
+Stop only when the open round has all three:
 
 - plan review PASS, or a cited prior plan-review PASS whose row IDs still match
 - `JUDGE PASS` for that round
 - `META PASS` for that round (seat `meta-opus`, holder `opus` or `grok-fallback`)
-- `NACHO GATE PASS` for that round, `object: task-merge`
 
-Anything else is not a stop. Sandhi does not merge on the first three alone.
+On these three, any agent merges into `feat/ops-panel` and pushes to `fork`. No human approval (Rule 2026-10-13 13:00 ART (Nacho)). Anything else is not a stop.
 
 If the round closed failed and `rounds_used` < 3, the next round opens with the one delta packet. No other new work starts.
 
-If the round closed failed and `rounds_used` == 3, escalate. Do not open round 4. The escalation packet carries every still-open delta and every leniency grade from the three rounds (a plan-review-only round records `n/a`).
+If the round closed failed and `rounds_used` == 3, escalate to Nacho as a heads-up (not a merge gate). Do not open round 4. The escalation packet carries every still-open delta and every leniency grade from the three rounds (a plan-review-only round records `n/a`).
 
-Phase exit is a separate Nacho gate, `object: phase-exit`, defined in `phase-acceptance.md`. A task stop is not a phase exit. A phase exit is not a task merge.
+Phase exit is automatic once every task in the phase has merged with JUDGE PASS + META PASS and the phase checks pass: Judge posts `JUDGE PHASE PASS`, Sandhi posts `PHASE PASS` with `object: phase-exit` (`phase-acceptance.md`). Nacho gets a summary heads-up only (Rule 2026-10-13 13:31 ART). A task stop is not a phase exit. A phase exit is not a task merge and never blocks one.
 
 ## 6. Leniency
 
@@ -168,17 +167,30 @@ next_round: {n+1 or ESCALATE}
 
 One target. One defect sentence. `exact_change` is a numbered list, and every item is owned by that target. A second defect sentence, or a second target, is a second round, and the second waits. Leniency grade is not a second defect: a grade ≥ 2 records that the Judge packet was lenient; it does not by itself open another delta. A repair of the Judge packet (a PASS with no pointer, or a PASS that contradicts the evidence it cites) has `target: judge`, never `builder`. A repair of committed builder text has `target: builder`, never `judge`.
 
-### 7.5 Nacho gate
+### 7.5 Merge record and automatic phase exit
 
 ```
-NACHO GATE {PASS|FAIL} r{n}
-object: task-merge | phase-exit
-task_or_phase: {key or P0 or P0.5}
+MERGED r{n}
+object: task-merge
+task: {key}
+merged_by: {agent}
+sha: {merge sha} · pushed fork {ok|failed}
 evidence: {JUDGE PASS pointer}; {META PASS pointer}
-defect: {none or one sentence}
 ```
 
-`NACHO GATE PASS` with `object: task-merge` is the fourth stop condition (section 5). `object: phase-exit` does not stop a task and does not merge a branch.
+The merge record is posted by whichever agent merged. It needs no human approval.
+
+```
+PHASE PASS
+object: phase-exit
+task_or_phase: {P0 or P0.5}
+posted_by: sandhi
+evidence: {JUDGE PHASE PASS pointer}; {phase check pointers}
+defect: {none or one sentence}
+summary_to_nacho: {heads-up posted}
+```
+
+Phase exit is automatic (Rule 2026-10-13 13:31 ART): Judge validates the phase checks and posts `JUDGE PHASE PASS`; Sandhi posts `PHASE PASS` with `object: phase-exit`. Nacho receives a summary heads-up only — no `NACHO GATE`, no sign-off. `object: phase-exit` does not stop a task, does not merge a branch, and never gates a merge.
 
 ### 7.6 Escalation
 
@@ -191,7 +203,7 @@ open_deltas:
 grades: r1={0|1|2|3|n/a} r2={0|1|2|3|n/a} r3={0|1|2|3|n/a}
 ```
 
-No round 4. No merge.
+No round 4. No merge (nothing passed). The escalation is a heads-up to Nacho, not an approval request.
 
 ## 8. Example PASS (EX-PASS)
 
@@ -248,19 +260,20 @@ evidence: the JUDGE PASS block above
 rounds_used: 1
 ```
 
-Nacho's gate:
+Merge (automatic, no human approval):
 
 ```
-NACHO GATE PASS r1
+MERGED r1
 object: task-merge
-task_or_phase: EX-PASS
+task: EX-PASS
+merged_by: sandhi
+sha: EX-PASS-merge · pushed fork ok
 evidence: JUDGE PASS r1; META PASS r1
-defect: none
 ```
 
 Stop set is complete in round 1. `stopped=true`. `rounds_used` stays 1. No delta. No round 2. No escalation. Plan review counted: it was the first packet of round 1, not a round 0.
 
-A walker who stops before `NACHO GATE PASS` has not stopped. A walker who increments `rounds_used` once per packet (plan, judge, meta, gate) and calls that four rounds has left section 4.
+A walker who waits for a human approval after META PASS has left section 5. A walker who increments `rounds_used` once per packet (plan, judge, meta, merge) and calls that four rounds has left section 4.
 
 ## 9. Example rejected (EX-FAIL)
 
@@ -280,7 +293,7 @@ seat: judge
 holder: sol
 items:
 - templates present: PASS evidence: (none)
-- stop rule followed: FAIL evidence: packet stopped before NACHO GATE
+- stop rule followed: FAIL evidence: section 5 stop list omits META PASS
 leniency_self_check: no the PASS item has no pointer
 rounds_used: 1
 ```
@@ -297,9 +310,9 @@ build_sha: EX-FAIL-r1
 judge: JUDGE FAIL r1
 leniency: 2
 leniency_reason: PASS without evidence on "templates present" (section 6, grade 2). The grade records the lenient item. It is not a builder edit.
-defect: stop set incomplete; the build stopped before NACHO GATE
-exact_change: 1. add NACHO GATE PASS object task-merge to the section 5 stop list
-verification: walker re-reads section 5; four bullets; the fourth is the gate
+defect: stop set incomplete; section 5 omits META PASS
+exact_change: 1. add META PASS for that round to the section 5 stop list
+verification: walker re-reads section 5; three bullets; the third is META PASS
 evidence: JUDGE FAIL r1 stop-rule item
 rounds_used: 1
 ```
@@ -308,9 +321,9 @@ rounds_used: 1
 DELTA r1
 target: builder
 rows: none
-defect: stop set incomplete; the build stopped before NACHO GATE
-exact_change: 1. add NACHO GATE PASS object task-merge to the section 5 stop list
-verification: walker re-reads section 5; four bullets; the fourth is the gate
+defect: stop set incomplete; section 5 omits META PASS
+exact_change: 1. add META PASS for that round to the section 5 stop list
+verification: walker re-reads section 5; three bullets; the third is META PASS
 evidence: JUDGE FAIL r1 stop-rule item
 leniency: 2
 rounds_used: 1
@@ -319,11 +332,11 @@ next_round: 2
 
 The missing pointer is a Judge-owned repair. It is not in this delta. A packet that put "give the PASS item a file:line" on `target: builder` would violate section 7.4. This round already has its one open delta, so that repair waits. It is not dropped as a grade: leniency stays 2.
 
-Round 1 closes failed. Nacho's gate does not run. Plan review counted inside round 1.
+Round 1 closes failed. No merge. Plan review counted inside round 1.
 
 ### Round 2
 
-Opens. `rounds_used` = 2. Plan row IDs did not change and the delta target is `builder`, so plan review is not repeated. It is cited: `PLAN REVIEW r1 PASS`, task EX-FAIL, rows none. The citation is not a new round. Builder commits example sha `EX-FAIL-r2`. The one exact change was not applied. Section 5 as committed in EX-FAIL-r2 still has three stop bullets. The fourth, `NACHO GATE PASS` with `object: task-merge`, is absent.
+Opens. `rounds_used` = 2. Plan row IDs did not change and the delta target is `builder`, so plan review is not repeated. It is cited: `PLAN REVIEW r1 PASS`, task EX-FAIL, rows none. The citation is not a new round. Builder commits example sha `EX-FAIL-r2`. The one exact change was not applied. Section 5 as committed in EX-FAIL-r2 still has two stop bullets. The third, `META PASS`, is absent.
 
 ```
 JUDGE FAIL r2
@@ -333,12 +346,12 @@ seat: judge
 holder: sol
 items:
 - templates present: PASS evidence: review-loop.md section 7
-- Nacho gate in the stop set: FAIL evidence: review-loop.md section 5 committed in EX-FAIL-r2 has three stop bullets; the fourth (NACHO GATE PASS, object task-merge) is absent
-leniency_self_check: yes the FAIL cites the missing fourth bullet; the PASS cites section 7; no PASS covers the known gap
+- META PASS in the stop set: FAIL evidence: review-loop.md section 5 committed in EX-FAIL-r2 has two stop bullets; the third (META PASS) is absent
+leniency_self_check: yes the FAIL cites the missing third bullet; the PASS cites section 7; no PASS covers the known gap
 rounds_used: 2
 ```
 
-Section 6 applies literally. Grade 0: every PASS has a pointer, and no PASS covers the known gap, because the gate item is FAIL and the evidence it cites is the missing bullet. A PASS on that gate item would be grade 3 (section 6: a PASS that contradicts the evidence it cites). That PASS is not in this packet.
+Section 6 applies literally. Grade 0: every PASS has a pointer, and no PASS covers the known gap, because the stop-set item is FAIL and the evidence it cites is the missing bullet. A PASS on that stop-set item would be grade 3 (section 6: a PASS that contradicts the evidence it cites). That PASS is not in this packet.
 
 ```
 META IMPROVE r2
@@ -349,11 +362,11 @@ holder: grok-fallback
 build_sha: EX-FAIL-r2
 judge: JUDGE FAIL r2
 leniency: 0
-leniency_reason: Judge failed the gate item; section 5 in EX-FAIL-r2 has no fourth bullet; the other PASS cites section 7; no PASS covers the gap
-defect: section 5 committed in EX-FAIL-r2 still has three stop bullets
-exact_change: 1. section 5 stop list must include NACHO GATE PASS object task-merge as the fourth bullet
-verification: read section 5; four bullets; the fourth is the gate
-evidence: JUDGE FAIL r2 gate item; section 5 as committed in EX-FAIL-r2
+leniency_reason: Judge failed the stop-set item; section 5 in EX-FAIL-r2 has no third bullet; the other PASS cites section 7; no PASS covers the gap
+defect: section 5 committed in EX-FAIL-r2 still has two stop bullets
+exact_change: 1. section 5 stop list must include META PASS as the third bullet
+verification: read section 5; three bullets; the third is META PASS
+evidence: JUDGE FAIL r2 stop-set item; section 5 as committed in EX-FAIL-r2
 rounds_used: 2
 ```
 
@@ -361,20 +374,20 @@ rounds_used: 2
 DELTA r2
 target: builder
 rows: none
-defect: section 5 committed in EX-FAIL-r2 still has three stop bullets
-exact_change: 1. section 5 stop list must include NACHO GATE PASS object task-merge as the fourth bullet
-verification: read section 5; four bullets; the fourth is the gate
-evidence: JUDGE FAIL r2 gate item
+defect: section 5 committed in EX-FAIL-r2 still has two stop bullets
+exact_change: 1. section 5 stop list must include META PASS as the third bullet
+verification: read section 5; three bullets; the third is META PASS
+evidence: JUDGE FAIL r2 stop-set item
 leniency: 0
 rounds_used: 2
 next_round: 3
 ```
 
-Round 2 closes failed. No Nacho gate.
+Round 2 closes failed. No merge.
 
 ### Round 3
 
-Opens. `rounds_used` = 3. Plan review cited again (`PLAN REVIEW r1 PASS`). Not a fourth round. Builder commits example sha `EX-FAIL-r3`. Section 5 now has the four-part stop.
+Opens. `rounds_used` = 3. Plan review cited again (`PLAN REVIEW r1 PASS`). Not a fourth round. Builder commits example sha `EX-FAIL-r3`. Section 5 now has the three-part stop.
 
 ```
 JUDGE PASS r3
@@ -383,13 +396,13 @@ rows: none
 seat: judge
 holder: sol
 items:
-- four-part stop: PASS evidence: review-loop.md section 5
+- three-part stop: PASS evidence: review-loop.md section 5
 leniency_self_check: yes
 rounds_used: 3
 ```
 
 ```
-META PASS r3
+META IMPROVE r3
 task: EX-FAIL
 rows: none
 seat: meta-opus
@@ -398,31 +411,23 @@ build_sha: EX-FAIL-r3
 judge: JUDGE PASS r3
 leniency: 0
 leniency_reason: the only PASS item cites section 5
-defect: none
-exact_change: none
+defect: wording of the META PASS bullet is ambiguous about phase exit
+exact_change: 1. state that META PASS stops a task, not a phase
 verification: read section 5
-evidence: JUDGE PASS r3
+evidence: JUDGE PASS r3; section 5 as committed in EX-FAIL-r3
 rounds_used: 3
 ```
 
-Nacho refuses the merge. The gate runs because Judge and meta both passed. A refusal is a failed round, not a free retry.
+Meta does not pass. No merge.
 
-```
-NACHO GATE FAIL r3
-object: task-merge
-task_or_phase: EX-FAIL
-evidence: JUDGE PASS r3; META PASS r3
-defect: wording of the gate bullet is ambiguous about phase exit
-```
-
-Stop set is incomplete (gate failed). `rounds_used` is 3. Escalate. Do not open round 4.
+Stop set is incomplete (META IMPROVE). `rounds_used` is 3. Escalate to Nacho as a heads-up. Do not open round 4.
 
 ```
 ESCALATE r3
 task: EX-FAIL
 rounds_used: 3
 open_deltas:
-- r3 target: builder defect: wording of the gate bullet is ambiguous about phase exit evidence: NACHO GATE FAIL r3
+- r3 target: builder defect: wording of the META PASS bullet is ambiguous about phase exit evidence: META IMPROVE r3
 grades: r1=2 r2=0 r3=0
 ```
 
@@ -432,13 +437,13 @@ grades: r1=2 r2=0 r3=0
 |---|---|---|
 | Plan review counted inside a round, not beside the budget | yes, round 1 | yes, round 1; rounds 2 and 3 cite it |
 | `rounds_used` at the end | 1 | 3 |
-| Stop only after meta PASS + Judge PASS + Nacho gate | yes | no (gate FAIL) |
+| Stop (and free merge) only after meta PASS + Judge PASS, no human approval | yes | no (META IMPROVE r3) |
 | Escalation at the limit, with open deltas and grades | no | yes, one open delta, grades 2 / 0 / 0 |
-| r2 grade is a correct FAIL, not a false PASS graded 0 | n/a | yes, JUDGE FAIL r2, leniency 0; section 6 grade 3 would apply only if that gate item were PASS |
+| r2 grade is a correct FAIL, not a false PASS graded 0 | n/a | yes, JUDGE FAIL r2, leniency 0; section 6 grade 3 would apply only if that stop-set item were PASS |
 | DELTA r1 is one target and one defect; Judge repair is not on builder | n/a | yes, target builder, one defect sentence, numbered exact_change; the pointer repair is not in exact_change |
 | Round 4 opened | no | no |
 
-If a walker gives EX-FAIL a fourth round because plan review was "extra", the walk fails. If a walker stops EX-PASS at META PASS with no Nacho gate, the walk fails. If a walker stops EX-FAIL at META PASS r3, the walk fails.
+If a walker gives EX-FAIL a fourth round because plan review was "extra", the walk fails. If a walker holds the EX-PASS merge for a human approval after META PASS, the walk fails. If a walker merges EX-FAIL at r3, the walk fails.
 
 ## 10. Walk ledger
 
@@ -456,7 +461,7 @@ walk_ledger:
         judge: PASS
         meta: PASS
         leniency: 0
-        nacho_gate: PASS
+        merged: true
         closed: stop
   - id: EX-FAIL
     rounds_used: 3
@@ -470,7 +475,7 @@ walk_ledger:
         judge: FAIL
         meta: IMPROVE
         leniency: 2
-        nacho_gate: absent
+        merged: false
         closed: fail
         delta_target: builder
       - n: 2
@@ -478,15 +483,15 @@ walk_ledger:
         judge: FAIL
         meta: IMPROVE
         leniency: 0
-        nacho_gate: absent
+        merged: false
         closed: fail
         delta_target: builder
       - n: 3
         plan_review: cited-r1
         judge: PASS
-        meta: PASS
+        meta: IMPROVE
         leniency: 0
-        nacho_gate: FAIL
+        merged: false
         closed: fail
 ```
 
@@ -494,8 +499,8 @@ walk_ledger:
 
 From a checkout that has this file and `phase-acceptance.md`:
 
-1. Walk EX-PASS (section 8). Confirm `rounds_used` ends at 1, the four stop packets are present, no `ESCALATE`, no round 2.
-2. Walk EX-FAIL (section 9). Confirm plan review is inside round 1, rounds 2 and 3 cite it, `rounds_used` ends at 3, round 2 is `JUDGE FAIL` (the gate item fails because section 5 in EX-FAIL-r2 has no fourth bullet) with leniency 0, not a `JUDGE PASS` graded 0, the r3 gate is FAIL, the escalation lists grades `2 / 0 / 0` and one open delta, no round 4. Section 7.4 and DELTA r1 name one builder defect. The missing pointer is a grade, not a builder exact_change.
+1. Walk EX-PASS (section 8). Confirm `rounds_used` ends at 1, the three stop packets and the MERGED record are present, no `ESCALATE`, no round 2.
+2. Walk EX-FAIL (section 9). Confirm plan review is inside round 1, rounds 2 and 3 cite it, `rounds_used` ends at 3, round 2 is `JUDGE FAIL` (the stop-set item fails because section 5 in EX-FAIL-r2 has no third bullet) with leniency 0, not a `JUDGE PASS` graded 0, r3 is `META IMPROVE`, the escalation lists grades `2 / 0 / 0` and one open delta, no round 4. Section 7.4 and DELTA r1 name one builder defect. The missing pointer is a grade, not a builder exact_change.
 3. Open `phase-acceptance.md`. Confirm every P0 row and every P0.5 row names an independent source and a per-item result field, not only a non-empty cell. Confirm the negative list names A1–A7, approvals, transactional writes, Office, Canvas, and Board as not implemented by a P0.5 signature.
 
 This file does not claim that walk was signed by Judge or by meta-opus. Their signatures are comments on the build card, after this handoff.

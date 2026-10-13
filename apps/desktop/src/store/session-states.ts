@@ -38,6 +38,7 @@ import type { ErrorSurface } from '@/lib/error-surface'
 import { tileFocusStampOnFocusChange } from '@/lib/session-timer-since'
 import { stableArray } from '@/lib/stable-array'
 import { readJson, writeJson } from '@/lib/storage'
+import { dropOpsNavigationForProfile, migrateOpsNavigationForProfile } from '@/app/ops/navigation-store'
 import type { SessionInfo } from '@/types/hermes'
 
 import { dropStatusDrawersForProfile, migrateStatusDrawersForProfile } from './composer-status-drawer'
@@ -2883,6 +2884,10 @@ export function dropTilesForProfile(
   // The rail is a profile-keyed family too: a deleted profile's tabs must not
   // outlive it, or a later profile of the same name inherits them.
   dropPreviewTabsForProfile(name)
+  dropOpsNavigationForProfile(name, {
+    connectionId: route ? routeConnection : ambientConnection,
+    profile: routeProfile || name
+  })
 }
 
 /**
@@ -2949,6 +2954,7 @@ export function migrateTilesForProfile(oldProfile: string, newProfile: string): 
   // Sibling family: the rail's profile-keyed buckets move with the rename, or
   // the renamed profile opens with an empty rail and the old name keeps them.
   migratePreviewTabsForProfile(from, to)
+  migrateOpsNavigationForProfile(from, to)
 }
 
 /** ⌘⇧T — reopen the most recently closed tab where it was, then focus it.
