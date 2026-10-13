@@ -1,13 +1,13 @@
 # Desktop surface audit (P0-04)
 
-Status: read-only discovery, r2 docs delta applied. No shell, no new component, no route. SPEC rows are not relaxed.
+Status: read-only discovery, r3 docs delta applied. No shell, no new component, no route. SPEC rows are not relaxed.
 Base: `hermes-agent` `865ba906c1a` (`feat/ops-panel` / `ops/P0-04` at audit time).
 SPEC: `01-Projects/Hermes/desktop-ops-panel/SPEC.md` v4. Rows: O9, O26, O32, O38, O44, O45, O48, O50, O51, O52, O55, O64, O65, G13, G17, G58, R23, R53, R55.
 PLAN task: P0 item 4 (titlebar, palette pages, status-bar groups, themes, split host, model picker, notify, subagents, keymap).
 
 Method: follow exported symbols and their call sites. A missing symbol is a named blocker or a bounded implementation requirement. It is not an invitation to invent a second chrome.
 
-Live Desktop (`apps/desktop/release/win-unpacked/Hermes.exe`) was running during this audit. No key was injected. Ctrl+W / Ctrl+Tab would mutate production tabs and sessions. The collision ledger in `keymap.md` is named from source. It is not a keypress signature. Judge r2 signs it, or records a concrete blocker.
+Live Desktop (`apps/desktop/release/win-unpacked/Hermes.exe`) was running during this audit. No key was injected. Ctrl+W / Ctrl+Tab would mutate production tabs and sessions. The collision ledger in `keymap.md` is named from source. It is not a keypress signature. Judge r3 signs it, or records a concrete blocker.
 
 ## 1. Seam inventory
 
@@ -169,7 +169,7 @@ Bounded implementation requirements (owner is frozen; code is a later phase):
 - Teach `composerFocusBlockedBySurface` (`composer-focus-keys.ts:149`) to treat `[data-ops-root]` like `[data-terminal]`, so G-chords and `/` do not type into the composer. Detail in `keymap.md` (BR-FOCUS-SURFACE).
 - P2 filter on the existing picker when the opener is the Ops chip. Not a new picker. Owner scope is BR-PICKER-OWNER, not a second dialog.
 - BR-R53: container queries at 1280/1024/800 on the Ops pane, not viewport `md:`. Detail in §3.
-- Close, dispatch, and Esc seams (BR-CLOSE, BR-DISPATCH, BR-ESC-REGISTER, BR-ESC-TIE, BR-ESC-SKIP) are specified in `keymap.md`. Owner phase P0.5. This card does not implement them.
+- Close, dispatch, and Esc seams (BR-CLOSE, BR-DISPATCH, BR-ESC-CAPTURE, BR-ESC-REGISTER, BR-ESC-TIE, BR-ESC-SKIP) are specified in `keymap.md`. Owner phase P0.5. This card does not implement them. BR-ESC-CAPTURE is the A1/A2 sibling-capture requirement; the others are unchanged from r2.
 
 ## 6. Out of scope for this card
 

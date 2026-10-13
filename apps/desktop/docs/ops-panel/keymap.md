@@ -1,9 +1,9 @@
 # Ops keymap (P0-04)
 
-Status: r2. Ownership is frozen. Where the tree cannot enforce a row yet, the row names a bounded requirement and an owner phase. No keybind was registered. No production Desktop received a key.
+Status: r3. Ownership is frozen. Where the tree cannot enforce a row yet, the row names a bounded requirement and an owner phase. No keybind was registered. No production Desktop received a key.
 Base: `865ba906c1a`. Branch docs amended on `ops/P0-04`. Companion: `desktop-surface-audit.md`.
 Rows: O48, O51, O52, O55, R23, plus the chords named in the task (Ctrl+W, Ctrl+Tab, `/`, Ctrl+J, Ctrl+K, Ctrl+comma, G-chords, Esc).
-r2 delta: meta card `t_af2eb38d` comment 625. This file does not relax a SPEC row.
+r2 delta: meta card `t_af2eb38d` comment 625. r3 delta: meta card `t_09ee6747` comment 637. This file does not relax a SPEC row.
 
 Invariant already in tree (`src/lib/find-in-page.ts:112-114`): keyboard ownership follows focus, and one cancel gesture does one thing. Ops joins that invariant. It does not add a second dispatcher.
 
@@ -62,7 +62,7 @@ Bare-letter Ops chords are root-local, after BR-FOCUS-SURFACE. They are not cont
 
 | Chord | Owner when Ops is focused and the target is not editable | Owner otherwise | Status |
 |---|---|---|---|
-| Ctrl/Cmd+W | Focused Ops tab strip. Close the active non-pinned Ops tab (O48). Pinned Office/Canvas/Board tabs do not close, and the chord does not then close a Desktop tab. | `view.closeTab`, or PTY ^W if `[data-interactive-terminal]` has DOM focus | Bounded requirement BR-CLOSE. Not a combo passthrough. |
+| Ctrl/Cmd+W | Focused Ops tab strip. Close the active non-pinned Ops tab (O48). Pinned Office/Canvas/Board tabs do not close, and the chord does not then close a Desktop tab. | `view.closeTab`. Bare default `mod+w` (no alt/shift) over a focused interactive terminal is one PTY ^W, not a close. A rebound and Ctrl/Cmd+Shift+W close. | Bounded requirement BR-CLOSE. Not a combo passthrough. |
 | Ctrl+Tab / Ctrl+Shift+Tab | Cycle Ops document tabs only. The session switcher does not open. | `session.next` / `session.prev` | Bounded requirement BR-DISPATCH. Not a contributed decline. |
 | `/` | Focus the Ops rail filter. Do not insert `/` into the composer. The filter field, once focused, is editable, so the next `/` is a character (rule 2). | Soft `composer.focus`, or a slash command if the composer is focused | Tied to BR-FOCUS-SURFACE. SPEC "Search Ops Ctrl K" is not this key. |
 | Ctrl/Cmd+J | Desktop. Ops does not claim it. | `view.toggleRightSidebar` | P0 decision D-CTRLJ. Not a SPEC edit. See §5. |
@@ -76,29 +76,47 @@ Bare-letter Ops chords are root-local, after BR-FOCUS-SURFACE. They are not cont
 | `J` / `K` | Move the Ops selection. Do not scroll the chat. | type-to-focus. Composer history is `up`/`down` (`actions.ts:324`), not J/K. | Tied to BR-FOCUS-SURFACE. |
 | Enter | Open the focused Ops row. Must not click `[data-approval-run]`. | Approval Enter only when the target is the approval stack or its composer. Composer Enter sends. | Tied to BR-ESC-SKIP. |
 | Alt+Left / Alt+Right | Ops tab history back/forward. | No Desktop default owns Alt+Left/Right (text nav stays in editables, `combo.ts:302-311`). | Free outside editables; Ops claims them only inside the root, same focus test as rule 1. |
-| Esc | Innermost open layer only. §4. | same phases | Bounded requirements BR-ESC-REGISTER, BR-ESC-TIE, BR-ESC-SKIP. |
+| Esc | Innermost open layer only. §4. | same phases | Bounded requirements BR-ESC-CAPTURE, BR-ESC-REGISTER, BR-ESC-TIE, BR-ESC-SKIP. |
 | any single letter used as Approve | nobody | nobody | Resolved by existing code. `approval-keys.ts:35` is Enter/Escape only. R23 "P" stays undefined. "Go to next approval" is a palette command that moves focus. It does not call `approval.respond`. |
 
 R23: this table is the fusion keymap. It is active only inside focused Ops and only outside editables. `/` does not collide with composer slash commands because the soft `/` stands down once BR-FOCUS-SURFACE lands, and a focused composer never sits inside `[data-ops-root]`.
 
-### BR-CLOSE — one close seam, both entries
+### BR-CLOSE — detection does not write; one producer per entry
 
 Owner phase: P0.5 (PLAN.md task 3, keymap, on the tab strip from task 2). Not this card. No shell code here.
 
-Add `routeCloseTabChord(loadSessionIntoWorkspace?)` in `src/app/chat/close-tab.ts`, beside `closeActiveTab` (`:69`). Both entries call it. Neither entry calls `closeActiveTab` on its own for this chord.
+`wordEraseFocusedTerminal` (`src/app/right-sidebar/terminal/terminal-context-menu.ts:56-60`) is not a query. It calls `handle.wordErase()`, and that writes `'\x17'` (`src/app/right-sidebar/terminal/use-terminal-session.ts:875`, body `:867-877`). Calling it both detects and produces the byte. No rung may do both.
 
-Order inside the function:
+Add `focusedInteractiveTerminalOwnsWordErase(): boolean` in that same file. Side-effect-free. `document.activeElement?.closest('[data-interactive-terminal]')`, then `handles.get` for a live handle whose `wordErase` is a function — the same lookup as `:57-60`, without the call. Do not call `wordErase`. Do not write. A read-only mirror has `wordErase: null` (`src/app/right-sidebar/terminal/use-agent-terminal.ts:107`) and returns false, so it stays closeable.
 
-1. PTY word-erase. `wordEraseFocusedTerminal()` (`src/app/right-sidebar/terminal/terminal-context-menu.ts:56`). If it returns true, stop. The shell keeps ^W. Do not close an Ops tab and do not call `closeActiveTab`.
-2. Focused Ops strip, non-pinned. DOM focus is inside `[data-ops-root]` (IPC: `document.activeElement`; keydown: `event.target`, passed in or read before the call). Not `$hoveredTreeGroup`. Not `tabTargetGroup`. If that holds and the target is not an editable and not inside `OVERLAY_SURFACE`: close the active Ops tab when it is not pinned, then stop. If it is pinned, consume the chord and close nothing. Do not fall through to `closeActiveTab` while Ops focus holds.
-3. `closeActiveTab(loadSessionIntoWorkspace)` (`close-tab.ts:69`). This is the Desktop owner: chat zone, tool tab, workspace tab.
+Add `routeCloseTabChord` in `src/app/chat/close-tab.ts`, beside `closeActiveTab` (`:69`). It returns `'pty' | 'ops-closed' | 'ops-pinned-consumed' | 'desktop-closed'`. It never writes and never calls `wordEraseFocusedTerminal`.
 
-Call sites, exactly once per chord:
+The PTY rung applies only to the platform's bare default close shape: `mod+w`, no alt, no shift. That is `windowAcceleratorAction`'s `close-tab` (`electron/window-accelerator.ts:44` excludes alt, `:50` excludes shift, `:55` returns `close-tab`) and the keydown guard (`use-keybinds.ts:567-575`). A rebound `view.closeTab` (handler `:374`) skips this rung and closes. Ctrl/Cmd+Shift+W is `view.closeTerminal` (`src/lib/keybinds/actions.ts:201`), not this function; it never takes the PTY rung.
 
-- Native IPC. `use-desktop-integrations.ts` `onClosePreviewRequested` (`:513-523`). Replace the `wordEraseFocusedTerminal` / `closeActiveTab` body with `routeCloseTabChord(id => navigate(sessionRoute(id)))`. This is the path `electron/main.ts:6953-6972` actually delivers on Windows. The stale comment at `:508-511` must be updated in the same change so a later reader does not restore a direct `closeActiveTab`.
-- Keydown `view.closeTab`. In `use-keybinds.ts` `onKeyDown`, at the existing guard (`:567-575`), before `event.preventDefault()` (`:586`). Call `routeCloseTabChord` there. If the result is PTY, return without `preventDefault` so xterm writes ^W (the handler at `:374` must not also run). If the result is Ops or Desktop, `preventDefault` and return. The `'view.closeTab'` handler at `:374` becomes the same function for a rebound that does not hit the W-shaped guard, and the guard returns before `handler()` so one keydown cannot close twice.
+Order, bare default shape only:
+
+1. Query. `focusedInteractiveTerminalOwnsWordErase()`. If true, return `'pty'`. Stop. No write, no close.
+2. Focused Ops strip. DOM focus inside `[data-ops-root]` (IPC: `document.activeElement`; keydown: `event.target`). Not `$hoveredTreeGroup`. Not `tabTargetGroup`. Target is not an editable and not inside `OVERLAY_SURFACE`. Close the active Ops tab when it is not pinned and return `'ops-closed'`. If it is pinned, consume the chord, close nothing, return `'ops-pinned-consumed'`. Do not fall through to `closeActiveTab` while Ops focus holds.
+3. `closeActiveTab(loadSessionIntoWorkspace)` (`close-tab.ts:69`). Return `'desktop-closed'`. A focused `[data-terminal]` still closes through `closeActiveTerminal` (`close-tab.ts:76-78`).
+
+A rebound passes a shape flag and starts at step 2. Step 1 does not run.
+
+Exactly one producer of `'\x17'` per entry. These are not two producers on one keydown. The r2 text put the relay and the xterm passthrough on the same entry; that is the defect this section removes.
+
+- IPC entry. `electron/main.ts:6953-6972` already `preventDefault` (`:6954`) and sends `sendClosePreviewRequested()`. That claim stops the key before xterm (`terminal-context-menu.ts:7-9`). Renderer body: `use-desktop-integrations.ts:513-523`. Replace the `wordEraseFocusedTerminal` / `closeActiveTab` body with `routeCloseTabChord` (bare-default shape). On `'pty'`, the caller relays once via `wordEraseFocusedTerminal()` — one `terminalApi.write(sessionId, '\x17')`. Do not also leave the key for xterm. Do not call the writer during detection. If the relay returns false, no byte was written (`use-terminal-session.ts:871-872`, session gone); then run steps 2–3. That is zero bytes plus a close, not a second producer. On any other result, do not call `wordErase`. Update the stale comment at `:508-511` in the same change.
+- Keydown entry, bare default. The guard at `use-keybinds.ts:567-575`, before `event.preventDefault()` (`:586`). On `'pty'`, return without `preventDefault` and do not call `wordEraseFocusedTerminal`. Zero relay writes. xterm alone writes `^W`. The handler at `:374` must not also run. This entry's `'pty'` match is the guard's existing `isFocusWithin('[data-interactive-terminal]')` (`:573`, `combo.ts:247-248`). That check is side-effect-free and does not require a registered handle. `use-keybinds-close-tab.test.tsx:99-105` focuses the marker, registers no handle, and requires `defaultPrevented === false` and no close. Do not replace that match with the handle-only query or that test fails. The handle query is the IPC detection rung: a missing handle has nothing to relay, and the close rungs run, as `wordEraseFocusedTerminal()` returns false today. When this guard does not match, call `routeCloseTabChord` and `preventDefault` on `'ops-closed'`, `'ops-pinned-consumed'`, or `'desktop-closed'`.
+- Keydown entry, rebound. Handler `:374` calls `routeCloseTabChord` with the rebind shape, so step 1 does not run. `mod+alt+w` inside an interactive terminal closes. It does not word-erase. Contract: `use-keybinds-close-tab.test.tsx:115-128`. Shift+W (`:115-119`) closes via `closeActiveTerminal` and never enters this PTY rung. Rebound `mod+alt+w` (`:121-128`) has `defaultPrevented === true` and `closeActiveTerminal` called.
 
 A contributed `mod+w` with `passthrough` does not satisfy this. The IPC path never enters the combo loop.
+
+P0.5 verify, per entry, not a production keypress:
+
+- IPC default, live session → one `\x17` and no close.
+- Keydown default → `defaultPrevented === false` and 0 relay writes.
+- Rebind `mod+alt+w` in a terminal → close.
+- Pinned Ops tab → consumed, nothing closed (`'ops-pinned-consumed'`).
+
+If one physical bare `mod+w` is observed on both entries, that is two producers and fails "exactly one `'\x17'` per chord". Main's claim is what keeps those entries apart (`terminal-context-menu.ts:7-9`). Do not stack the relay and the xterm write on either entry.
 
 ### BR-DISPATCH — pre-dispatch Ops owner for Ctrl+Tab, Ctrl+K, Ctrl+comma
 
@@ -124,19 +142,36 @@ When it returns false, the built-in owner in §2 runs unchanged, including insid
 
 ## 4. Esc — one phase table
 
-One Esc does one thing. The table is phase order, then numeric order inside the escape-layers phase. It is not an enumerated list that puts `narrowOverlay` (10) ahead of an Ops layer at 15. Higher `ESCAPE_PRIORITY` closes first (`escape-layers.ts:20`). Capture-phase items are not priorities. They run first because they sit on the window capture listener.
+One Esc does one thing. The table is phase order, then numeric order inside the escape-layers phase. It is not an enumerated list that puts `narrowOverlay` (10) ahead of an Ops layer at 15. Higher `ESCAPE_PRIORITY` closes first (`escape-layers.ts:20`). Capture-phase items are not priorities. They run before phase C because they are window capture listeners, not because one of them suppresses the other. See BR-ESC-CAPTURE.
 
 ### Phase A — capture, before combo dispatch
 
-Same listener: `use-keybinds.ts:631` (`capture: true`). Source order inside `onKeyDown`:
+Not one listener. The switcher Esc and the find-bar Esc are sibling `window` capture listeners. `stopPropagation` does not suppress the other one. Their order is registration order: the dispatcher is mounted at app start (`use-keybinds.ts:631`); the find listener is added when the bar opens (`find-bar.tsx:256`). The source already says this (`find-in-page.ts:109-114`, and the comment at `use-keybinds.ts:510-516`).
 
 | Step | Layer | Source | One Esc does |
 |---|---|---|---|
-| A1 | Session switcher, if `switcherActive()` | `use-keybinds.ts:497-502` | `closeSwitcher`, `preventDefault`, `stopPropagation`, return. Nothing under it runs. |
-| A2 | Find bar, if `$findInPage.active` and the combo is `escape` | Find bar's own capture listener `src/components/find-bar.tsx:237-258` (`addEventListener` at `:256`). Dispatcher yields at `use-keybinds.ts:517-519` via `findBarClaimsCombo` (`find-in-page.ts:117`). `stopPropagation` on the bar does not suppress the dispatcher: both listeners are on `window` (`find-in-page.ts:109-114`). | Close the find bar. Do not also run `composer.cancel`. |
+| A1 | Session switcher, if `switcherActive()` | Dispatcher `use-keybinds.ts:497-502`. Listener `:631`. | `closeSwitcher`, `preventDefault`, `stopPropagation`, return from this listener only. That return does not suppress the find-bar sibling. |
+| A2 | Find bar, if `$findInPage.active` and the combo is `escape` | Find bar's own capture listener `src/components/find-bar.tsx:237-258` (`addEventListener` at `:256`). `findBarKeyAction` returns `'close'` for bare Escape (`find-in-page.ts:78-79`). It does not check `switcherActive()` or `defaultPrevented`. The dispatcher yields at `use-keybinds.ts:517-519` via `findBarClaimsCombo` (`find-in-page.ts:116-118`) and does not itself close the bar. | Today this sibling also closes the bar. With both open, one Esc closes both. That is not innermost-only. BR-ESC-CAPTURE is the fix. It is not true of this tree yet. |
 | A3 | Approval deny | `handleApprovalKey(event)` at `use-keybinds.ts:521`. Body `approval-keys.ts:29`. Deny selector `[data-approval-deny]` at `:79`, click at `:91`. | Deny, never approve. Only when the stack owns the target. BR-ESC-SKIP: if `event.target` is inside `[data-ops-root]` and not inside `[data-approval-stack]`, return false and do not click deny. |
 
-A1 and A2 still win when Ops is focused underneath. They are overlays, not a hover claim.
+A1 and A2 are overlays, not a hover claim. Until BR-ESC-CAPTURE lands they are not exclusive of each other. A return in the dispatcher does not suppress the find-bar sibling.
+
+### BR-ESC-CAPTURE — one Esc, one of these two siblings
+
+Owner phase: P0.5 (PLAN.md task 3). Not this card.
+
+Mechanism, one: the dispatcher owns find-bar Escape. Not mutual exclusion. Opening the switcher does not close the find bar, and opening the find bar does not close the switcher.
+
+Enforcement site: `use-keybinds.ts` `onKeyDown`, the existing `findBarClaimsCombo` branch at `:517-519`, which already runs after the switcher check at `:497-502`.
+
+- Switcher wins when both are open. The check at `:497-502` stays first in that function. One Esc closes only the switcher.
+- A second Esc, switcher already closed, find bar still open, hits `:517-519`. When `combo === 'escape'`, that branch calls `closeFindBar()` (`src/store/find-in-page.ts:46`), `preventDefault`, and returns. It must close, not only yield.
+- The find-bar sibling (`find-bar.tsx:237-258`) must not act on Escape. If `findBarKeyAction` returns `'close'`, return without `preventDefault`, `stopPropagation`, or `closeFindBar`. Keep `mod+g` / `mod+shift+g` on that listener. After this, registration order cannot close both: only the dispatcher closes on Escape, and it closes one layer.
+- That `preventDefault` is what keeps the rest of this listener from running approval deny (`:521`) and what makes composer cancel bail (`use-composer-esc-cancel.ts:35` checks `defaultPrevented`; listener is bubble at `:65`). Ops full-screen and the Ops sheet are phase C. They join the escape-layers stack (BR-ESC-REGISTER) and bail on `defaultPrevented` (`escape-layers.ts:12-13`). They do not run on this Esc.
+
+Layer that wins: the switcher. Not because it registered last — sibling order is not the owner. It wins because the single dispatcher tests it before the find-bar branch. A second Esc closes the find bar.
+
+P0.5 verify: switcher and find bar open, in both mount orders, one Esc closes exactly one. Ops full-screen / sheet underneath is untouched. No approval deny. No composer cancel.
 
 ### Phase B — Radix self-stop
 
@@ -207,29 +242,29 @@ A later phase must not "fix" this by rewriting SPEC.md:250. If a default dock ch
 
 ## 6. Ledger
 
-A row is unresolved only when it has none of: an existing-code resolution, a named bounded requirement with an owner phase, or a recorded P0 decision. Unresolved count is 0 on that definition. It is not a claim that P0.5 has landed, and it is not a judge signature. Judge r2 signs, or records a concrete blocker and keeps the signature pending.
+A row is unresolved only when it has none of: an existing-code resolution, a named bounded requirement with an owner phase, or a recorded P0 decision. Unresolved count is 0 on that definition. It is not a claim that P0.5 has landed, and it is not a judge signature. Judge r3 signs, or records a concrete blocker and keeps the signature pending.
 
 | Id | Chord | Verdict |
 |---|---|---|
-| K1 | Ctrl/Cmd+W | Bounded requirement BR-CLOSE. Owner phase P0.5. Both the IPC path (`main.ts:6953-6972` → `use-desktop-integrations.ts:513-523`) and the keydown path (`use-keybinds.ts:567-575` / handler `:374`) call `routeCloseTabChord`. Order: PTY word-erase → focused Ops strip (non-pinned) → `closeActiveTab`. Not resolved by the current direct `closeActiveTab`. |
+| K1 | Ctrl/Cmd+W | Bounded requirement BR-CLOSE. Owner phase P0.5. Detection is `focusedInteractiveTerminalOwnsWordErase()` and does not write. IPC (`main.ts:6953-6972` → `use-desktop-integrations.ts:513-523`) relays once on `'pty'`. Keydown bare default (`use-keybinds.ts:567-575`) does not relay. Rebound (handler `:374`) and Ctrl/Cmd+Shift+W skip the PTY rung and close. Not resolved by the current direct `closeActiveTab`. |
 | K2 | Ctrl+Tab | Bounded requirement BR-DISPATCH. Owner phase P0.5. Pre-dispatch check in `use-keybinds.ts` after `:523`, before `:541`. Not a contributed passthrough (`actions.ts:263-272`). |
 | K3 | `/` | Tied to BR-FOCUS-SURFACE. Owner phase P0.5. Rail filter only inside focused `[data-ops-root]`, outside editables. |
 | K4 | Ctrl/Cmd+J | P0 decision D-CTRLJ, per SPEC.md:256. Desktop keeps `mod+j`. Not a SPEC change. |
 | K5 | Ctrl/Cmd+K | Bounded requirement BR-DISPATCH. Owner phase P0.5. Same check as K2. `mod+p` stays the Desktop alias. |
 | K6 | Ctrl/Cmd+, | Bounded requirement BR-DISPATCH. Owner phase P0.5. Same check as K2. |
 | K7 | G-chords | Tied to BR-FOCUS-SURFACE. Owner phase P0.5. Root-local leader. `mod+g` stays review. Lone G is not approve. |
-| K8 | Esc | Bounded requirements BR-ESC-REGISTER, BR-ESC-TIE, BR-ESC-SKIP. Owner phase P0.5. Phase table in §4. Equal-priority tie-break is not in `isTopEscapeLayer` (`escape-layers.ts:45-49`) today. |
+| K8 | Esc | Bounded requirements BR-ESC-CAPTURE, BR-ESC-REGISTER, BR-ESC-TIE, BR-ESC-SKIP. Owner phase P0.5. Phase table in §4. A1/A2 are sibling capture listeners; BR-ESC-CAPTURE makes exactly one act (dispatcher owns find-bar Escape at `use-keybinds.ts:517-519`, after the switcher check at `:497-502`; switcher wins; a second Esc closes the find bar). Equal-priority tie-break is not in `isTopEscapeLayer` (`escape-layers.ts:45-49`) today. |
 | K9 | single-key approve | Resolved by existing code. `approval-keys.ts:35` rejects every key except Enter and Escape. Enter/Esc inside Ops are enforced by BR-ESC-SKIP so a visible or hidden chat approval is not the Ops key. |
 
 Unresolved count: 0.
 
-Not signed from a keypress. Production Desktop (`apps/desktop/release/win-unpacked/Hermes.exe`) must not receive these chords. Judge r2 runs them in an isolated Desktop (separate `HERMES_HOME` / profile) or records the concrete blocker and keeps the signature pending.
+Not signed from a keypress. Production Desktop (`apps/desktop/release/win-unpacked/Hermes.exe`) must not receive these chords. Judge r3 runs them in an isolated Desktop (separate `HERMES_HOME` / profile) or records the concrete blocker and keeps the signature pending.
 
 ## 7. Evidence for P0-02
 
-O64: interactive terminal exists (`electron/terminal-ipc.ts` `nodePty.spawn` at `:326`). Ops dock reuses `LogTail` (`src/components/chat/log-tail.tsx:39`) and does not spawn a PTY. Detail: `desktop-surface-audit.md` §2. Unchanged in r2.
+O64: interactive terminal exists (`electron/terminal-ipc.ts` `nodePty.spawn` at `:326`). Ops dock reuses `LogTail` (`src/components/chat/log-tail.tsx:39`) and does not spawn a PTY. Detail: `desktop-surface-audit.md` §2. Unchanged in r3.
 
-R23: the focus-ownership table in §3 is the keymap. Active only inside focused Ops, outside editables, focus not hover. `/` does not collide with composer slash once BR-FOCUS-SURFACE lands. No single-key approve. `P` is undefined. Esc closes only the innermost layer once BR-ESC-REGISTER, BR-ESC-TIE, and BR-ESC-SKIP land; until then K8 is a named requirement, not an open collision and not a signed keypress. Do not consume an r1 "unresolved = 0" line as the signature.
+R23: the focus-ownership table in §3 is the keymap. Active only inside focused Ops, outside editables, focus not hover. `/` does not collide with composer slash once BR-FOCUS-SURFACE lands. No single-key approve. `P` is undefined. Esc closes only the innermost layer once BR-ESC-CAPTURE, BR-ESC-REGISTER, BR-ESC-TIE, and BR-ESC-SKIP land. Until then K8 is a named requirement, not an open collision and not a signed keypress. A1/A2 are not exclusive in this tree; BR-ESC-CAPTURE is the owner. Do not consume an r1 or r2 "unresolved = 0" line as the signature.
 
 ## 8. Verify a later worker can re-run
 
@@ -263,6 +298,18 @@ Static, no production mutation:
 - composer cancel bubble listener: `src/app/chat/composer/hooks/use-composer-esc-cancel.ts:31-65`
 - `nodePty.spawn` exists: `electron/terminal-ipc.ts:326`
 - `LogTail` export: `src/components/chat/log-tail.tsx:39`
+- `wordEraseFocusedTerminal` writes, it does not query: `src/app/right-sidebar/terminal/terminal-context-menu.ts:56-60`; byte at `src/app/right-sidebar/terminal/use-terminal-session.ts:875`
+- mirror `wordErase: null`: `src/app/right-sidebar/terminal/use-agent-terminal.ts:107`
+- `closeActiveTab` terminal rung: `src/app/chat/close-tab.ts:76-78`
+- bare-default shape: `electron/window-accelerator.ts:44`, `:50`, `:55`
+- `view.closeTerminal`: `src/lib/keybinds/actions.ts:201`
+- keydown passthrough predicate: `src/lib/keybinds/combo.ts:247-248`, used at `use-keybinds.ts:573`
+- close-tab contract: `src/app/hooks/use-keybinds-close-tab.test.tsx:99-105`, `:115-128`
+- main already consumed the key: `electron/main.ts:6954`; claim stops the key before xterm: `src/app/right-sidebar/terminal/terminal-context-menu.ts:7-9`
+- find-bar Escape is `'close'`: `src/lib/find-in-page.ts:78-79`; sibling note `:109-114`; `findBarClaimsCombo` `:116-118`
+- dispatcher yield comment: `src/app/hooks/use-keybinds.ts:510-516`; find-bar branch `:517-519`
+- `closeFindBar`: `src/store/find-in-page.ts:46`
+- composer cancel bails on `defaultPrevented`: `src/app/chat/composer/hooks/use-composer-esc-cancel.ts:35`; bubble listener `:65`
 - SPEC collision-check delegation: `01-Projects/Hermes/desktop-ops-panel/SPEC.md:256`
 - SPEC responsive row, unchanged: `SPEC.md:673`
 
