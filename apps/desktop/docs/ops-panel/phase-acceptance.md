@@ -1,11 +1,13 @@
 # Ops panel phase acceptance (P0-07)
 
 Status: documentation only. Freezes the P0 and P0.5 exit gates. Does not sign either exit. Does not implement a check runner. Does not produce screenshots.
-Pair: `review-loop.md` in this directory (packets, rounds, leniency, Nacho's gate).
+Pair: `review-loop.md` in this directory (packets, rounds, leniency, free merge, phase-exit sign-off).
 SPEC: vault `01-Projects/Hermes/desktop-ops-panel/SPEC.md` v4. PLAN: vault `01-Projects/Hermes/desktop-ops-panel/PLAN.md`, P0 lines 45-54, P0.5 lines 56-64.
 Tree cited: `feat/ops-panel` at `a8c434eca5e` unless a row names an older line that is still in that tree.
 
 A phase has not exited until Nacho posts `NACHO GATE PASS` with `object: phase-exit` (template in `review-loop.md` section 7.5) and Judge has posted `JUDGE PHASE PASS` for that phase. Both comments cite every row below as PASS with a pointer. A missing row, or a PASS with no pointer, is not an exit. That PASS is lenient (`review-loop.md` section 6, grade ≥ 2).
+
+Phase exit is not a merge gate. Rule 2026-10-13 13:00 ART (Nacho): task merges into `feat/ops-panel` are free for every agent after JUDGE PASS + META PASS, with no human approval. A pending phase-exit sign-off never blocks a merge or a push to `fork`.
 
 These gates are foundation checks. They are not behavior acceptance for later phases. Section 4 is the cut line.
 
