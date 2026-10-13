@@ -163,7 +163,7 @@ Legal unarchive destinations, and only these: `triage`, `todo`, `ready` (`kanban
 
 The existing test `tests/plugins/test_kanban_workflow_matrix.py` requests every src→dst pair through `PATCH /tasks/{id}` on a parentless task and asserts the server agrees with `can_move` (`:71-93`), including `archived` as a source (`:65-66`, `:71`). Re-run from this worktree with the install interpreter `C:/Users/nachi/AppData/Local/hermes/hermes-agent/venv/Scripts/python.exe -m pytest tests/plugins/test_kanban_workflow_matrix.py -q --tb=line` → `10 passed in 21.79s`. Temp db only. No production write.
 
-Known redirect, not an unarchive path: `review` → `todo` lands in `ready` (`test_kanban_workflow_matrix.py:26`, `kanban_workflow.py:132-133`). Ops must label the landed status, not the requested one.
+Known redirect, not an unarchive path and not an illegal reverse: `review` → `todo` lands in `ready` on a parentless task (`test_kanban_workflow_matrix.py:26`, `kanban_workflow.py:132-133`). That requested pair is not a landed pair. Ops must label the landed status. R46 Undo does not reverse it through PATCH (`action-contracts.md` section 6b).
 
 Unarchive is `PATCH` status to one of the three legal targets. There is no `/unarchive` route. Do not send `running`. Do not call `DELETE`.
 

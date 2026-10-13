@@ -388,14 +388,14 @@ Mount prefix: `/api/plugins/kanban`. Handlers in `plugins/kanban/dashboard/plugi
 ### PATCH /tasks/{id} — verified
 
 - Handler: `plugin_api.py:686` `update_task`.
-- Schema: `UpdateTaskBody` (`:527-545`): `status`, `assignee`, `priority`, `title`, `body`, `result`, `block_reason`, `summary`, `metadata`, model/reasoning overrides. No `note`. No `expected_claim_lock`. No position.
+- Schema: `UpdateTaskBody` (`:527-545`): `status`, `assignee`, `priority`, `title`, `body`, `result`, `block_reason`, `summary`, `metadata`, model/reasoning overrides. No `note`. No `expected_claim_lock`. No `expected_status`. No position. No task revision.
 - Auth / scope: inherited. Board query. Task id.
 - Storage: `kanban.db` `tasks`, plus `task_events`.
 - Event: `status`, `edited`, `reprioritized`, `archived`, or the verb event (`unblocked`, `review_requested`, ...). Review → todo lands in `ready` (ledger R57).
 - Error: 400 `running` or unknown status (`:570`, `:603-607`). 409 refused transition, with parent names when ready/done/review is blocked (`:645-649`). Claim conflict snaps the card back (SPEC section 5).
 - Status: verified. Illegal drag targets (`scheduled`, `running`, `review` have `drag_target: false`, `kanban_workflow.py:118-122`) stay disabled in the UI even when a verb could accept them. Into `running` is always disabled.
 - Unarchive: status `triage` | `todo` | `ready` from `archived` only. See ledger R57.
-- This PATCH is not A-unblock.
+- This PATCH is not A-unblock and not R46 Undo. It has no `expected_status`, so a reverse status or archive written here is not Undo. See section 6b.
 
 ### POST /tasks/{id}/reassign — verified
 
@@ -403,7 +403,7 @@ Mount prefix: `/api/plugins/kanban`. Handlers in `plugins/kanban/dashboard/plugi
 - Storage: `tasks.assignee`. Optional reclaim first.
 - Event: reassign event from `reassign_task`.
 - Error: 409 if unknown, or still running without `reclaim_first` (`:1041-1043`).
-- Status: verified. R39 assignee picker uses this, not a status PATCH, when the only change is assignee.
+- Status: verified. R39 assignee picker uses this, not a status PATCH, when the only change is assignee. This route is not R46 Undo. It has no `expected_status` and no event-id compare. See section 6b.
 
 ### POST /tasks — verified
 
@@ -458,39 +458,77 @@ SPEC R4 is list / create / archive / favourites. SPEC R22's "Create project" is 
 - Error: JSON-RPC, not HTTP. `5062` no such project, `5063` invalid argument (duplicate primary path is the create refusal named on the contract, `projects_pets.py:88`), `5061` any other failure (`methods_projects.py:13`, `:38-43`).
 - Status: verified handlers. Live RPC was not called. `projects.delete` exists (`:111`) and is not an R4 action. Do not bind it. Not a Cut of R4.
 
-### R46 Undo — legal reverse set only; illegal pairs are a named gap
+### R46 Undo — landed-status classification; no Undo through bare PATCH
 
-SPEC R46: Undo for move, archive, and reassign within 8 s. Never for approval or stop. The existing handlers do not reverse every pair they accept. Do not promise a universal reverse PATCH. Do not cut R46.
+SPEC R46: Undo for move, archive, and reassign within 8 s. Never for approval or stop. Do not cut R46. Do not implement the endpoint in this slice.
 
-Rule: Undo targets the landed status, not the status the client requested. `review` → `todo` lands in `ready` (`kanban_workflow.py:132-133`). The reverse of that landing is `ready` → `review`, which `can_move` allows. Reversing the requested `todo` would be a different pair.
+Enablement (r3 decision; no Planner round). `PATCH /tasks/{id}` has no `expected_status` (`plugin_api.py:527-528`, `:686`). Therefore no status Undo, no archive Undo, and no reassign Undo is enabled through that PATCH, not even for a pair in Landed-legal. `POST /tasks/{id}/reassign` (`plugin_api.py:1033`) is not an Undo route either: it has no landed-status compare. R46 Undo is enabled only through the named P1 endpoint `POST /api/plugins/kanban/tasks/{id}/undo`, which does not exist. Until that route exists, the 8 s Undo control is not rendered. A click does not call PATCH and does not call reassign. This is a named gap, owner P1, not a Cut, and not an existing adapter.
 
-A status Undo may call `PATCH /tasks/{id}` with `status` = previous only when `can_move(landed, previous)` is true (`kanban_workflow.py:69-79`). Otherwise the handler returns 409. Sending it is a contract violation.
+The control, when P1 ships it, never restores a cancelled run or claim and never re-enters `running`. `*→running` is not a manual destination (`plugin_api.py:603-604` returns 400). Approval and stop have no reverse route. The toast does not offer Undo for them. O29 and O74 are not this control: unblock stays A-unblock, and a reverse PATCH is not a fallback for either row. G27 ownership is unchanged.
 
-Legal reverses (forward pair whose reverse `can_move` accepts), from `DEFAULT_WORKFLOW.manual` plus archive-always / archived→`triage|todo|ready`:
+Probe paths this contract forbids as Undo. The server still accepts the PATCH on a temporary db (`evidence/P0-02-r2/undo_probe.json`). Acceptance is not enablement. Client-side disable after a received event is not a compare-and-swap and is not the contract.
 
-- triage→todo, triage→ready, triage→archived
-- todo→triage, todo→scheduled, todo→ready, todo→archived
-- scheduled→todo, scheduled→ready
-- ready→triage, ready→todo, ready→scheduled, ready→blocked, ready→review, ready→done, ready→archived
+- `review_to_todo`: a board move `review` → `todo` lands `ready`. The reverse PATCH `ready` → `review` is not an enabled Undo.
+- `unobserved_event_race`: `ready` → `todo`, then another actor to `scheduled`, then a stale PATCH back to `ready`, is not an enabled Undo. The stale write overwrites an unobserved change. Do not send it.
+
+Classification (parentless measured matrix, `tests/plugins/test_kanban_workflow_matrix.py:24-26`). A listed pair is the status the card holds after an accepted manual move, not the status the client requested. `review` → `todo` is requested and is not a landed pair: `reopen_review_task` ignores the target and lands `ready` when parents are satisfied (`kanban_workflow.py:132-133`, `kanban_db.py:3779`, `plugin_api.py:580-581`). It is in neither list. Open parents can land `todo` (`kanban_db.py:3718-3721`). That conditional landing is not the measured pair and is not added to either list. The future endpoint compares `expected_status` to the status it observed.
+
+Landed-legal means `can_move(landed, previous)` is true (`kanban_workflow.py:69-79`). Landed-illegal means the forward landed and the reverse is not `can_move`. The two lists are disjoint and exhaustive of the 43 parentless landed forwards, including archive forwards (destination `archived` is always allowed) and unarchive forwards (`archived` → `triage` | `todo` | `ready`). Neither list is a PATCH allow-list.
+
+#### Landed-legal
+
+- triage→todo
+- triage→ready
+- triage→archived
+- todo→triage
+- todo→scheduled
+- todo→ready
+- todo→archived
+- scheduled→todo
+- scheduled→ready
+- ready→triage
+- ready→todo
+- ready→scheduled
+- ready→blocked
+- ready→review
+- ready→done
+- ready→archived
 - blocked→ready
 - review→ready
 - done→ready
+- archived→triage
+- archived→todo
+- archived→ready
 
-Illegal reverses. The forward move is allowed. The reverse PATCH is not. Includes the two pairs called out in r1: `archived`→`done`, and `ready`→`running`.
+#### Landed-illegal
 
-- scheduled→triage, scheduled→archived
-- running→triage, running→todo, running→scheduled, running→ready, running→blocked, running→review, running→done, running→archived
-- blocked→triage, blocked→todo, blocked→scheduled, blocked→done, blocked→archived
-- review→triage, review→todo, review→done, review→archived
-- done→triage, done→todo, done→archived
+- scheduled→triage
+- scheduled→archived
+- running→triage
+- running→todo
+- running→scheduled
+- running→ready
+- running→blocked
+- running→review
+- running→done
+- running→archived
+- blocked→triage
+- blocked→todo
+- blocked→scheduled
+- blocked→done
+- blocked→archived
+- review→triage
+- review→done
+- review→archived
+- done→triage
+- done→todo
+- done→archived
 
-Reassign Undo may call `POST /tasks/{id}/reassign` back to the previous profile. If the task is still `running`, `reclaim_first` is required or the handler returns 409 (`plugin_api.py:1041-1043`). Reassign does not restore a cancelled run. A reassign that reclaimed `running` cannot be undone into `running`: every `*→running` reverse is illegal. That case is in the gap below, not a reverse PATCH.
+#### Not a landed pair
 
-Approval and stop have no reverse route. The toast does not offer Undo for them.
+- review→todo is requested and lands ready on the parentless matrix. Not in Landed-legal. Not in Landed-illegal.
 
-Races: `PATCH` has no `expected_status`. If any task event arrives after the write and before the click, disable Undo. Do not fire a reverse against a card the client no longer owns.
-
-Gap, not a Cut, not an existing adapter: `POST /api/plugins/kanban/tasks/{id}/undo` does not exist. Owner P1. Proposed body `{kind: "move"|"archive"|"reassign", expected_status, previous_status?, expected_assignee?, previous_assignee?}`. It would have to restore a prior status the manual matrix rejects, and a prior run/claim the current PATCH cannot revive. Until that route exists, the 8 s control is enabled only for the legal set above and for assignee-only reassign that does not need to re-enter `running`. A click on an illegal pair does nothing and does not call PATCH. This restriction is the verified matrix, recorded here so Planner does not have to re-decide the pairs. It is not a silent cut of R46.
+Future endpoint, owner P1, absent: `POST /api/plugins/kanban/tasks/{id}/undo`. Body `{kind: "move"|"archive"|"reassign", expected_status, expected_revision, expected_claim, previous_status?, previous_assignee?}`. `expected_revision` is the task revision or the last event id the client observed. One transaction compares `expected_status` to the landed status, the revision or last event id, and the claim. Mismatch: 409, nothing written. It does not restore a cancelled run or claim. It does not write `running`. Until the route exists, render no 8 s control.
 
 ## 7. Section 12.8 actions not already named
 
@@ -501,18 +539,18 @@ Gap, not a Cut, not an existing adapter: `POST /api/plugins/kanban/tasks/{id}/un
 | O14 | New profile | `POST /api/profiles` `profiles.py:810`. Body `ProfileCreate` name, optional `clone_from` (`web_models.py:434`). Auth inherited. Storage: new profile dir. Event: none. Error: 400. `FileExistsError` and `ValueError` map to 400 via `_profile_errors` (`profiles.py:824-825`, `:175-188`), not 409. Status: verified. A5 does not apply to an empty create. Delete profile is forbidden (section 3.4). |
 | O15 | New task | `POST /tasks` section 6. |
 | O16 | Run now | `POST /api/cron/jobs/{id}/trigger` section 5. Template half is a Cut (ledger). |
-| O29 | Steer/Stop, Approve, Comment, Unblock | sections 3 and 4 steer, 6 comment. Unblock is A-unblock, not the three-call composition. |
+| O29 | Steer/Stop, Approve, Comment, Unblock | sections 3 and 4 steer, 6 comment. Unblock is A-unblock, not the three-call composition, and not an R46 reverse PATCH. |
 | O40 | Default model menu | `POST /api/model/set` section 5. Not the profile-model PUT. A6 absent; chip stays read-only until A6. |
 | O41 | Agent autonomy | `PUT /api/config` section 5. Wire values `manual` / `smart` / `off`. Not the Orbit labels. Not raw YAML. |
 | O50 | Model chip write | `PUT .../model` section 5, through A5/A6 when those exist. Until A6, the chip menu is read-only. Owner of the write UI: P5. The default-model menu is O40, not this row. |
 | O62 | Blocked toast | `[Open]` only. Unblock needs a note, so the toast does not call A-unblock. Status: UI rule, no extra endpoint. |
 | O72 | Inline Approve/Deny/Comment | section 3.2 and `POST .../comments`. One click. |
-| O74 | Unblock / Retry ready | A-unblock. Retry-ready is the same op when expected_status is `blocked` or `scheduled`. Not a bare PATCH. |
+| O74 | Unblock / Retry ready | A-unblock. Retry-ready is the same op when expected_status is `blocked` or `scheduled`. Not a bare PATCH. Not R46 Undo. |
 | G7 | Connect / Manage | section 5 G7. Concrete onboarding and MCP bodies. Not implied by the platform PUT. |
 | G10 | Starter packs + Add all | Cut. Same missing bundle resource as G82. Ledger crosswalk, outside the 20-id set. No bundle endpoint is proposed. Single-skill install is G72 Browse, not this row. |
 | G72 | Starter-pack metadata + Browse library | Adapt, partial cut of pack metadata. Browse stays: `GET /api/skills/hub/official` and `EmbeddedHubPicker` (`apps/desktop/src/app/capabilities/skills/embedded-hub-picker.tsx`). Install is section 5 hub/install, one identifier. Do not render "8 skills" or "2.4k installs": the official payload has no install count (`skills.py:77-81`). |
-| G12 | Create / open skill | `POST /api/skills` `skills.py:418` body name, content, category, optional profile. `PUT /api/skills/content` `:433`. 400 if `success` is false. Storage: skill dir SKILL.md. Event: none. Status: verified. A5 owner P2. Not hub install. |
-| G20 | Save / Export | Per-node saves are section 5. Export: `POST /api/profiles/{name}/export` `profiles.py:1095`. Auth inherited. Storage: an export archive, not a profile mutation of the source. Event: none. Status: verified. Share is this export, not a new endpoint. |
+| G12 | Create / open skill | Handler: `POST /api/skills` `create_skill` (`hermes_cli/web_routers/skills.py:418-430`) and `PUT /api/skills/content` `update_skill_content` (`:433-444`). Schema: create body `SkillCreate` `{name, content, category?, profile?}` (`web_models.py:485-489`); content body `SkillContentUpdate` `{name, content, profile?}` (`web_models.py:491-494`). Auth: inherited dashboard session token; 401 before routing (`web_server.py:719`) and, when the gate is on, `dashboard_auth/middleware.py:84-86`. Scope / profile precedence: `body.profile` wins over query `?profile=` (`skills.py:426`, `:438`; `scoped_to_thread` `web_routers/_common.py:40-46`). Omitted is the launch profile (section 2), not the focused Ops profile. A named selector resolves through `_profile_scope` (`web_server_profiles.py:243-268`). Storage: that profile's `SKILL.md`. Default home is `get_hermes_home()/skills`; a named profile retargets `SKILLS_DIR` to `profile_dir/skills` (`web_server_profiles.py:267-268`, `skill_manager_tool.py:73-81`). Create writes `<base>/[category/]<name>/SKILL.md` (`skill_manager_tool.py:200-208`, `:476`); `skills.create_dir` may replace the base (`:204-205`). Edit rewrites the existing skill's `SKILL.md` (`skill_manager_tool.py:494-500`). Event: none (`_clear_skills_prompt_cache` is not a subscriber event). Errors: POST 400 when `success` is false (`skills.py:427-428`); PUT 404 when the error contains "not found" (`skills.py:441`, text `skill_manager_tool.py:337`), else 400 (`skills.py:441-442`); named profile 400 invalid name (`web_server_profiles.py:195-196`) and 404 profile missing (`:197-198`); 401 inherited. No 409 on these two writes. Status: verified. A5 owner P2. Not hub install. |
+| G20 | Save / Export | Per-node saves are section 5. Handler: `POST /api/profiles/{name}/export` `export_profile_endpoint` (`hermes_cli/web_routers/profiles.py:1095-1110`). Schema: body `ProfileExport` `{extra_files, output}` (`web_models.py:456-458`); `extra_files` defaults `{}`, `output` defaults `""`. Auth: inherited dashboard session token; 401 (`web_server.py:719`; gated `dashboard_auth/middleware.py:84-86`). Scope / profile precedence: path `{name}` is the only selector. `ProfileExport` has no profile field. The handler takes no `?profile=` argument, so a query profile does not win and is ignored. Path resolution: `export_profile` calls `_existing_profile_dir` (`hermes_cli/profiles.py:421-427`) then `get_profile_dir` (`:430-434`); `default` is the Hermes home, a named profile is `profiles/<canon>`. Empty `output` uses `get_profile_export_path` (`web_routers/profiles.py:1098-1101`, `hermes_cli/profiles.py:2199-2218`): a `<canon>-<stamp>.tar.gz` under `_profile_export_directory`, default `<HERMES_HOME>/profile-exports` (`:2171-2174`), else `~/.hermes-profile-exports` or the OS temp `hermes-profile-exports` (`:2183-2188`). An explicit `output` is that archive path. Source profile is not mutated: `copytree` into a temp dir, extra files and redaction apply to the staged copy only (`hermes_cli/profiles.py:2307-2336`, scrub comment `:2281-2284`). Storage: the archive file, not the source profile dir. Event: none. Errors: 400 ValueError when empty `output` has no safe dest (`web_routers/profiles.py:1102-1103`; `hermes_cli/profiles.py:2191-2195`, `:2208-2216`); 500 OSError creating the export dir (`web_routers/profiles.py:1104-1105`); 404 unknown profile (`FileNotFoundError` from `_unknown_profile_error` `hermes_cli/profiles.py:325`, mapped by `_profile_errors` `web_routers/profiles.py:175-186` at the call `:1107`); 400 invalid name (`ValueError`, `:187-188`); 500 any other exception (`:191-193`); 401 inherited. Status: verified. Share is this export, not a new endpoint. |
 | G21, G43 | Test run / Stop | section 3.5 and 3.3. Header is the profile pill plus the prompt. No 7-day parameter. |
 | G25 | Stop, steer, attach | Stop and steer: sections 3.3 and 4. Attach is a Cut of this row's third control. No attach endpoint is implied. |
 | G32, G86 | Owner / change note | No owner field. Owner = last writer on the A5 manifest. Change note is an A5 field. Both proposed, owner P2. Do not write them into SOUL.md frontmatter from the client. |
@@ -525,7 +563,7 @@ Gap, not a Cut, not an existing adapter: `POST /api/plugins/kanban/tasks/{id}/un
 | R21, R49 | Bulk archive / reassign / ready | `POST /tasks/bulk` section 6. |
 | R22 | Palette Create task / Create project | Create task: `POST /tasks` section 6. Create project: section 6b `projects.create`. Go to, Search, Switch theme, Shortcuts: existing Desktop palette. No new endpoint. |
 | R42 | Within-column reorder | Disabled. Ledger. No position write. |
-| R46 | Undo within 8 s | section 6b. Legal reverse set only. Illegal pairs, including archived→done and ready→running, do not call PATCH. Named gap `POST .../undo`, owner P1. Never for approval or stop. Not a Cut. |
+| R46 | Undo within 8 s | section 6b. No status, archive, or reassign Undo through bare PATCH or reassign, including Landed-legal pairs. 8 s control is not rendered until `POST /api/plugins/kanban/tasks/{id}/undo` exists. Owner P1. Named gap, not a Cut. Never for approval or stop. Never restores a cancelled run or claim. Never re-enters running. |
 | R48 | Column add | `POST /tasks` on todo and ready only. |
 | R57 | Unarchive | `PATCH` to `triage`, `todo`, or `ready`. Ledger. |
 | O47 | Dirty / event dots | Local stores only. No server write. |
@@ -542,7 +580,7 @@ Rows in sections 3-5 and 12.8 whose citation is a read, a local pref, a Cut with
 | Endpoint | Owner | Why it is not implied by an existing adapter |
 |---|---|---|
 | `POST /api/plugins/kanban/tasks/{id}/unblock` | P1 | three current calls are not one transaction and do not check claim revision |
-| `POST /api/plugins/kanban/tasks/{id}/undo` | P1 | legal reverses use PATCH or reassign; archived→done, ready→running, and the other illegal pairs in section 6b are not that handler. Not a bundle endpoint. Not a Cut of R46. |
+| `POST /api/plugins/kanban/tasks/{id}/undo` | P1 | the only R46 Undo route. Atomic compare of `expected_status` (landed status) + task revision or last event id + claim. Bare `PATCH /tasks/{id}` and `POST /tasks/{id}/reassign` are not this route, including for Landed-legal pairs. Does not exist. Not a bundle endpoint. Not a Cut of R46. |
 | `POST /api/approvals/{id}/respond` and `GET /api/approvals/pending` | P1 A3 | in-process pop is not cross-profile durable dedupe |
 | A5 inside each Canvas mutation, plus restore | P2 | `atomic_write_text` is not a backup transaction |
 | A6 on model, raw YAML, restore, fallback_providers, auxiliary | P2 | model PUT accepts any pair today |

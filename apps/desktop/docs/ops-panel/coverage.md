@@ -98,3 +98,4 @@ Independent check, from a checkout that has SPEC.md. Script that produced these 
 3. Expect Keep 82, Adapt 130, Cut 18, kept 212/230 = 0.9217391304. Not 213/230.
 4. Confirm the ledger file's `### <id>` headings are exactly the 20 names in SPEC section 12.6, each once, in that order. G10 and G72 must not be headings.
 5. Confirm partial cuts, including G72, are listed with reasons and did not change the row disposition.
+6. r3 does not flip a disposition. G12 and G20 stay verified contracts. R46 Undo stays a named P1 gap, not a Cut. Kept stays 212/230 = 0.9217391304. Do not recompute a new total from the Undo rule.
