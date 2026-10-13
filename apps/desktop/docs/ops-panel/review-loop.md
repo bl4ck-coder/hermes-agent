@@ -42,7 +42,7 @@ Current holder of the meta-opus seat: the declared Grok fallback is active, beca
 | meta-opus | Opus, Anthropic direct, with declared Grok fallback | P2 when a Hermes profile holds it | Plan review, then build + judge-verdict review. Grades leniency. Sends one delta packet. Never merges. Never builds. |
 | builder | `builder`, `xai-oauth` / `grok-4.7` | P2 | Implements in a worktree outside the install (`ops/<key>` from `feat/ops-panel`). The review surface is that branch (the card's PR). Never commits to `main`. Never pushes. |
 | Judge | Sol (`judge`, `openai-codex` / `gpt-6.1-sol`) | P2 | PASS or FAIL per acceptance item, each with evidence. Self-reviews the verdict for leniency. |
-| Nacho | Nacho | — | Not a merge gate. Receives the round-3 escalation as a heads-up. Signs phase exits (`phase-acceptance.md`), which never block a merge. Push to `origin` stays locked (`no_push`). |
+| Nacho | Nacho | — | Not a merge gate and not a phase-exit gate. Receives the round-3 escalation and the phase-exit summary as heads-ups only. Push to `origin` stays locked (`no_push`). |
 
 Any agent (integrator `sandhi`, Hermes profile `grok-4.7`, by default) merges into `feat/ops-panel` freely once the stop set in section 5 holds, then pushes to `fork`. No human approval. This matches SPEC.md:46.
 
@@ -77,7 +77,7 @@ If the round closed failed and `rounds_used` < 3, the next round opens with the 
 
 If the round closed failed and `rounds_used` == 3, escalate to Nacho as a heads-up (not a merge gate). Do not open round 4. The escalation packet carries every still-open delta and every leniency grade from the three rounds (a plan-review-only round records `n/a`).
 
-Phase exit is a separate sign-off, `object: phase-exit`, defined in `phase-acceptance.md`. A task stop is not a phase exit. A phase exit is not a task merge and never blocks one.
+Phase exit is automatic once every task in the phase has merged with JUDGE PASS + META PASS and the phase checks pass: Judge posts `JUDGE PHASE PASS`, Sandhi posts `PHASE PASS` with `object: phase-exit` (`phase-acceptance.md`). Nacho gets a summary heads-up only (Rule 2026-10-13 13:31 ART). A task stop is not a phase exit. A phase exit is not a task merge and never blocks one.
 
 ## 6. Leniency
 
@@ -167,7 +167,7 @@ next_round: {n+1 or ESCALATE}
 
 One target. One defect sentence. `exact_change` is a numbered list, and every item is owned by that target. A second defect sentence, or a second target, is a second round, and the second waits. Leniency grade is not a second defect: a grade ≥ 2 records that the Judge packet was lenient; it does not by itself open another delta. A repair of the Judge packet (a PASS with no pointer, or a PASS that contradicts the evidence it cites) has `target: judge`, never `builder`. A repair of committed builder text has `target: builder`, never `judge`.
 
-### 7.5 Merge record and phase-exit sign-off
+### 7.5 Merge record and automatic phase exit
 
 ```
 MERGED r{n}
@@ -181,14 +181,16 @@ evidence: {JUDGE PASS pointer}; {META PASS pointer}
 The merge record is posted by whichever agent merged. It needs no human approval.
 
 ```
-NACHO GATE {PASS|FAIL}
+PHASE PASS
 object: phase-exit
 task_or_phase: {P0 or P0.5}
-evidence: {JUDGE PHASE PASS pointer}
+posted_by: sandhi
+evidence: {JUDGE PHASE PASS pointer}; {phase check pointers}
 defect: {none or one sentence}
+summary_to_nacho: {heads-up posted}
 ```
 
-`object: phase-exit` is the only use of this block. It does not stop a task, does not merge a branch, and never gates a merge.
+Phase exit is automatic (Rule 2026-10-13 13:31 ART): Judge validates the phase checks and posts `JUDGE PHASE PASS`; Sandhi posts `PHASE PASS` with `object: phase-exit`. Nacho receives a summary heads-up only — no `NACHO GATE`, no sign-off. `object: phase-exit` does not stop a task, does not merge a branch, and never gates a merge.
 
 ### 7.6 Escalation
 
