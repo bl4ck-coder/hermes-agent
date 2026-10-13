@@ -1,6 +1,6 @@
 # Ops panel source verification (P0-01)
 
-Status: documentation only. Round 2. Rows assigned to this card: O16, O41, O56, O58, O60, O66, O67, G28, G61, G68, G70, G84, R4, R34.
+Status: documentation only. Round 3 keeps the round-2 repairs (gateway `session_id`/`usage`, ACK-vs-settlement, O66 cut limited to the kanban join). Rows assigned to this card: O16, O41, O56, O58, O60, O66, O67, G28, G61, G68, G70, G84, R4, R34.
 SHA of the handlers: `865ba906c1a`. Contracts: `apps/desktop/docs/ops-panel/read-contracts.md`.
 A failed cited source is a proposed Cut. An unread live payload is a blocker for live confirmation, not a fake verify. Handler inspection is the existence evidence.
 
@@ -132,8 +132,8 @@ The trigger list itself stays (SPEC G28 node, read `GET /api/webhooks`). Only th
 
 Cited: `/api/cron/blueprints` and kanban workflow templates.
 
-- Blueprints: verified. `cron.py:858` `list_cron_blueprints` returns `{blueprints: ...}`.
-- Kanban workflow templates: same failure as O16. `GET /workflow` is columns, not templates.
+- Blueprints: verified, and profile-scoped. `cron.py:858` `list_cron_blueprints` takes optional `?profile=` (omitted = launch profile, not all profiles). `_blueprint_catalog_sync` (`cron.py:830-862`) enters `_config_profile_scope(profile)`, lists builtins plus that profile's plugin blueprints (`blueprint_catalog.py:556-562`), and rewrites the `deliver` field's options from that profile's platforms. Each item is `blueprint_catalog_entry` (`blueprint_catalog.py:667-678`), not a bare `{blueprints: ...}` with an unknown inner shape. This is not a process-global catalog.
+- Kanban workflow templates: same failure as O16. `GET /workflow` (`plugin_api.py:1620`) takes no `?board=` and is columns, not templates.
 
 Proposed Cut: the Templates lens is cron blueprints only. Do not add a "kanban workflow templates" section. workflow-studio workflows are a different product store; citing them here would smuggle O16's failed mapping back in.
 
@@ -223,7 +223,8 @@ This card records the mismatch. It does not edit SPEC. It does not invent a univ
 
 - Documentation only. No config write, no mutation, no adapter code.
 - Read routes and event sources from SPEC sections 3-5 and 12.8 are in `read-contracts.md` section 11, including proposed A1-A4/A7. O24 `command_allowlist`, G5 `store/free-tier*`, R2 `kanban_notify_subs`, and `/links` (embedded, no GET) are inventoried there.
-- Each expanded entry names handler, request, response, scope, auth, storage, freshness, events, and verified vs proposed. Blank axes are written `none`, `not exposed`, `inherited`, or `proposed`.
+- Read-contract axes are labeled, or `inherited exact §X` / `none` / `not exposed` / `proposed`. This file does not claim live-payload exhaustivity and does not claim a schema audit of every SPEC sentence. A 230/230 id match is a name classification. An axis that could not be read from source would be `incomplete`; this round does not mark one. Gated JSON bodies remain a blocker, not a verify.
 - These 14 rows are resolved above with file locations. O66's Cut is the kanban join only. Gateway `session_id` and terminal `usage` are verified, with null/provenance and no double count. Live bodies that need a token are blockers, not verifies.
 - Failed sources are proposed Cuts with reasons. Inaccessible live payloads stay blockers.
 - Delegation is separated from live sub-agents. Null usage keeps provenance, including gateway zeros vs a missing key. A3 ownership, expiry, status, and respond dedupe are specified. `approval.received` is an ACK and does not drop a pending. Not implemented.
+- A1 mixed gate is one policy. Old running + fresh gateway-up is stale (rule 2), not idle. `observed_at` is a successful observation. `updated_at` is `event_at`. No adapter and no run was created to test it.
