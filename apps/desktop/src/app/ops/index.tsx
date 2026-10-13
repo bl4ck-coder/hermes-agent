@@ -5,12 +5,12 @@
  * the Ops pane, not the window.
  */
 
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 
 import { DocumentTabs } from './document-tabs'
 import { DockHost, type DockProblem } from './dock-host'
 import { Inspector } from './inspector'
-import { OPS_GUTTER_PX, type OpsNarrow, type OpsRailPreference, type OpsScope } from './layout-store'
+import { OPS_GUTTER_PX, $opsView, $opsViewId, type OpsNarrow, type OpsRailPreference, type OpsScope } from './layout-store'
 import {
   type FleetFeed,
   type FocusedRun,
@@ -18,10 +18,12 @@ import {
   type NavSnapshot,
   type OpsTab,
   type RailState,
+  applyHostDocument,
   captureSnapshot,
   closeTab,
   cycleRail,
   goHistory,
+  hostIdentityFromTab,
   loadScope,
   narrowFromPane,
   noteBackgroundEvent,
@@ -64,7 +66,7 @@ export interface OpsShellProps {
   onToggleFullscreen?: () => void
   onRail?: (rail: OpsRailPreference) => void
   onInspector?: (open: boolean) => void
-  onView?: (view: string) => void
+  onView?: (view: string, id?: string | null) => void
   onCopyLink?: () => void
   onOpenChat?: () => void
   onBackToChats?: () => void
@@ -159,10 +161,49 @@ export function OpsShell({
   const fleet = fleetProp ?? { a1: 'missing' as const, a3: 'missing' as const, rows: [] }
   const connections = connectionsProp ?? [{ id: connectionId, label: connectionLabel, remote }]
   const profiles = profilesProp ?? [{ name: profile }]
+  const hosted = hostScope != null
+  const scopeKey = `${connectionId}\0${profile}`
+  const viewKey = `${view}\0${viewId ?? ''}`
+  const hostSync = useRef<{ scope: string; view: string } | null>(null)
+
+  if (hosted) {
+    const previous = hostSync.current
+    const scopeChanged = previous !== null && previous.scope !== scopeKey
+    const viewChanged = previous === null || previous.view !== viewKey
+
+    if (viewChanged) {
+      applyHostDocument(connectionId, profile, view, viewId)
+      hostSync.current = { scope: scopeKey, view: viewKey }
+    } else if (scopeChanged) {
+      const current = loadScope(connectionId, profile)
+      const tab = current.tabs.find(item => item.id === current.selectedTabId)
+      const next = tab ? hostIdentityFromTab(tab) : { view, id: viewId }
+      const nextKey = `${next.view}\0${next.id ?? ''}`
+      const scheduledView = view
+      const scheduledId = viewId
+
+      hostSync.current = { scope: scopeKey, view: nextKey }
+
+      if (nextKey !== viewKey) {
+        queueMicrotask(() => {
+          if ($opsView.get() !== scheduledView || $opsViewId.get() !== scheduledId) {
+            return
+          }
+
+          onView?.(next.view, next.id)
+        })
+      }
+    }
+  }
+
   const nav = loadScope(connectionId, profile)
-  const storedRail = railPreference ?? nav.rail
-  const narrow = narrowProp ?? narrowFromPane(paneWidth, storedRail)
-  const inspectorIsOpen = inspectorOpenProp ?? nav.inspectorOpen
+  // Hosted by split-host: the scoped nav store is the only chrome authority.
+  // Global atoms may mirror a toggle, but they must not override the scope.
+  const storedRail = hosted ? nav.rail : (railPreference ?? nav.rail)
+  const narrow = hosted ? narrowFromPane(paneWidth, storedRail) : (narrowProp ?? narrowFromPane(paneWidth, storedRail))
+  const inspectorIsOpen = hosted ? nav.inspectorOpen : (inspectorOpenProp ?? nav.inspectorOpen)
+  const selectedTab = nav.tabs.find(tab => tab.id === nav.selectedTabId) ?? nav.tabs[0]
+  const crumb = hosted && selectedTab ? selectedTab.label : opsViewLabel(view)
   const overlay = narrow.inspector === 'overlay'
   const revision = JSON.stringify({
     selected: nav.selectedTabId,
@@ -195,7 +236,7 @@ export function OpsShell({
   }
 
   const onShellKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (isTypingTarget(event.target)) {
+    if (event.defaultPrevented || isTypingTarget(event.target)) {
       return
     }
 
@@ -254,6 +295,7 @@ export function OpsShell({
 
   return (
     <div
+      data-ops-active-panel={nav.selectedTabId}
       data-ops-fullscreen={fullscreen ? 'true' : 'false'}
       data-ops-gutter={String(OPS_GUTTER_PX)}
       data-ops-inspector={narrow.inspector}
@@ -291,7 +333,7 @@ export function OpsShell({
         <span aria-hidden="true"> ▸ </span>
         <span>{profile}</span>
         <span aria-hidden="true"> ▸ </span>
-        <span data-ops-view-name="">{opsViewLabel(view)}</span>
+        <span data-ops-view-name="">{crumb}</span>
         {viewId ? <span data-ops-view-id=""> {viewId}</span> : null}
       </div>
       <div data-ops-toolbar="" style={{ flex: '0 0 auto', position: 'relative', zIndex: 5 }}>
@@ -343,14 +385,23 @@ export function OpsShell({
           onFilter={value => setFilter(connectionId, profile, value)}
           onOpenLens={id => {
             openLens(connectionId, profile, id)
-            onView?.(id)
+            onView?.(id, null)
           }}
           onOpenPalette={() => onOpenPalette?.()}
-          onOpenPin={id => openPin(connectionId, profile, id)}
+          onOpenPin={id => {
+            const next = openPin(connectionId, profile, id)
+            const tab = next.tabs.find(item => item.id === next.selectedTabId)
+
+            if (tab) {
+              const identity = hostIdentityFromTab(tab)
+
+              onView?.(identity.view, identity.id)
+            }
+          }}
           onOpenSettings={() => onOpenSettings?.()}
           onOpenView={id => {
             selectTab(connectionId, profile, id, leaving())
-            onView?.(id)
+            onView?.(id, null)
           }}
           onSelectConnection={id => onSelectConnection?.(id)}
           onSelectProfile={name => onSelectProfile?.(name)}
@@ -368,10 +419,12 @@ export function OpsShell({
             onClose={id => closeTab(connectionId, profile, id)}
             onSelect={(id, snapshot) => {
               selectTab(connectionId, profile, id, snapshot)
-              const tab = nav.tabs.find(item => item.id === id)
+              const tab = loadScope(connectionId, profile).tabs.find(item => item.id === id)
 
-              if (tab && (tab.kind === 'office' || tab.kind === 'canvas' || tab.kind === 'board')) {
-                onView?.(tab.kind)
+              if (tab) {
+                const identity = hostIdentityFromTab(tab)
+
+                onView?.(identity.view, identity.id)
               }
             }}
             onSnapshot={(id, snapshot) => captureSnapshot(connectionId, profile, id, snapshot)}

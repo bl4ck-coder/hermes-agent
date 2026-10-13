@@ -1,4 +1,5 @@
-import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { I18nProvider } from '@/i18n'
@@ -14,6 +15,9 @@ import {
 } from '@/app/routes'
 
 import { OpsShell, publishBackgroundDot } from './index'
+import { DocumentTabs } from './document-tabs'
+import { $opsInspectorOpen, $opsRail, $opsScope, $opsView, $opsViewId, $opsWidthPx } from './layout-store'
+import { OpsPane } from './split-host'
 import {
   type FleetFeed,
   OPS_NAV_STORAGE_KEY,
@@ -26,6 +30,7 @@ import {
   resetOpsNavigationForTests,
   runFooter,
   saveScope,
+  setInspectorOpen,
   setRail
 } from './navigation-store'
 
@@ -433,6 +438,178 @@ describe('ops navigation shell', () => {
     expect(moved.inspectorOpen).toBe(false)
     expect(loadScope('remote-1', 'rename-before').pins).toEqual(['profile:rename-before'])
     expect(loadScope('local', 'rename-before').pins).toEqual([])
+  })
+})
+
+describe('ops host scope r3', () => {
+  const local = { connectionId: 'local', profile: 'mirror', remote: false, label: 'local' }
+  const remote = { connectionId: 'remote-1', profile: 'judge', remote: true, label: 'bench' }
+
+  beforeEach(() => {
+    window.localStorage.clear()
+    window.location.hash = ''
+    resetOpsNavigationForTests()
+    $opsScope.set(local)
+    $opsView.set('office')
+    $opsViewId.set(null)
+    $opsWidthPx.set(1440)
+    $opsRail.set('full')
+    $opsInspectorOpen.set(true)
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('draws scoped rail and inspector, not the host atoms, and rehydrates on scope switch', () => {
+    setRail('local', 'mirror', 'hidden')
+    setInspectorOpen('local', 'mirror', false)
+    setRail('remote-1', 'judge', 'icons')
+    setInspectorOpen('remote-1', 'judge', true)
+    $opsRail.set('full')
+    $opsInspectorOpen.set(true)
+
+    const view = render(<OpsPane />)
+    const root = view.container.querySelector('[data-ops-root]')
+
+    expect(root?.getAttribute('data-ops-rail')).toBe('hidden')
+    expect(root?.getAttribute('data-ops-inspector-open')).toBe('false')
+    expect(loadScope('local', 'mirror').rail).toBe('hidden')
+
+    fireEvent.click(view.getByRole('button', { name: 'Rail' }))
+    expect(loadScope('local', 'mirror').rail).toBe('full')
+    expect(view.container.querySelector('[data-ops-root]')?.getAttribute('data-ops-rail')).toBe('full')
+    expect($opsRail.get()).toBe('full')
+
+    fireEvent.click(view.getByRole('button', { name: 'Inspector' }))
+    expect(loadScope('local', 'mirror').inspectorOpen).toBe(true)
+    expect(view.container.querySelector('[data-ops-root]')?.getAttribute('data-ops-inspector-open')).toBe('true')
+
+    act(() => {
+      $opsScope.set(remote)
+    })
+
+    expect(view.container.querySelector('[data-ops-root]')?.getAttribute('data-ops-rail')).toBe('icons')
+    expect(view.container.querySelector('[data-ops-root]')?.getAttribute('data-ops-inspector-open')).toBe('true')
+    expect(loadScope('remote-1', 'judge').rail).toBe('icons')
+    expect(loadScope('local', 'mirror').rail).toBe('full')
+  })
+
+  it('renders the Canvas panel and breadcrumb when the host view is canvas', () => {
+    $opsView.set('canvas')
+
+    const view = render(<OpsPane />)
+    const canvas = view.container.querySelector('[data-ops-panel="canvas"]')
+    const office = view.container.querySelector('[data-ops-panel="office"]')
+
+    expect(view.container.querySelector('[data-ops-view-name]')?.textContent).toBe('Canvas')
+    expect(view.container.querySelector('[data-ops-active-panel]')?.getAttribute('data-ops-active-panel')).toBe('canvas')
+    expect(canvas?.hasAttribute('hidden')).toBe(false)
+    expect(office?.hasAttribute('hidden')).toBe(true)
+    expect(loadScope('local', 'mirror').selectedTabId).toBe('canvas')
+  })
+
+  it('fires switcher, connect, settings, palette, and route handlers from the hosted rail', async () => {
+    const connections = await import('@/store/connections')
+    const profiles = await import('@/store/profile')
+    const palette = await import('@/store/command-palette')
+    const registry = await import('@/store/connection-registry-state')
+    const selectConnection = vi.spyOn(connections, 'selectConnection').mockResolvedValue(undefined)
+    const selectProfile = vi.spyOn(profiles, 'selectProfile').mockImplementation(() => undefined)
+    const openPalette = vi.spyOn(palette, 'openCommandPalette').mockImplementation(() => undefined)
+
+    registry.$connectionsRegistry.set({
+      version: 1,
+      primary: 'local',
+      secureTokenStorage: false,
+      connections: [
+        { id: 'local', kind: 'local', label: 'local', tokenSet: false, tokenPreview: null },
+        { id: 'homelab', kind: 'remote', label: 'homelab', tokenSet: false, tokenPreview: null }
+      ]
+    })
+    profiles.$profiles.set([
+      { name: 'mirror', display_name: 'mirror' },
+      { name: 'judge', display_name: 'judge' }
+    ] as never)
+
+    const view = render(<OpsPane />)
+
+    fireEvent.change(view.getByLabelText('Connection'), { target: { value: 'homelab' } })
+    fireEvent.change(view.getByLabelText('Profile'), { target: { value: 'judge' } })
+    fireEvent.click(view.container.querySelector('[data-ops-palette]')!)
+    fireEvent.click(view.container.querySelector('[data-ops-settings]')!)
+    expect(window.location.hash).toBe('#/settings')
+    fireEvent.click(view.container.querySelector('[data-ops-connect]')!)
+    expect(window.location.hash).toBe('#/settings?tab=gateway')
+
+    await waitFor(() => {
+      expect(selectConnection).toHaveBeenCalledWith('homelab')
+      expect(selectProfile).toHaveBeenCalledWith('judge')
+      expect(openPalette).toHaveBeenCalled()
+    })
+
+    fireEvent.click(view.getByRole('button', { name: 'Runs' }))
+    fireEvent.click(view.container.querySelector('[data-ops-open-route]')!)
+    expect(window.location.hash).toBe('#/command-center')
+  })
+
+  it('keeps an edited draft on the same node across a tab switch', () => {
+    function Harness() {
+      const [selected, setSelected] = useState('office')
+      const tabs = loadScope('local', 'mirror').tabs
+
+      return (
+        <DocumentTabs
+          dots={{}}
+          narrow="strip"
+          onClose={() => undefined}
+          onSelect={id => setSelected(id)}
+          onSnapshot={() => undefined}
+          onTogglePin={() => undefined}
+          pins={[]}
+          renderPanel={tab => <input data-ops-draft={tab.id} defaultValue="seed" />}
+          selectedId={selected}
+          snapshots={{}}
+          tabs={tabs}
+        />
+      )
+    }
+
+    const view = render(<Harness />)
+    const input = view.container.querySelector('[data-ops-draft="office"]') as HTMLInputElement
+
+    input.value = 'edited'
+    fireEvent.click(view.getByRole('tab', { name: 'Canvas' }))
+
+    const parked = view.container.querySelector('[data-ops-draft="office"]') as HTMLInputElement
+
+    expect(parked).toBe(input)
+    expect(parked.isConnected).toBe(true)
+    expect(parked.value).toBe('edited')
+    expect(view.container.querySelector('[data-ops-panel="office"]')?.hasAttribute('hidden')).toBe(true)
+
+    fireEvent.click(view.getByRole('tab', { name: 'Office' }))
+    expect(view.container.querySelector('[data-ops-draft="office"]')).toBe(input)
+    expect(input.value).toBe('edited')
+  })
+
+  it('does not mount wide switcher or filter controls inside the icons rail', () => {
+    const view = shell({ paneWidth: 640 })
+    const rail = view.container.querySelector('[data-ops-rail-list]')
+
+    expect(rail?.getAttribute('data-ops-rail')).toBe('icons')
+    expect(rail?.querySelector('select')).toBeNull()
+    expect(rail?.querySelector('[data-ops-switcher-toggle]')).not.toBeNull()
+    expect(rail?.querySelector('[data-ops-filter-toggle]')).not.toBeNull()
+    const filter = rail?.querySelector('[data-ops-filter]') as HTMLInputElement | null
+
+    expect(filter?.style.width).toBe('1px')
+    expect(filter?.style.height).toBe('1px')
+
+    fireEvent.click(rail!.querySelector('[data-ops-filter-toggle]')!)
+    expect(rail?.querySelector('select')).toBeNull()
+    expect(document.querySelector('[data-ops-filter-overlay] input')).not.toBeNull()
   })
 })
 

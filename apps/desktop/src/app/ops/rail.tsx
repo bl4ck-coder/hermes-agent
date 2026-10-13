@@ -4,7 +4,8 @@
  * Fleet rows come from the caller. Missing A1/A3 never become a fake total.
  */
 
-import { useState } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 
 import { PresenceGlyph } from './primitives/presence-glyph'
 import { Sigil } from './primitives/sigil'
@@ -98,9 +99,11 @@ function matches(label: string, filter: string) {
 }
 
 export function FleetList({
+  compact = false,
   feed,
   filter
 }: {
+  compact?: boolean
   feed: FleetFeed
   filter: string
 }) {
@@ -146,10 +149,10 @@ export function FleetList({
                 data-ops-fleet-folded={row.count}
                 key={row.id}
                 onClick={() => setIdleExpanded(true)}
-                style={{ height: FLEET_ROW_PX }}
+                style={{ boxSizing: 'border-box', height: FLEET_ROW_PX, maxWidth: '100%', minWidth: 0, overflow: 'hidden', width: '100%' }}
                 type="button"
               >
-                {row.label} ▸
+                {compact ? '▸' : `${row.label} ▸`}
               </button>
             )
           }
@@ -164,7 +167,9 @@ export function FleetList({
                 label={painted.label}
                 state={painted.state}
               />
-              <span data-ops-fleet-name="">{row.member.label}</span>
+              <span data-ops-fleet-name="" style={compact ? { display: 'none' } : { maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
+                {row.member.label}
+              </span>
             </div>
           )
         })}
@@ -197,6 +202,10 @@ export function Rail({
   remote
 }: RailProps) {
   const [moreOpen, setMoreOpen] = useState(false)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const switcherRef = useRef<HTMLButtonElement>(null)
+  const filterRef = useRef<HTMLButtonElement>(null)
   const icons = rail === 'icons'
   const primary = LENS_CATALOG.filter(lens => !lens.more)
   const more = LENS_CATALOG.filter(lens => lens.more)
@@ -208,6 +217,26 @@ export function Rail({
   }
 
   const railWidth = icons ? 72 : 240
+  const fit: CSSProperties | undefined = icons
+    ? { boxSizing: 'border-box', display: 'block', maxWidth: '100%', minWidth: 0, overflow: 'hidden', width: '100%' }
+    : undefined
+  const rowStyle: CSSProperties = icons
+    ? { alignItems: 'stretch', display: 'flex', flexDirection: 'column', maxWidth: '100%', minWidth: 0, width: '100%' }
+    : { alignItems: 'center', display: 'flex', maxWidth: '100%' }
+  const menuStyle = (anchor: HTMLElement | null): CSSProperties => {
+    const rect = anchor?.getBoundingClientRect()
+
+    return {
+      background: 'var(--surface, #161616)',
+      boxSizing: 'border-box',
+      left: rect ? rect.right + 8 : 80,
+      padding: 8,
+      position: 'fixed',
+      top: rect ? rect.top : 40,
+      width: 220,
+      zIndex: 30
+    }
+  }
 
   return (
     <nav
@@ -221,55 +250,162 @@ export function Rail({
         maxWidth: railWidth,
         minWidth: railWidth,
         overflow: 'hidden',
+        position: 'relative',
         width: railWidth
       }}
     >
       <div data-ops-switcher="">
-        <label>
-          Connection
-          <select
-            aria-label="Connection"
-            onChange={event => onSelectConnection(event.target.value)}
-            value={connectionId}
+        {icons ? (
+          <button
+            aria-expanded={switcherOpen}
+            aria-label="Connection and profile"
+            data-ops-switcher-toggle=""
+            onClick={() => setSwitcherOpen(open => !open)}
+            ref={switcherRef}
+            style={fit}
+            type="button"
           >
-            {connections.map(item => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span data-ops-connection="">{connectionLabel || connectionId}</span>
-        {remote ? <span aria-label="read-only" data-ops-readonly="" /> : null}
-        <label>
-          Profile
-          <select aria-label="Profile" onChange={event => onSelectProfile(event.target.value)} value={profile}>
-            {profiles.map(item => (
-              <option key={item.name} value={item.name}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Sigil name={profile} />
+            <Sigil name={profile} />
+            {remote ? <span aria-label="read-only" data-ops-readonly="" /> : null}
+          </button>
+        ) : (
+          <>
+            <label>
+              Connection
+              <select
+                aria-label="Connection"
+                onChange={event => onSelectConnection(event.target.value)}
+                value={connectionId}
+              >
+                {connections.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span data-ops-connection="">{connectionLabel || connectionId}</span>
+            {remote ? <span aria-label="read-only" data-ops-readonly="" /> : null}
+            <label>
+              Profile
+              <select aria-label="Profile" onChange={event => onSelectProfile(event.target.value)} value={profile}>
+                {profiles.map(item => (
+                  <option key={item.name} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Sigil name={profile} />
+          </>
+        )}
       </div>
+      {icons && switcherOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div data-ops-switcher-menu="" data-ops-overlay="" style={menuStyle(switcherRef.current)}>
+              <label>
+                Connection
+                <select
+                  aria-label="Connection"
+                  onChange={event => onSelectConnection(event.target.value)}
+                  value={connectionId}
+                >
+                  {connections.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Profile
+                <select aria-label="Profile" onChange={event => onSelectProfile(event.target.value)} value={profile}>
+                  {profiles.map(item => (
+                    <option key={item.name} value={item.name}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>,
+            document.body
+          )
+        : null}
 
       <div data-ops-filter-row="">
-        <input
-          aria-label="Filter fleet and lenses"
-          data-ops-filter=""
-          onChange={event => onFilter(event.target.value)}
-          placeholder={icons ? '' : 'Filter'}
-          value={filter}
-        />
-        <button aria-label="Clear filter" data-ops-filter-clear="" onClick={() => onFilter('')} type="button">
-          ×
-        </button>
-        <button aria-keyshortcuts="K" data-ops-palette="" onClick={onOpenPalette} type="button">
-          {icons ? 'K' : 'Palette'}
-          <kbd>K</kbd>
-        </button>
+        {icons ? (
+          <>
+            <button
+              aria-expanded={filterOpen}
+              aria-label="Show filter"
+              data-ops-filter-toggle=""
+              onClick={() => setFilterOpen(open => !open)}
+              ref={filterRef}
+              style={fit}
+              type="button"
+            >
+              {filter ? '×' : '⌕'}
+            </button>
+            <input
+              aria-label="Filter fleet and lenses"
+              data-ops-filter=""
+              onChange={event => onFilter(event.target.value)}
+              style={{
+                boxSizing: 'border-box',
+                height: 1,
+                maxWidth: '100%',
+                minWidth: 0,
+                opacity: 0,
+                overflow: 'hidden',
+                padding: 0,
+                position: 'absolute',
+                width: 1
+              }}
+              value={filter}
+            />
+          </>
+        ) : (
+          <>
+            <input
+              aria-label="Filter fleet and lenses"
+              data-ops-filter=""
+              onChange={event => onFilter(event.target.value)}
+              placeholder="Filter"
+              style={{ boxSizing: 'border-box', maxWidth: '100%', minWidth: 0, width: '100%' }}
+              value={filter}
+            />
+            <button aria-label="Clear filter" data-ops-filter-clear="" onClick={() => onFilter('')} type="button">
+              ×
+            </button>
+            <button aria-keyshortcuts="K" data-ops-palette="" onClick={onOpenPalette} type="button">
+              Palette
+              <kbd>K</kbd>
+            </button>
+          </>
+        )}
+        {icons ? (
+          <button aria-keyshortcuts="K" aria-label="Palette" data-ops-palette="" onClick={onOpenPalette} style={fit} type="button">
+            K
+          </button>
+        ) : null}
       </div>
+      {icons && filterOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div data-ops-filter-overlay="" data-ops-overlay="" style={menuStyle(filterRef.current)}>
+              <input
+                aria-label="Filter fleet and lenses"
+                data-ops-filter=""
+                onChange={event => onFilter(event.target.value)}
+                placeholder="Filter"
+                value={filter}
+              />
+              <button aria-label="Clear filter" data-ops-filter-clear="" onClick={() => onFilter('')} type="button">
+                ×
+              </button>
+            </div>,
+            document.body
+          )
+        : null}
 
       <div data-ops-section="ops">OPS</div>
       {PINNED_VIEWS.filter(view => matches(view.label, filter)).map(view => (
@@ -278,6 +414,7 @@ export function Rail({
           data-ops-rail-item={view.id}
           key={view.id}
           onClick={() => onOpenView(view.id)}
+          style={fit}
           type="button"
         >
           {icons ? view.label.slice(0, 1) : view.label}
@@ -288,11 +425,11 @@ export function Rail({
       <div data-ops-section="pinned">Pinned</div>
       {pins.length === 0 ? <div data-ops-pins-empty="">No pins</div> : null}
       {pins.filter(id => matches(id, filter)).map(id => (
-        <div data-ops-pin-row={id} key={id} style={{ alignItems: 'center', display: 'flex', maxWidth: '100%' }}>
-          <button data-ops-pin={id} onClick={() => onOpenPin(id)} type="button">
+        <div data-ops-pin-row={id} key={id} style={rowStyle}>
+          <button data-ops-pin={id} onClick={() => onOpenPin(id)} style={fit} type="button">
             {icons ? '★' : pinLabel(id)}
           </button>
-          <button aria-label={`Unpin ${pinLabel(id)}`} data-ops-unpin={id} onClick={() => onTogglePin(id)} type="button">
+          <button aria-label={`Unpin ${pinLabel(id)}`} data-ops-unpin={id} onClick={() => onTogglePin(id)} style={fit} type="button">
             ×
           </button>
         </div>
@@ -300,13 +437,14 @@ export function Rail({
 
       <div data-ops-section="lenses">LENSES</div>
       {visiblePrimary.map(lens => (
-        <div key={lens.id} style={{ alignItems: 'center', display: 'flex', maxWidth: '100%' }}>
+        <div key={lens.id} style={rowStyle}>
           <button
             aria-label={lens.label}
             data-ops-lens={lens.id}
             data-route={lens.route}
             data-unavailable={lens.unavailable ? 'true' : 'false'}
             onClick={() => onOpenLens(lens.id)}
+            style={fit}
             type="button"
           >
             {icons ? lens.label.slice(0, 1) : lens.label}
@@ -316,13 +454,14 @@ export function Rail({
             aria-label={pins.includes(`lens:${lens.id}`) ? `Unpin ${lens.label}` : `Pin ${lens.label}`}
             data-ops-pin-toggle={`lens:${lens.id}`}
             onClick={() => onTogglePin(`lens:${lens.id}`)}
+            style={fit}
             type="button"
           >
             {icons ? '★' : pins.includes(`lens:${lens.id}`) ? 'Unpin' : 'Pin'}
           </button>
         </div>
       ))}
-      <button aria-expanded={moreOpen} data-ops-more="" onClick={() => setMoreOpen(open => !open)} type="button">
+      <button aria-expanded={moreOpen} data-ops-more="" onClick={() => setMoreOpen(open => !open)} style={fit} type="button">
         {icons ? '…' : 'More'}
       </button>
       {moreOpen || filter.trim()
@@ -334,6 +473,7 @@ export function Rail({
               data-route={lens.route}
               key={lens.id}
               onClick={() => onOpenLens(lens.id)}
+              style={fit}
               type="button"
             >
               {icons ? lens.label.slice(0, 1) : lens.label}
@@ -350,20 +490,28 @@ export function Rail({
             return
           }
         }}
+        style={fit}
         type="button"
       >
         {icons ? '◉' : 'Needs-you'}
-        <span data-ops-g85-count="">
-          {fleet.a3 === 'missing' || fleet.a1 === 'missing' ? 'unavailable' : arrangeFleet(fleet).needsYouLabel}
-        </span>
+        {icons ? null : (
+          <span data-ops-g85-count="">
+            {fleet.a3 === 'missing' || fleet.a1 === 'missing' ? 'unavailable' : arrangeFleet(fleet).needsYouLabel}
+          </span>
+        )}
+        {icons ? (
+          <span data-ops-g85-count="" style={{ display: 'none' }}>
+            {fleet.a3 === 'missing' || fleet.a1 === 'missing' ? 'unavailable' : arrangeFleet(fleet).needsYouLabel}
+          </span>
+        ) : null}
       </button>
 
-      <FleetList feed={fleet} filter={filter} />
+      <FleetList compact={icons} feed={fleet} filter={filter} />
 
-      <button data-ops-connect="" onClick={onConnect} type="button">
+      <button data-ops-connect="" onClick={onConnect} style={fit} type="button">
         {icons ? '+' : '+ Connect'}
       </button>
-      <button aria-keyshortcuts="Control+," data-ops-settings="" onClick={onOpenSettings} type="button">
+      <button aria-keyshortcuts="Control+," data-ops-settings="" onClick={onOpenSettings} style={fit} type="button">
         {icons ? '⚙' : 'Settings'}
         {icons ? null : <kbd>Ctrl+,</kbd>}
       </button>

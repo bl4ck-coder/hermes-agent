@@ -12,6 +12,9 @@ import { useStore } from '@nanostores/react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
+import { $connectionsRegistry } from '@/store/connection-registry-state'
+import { $profiles } from '@/store/profile'
+
 import { allPaneIds, findGroupOfPane, findParentSplit } from '@/components/pane-shell/tree/model'
 import {
   $hiddenTreePanes,
@@ -26,6 +29,7 @@ import { registry } from '@/contrib/registry'
 import { isTopEscapeLayer, pushEscapeLayer } from '@/lib/escape-layers'
 
 import { OpsShell } from './index'
+import { cycleRail, loadScope, setInspectorOpen, setRail } from './navigation-store'
 import {
   $opsChatSessionId,
   $opsFullscreen,
@@ -37,7 +41,6 @@ import {
   $opsView,
   $opsViewId,
   $opsWidthPx,
-  narrowStrategy,
   OPS_FULLSCREEN_ESCAPE_PRIORITY,
   OPS_MIN_WIDTH_PX,
   OPS_PANE_ID,
@@ -554,13 +557,24 @@ function onOpsKey(event: KeyboardEvent): void {
     return
   }
 
+  if (event.defaultPrevented) {
+    return
+  }
+
   if (event.key === '[') {
     event.preventDefault()
-    const rail = $opsRail.get()
-    setOpsRail(rail === 'full' ? 'icons' : rail === 'icons' ? 'hidden' : 'full')
+    const scope = $opsScope.get()
+    const next = cycleRail(loadScope(scope.connectionId, scope.profile).rail)
+
+    setRail(scope.connectionId, scope.profile, next)
+    setOpsRail(next)
   } else if (event.key === ']') {
     event.preventDefault()
-    $opsInspectorOpen.set(!$opsInspectorOpen.get())
+    const scope = $opsScope.get()
+    const next = !loadScope(scope.connectionId, scope.profile).inspectorOpen
+
+    setInspectorOpen(scope.connectionId, scope.profile, next)
+    $opsInspectorOpen.set(next)
   }
 }
 
@@ -830,17 +844,49 @@ export function LiveSessionBadge(): ReactNode {
   )
 }
 
+export function openDesktopRoute(route: string): 'opened' | 'unavailable' {
+  if (!route) {
+    return 'unavailable'
+  }
+
+  if (route.startsWith('pane:')) {
+    const id = route.slice('pane:'.length)
+
+    if (!id) {
+      return 'unavailable'
+    }
+
+    revealTreePane(id)
+    setTreePaneHidden(id, false)
+
+    return 'opened'
+  }
+
+  if (route.startsWith('/')) {
+    window.location.hash = `#${route}`
+
+    return 'opened'
+  }
+
+  return 'unavailable'
+}
+
 export function OpsPane(): ReactNode {
   const scope = useStore($opsScope)
   const view = useStore($opsView)
   const viewId = useStore($opsViewId)
   const paneWidth = useStore($opsWidthPx)
-  const rail = useStore($opsRail)
   const fullscreen = useStore($opsFullscreen)
-  const inspectorOpen = useStore($opsInspectorOpen)
+  const registry = useStore($connectionsRegistry)
+  const profileRows = useStore($profiles)
   const [measured, setMeasured] = useState(0)
   const rootWidth = measured > 0 ? measured : paneWidth
-  const narrow = narrowStrategy(rootWidth, rail)
+  const connections = registry?.connections.map(item => ({
+    id: item.id,
+    label: item.label,
+    remote: item.kind !== 'local'
+  }))
+  const profiles = profileRows.map(item => ({ name: item.name }))
 
   useEffect(() => {
     const node = document.querySelector<HTMLElement>('[data-ops-root]')
@@ -865,8 +911,8 @@ export function OpsPane(): ReactNode {
   return (
     <OpsShell
       fullscreen={fullscreen}
-      inspectorOpen={inspectorOpen}
-      narrow={narrow}
+      connections={connections && connections.length > 0 ? connections : undefined}
+      profiles={profiles.length > 0 ? profiles : undefined}
       onBackToChats={() => {
         if (fullscreen) {
           exitOpsFullscreen()
@@ -874,21 +920,42 @@ export function OpsPane(): ReactNode {
 
         focusExistingChat()
       }}
+      onConnect={() => {
+        window.location.hash = '#/settings?tab=gateway'
+      }}
       onCopyLink={() => {
         const path = routeFns?.opsRoute(view, viewId) ?? `/ops/${view}`
 
         void navigator.clipboard?.writeText(path)
       }}
-      onInspector={open => $opsInspectorOpen.set(open)}
+      onInspector={open => {
+        setInspectorOpen(scope.connectionId, scope.profile, open)
+        $opsInspectorOpen.set(open)
+      }}
       onOpenChat={focusExistingChat}
-      onRail={setOpsRail}
+      onOpenPalette={() => {
+        void import('@/store/command-palette').then(mod => mod.openCommandPalette())
+      }}
+      onOpenRoute={openDesktopRoute}
+      onOpenSettings={() => {
+        window.location.hash = '#/settings'
+      }}
+      onRail={next => {
+        setRail(scope.connectionId, scope.profile, next)
+        setOpsRail(next)
+      }}
+      onSelectConnection={id => {
+        void import('@/store/connections').then(mod => mod.selectConnection(id))
+      }}
+      onSelectProfile={name => {
+        void import('@/store/profile').then(mod => mod.selectProfile(name))
+      }}
       onToggleFullscreen={toggleOpsFullscreen}
-      onView={next => {
+      onView={(next, id) => {
         $opsView.set(next)
-        $opsViewId.set(null)
+        $opsViewId.set(id ?? null)
       }}
       paneWidth={rootWidth}
-      railPreference={rail}
       scope={scope}
       view={view}
       viewId={viewId}

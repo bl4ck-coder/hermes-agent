@@ -656,6 +656,97 @@ export function openProfileTab(
   return selectTab(connectionId, profile, id)
 }
 
+export interface HostDocument {
+  view: string
+  id: string | null
+}
+
+/** Route identity for a tab. Office/Canvas/Board stay view-only; task/run/profile keep the id. */
+export function hostIdentityFromTab(tab: OpsTab): HostDocument {
+  if (tab.kind === 'task') {
+    return { view: 'task', id: tab.id.startsWith('task:') ? tab.id.slice(5) : tab.id }
+  }
+
+  if (tab.kind === 'run') {
+    return { view: 'run', id: tab.id.startsWith('run:') ? tab.id.slice(4) : tab.id }
+  }
+
+  if (tab.kind === 'profile') {
+    return { view: 'profile', id: tab.id.startsWith('profile:') ? tab.id.slice(8) : tab.id }
+  }
+
+  if (tab.kind === 'lens') {
+    return { view: tab.id.startsWith('lens:') ? tab.id.slice(5) : tab.id, id: null }
+  }
+
+  return { view: tab.kind, id: null }
+}
+
+/** Tab id a host view/viewId must show. Unknown views return null — no invented document. */
+export function hostDocumentId(view: string, viewId: string | null | undefined): string | null {
+  if (view === 'office' || view === 'canvas' || view === 'board') {
+    return view
+  }
+
+  if (view === 'task' && viewId) {
+    return `task:${viewId}`
+  }
+
+  if (view === 'run' && viewId) {
+    return `run:${viewId}`
+  }
+
+  if (view === 'profile' && viewId) {
+    return `profile:${viewId}`
+  }
+
+  if (lensById(view)) {
+    return `lens:${view}`
+  }
+
+  return null
+}
+
+/**
+ * Make the scoped selected tab match the host route. Idempotent when already there.
+ * Unknown views leave the scope alone.
+ */
+export function applyHostDocument(
+  connectionId: string | null | undefined,
+  profile: string | null | undefined,
+  view: string,
+  viewId: string | null | undefined
+): ScopeNav {
+  const target = hostDocumentId(view, viewId)
+  const scope = loadScope(connectionId, profile)
+
+  if (!target || (scope.selectedTabId === target && scope.tabs.some(tab => tab.id === target))) {
+    return scope
+  }
+
+  if (view === 'task' && viewId) {
+    return openTaskTab(connectionId, profile, viewId, viewId)
+  }
+
+  if (view === 'run' && viewId) {
+    return openRunTab(connectionId, profile, viewId)
+  }
+
+  if (view === 'profile' && viewId) {
+    return openProfileTab(connectionId, profile, viewId)
+  }
+
+  if (lensById(view)) {
+    return openLens(connectionId, profile, view)
+  }
+
+  if (view === 'office' || view === 'canvas' || view === 'board') {
+    return selectTab(connectionId, profile, view)
+  }
+
+  return scope
+}
+
 /** Open a pin. Unpin is a separate control — this never removes the pin. */
 export function openPin(
   connectionId: string | null | undefined,

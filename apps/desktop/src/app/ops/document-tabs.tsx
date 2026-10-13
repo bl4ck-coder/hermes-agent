@@ -195,20 +195,25 @@ function TabPanel({
       hidden={active ? undefined : true}
       onScroll={event => onSnapshot({ ...snapshot, scrollTop: event.currentTarget.scrollTop })}
       ref={ref}
-      style={{ inset: 0, overflow: 'auto', position: active ? 'absolute' : undefined }}
+      style={{
+        display: active ? undefined : 'none',
+        inset: 0,
+        overflow: 'auto',
+        position: active ? 'absolute' : undefined
+      }}
     >
       {tab.closable && active ? (
         <button data-ops-pin-toggle={tab.id} onClick={onTogglePin} type="button">
           {pinned ? `Unpin ${tab.label}` : `Pin ${tab.label}`}
         </button>
       ) : null}
-      {active ? (
-        tab.unavailable ? (
+      <div data-ops-panel-body="">
+        {tab.unavailable ? (
           <p data-ops-unavailable="">No Desktop route for {tab.label}. This shell does not invent one.</p>
         ) : (
           renderPanel(tab)
-        )
-      ) : null}
+        )}
+      </div>
       <div data-ops-selection={snapshot.selectionId ?? ''}>{snapshot.selectionId ?? ''}</div>
       <div data-ops-restored-scroll="">{snapshot.scrollTop}</div>
     </div>
