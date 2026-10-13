@@ -1,0 +1,24 @@
+# DOCUMENTATION ARTIFACT (P0-06). Not an installed policy.
+# Do not copy this file to HERMES_HOME. No running process reads it.
+# Parsed fields below are SPEC.md section 4.4. Comments are not fields.
+# Allowed, blocked, and warning examples: policy-capabilities.md.
+version: 2
+enabled: true
+scope: all_profiles            # D8: every profile, including root/default
+allow:
+  - provider: anthropic        # direct only (D8): no openrouter/bedrock/vertex/custom proxy
+    models: ["claude-*"]
+  - provider: [openai-codex, openai]
+    models: [gpt-6.1-sol, gpt-6.1-sol-900k, gpt-6.1-sol-pro]
+  - provider: [xai-oauth, xai]
+    models: [grok-4.7]
+deny_default: true             # Kimi, Nous Portal, OpenRouter, custom, local, Bedrock: all denied
+governed_fields:               # one validator for every write path
+  - model.provider / model.default
+  - fallback_providers[*]
+  - auxiliary.*.provider / model
+enforcement:
+  on_select_disallowed: block   # D13: picking or saving a disallowed model is always refused
+  on_existing_violation: warn   # D13: Policy chip only; unrelated edits proceed
+  migrations: manual            # nothing auto-migrates
+non_llm_services: ignore        # tts/stt/wake_word are out of scope
