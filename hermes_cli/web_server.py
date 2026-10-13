@@ -1024,6 +1024,7 @@ from hermes_cli.web_routers import (  # noqa: E402
     ops_approvals as _ops_approvals_routes,
     ops_delegation as _ops_delegation_routes,
     ops_policy as _ops_policy_routes,
+    ops_tx as _ops_tx_routes,
     skills as _skills_routes,
     tools as _tools_routes,
     analytics as _analytics_routes,
@@ -1060,6 +1061,7 @@ app.include_router(_ops_usage_routes.router)
 app.include_router(_ops_approvals_routes.router)
 app.include_router(_ops_delegation_routes.router)
 app.include_router(_ops_policy_routes.router)
+app.include_router(_ops_tx_routes.router)
 _ops_fleet_routes.EXTRA_INPUT_PROVIDERS.setdefault("approvals", _ops_approvals_routes.fleet_approvals_provider)
 app.include_router(_skills_routes.hub_router)
 app.include_router(_profiles_routes.router)
