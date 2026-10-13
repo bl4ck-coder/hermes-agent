@@ -1,7 +1,7 @@
 # Ops panel source verification (P0-01)
 
-Status: documentation only. Rows assigned to this card: O16, O41, O56, O58, O60, O66, O67, G28, G61, G68, G70, G84, R4, R34.
-SHA: `865ba906c1a`. Contracts: `apps/desktop/docs/ops-panel/read-contracts.md`.
+Status: documentation only. Round 2. Rows assigned to this card: O16, O41, O56, O58, O60, O66, O67, G28, G61, G68, G70, G84, R4, R34.
+SHA of the handlers: `865ba906c1a`. Contracts: `apps/desktop/docs/ops-panel/read-contracts.md`.
 A failed cited source is a proposed Cut. An unread live payload is a blocker for live confirmation, not a fake verify. Handler inspection is the existence evidence.
 
 Other SPEC section 12.6 verify rows (O64, G27, G82, R23, R42, R57) are not this card. Coverage is not recomputed here. Recomputing 85.2% without those rows would invent a number.
@@ -91,20 +91,22 @@ Cited: `tasks.current_step_key`, workflow template step count.
 
 The row already says show n/m only when the count is known. The count source failed. Proposed Cut: never show Steps n/m. Show `current_step_key` when the column is non-null, otherwise omit the steps cell. Do not invent `n` or `m`.
 
-### O66 Chat task chip from a run — proposed Cut of run-to-session mapping
+### O66 Chat task chip from a run — proposed Cut of the kanban run-to-session mapping only
 
 Cited: run/session mapping (A2 / verify).
 
-- `tasks.session_id` exists and is documented NULL for CLI/dashboard creates (`kanban_db.py:808`).
-- `task_runs` has no `session_id` (`kanban_db.py:1080`). `metadata` is free JSON, not a contract.
-- Gateway run status (`api_server_runs.py:258`) has `run_id` and `status`, not `session_id`, not tokens.
-- No handler joins a kanban run id to a chat session id.
+Two stores. They are not the same failure.
 
-Failed source. Proposed Cut: a chat opened from a kanban run must not show a task chip derived from a session lookup. If the user opened the chat from a task tab, the chip is that task id (already known), not a discovered mapping.
+| Store | Result | Evidence |
+|---|---|---|
+| Kanban `task_runs` → session | failed | `task_runs` has no `session_id` (`kanban_db.py:1080-1103`). `metadata` is free JSON, not a contract. `tasks.session_id` (`kanban_db.py:808`) is the originating `HERMES_SESSION_ID`, NULL for CLI/dashboard creates. No handler joins a kanban run id to a chat session id. |
+| Gateway `GET /v1/runs/{id}` | verified, not this Cut | `session_id` is set at queued (`api_server_runs.py:718-719`). Terminal native finish writes `usage` and `runtime` (`:986`). `_run_usage` (`:759-766`) coerces a missing counter to 0. A live-owner settled run writes `usage={}` (`:895-896`). GET returns that status dict (`:1057-1061`). Zeros and `{}` are provenance `gateway.session_counters` (unverified-measured), not proof of measurement, and not a license to double-count runs that share a session. Absent `usage` key stays null. |
+
+Proposed Cut, limited to the kanban join: a chat opened from a kanban run must not show a task chip derived from a session lookup. If the user opened the chat from a task tab, the chip is that task id (already known), not a discovered mapping. Do not cut the gateway `session_id` field. It exists.
 
 Profile chip does not need this mapping. Pass the focused profile into the existing Desktop chat (SPEC O69). That part is not this failed source.
 
-A2 remains proposed (`read-contracts.md` section 5.2) and must return null usage, not a guessed session.
+A2 remains proposed (`read-contracts.md` section 5.2). It must return null when the usage key is absent, must not re-label gateway zeros as measured per-run tokens, and must not add a shared session total onto each run.
 
 ### O67 Clickable task ids in a transcript — verified format, Orbit display cut
 
@@ -194,7 +196,7 @@ Proposed Cut the row. Do not alias cron blueprints or workflow-studio graphs ont
 |---|---|---|
 | O16 | kanban `workflow_template_id` as a pipeline catalog | cron trigger handler; workflow-studio as its own API if a later row cites it |
 | O60 | Steps n/m | `current_step_key` text when non-null |
-| O66 | task chip discovered from a run/session join | profile chip passed explicitly; task chip when the task id is already the opener |
+| O66 | task chip discovered from a kanban run→session join | gateway `session_id` on `GET /v1/runs/{id}` (verified); profile chip passed explicitly; task chip when the task id is already the opener |
 | O67 | `TASK-NNN` display | link `t_[0-9a-f]{8}` |
 | G28 | filter expression | webhook subscription list and `events` |
 | G61 | kanban workflow templates section | cron blueprints |
@@ -209,11 +211,19 @@ Not cut: O41, O56, O58, G68, G84, R4.
 - `:9119` is not the Hermes dashboard in this session. SPEC section 0 said it was down; it is still not the FastAPI app.
 - Global coverage percentage. Six verify rows are outside this card.
 
+## Source discrepancy (do not edit SPEC)
+
+SPEC §1 (line 52), §3.2 (line 94), and R36 (line 656) name `approval.received` next to settlement: live-update invalidation, "Resolved elsewhere", and a Resolved-tab history. The handler does not do that.
+
+`approval.received` (`methods_prompt.py:1193`) calls `ack_gateway_approval` (`approval.py:210-217`), which sets `acknowledged=True` and leaves the entry queued. The call that pops and settles is `resolve_gateway_approval` (`approval.py:139-173`).
+
+This card records the mismatch. It does not edit SPEC. It does not invent a universal resolution event. The contract in `read-contracts.md` §4.6 and §6 uses the real signals: `approval.respond` `resolved>0`, HTTP 409 `approval_not_pending`, SSE `approval.responded`, push `approval.cancelled`, or a re-read of `approval.pending`. An ACK never retires a pending.
+
 ## Self-check against the card acceptance
 
 - Documentation only. No config write, no mutation, no adapter code.
-- Read routes and event sources from SPEC sections 3-5 and 12.8 are in `read-contracts.md`, including proposed A1-A4/A7.
-- Each entry has handler, schema, scope, auth, storage, freshness, events, verified vs proposed.
-- These 14 rows are resolved above with file locations. Live bodies that need a token are blockers, not verifies.
-- Failed sources are proposed Cuts with reasons.
-- Delegation is separated from live sub-agents. Null usage keeps provenance. A3 ownership, expiry, status, and respond dedupe are specified and not implemented.
+- Read routes and event sources from SPEC sections 3-5 and 12.8 are in `read-contracts.md` section 11, including proposed A1-A4/A7. O24 `command_allowlist`, G5 `store/free-tier*`, R2 `kanban_notify_subs`, and `/links` (embedded, no GET) are inventoried there.
+- Each expanded entry names handler, request, response, scope, auth, storage, freshness, events, and verified vs proposed. Blank axes are written `none`, `not exposed`, `inherited`, or `proposed`.
+- These 14 rows are resolved above with file locations. O66's Cut is the kanban join only. Gateway `session_id` and terminal `usage` are verified, with null/provenance and no double count. Live bodies that need a token are blockers, not verifies.
+- Failed sources are proposed Cuts with reasons. Inaccessible live payloads stay blockers.
+- Delegation is separated from live sub-agents. Null usage keeps provenance, including gateway zeros vs a missing key. A3 ownership, expiry, status, and respond dedupe are specified. `approval.received` is an ACK and does not drop a pending. Not implemented.
