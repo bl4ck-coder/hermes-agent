@@ -49,6 +49,7 @@ import {
   Pin,
   Plus,
   RefreshCw,
+  Search,
   Settings,
   Settings2,
   SlidersHorizontal,
@@ -112,6 +113,7 @@ import { SECTIONS } from '../settings/constants'
 import { type SettingsSearchEntry, settingsSearchTargetQuery } from '../settings/settings-search'
 import { useSettingsSearchCatalog } from '../settings/use-settings-search'
 
+import { OpsPalettePage } from '@/app/ops/palette'
 import { usePaletteContributions } from './contrib'
 import { HighlightWatcher } from './highlight-watcher'
 import { MarketplaceThemePage } from './marketplace-theme-page'
@@ -850,6 +852,18 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
     // where you're going, then what you can do, then what you can configure.
     return [
       {
+        heading: 'Ops',
+        items: [
+          {
+            icon: Search,
+            id: 'ops-search',
+            keywords: ['ops', 'search', 'office', 'canvas', 'board', 'palette'],
+            label: 'Search Ops',
+            to: 'ops'
+          }
+        ]
+      },
+      {
         heading: cc.goTo,
         items: [
           {
@@ -1502,6 +1516,11 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
         title: t.commandCenter.nav.settings.title,
         placeholder: t.settings.search.placeholder,
         groups: settingsPageGroups
+      },
+      ops: {
+        title: 'Ops',
+        placeholder: 'Search Ops',
+        groups: []
       }
     }),
     [
@@ -1668,7 +1687,9 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
           />
           <CommandList className="dt-portal-scrollbar max-h-[min(20rem,56vh)]">
             {/* Server-driven pages render their own list; the rest show groups. */}
-            {page === 'pets' ? (
+            {page === 'ops' ? (
+              <OpsPalettePage onSearch={setSearch} search={search} />
+            ) : page === 'pets' ? (
               <PetPalettePage
                 onGenerate={() => {
                   closeCommandPalette()
