@@ -33,7 +33,7 @@ const { hudWindowMock, peerWindowMock } = vi.hoisted(() => ({
   peerWindowMock: vi.fn(() => false)
 }))
 
-const closeActiveTab = vi.hoisted(() => vi.fn(() => true))
+const closeActiveTab = vi.hoisted(() => vi.fn((_load?: (id: string) => void) => true))
 
 // routeCloseTabChord is mocked to mirror its desktop rungs (PTY first, then
 // closeActiveTab) so the spy observes the close path; Ops rungs live in keymap.test.
