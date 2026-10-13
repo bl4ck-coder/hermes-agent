@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { I18nProvider } from '@/i18n'
 import { Box } from '@/lib/icons'
+import { stubMenuDomApis } from '@/test/jsdom'
 
 import {
   DESCRIPTION_PREVIEW,
@@ -259,8 +260,10 @@ describe('tab strip', () => {
     expect(screen.queryByRole('button', { name: 'Close Office' })).toBeNull()
   })
 
-  it('uses a mounted narrow menu that keeps icons, indicators, and close', () => {
+  it('uses a portalled narrow menu that keeps icons, indicators, and close', async () => {
+    stubMenuDomApis()
     const original = window.matchMedia
+
     window.matchMedia = vi.fn((query: string) => ({
       matches: query.includes('800'),
       media: query,
@@ -272,40 +275,160 @@ describe('tab strip', () => {
       onchange: null
     })) as unknown as typeof window.matchMedia
 
-    const onClose = vi.fn()
-    const onActiveChange = vi.fn()
-    const { container } = render(
-      <TabStrip
-        activeId="board"
-        onActiveChange={onActiveChange}
-        onClose={onClose}
-        tabs={[
-          { id: 'office', label: 'Office', pinned: true, icon: Box },
-          { id: 'canvas', label: 'Canvas', pinned: true, icon: Box, indicator: 'unsaved' },
-          { id: 'board', label: 'Board', icon: Box, indicator: 'unread' }
-        ]}
-      />
-    )
-    const strip = container.querySelector('.ops-tab-strip') as HTMLElement
+    try {
+      const onClose = vi.fn()
+      const onActiveChange = vi.fn()
+      const { container } = render(
+        <TabStrip
+          activeId="board"
+          onActiveChange={onActiveChange}
+          onClose={onClose}
+          tabs={[
+            { id: 'office', label: 'Office', pinned: true, icon: Box },
+            { id: 'canvas', label: 'Canvas', pinned: true, icon: Box, indicator: 'unsaved' },
+            { id: 'board', label: 'Board', icon: Box, indicator: 'unread' }
+          ]}
+        />
+      )
+      const strip = container.querySelector('.ops-tab-strip') as HTMLElement
 
-    expect(strip.getAttribute('data-layout')).toBe('narrow')
-    expect(container.querySelector('[data-tour="tab-office"]')).toBeTruthy()
-    expect(container.querySelectorAll('[data-kind-icon="true"]').length).toBeGreaterThan(0)
-    expect(container.querySelector('[data-indicator="unsaved"]')).toBeTruthy()
-    expect(container.querySelector('[data-indicator="unread"]')).toBeTruthy()
-    expect(container.querySelector('[aria-label="Close Office"]')).toBeNull()
-    expect(container.querySelector('[aria-label="Close Canvas"]')).toBeNull()
-    expect(container.querySelector('[aria-label="Close Board"]')).toBeTruthy()
+      expect(strip.getAttribute('data-layout')).toBe('narrow')
+      expect(container.querySelector('[data-narrow-menu]')).toBeNull()
+      expect(container.querySelector('[aria-label="Close Office"]')).toBeNull()
+      expect(container.querySelector('[aria-label="Close Canvas"]')).toBeNull()
+      expect(container.querySelector('[aria-label="Close Board"]')).toBeTruthy()
 
-    fireEvent.keyDown(strip, { key: 'w', ctrlKey: true })
-    expect(onClose).toHaveBeenCalledWith('board')
+      fireEvent.keyDown(strip, { key: 'w', ctrlKey: true })
+      expect(onClose).toHaveBeenCalledWith('board')
 
-    const trigger = screen.getByRole('button', { name: /Ops tabs, Board/ })
-    fireEvent.keyDown(trigger, { key: 'Enter' })
-    expect(container.querySelector('[data-narrow-menu]')?.hasAttribute('hidden')).toBe(false)
-    fireEvent.keyDown(screen.getByRole('menuitem', { name: /Office/ }), { key: 'Enter' })
-    expect(onActiveChange).toHaveBeenCalledWith('office')
-    window.matchMedia = original
+      const trigger = screen.getByRole('button', { name: /Ops tabs, Board/ })
+
+      trigger.focus()
+      fireEvent.keyDown(trigger, { key: 'Enter' })
+
+      const menu = await screen.findByRole('menu')
+
+      expect(strip.contains(menu)).toBe(false)
+      expect(menu.querySelector('[data-tour="tab-office"]')).toBeTruthy()
+      expect(menu.querySelectorAll('[data-kind-icon="true"]').length).toBeGreaterThan(0)
+      expect(menu.querySelector('[data-indicator="unsaved"]')).toBeTruthy()
+      expect(menu.querySelector('[data-indicator="unread"]')).toBeTruthy()
+      expect(within(menu).queryByRole('button', { name: 'Close Office' })).toBeNull()
+      expect(within(menu).queryByRole('button', { name: 'Close Canvas' })).toBeNull()
+      expect(within(menu).getByRole('button', { name: 'Close Board' })).toBeTruthy()
+      expect(within(menu).getByRole('menuitem', { name: /Board/ }).getAttribute('data-active')).toBe('true')
+
+      fireEvent.keyDown(screen.getByRole('menuitem', { name: /^Office/ }), { key: 'Enter' })
+      expect(onActiveChange).toHaveBeenCalledWith('office')
+    } finally {
+      window.matchMedia = original
+    }
+  })
+
+  it('navigates and dismisses the narrow menu from the keyboard', async () => {
+    stubMenuDomApis()
+    const original = window.matchMedia
+
+    window.matchMedia = vi.fn((query: string) => ({
+      matches: query.includes('800'),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => false,
+      onchange: null
+    })) as unknown as typeof window.matchMedia
+
+    try {
+      const onClose = vi.fn()
+      const onActiveChange = vi.fn()
+      const { container } = render(
+        <>
+          <button type="button">Outside</button>
+          <TabStrip
+            activeId="board"
+            onActiveChange={onActiveChange}
+            onClose={onClose}
+            tabs={[
+              { id: 'office', label: 'Office', pinned: true, icon: Box },
+              { id: 'canvas', label: 'Canvas', pinned: true, icon: Box, indicator: 'unsaved' },
+              { id: 'board', label: 'Board', icon: Box, indicator: 'unread' },
+              { id: 'other', label: 'Overflow other' }
+            ]}
+          />
+        </>
+      )
+      const outside = [...container.querySelectorAll('button')].find(button => button.textContent === 'Outside') as HTMLButtonElement
+      const trigger = screen.getByRole('button', { name: /Ops tabs, Board/ })
+
+      trigger.focus()
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+
+      const office = await screen.findByRole('menuitem', { name: /^Office/ })
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(office)
+      })
+
+      fireEvent.keyDown(office, { key: 'ArrowDown' })
+
+      const canvas = screen.getByRole('menuitem', { name: /^Canvas/ })
+
+      await waitFor(() => {
+        expect(document.activeElement).toBe(canvas)
+      })
+
+      fireEvent.keyDown(canvas, { key: 'Enter' })
+      expect(onActiveChange).toHaveBeenCalledWith('canvas')
+      expect(onClose).not.toHaveBeenCalled()
+
+      trigger.focus()
+      fireEvent.keyDown(trigger, { key: 'Enter' })
+      await screen.findByRole('menu')
+      fireEvent.keyDown(document.activeElement ?? trigger, { key: 'Escape' })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('menu')).toBeNull()
+      })
+      await waitFor(() => {
+        expect(document.activeElement).toBe(trigger)
+      })
+
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+      await screen.findByRole('menu')
+      fireEvent.pointerDown(outside, { button: 0, pointerType: 'mouse' })
+      await waitFor(() => {
+        expect(screen.queryByRole('menu')).toBeNull()
+      })
+
+      trigger.focus()
+      fireEvent.pointerDown(trigger, { button: 0, pointerType: 'mouse' })
+      fireEvent.pointerUp(trigger, { button: 0, pointerType: 'mouse' })
+      await screen.findByRole('menu')
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+      await waitFor(() => {
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: /^Office/ }))
+      })
+      fireEvent.keyDown(document.activeElement ?? trigger, { key: 'Escape' })
+      await waitFor(() => {
+        expect(document.activeElement).toBe(trigger)
+      })
+
+      fireEvent.keyDown(trigger, { key: 'Enter' })
+      const menu = await screen.findByRole('menu')
+      const closeOther = within(menu).getByRole('button', { name: 'Close Overflow other' })
+
+      expect(within(menu).queryByRole('button', { name: 'Close Office' })).toBeNull()
+      expect(within(menu).queryByRole('button', { name: 'Close Canvas' })).toBeNull()
+      closeOther.focus()
+      fireEvent.keyDown(closeOther, { key: 'Enter' })
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(onClose).toHaveBeenCalledWith('other')
+      expect(onActiveChange).toHaveBeenCalledTimes(1)
+    } finally {
+      window.matchMedia = original
+    }
   })
 
   it('cycles with Ctrl+Tab and refuses to close a pinned tab', () => {
