@@ -20,9 +20,9 @@ Count level-2 headings whose text is `Entry` plus a two-digit id. There are 19, 
 - SHA-256: `a3815086870176ee30318e8256334745f148db50835650edc644b3903c01ab3b`
 - Site: Outglow
 - Wireframes: W4
-- Rows: G37, G47, G48, G49, G54, R32
-- Seen: run panel open (`Run discovery-agent over the past 7 days`), three columns (Schedule, Triggers, Channels, Memory | Agent, Instructions | Tools, Sub-agents, Skills), dotted grid, zoom `100%`, blue and orange ports, dashed curves. Sub-agents and Skills are on the canvas and also listed in the run panel. No node spinner.
-- Freeze: W4 keeps this topology (G48). Port hues in the shot are not G49. G54 stays even though this shot has no spinner. One 24 px gutter is not measurable here (R32).
+- Rows: G17, G37, G47, G48, G49, G54, O44, R32
+- Seen: run panel open (`Run discovery-agent over the past 7 days`), three columns (Schedule, Triggers, Channels, Memory | Agent, Instructions | Tools, Sub-agents, Skills), dotted grid, zoom `100%`, blue and orange ports, dashed curves. Sub-agents and Skills are on the canvas and also listed in the run panel. No node spinner. Left app nav is an icon-only rail (~30 px, x0-30, full height, no labels). It is the only one of the 12 Outglow shots in that state; 02-12 show the full sidebar.
+- Freeze: W4 keeps this topology (G48). Port hues in the shot are not G49. G54 stays even though this shot has no spinner. One 24 px gutter is not measurable here (R32). Entry 01 is the appearance reference for the O44 icons state. It does not prove G17 persistence or the R53 trigger (R53 is measured on the Ops pane container, SPEC.md:673, not off an Outglow frame). Do not copy Outglow's icons.
 
 ## Entry 02
 
@@ -214,7 +214,7 @@ Count level-2 headings whose text is `Entry` plus a two-digit id. There are 19, 
 - Wireframes: W1 hidden-rail state, W5 is not this list
 - Rows: O23, O44, O47, R53
 - Seen: left nav is gone, not an icon strip. Titlebar still has Home, Build landing page, Chat, `page.tsx`, `research.md`, Tasks. Tasks table (TASK-142 running 0/6). Inspector still docked with footer `Run #218` / `0:03` / `1.6k`. No dock in this frame.
-- Freeze: this is O44 hidden, not the under-1024 icon state (R53). Do not use it as the G17 icon rail. Blocker B3. Tasks here are a table, not W5 columns.
+- Freeze: this is O44 hidden, not the under-1024 icon state (R53). Do not use it as the G17 icon rail; the icon appearance reference is entry 01. Tasks here are a table, not W5 columns.
 
 ## Entry 18
 
@@ -248,9 +248,9 @@ Count level-2 headings whose text is `Entry` plus a two-digit id. There are 19, 
 
 Gr8r Studio has no screenshot in the 19. REPORT section 1, line 15 describes the demo page and does not name a `gr8r-*.png`. R32 (one 24 px gutter) and R53 (1280 / 1024 / 800 on the Ops pane container) are frozen from SPEC section 12.3, SPEC row R53, and P0-04 `desktop-surface-audit.md` lines 100-114. They are not measured off a picture. No Orbit or Outglow shot was substituted for a Gr8r shot. W5 stays the SPEC fence.
 
-## Blocker B3
+## Note B3 (resolved, not a blocker)
 
-No shot shows the icon rail (O44 middle state, G17, R53 under 1024 px). Entry 17 is Orbit's fully hidden nav. Entries 02, 04, and 12 are a full sidebar. The hidden shot was not relabelled as icons. The icon state stays the P0-04 text.
+The icon-rail appearance is depicted in entry 01. No shot proves G17 persistence across restart or R53's forced icons under a 1024 px container. Those stay frozen from P0-04 desktop-surface-audit.md:109,114 and SPEC.md:673 text. Entry 17 (hidden) is still not a stand-in for icons.
 
 ## Blocker B4
 
@@ -261,13 +261,13 @@ No shot shows the icon rail (O44 middle state, G17, R53 under 1024 px). Entry 17
 | Row | Entries that carry it | Depicted? |
 |---|---|---|
 | O23 | 13, 14, 15, 16, 17, 18, 19 | Footer visible because a run is focused. Hide rule is the freeze, not a missing file. |
-| O44 | 02, 04, 12, 13, 14, 15, 16, 17, 18, 19 | Full and hidden only. Icons are B3. |
+| O44 | 01, 02, 04, 12, 13, 14, 15, 16, 17, 18, 19 | Full (02-16, 18, 19), icons (01, appearance only) and hidden (17). Persistence and the R53 trigger are not depicted. |
 | O47 | 13, 14, 15, 17, 18 | Dots depicted in orange/blue. Freeze colours differ. Scope is not a pixel in the shot. |
-| G17 | 02, 04, 09, 12 | Full sidebar. Persisted icon collapse is B3. |
+| G17 | 01, 02, 04, 09, 12 | Full sidebar 02/04/09/12. Icon collapse appearance in 01. Persistence not depicted (text-frozen, see Note B3). |
 | G37 | 01, 03, 05, 07, 08 | Collapsible node headers depicted. |
 | G47 | 01, 03, 05, 07, 08, 09 | Dotted grid depicted. Gold at 6% is the freeze, not the shot's grey. |
 | G48 | 01, 03, 05, 07, 08, 09 | Three columns depicted in 01 and 08 (complete topology). 07 shows only a `Tools` node in the right column (Sub-agents/Skills not drawn, empty canvas to its right). 09 has no right column visible (empty canvas right of Agent/Instructions). Not proven by the frame. REPORT.md:58: nodes appear progressively during replay. Do not drop the right column. |
 | G49 | 01, 03, 05, 07, 08 | Ports depicted in blue/orange. Freeze colours differ. |
 | G54 | 01, 07, 18 | Depicted in 07 (per-node loading on Tools, neighbours unaffected; hue not copied, freeze is gold shimmer). Not depicted in 01 or 18. Not cut. |
 | R32 | 01, 06, 10, 11 | Not measured. Number is SPEC 24 px. Gr8r shot missing (B2). |
-| R53 | 06, 11, 17 | Not measured. Entry 17 is not the 1024 px rule (B3). Gr8r shot missing (B2). |
+| R53 | 06, 11, 17 | Not measured. Entry 17 is not the 1024 px rule (see Note B3). Gr8r shot missing (B2). |

@@ -34,7 +34,7 @@ One gutter: 24 px (`--gutter`, SPEC section 12.3, R32). The overlay, the dropdow
 
 P0-04 note, kept: Desktop `ResponsiveTabs` uses Tailwind `md:` at 768 px viewport. That is not this rule. Do not call `md` a container breakpoint. `SIDEBAR_DOCK_MIN_WIDTH_PX = 640` is a Desktop dock floor. It does not replace 1280/1024/800.
 
-O44 is three preference states: full, icons, hidden. G17 persists the rail collapse. The under-1024 px rule forces icons. It does not delete the hidden state, and it is not the Desktop overlay under 640 px. Orbit's screenshot of a fully hidden nav is the hidden state, not the icon state. Outglow's icon rail is not in the 19 shots. Do not use the hidden shot as a stand-in. See `reference-index.md` blockers.
+O44 is three preference states: full, icons, hidden. G17 persists the rail collapse. The under-1024 px rule forces icons. It does not delete the hidden state, and it is not the Desktop overlay under 640 px. Orbit's screenshot of a fully hidden nav is the hidden state, not the icon state. Entry 01 (Outglow) shows the icon-rail appearance. It does not show persistence or the R53 trigger. Do not use the hidden shot as a stand-in for icons. See `reference-index.md` Note B3.
 
 No screenshot in the 19 measures 1280, 1024, 800, or 24 px. Those numbers stay the SPEC/P0-04 text. They are not estimated from a picture.
 
