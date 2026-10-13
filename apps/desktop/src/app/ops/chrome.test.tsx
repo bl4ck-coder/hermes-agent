@@ -259,7 +259,7 @@ describe('Ops chrome', () => {
     const chip = screen.getByRole('button', { name: 'judge · gpt-6.1-sol' })
     expect(screen.getAllByRole('button', { name: 'judge · gpt-6.1-sol' })).toHaveLength(1)
     expect((chip as HTMLButtonElement).disabled).toBe(true)
-    expect(chip.getAttribute('title')).toMatch(/A5\/A6/)
+    expect(chip.getAttribute('aria-description')).toMatch(/A5\/A6/)
     fireEvent.click(chip)
     expect($commandPaletteOpen.get()).toBe(false)
   })

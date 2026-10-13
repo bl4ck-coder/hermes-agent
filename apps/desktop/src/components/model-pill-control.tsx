@@ -24,7 +24,7 @@ export function ReadonlyModelPill({
       data-model-profile={profile}
       data-ops-model-chip=""
       disabled
-      title={reason}
+      aria-description={reason}
       type="button"
       variant="ghost"
     >
