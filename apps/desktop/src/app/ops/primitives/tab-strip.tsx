@@ -1,7 +1,7 @@
 import '../motion.css'
 
 import type { KeyboardEvent } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
@@ -124,6 +124,14 @@ function TabFace({ tab }: { tab: TabStripTab }) {
   )
 }
 
+function dismissEnclosingMenu(node: HTMLElement) {
+  if (!node.closest('[role="menu"]')) {
+    return
+  }
+
+  node.ownerDocument.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+}
+
 function CloseTab({ onClose, tab }: { onClose?: (id: string) => void; tab: TabStripTab }) {
   if (!canClose(tab) || !onClose) {
     return null
@@ -137,15 +145,18 @@ function CloseTab({ onClose, tab }: { onClose?: (id: string) => void; tab: TabSt
         event.preventDefault()
         event.stopPropagation()
         onClose(tab.id)
+        dismissEnclosingMenu(event.currentTarget)
       }}
       onKeyDown={event => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           event.stopPropagation()
           onClose(tab.id)
+          dismissEnclosingMenu(event.currentTarget)
         }
       }}
       onPointerDown={event => event.stopPropagation()}
+      onPointerUp={event => event.stopPropagation()}
       type="button"
     >
       <X aria-hidden size={12} />
@@ -196,6 +207,43 @@ function TabButton({
   )
 }
 
+function focusOpenMenuItem(trigger: HTMLElement) {
+  const menuId = trigger.getAttribute('aria-controls')
+  const menu = menuId ? document.getElementById(menuId) : null
+  const item = menu?.querySelector<HTMLElement>('[role="menuitem"]')
+
+  if (!item) {
+    return false
+  }
+
+  item.focus()
+
+  return true
+}
+
+function focusSiblingMenuItem(event: KeyboardEvent<HTMLElement>) {
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+    return
+  }
+
+  const current = event.target instanceof HTMLElement ? event.target.closest('[role="menuitem"]') : null
+
+  if (!(current instanceof HTMLElement) || !event.currentTarget.contains(current)) {
+    return
+  }
+
+  const items = [...event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+  const next = items[items.indexOf(current) + (event.key === 'ArrowDown' ? 1 : -1)]
+
+  if (!next) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+  next.focus()
+}
+
 function NarrowStrip({
   active,
   activeId,
@@ -209,7 +257,7 @@ function NarrowStrip({
   onClose?: (id: string) => void
   tabs: TabStripTab[]
 }) {
-  const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   return (
     <div
@@ -218,58 +266,63 @@ function NarrowStrip({
       onKeyDown={event => onStripKeyDown(event, tabs, activeId, onActiveChange, onClose)}
       style={opsDensityStyle()}
     >
-      <button
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-label={active ? `Ops tabs, ${active.label}` : 'Ops tabs'}
-        data-active="true"
-        onClick={() => setOpen(value => !value)}
-        onKeyDown={event => {
-          if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
-            event.preventDefault()
-            event.stopPropagation()
-            setOpen(true)
-          }
-        }}
-        type="button"
-      >
-        {active ? <TabFace tab={active} /> : null}
-        <ChevronDown aria-hidden size={14} />
-      </button>
-      {active ? <CloseTab onClose={onClose} tab={active} /> : null}
-      <div data-narrow-menu hidden={!open} role="menu">
-        {tabs.map(tab => {
-          const selected = tab.id === activeId
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <button
+            aria-label={active ? `Ops tabs, ${active.label}` : 'Ops tabs'}
+            data-active="true"
+            data-narrow-trigger=""
+            onKeyDown={event => {
+              if (event.key === 'ArrowDown' && focusOpenMenuItem(event.currentTarget)) {
+                event.preventDefault()
+              }
+            }}
+            ref={triggerRef}
+            type="button"
+          >
+            {active ? <TabFace tab={active} /> : null}
+            <ChevronDown aria-hidden size={14} />
+          </button>
+        </DropdownMenuTrigger>
+        {active ? <CloseTab onClose={onClose} tab={active} /> : null}
+        <DropdownMenuContent
+          align="start"
+          onKeyDownCapture={event => {
+            if (event.key === 'Escape') {
+              const trigger = triggerRef.current ?? document.querySelector('[data-narrow-trigger]')
 
-          return (
-            <div data-active={selected ? 'true' : 'false'} data-pinned={tab.pinned ? 'true' : 'false'} key={tab.id}>
-              <button
-                aria-selected={selected}
+              if (trigger instanceof HTMLElement) {
+                trigger.focus()
+              }
+
+              return
+            }
+
+            focusSiblingMenuItem(event)
+          }}
+          side="bottom"
+        >
+          {tabs.map(tab => {
+            const selected = tab.id === activeId
+
+            return (
+              <DropdownMenuItem
+                data-active={selected ? 'true' : 'false'}
+                data-pinned={tab.pinned ? 'true' : 'false'}
                 data-tour={`tab-${tab.id}`}
-                onClick={() => {
-                  onActiveChange(tab.id)
-                  setOpen(false)
-                }}
-                onKeyDown={event => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    onActiveChange(tab.id)
-                    setOpen(false)
-                  }
-                }}
-                role="menuitem"
+                key={tab.id}
+                onSelect={() => onActiveChange(tab.id)}
                 style={{
                   borderBottom: selected ? '2px solid #C9A55A' : '2px solid transparent'
                 }}
-                type="button"
               >
                 <TabFace tab={tab} />
-              </button>
-              <CloseTab onClose={onClose} tab={tab} />
-            </div>
-          )
-        })}
-      </div>
+                <CloseTab onClose={onClose} tab={tab} />
+              </DropdownMenuItem>
+            )
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }
