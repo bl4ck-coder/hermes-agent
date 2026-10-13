@@ -7,6 +7,7 @@
 
 import { WhyFooter } from './primitives/why-footer'
 import { FleetList } from './rail'
+import { useOpsEscapeLayer } from './keymap'
 
 import {
   type FleetFeed,
@@ -39,6 +40,7 @@ const SLOT_LABEL: Record<InspectorSlot, string> = {
 }
 
 export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }: InspectorProps) {
+  useOpsEscapeLayer(scope.inspectorOpen && overlay && Boolean(onClose), onClose)
   if (!scope.inspectorOpen) {
     return null
   }
@@ -89,7 +91,11 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
           </button>
         ) : null}
       </div>
-      {active === 'unknown' ? <p data-ops-unknown-slot="">unknown</p> : <InspectorBody active={active} fleet={fleet} tab={tab} />}
+      {active === 'unknown' ? (
+        <p data-ops-unknown-slot="">unknown</p>
+      ) : (
+        <InspectorBody active={active} fleet={fleet} tab={tab} />
+      )}
       {footer ? (
         <footer data-ops-run-footer="">
           <span data-ops-run-id="">{footer.id}</span>
@@ -101,15 +107,7 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
   )
 }
 
-function InspectorBody({
-  active,
-  fleet,
-  tab
-}: {
-  active: InspectorSlot
-  fleet: FleetFeed
-  tab: OpsTab | null
-}) {
+function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: FleetFeed; tab: OpsTab | null }) {
   if (active === 'fleet') {
     return <FleetList feed={fleet} filter="" />
   }

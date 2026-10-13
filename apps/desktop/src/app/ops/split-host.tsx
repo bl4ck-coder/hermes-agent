@@ -29,7 +29,8 @@ import { registry } from '@/contrib/registry'
 import { isTopEscapeLayer, pushEscapeLayer } from '@/lib/escape-layers'
 
 import { OpsShell } from './index'
-import { cycleRail, loadScope, setInspectorOpen, setRail } from './navigation-store'
+import { useOpsBackendSources } from './chrome'
+import { setInspectorOpen, setRail } from './navigation-store'
 import {
   $opsChatSessionId,
   $opsFullscreen,
@@ -136,8 +137,7 @@ function retainedFullscreenPane(id: string): boolean {
   }
 
   const data = registry.getArea('panes').find(pane => pane.id === id)?.data as
-    | { lifecycleKeepAlive?: boolean; placement?: string }
-    | undefined
+    { lifecycleKeepAlive?: boolean; placement?: string } | undefined
 
   return data?.placement === 'main' && Boolean(data.lifecycleKeepAlive)
 }
@@ -527,7 +527,11 @@ export function applyOpsLocation(pathname: string): void {
   openOpsSplit()
 }
 
-export function handleOpsEscape(event: { key: string; defaultPrevented: boolean; preventDefault: () => void }): boolean {
+export function handleOpsEscape(event: {
+  key: string
+  defaultPrevented: boolean
+  preventDefault: () => void
+}): boolean {
   if (event.key !== 'Escape' || !$opsFullscreen.get() || event.defaultPrevented) {
     return false
   }
@@ -543,39 +547,9 @@ export function handleOpsEscape(event: { key: string; defaultPrevented: boolean;
 }
 
 function onOpsKey(event: KeyboardEvent): void {
-  if (handleOpsEscape(event)) {
-    return
-  }
-
-  const target = event.target
-
-  if (!(target instanceof Element) || !target.closest('[data-ops-root]')) {
-    return
-  }
-
-  if (target.closest('input, textarea, select, [contenteditable="true"]')) {
-    return
-  }
-
-  if (event.defaultPrevented) {
-    return
-  }
-
-  if (event.key === '[') {
-    event.preventDefault()
-    const scope = $opsScope.get()
-    const next = cycleRail(loadScope(scope.connectionId, scope.profile).rail)
-
-    setRail(scope.connectionId, scope.profile, next)
-    setOpsRail(next)
-  } else if (event.key === ']') {
-    event.preventDefault()
-    const scope = $opsScope.get()
-    const next = !loadScope(scope.connectionId, scope.profile).inspectorOpen
-
-    setInspectorOpen(scope.connectionId, scope.profile, next)
-    $opsInspectorOpen.set(next)
-  }
+  // Bare keys belong to the focus-owned Desktop router / shell fallback. The
+  // split host owns only its fullscreen Escape layer, never a second keymap.
+  if (!event.isComposing && event.key !== 'Process') handleOpsEscape(event)
 }
 
 type LiveSessionSource = {
@@ -873,6 +847,8 @@ export function openDesktopRoute(route: string): 'opened' | 'unavailable' {
 
 export function OpsPane(): ReactNode {
   const scope = useStore($opsScope)
+  const open = useStore($opsOpen)
+  const observations = useOpsBackendSources(scope.connectionId, scope.profile, open)
   const view = useStore($opsView)
   const viewId = useStore($opsViewId)
   const paneWidth = useStore($opsWidthPx)
@@ -910,6 +886,9 @@ export function OpsPane(): ReactNode {
 
   return (
     <OpsShell
+      active={open}
+      statusSources={{ gateway: observations?.gateway, todayTokens: observations?.todayTokens }}
+      modelLabel={observations?.modelLabel}
       fullscreen={fullscreen}
       connections={connections && connections.length > 0 ? connections : undefined}
       profiles={profiles.length > 0 ? profiles : undefined}
@@ -934,7 +913,7 @@ export function OpsPane(): ReactNode {
       }}
       onOpenChat={focusExistingChat}
       onOpenPalette={() => {
-        void import('@/store/command-palette').then(mod => mod.openCommandPalette())
+        void import('@/store/command-palette').then(mod => mod.openCommandPalettePage('ops'))
       }}
       onOpenRoute={openDesktopRoute}
       onOpenSettings={() => {

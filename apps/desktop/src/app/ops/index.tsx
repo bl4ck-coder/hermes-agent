@@ -5,33 +5,51 @@
  * the Ops pane, not the window.
  */
 
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 
-import { DocumentTabs } from './document-tabs'
+import { comboFromEvent } from '@/lib/keybinds/combo'
+import { openCommandPalettePage } from '@/store/command-palette'
+
+import { OpsChrome, type OpsStatusSources } from './chrome'
 import { DockHost, type DockProblem } from './dock-host'
+import { DocumentTabs } from './document-tabs'
 import { Inspector } from './inspector'
-import { OPS_GUTTER_PX, $opsView, $opsViewId, type OpsNarrow, type OpsRailPreference, type OpsScope } from './layout-store'
 import {
-  type FleetFeed,
-  type FocusedRun,
-  type InspectorSlot,
-  type NavSnapshot,
-  type OpsTab,
-  type RailState,
+  claimOpsFocusedChord,
+  claimOpsRootKey,
+  focusNextApproval,
+  type OpsKeymapHost,
+  opsTypingExcluded
+} from './keymap'
+import {
+  $opsView,
+  $opsViewId,
+  OPS_GUTTER_PX,
+  type OpsNarrow,
+  type OpsRailPreference,
+  type OpsScope
+} from './layout-store'
+import {
   applyHostDocument,
   captureSnapshot,
   closeTab,
   cycleRail,
+  type FleetFeed,
+  type FocusedRun,
   goHistory,
   hostIdentityFromTab,
+  type InspectorSlot,
   loadScope,
   narrowFromPane,
+  type NavSnapshot,
   noteBackgroundEvent,
   openLens,
   openPin,
   openProfileTab,
   openRunTab,
   openTaskTab,
+  type OpsTab,
+  type RailState,
   selectTab,
   setDock,
   setFilter,
@@ -55,6 +73,9 @@ export function opsViewLabel(view: string): string {
 
 export interface OpsShellProps {
   paneWidth: number
+  active?: boolean
+  statusSources?: OpsStatusSources
+  modelLabel?: string | null
   /** P0.5-04 host contract. Optional so tests can mount the shell directly. */
   scope?: OpsScope
   view?: string
@@ -109,14 +130,10 @@ function panelFor(tab: OpsTab, onOpenRoute?: (route: string) => void) {
   )
 }
 
-function isTypingTarget(target: EventTarget | null) {
-  return (
-    target instanceof HTMLElement &&
-    Boolean(target.closest('input, textarea, select, [contenteditable="true"], [data-composer]'))
-  )
-}
-
 export function OpsShell({
+  active = true,
+  statusSources,
+  modelLabel,
   connectionId: connectionIdProp,
   connectionLabel: connectionLabelProp,
   connections: connectionsProp,
@@ -141,7 +158,7 @@ export function OpsShell({
   onToggleFullscreen,
   onView,
   paneWidth,
-  problems = [],
+  problems,
   profile: profileProp,
   profiles: profilesProp,
   railPreference,
@@ -151,6 +168,8 @@ export function OpsShell({
   viewId = null
 }: OpsShellProps) {
   const [, setTick] = useState(0)
+  const root = useRef<HTMLDivElement>(null)
+  const [motion, setMotion] = useState<'system' | 'full' | 'reduced'>('system')
 
   useEffect(() => subscribeOpsNavigation(() => setTick(value => value + 1)), [])
 
@@ -205,6 +224,7 @@ export function OpsShell({
   const selectedTab = nav.tabs.find(tab => tab.id === nav.selectedTabId) ?? nav.tabs[0]
   const crumb = hosted && selectedTab ? selectedTab.label : opsViewLabel(view)
   const overlay = narrow.inspector === 'overlay'
+
   const revision = JSON.stringify({
     selected: nav.selectedTabId,
     rail: nav.rail,
@@ -249,58 +269,165 @@ export function OpsShell({
   }
 
   const onShellKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.defaultPrevented || isTypingTarget(event.target)) {
+    if (event.defaultPrevented || opsTypingExcluded(event.target, event.nativeEvent)) {
       return
     }
 
-    if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+    // Desktop's capture dispatcher claims these first when installed. This
+    // local fallback uses the same router, not another global registry.
+    const combo = comboFromEvent(event.nativeEvent)
+
+    if (combo && (claimOpsFocusedChord(event.nativeEvent, combo) || claimOpsRootKey(event.nativeEvent, combo))) {
       event.preventDefault()
-      goHistory(connectionId, profile, event.key === 'ArrowLeft' ? -1 : 1)
+
+      return
+    }
+  }
+
+  const toggleDock = () => setDock(connectionId, profile, { dockOpen: !loadScope(connectionId, profile).dockOpen })
+  const focus = (selector: string) => root.current?.querySelector<HTMLElement>(selector)?.focus()
+
+  const keyHost: OpsKeymapHost = {
+    go: next => {
+      if (next === 'skills') {
+        onOpenRoute?.('/capabilities')
+
+        return
+      }
+
+      if (next === 'runs') {
+        openLens(connectionId, profile, next)
+      } else {
+        selectTab(connectionId, profile, next, leaving())
+      }
+
+      publishSelectedIdentity()
+    },
+    cycleTabs: direction => {
+      const current = loadScope(connectionId, profile)
+      const index = current.tabs.findIndex(tab => tab.id === current.selectedTabId)
+      const next = current.tabs[(index + direction + current.tabs.length) % current.tabs.length]
+
+      if (next) {
+        selectTab(connectionId, profile, next.id, leaving())
+        publishSelectedIdentity()
+      }
+    },
+    closeFocusedTab: () => {
+      const current = loadScope(connectionId, profile)
+      const tab = current.tabs.find(item => item.id === current.selectedTabId)
+
+      if (!tab) {
+        return 'none'
+      }
+
+      if (tab.pinned || !tab.closable) {
+        return 'pinned'
+      }
+
+      closeTab(connectionId, profile, tab.id)
       publishSelectedIdentity()
 
-      return
+      return 'closed'
+    },
+    history: direction => {
+      goHistory(connectionId, profile, direction)
+      publishSelectedIdentity()
+    },
+    openSettings: () => onOpenSettings?.(),
+    focusRailFilter: () => {
+      if (narrow.rail === 'hidden') {
+        setRail(connectionId, profile, 'full')
+        onRail?.('full')
+      }
+
+      queueMicrotask(() => {
+        const toggle = root.current?.querySelector<HTMLButtonElement>('[data-ops-filter-toggle]')
+
+        if (toggle && toggle.getAttribute('aria-expanded') !== 'true') {
+          toggle.click()
+        }
+
+        queueMicrotask(() => {
+          const portal = document.querySelector<HTMLElement>('[data-ops-filter-overlay] input')
+
+          if (portal) {
+            portal.focus()
+          } else {
+            focus('[data-ops-filter]')
+          }
+        })
+      })
+    },
+    toggleRail: cycleStoredRail,
+    toggleInspector,
+    toggleDock,
+    openShortcutSheet: () => {}, // Modal belongs to OpsChrome.
+    newTask: () => {
+      openCommandPalettePage('ops', 'create task')
+    },
+    editFocused: () => {
+      if (selectedTab?.route) {
+        onOpenRoute?.(selectedTab.route)
+      }
+    },
+    moveSelection: direction => {
+      const rows = Array.from(
+        root.current?.querySelectorAll<HTMLElement>('[data-ops-fleet-row], [data-ops-open-route]') ?? []
+      ).filter(row => !row.closest('[hidden], [aria-hidden="true"]'))
+
+      const index = rows.indexOf(document.activeElement as HTMLElement)
+      rows[(index + direction + rows.length) % rows.length]?.focus()
+    },
+    openFocused: () => {
+      const focused = document.activeElement
+
+      if (focused instanceof HTMLElement && focused.matches('[data-ops-open-route]')) {
+        focused.click()
+      }
+
+      if (focused instanceof HTMLElement && focused.dataset.opsFleetRow) {
+        openProfileTab(connectionId, profile, focused.dataset.opsFleetRow)
+        publishSelectedIdentity()
+      }
+    },
+    focusNextApproval,
+    exitFullscreen: () => {
+      if (fullscreen) {
+        onToggleFullscreen?.()
+      }
     }
+  }
 
-    if (event.metaKey || event.ctrlKey || event.altKey) {
-      return
-    }
+  const observedFleet =
+    fleet.a1 === 'ready' &&
+    fleet.rows.every(
+      row => row.fresh && row.presence !== null && row.presence !== 'unknown' && row.presence !== 'stale'
+    )
 
-    if (event.key === '[') {
-      event.preventDefault()
-      cycleStoredRail()
-
-      return
-    }
-
-    if (event.key === ']') {
-      event.preventDefault()
-      toggleInspector()
-
-      return
-    }
-
-    if (event.key === 'k' || event.key === 'K') {
-      event.preventDefault()
-      onOpenPalette?.()
-
-      return
-    }
-
-    if (event.key === 'Escape' && overlay && inspectorIsOpen) {
-      event.preventDefault()
-      setInspectorOpen(connectionId, profile, false)
-      onInspector?.(false)
-    }
+  const sources: OpsStatusSources = {
+    ...statusSources,
+    focusedRunId: focusedRun?.id ?? null,
+    workingCount: observedFleet ? fleet.rows.filter(row => row.presence === 'working').length : null,
+    needsYouCount:
+      observedFleet && fleet.a3 === 'ready' ? fleet.rows.filter(row => row.presence === 'needs_you').length : null,
+    problemsCount: problems ? problems.length : null,
+    dockOpen: nav.dockOpen,
+    motionMode: motion
   }
 
   const inspector = (
     <Inspector
       fleet={fleet}
       focusedRun={focusedRun}
-      onClose={() => {
-        setInspectorOpen(connectionId, profile, false)
-        onInspector?.(false)
-      }}
+      onClose={
+        active
+          ? () => {
+              setInspectorOpen(connectionId, profile, false)
+              onInspector?.(false)
+            }
+          : undefined
+      }
       onSlot={(slot: InspectorSlot) => setInspectorSlot(connectionId, profile, slot)}
       overlay={overlay}
       scope={{ ...nav, inspectorOpen: inspectorIsOpen }}
@@ -314,17 +441,19 @@ export function OpsShell({
       data-ops-gutter={String(OPS_GUTTER_PX)}
       data-ops-inspector={narrow.inspector}
       data-ops-inspector-open={inspectorIsOpen ? 'true' : 'false'}
+      data-ops-motion={motion}
       data-ops-native="route"
       data-ops-pane-width={String(paneWidth)}
       data-ops-profile={profile}
       data-ops-rail={narrow.rail}
       data-ops-remote={remote ? 'true' : 'false'}
       data-ops-revision={revision}
-      data-ops-root=""
+      data-ops-root={active ? '' : undefined}
       data-ops-sash="layout-tree"
       data-ops-scope={connectionId}
       data-ops-tabs={narrow.tabs}
       onKeyDown={onShellKeyDown}
+      ref={root}
       style={{
         ['--gutter' as string]: `${OPS_GUTTER_PX}px`,
         boxSizing: 'border-box',
@@ -339,6 +468,24 @@ export function OpsShell({
         width: '100%'
       }}
     >
+      {active ? (
+        <OpsChrome
+          chatHotHidden={fullscreen}
+          connectionId={connectionId}
+          connectionLabel={connectionLabel}
+          host={keyHost}
+          key={`${scopeKey}\0${crumb}`}
+          modelLabel={modelLabel}
+          onCycleMotion={() =>
+            setMotion(value => (value === 'system' ? 'full' : value === 'full' ? 'reduced' : 'system'))
+          }
+          onToggleDock={toggleDock}
+          profile={profile}
+          profileLabel={profile}
+          sources={sources}
+          viewLabel={crumb}
+        />
+      ) : null}
       <div data-ops-breadcrumb="">
         <span>Ops</span>
         <span aria-hidden="true"> ▸ </span>
@@ -372,7 +519,11 @@ export function OpsShell({
         >
           Inspector
         </button>
-        <button data-ops-dock-toggle="" onClick={() => setDock(connectionId, profile, { dockOpen: !nav.dockOpen })} type="button">
+        <button
+          data-ops-dock-toggle=""
+          onClick={() => setDock(connectionId, profile, { dockOpen: !nav.dockOpen })}
+          type="button"
+        >
           Dock
         </button>
         <button data-ops-copy-link="" onClick={onCopyLink} type="button">
@@ -388,13 +539,17 @@ export function OpsShell({
           ⤢
         </button>
       </div>
-      <div data-ops-body="" style={{ display: 'flex', flex: '1 1 auto', minHeight: 0, minWidth: 0, position: 'relative' }}>
+      <div
+        data-ops-body=""
+        style={{ display: 'flex', flex: '1 1 auto', minHeight: 0, minWidth: 0, position: 'relative' }}
+      >
         <Rail
           connectionId={connectionId}
           connectionLabel={connectionLabel}
           connections={connections}
           filter={nav.filter}
           fleet={fleet}
+          key={`${scopeKey}\0${active}`}
           onConnect={() => onConnect?.()}
           onFilter={value => setFilter(connectionId, profile, value)}
           onOpenLens={id => {
@@ -426,7 +581,10 @@ export function OpsShell({
           rail={narrow.rail}
           remote={remote}
         />
-        <div data-ops-main="" style={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+        <div
+          data-ops-main=""
+          style={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', minHeight: 0, minWidth: 0 }}
+        >
           <DocumentTabs
             dots={nav.dots}
             narrow={narrow.tabs}
@@ -460,13 +618,14 @@ export function OpsShell({
         {!overlay && inspectorIsOpen ? inspector : null}
       </div>
       <DockHost
+        active={active}
         events={events}
         label={connectionLabel}
         logLines={logLines}
         onClose={() => setDock(connectionId, profile, { dockOpen: false })}
         onSlot={dockSlot => setDock(connectionId, profile, { dockSlot })}
         open={nav.dockOpen}
-        problems={problems}
+        problems={problems ?? []}
         slot={nav.dockSlot}
       />
     </div>

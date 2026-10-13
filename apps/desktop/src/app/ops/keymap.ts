@@ -1,8 +1,11 @@
 // Focus-owned Ops keymap. Desktop keeps every chord outside [data-ops-root].
 // This module does not register a contributed keybind and does not approve.
 
+import { useEffect, useRef } from 'react'
+
+import { pushEscapeLayer } from '@/lib/escape-layers'
+import { IS_MAC, isEditableTarget, OVERLAY_SURFACE } from '@/lib/keybinds/combo'
 import { openCommandPalettePage } from '@/store/command-palette'
-import { isEditableTarget, IS_MAC, OVERLAY_SURFACE } from '@/lib/keybinds/combo'
 
 export const OPS_ROOT = '[data-ops-root]'
 export const OPS_PALETTE_PAGE = 'ops'
@@ -11,6 +14,39 @@ export const OPS_FULLSCREEN_PRIORITY = 5
 export const G_LEADER_MS = 1000
 export const MODEL_EDIT_UNAVAILABLE = 'Editing unavailable until A5/A6'
 export const MUTATION_UNAVAILABLE = 'Unavailable until A5/A6 writes exist'
+
+/** One registration per open lifetime; callback refreshes preserve opening order. */
+export function useOpsEscapeLayer(open: boolean, close: (() => void) | undefined) {
+  const callback = useRef(close)
+  callback.current = close
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const release = pushEscapeLayer(OPS_LAYER_PRIORITY)
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || !release.isTop()) {
+        return
+      }
+
+      if (!elementInOpsRoot(event.target) && !asElement(event.target)?.closest('[data-ops-overlay]')) {
+        return
+      }
+
+      event.preventDefault()
+      callback.current?.()
+    }
+
+    window.addEventListener('keydown', onKey)
+
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      release()
+    }
+  }, [open])
+}
 
 export const OPS_SHORTCUTS = [
   { chord: 'G O', action: 'Office' },
@@ -61,12 +97,13 @@ let leaderUntil = 0
 let clock = () => Date.now()
 
 export function registerOpsKeymapHost(next: OpsKeymapHost | null): () => void {
-  const previous = host
   host = next
+  leaderUntil = 0
 
   return () => {
     if (host === next) {
-      host = previous
+      host = null
+      leaderUntil = 0
     }
   }
 }
@@ -147,7 +184,12 @@ export function focusNextApproval(): void {
     return
   }
 
-  document.querySelector<HTMLElement>('[data-ops-next-approval]')?.focus()
+  const root = document.querySelector<HTMLElement>(OPS_ROOT)
+  const next = root?.querySelector<HTMLElement>('[data-ops-next-approval]:not([hidden]):not([disabled])')
+
+  if (next && !next.closest('[hidden], [aria-hidden="true"]')) {
+    next.focus()
+  }
 }
 
 function tabCycle(combo: string): 1 | -1 | null {
@@ -196,6 +238,7 @@ export function claimOpsFocusedChord(event: KeyboardEvent, combo: string): boole
 
 function consumeLeader(key: string): boolean {
   leaderUntil = 0
+
   const view: Record<string, OpsView> = {
     o: 'office',
     c: 'canvas',
@@ -203,6 +246,7 @@ function consumeLeader(key: string): boolean {
     r: 'runs',
     s: 'skills'
   }
+
   const next = view[key]
 
   if (next) {
@@ -233,7 +277,14 @@ export function claimOpsRootKey(event: KeyboardEvent, combo: string): boolean {
     return false
   }
 
-  if (event.key === 'Escape' || combo === 'escape' || combo === 'mod+j' || combo === 'mod+w' || combo === 'mod+p' || combo === 'mod+g') {
+  if (
+    event.key === 'Escape' ||
+    combo === 'escape' ||
+    combo === 'mod+j' ||
+    combo === 'mod+w' ||
+    combo === 'mod+p' ||
+    combo === 'mod+g'
+  ) {
     return false
   }
 
@@ -271,7 +322,7 @@ export function claimOpsRootKey(event: KeyboardEvent, combo: string): boolean {
     return true
   }
 
-  if (combo === '/' ) {
+  if (combo === '/') {
     host?.focusRailFilter()
 
     return true
@@ -314,6 +365,11 @@ export function claimOpsRootKey(event: KeyboardEvent, combo: string): boolean {
   }
 
   if (combo === 'enter' || event.key === 'Enter') {
+    // Native buttons/links keep normal activation; only a row is an Ops action.
+    if (el?.closest('button, a') && !el.closest('[data-ops-row], [data-ops-fleet-row], [data-ops-open-route]')) {
+      return false
+    }
+
     host?.openFocused()
 
     return true

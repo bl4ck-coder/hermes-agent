@@ -1,24 +1,27 @@
 // Ops chrome on the existing titlebar, palette, and status bar. No second bar.
 
+import { useStore } from '@nanostores/react'
 import { atom } from 'nanostores'
 import { useEffect, useRef, useState } from 'react'
 
-import { setStatusbarItemGroup, setTitlebarToolGroup } from '@/app/contrib/panes'
-import type { TitlebarTool } from '@/app/shell/titlebar-controls'
+import { hermesApi } from '@/api/client'
+import { setStatusbarItemGroup, setTitlebarToolGroup } from '@/app/contrib/bar-groups'
 import type { StatusbarItem } from '@/app/shell/statusbar-controls'
+import type { TitlebarTool } from '@/app/shell/titlebar-controls'
+import { ReadonlyModelPill } from '@/components/model-pill-control'
+import { Button } from '@/components/ui/button'
 import { Contribute } from '@/contrib/react/contribute'
+import { PanelBottom, PanelLeftIcon, SearchIcon } from '@/lib/icons'
 import { TITLEBAR_AREAS } from '@/sdk/areas'
 import { openCommandPalettePage } from '@/store/command-palette'
-import { pushEscapeLayer, type EscapeLayerHandle } from '@/lib/escape-layers'
+import type { AnalyticsResponse, ModelInfoResponse, StatusResponse } from '@/types/hermes'
 
 import {
   MODEL_EDIT_UNAVAILABLE,
-  OPS_FULLSCREEN_PRIORITY,
-  OPS_LAYER_PRIORITY,
   OPS_PALETTE_PAGE,
-  registerOpsKeymapHost,
   type OpsKeymapHost,
-  type OpsTabClose
+  type OpsTabClose,
+  registerOpsKeymapHost
 } from './keymap'
 import { setOpsPaletteScope } from './palette'
 import { OpsShortcutSheet } from './shortcut-sheet'
@@ -60,19 +63,100 @@ export interface OpsChromeProps {
   chatHotHidden?: boolean
   modelLabel?: string | null
   sources: OpsStatusSources
-  fullscreen?: boolean
-  dockOverlay?: boolean
-  inspectorPopover?: boolean
+
   onCycleMotion?: () => void
   onToggleDock?: () => void
-  onExitFullscreen?: () => void
-  onCloseDockOverlay?: () => void
-  onCloseInspector?: () => void
+
   host?: Partial<OpsKeymapHost>
 }
 
 function sourcedNumber(value: number | null | undefined): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+}
+
+/** Existing REST contracts, pinned to one owner. Late replies never cross scopes. */
+export function useOpsBackendSources(connectionId: string, profile: string, enabled: boolean) {
+  const identity = `${connectionId}\0${profile}`
+
+  const [snapshot, setSnapshot] = useState<{
+    identity: string
+    gateway: OpsGatewaySource | null
+    todayTokens: OpsTokenSource | null
+    modelLabel: string | null
+  } | null>(null)
+
+  useEffect(() => {
+    if (!enabled || typeof window.hermesDesktop?.api !== 'function') {
+      return
+    }
+
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    const read = async () => {
+      const owner = { connectionId, profile }
+
+      const results = await Promise.allSettled([
+        hermesApi<StatusResponse>({ ...owner, path: '/api/status' }),
+        hermesApi<AnalyticsResponse>({ ...owner, path: '/api/analytics/usage?days=1' }),
+        hermesApi<ModelInfoResponse>({ ...owner, path: '/api/model/info', timeoutMs: 5000 })
+      ])
+
+      if (cancelled) {
+        return
+      }
+
+      const status = results[0].status === 'fulfilled' ? results[0].value : null
+      const usage = results[1].status === 'fulfilled' ? results[1].value : null
+      const model = results[2].status === 'fulfilled' ? results[2].value : null
+      // Existing analytics groups session starts by backend LOCAL calendar day.
+      // Remote timezone is not in this contract: never call a guessed bucket today.
+      const now = new Date()
+      const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      const row = usage?.daily?.find(item => item.day === day)
+
+      const total =
+        connectionId === 'local' && row && sourcedNumber(row.input_tokens) && sourcedNumber(row.output_tokens)
+          ? row.input_tokens + row.output_tokens
+          : null
+
+      setSnapshot({
+        identity,
+        gateway:
+          status?.version && typeof status.gateway_running === 'boolean'
+            ? {
+                health: status.gateway_heartbeat_stale_s
+                  ? 'stale'
+                  : status.gateway_running
+                    ? status.gateway_state || 'running'
+                    : 'stopped',
+                version: status.version
+              }
+            : null,
+        todayTokens:
+          total === null
+            ? null
+            : {
+                total,
+                provenance: `/api/analytics/usage · backend local ${day} · recorded session-start totals, input + output (A2 unavailable) · ${connectionId}/${profile}`
+              },
+        modelLabel: model?.provider && model.model ? `${profile} · ${model.provider} / ${model.model}` : null
+      })
+      timer = setTimeout(() => void read(), 60_000)
+    }
+
+    void read()
+
+    return () => {
+      cancelled = true
+
+      if (timer) {
+        clearTimeout(timer)
+      }
+    }
+  }, [connectionId, enabled, identity, profile])
+
+  return enabled && snapshot?.identity === identity ? snapshot : null
 }
 
 function textItem(id: string, label: string, title?: string): StatusbarItem {
@@ -96,14 +180,14 @@ export function opsStatusbarItems(
   }
 
   if (sourcedNumber(sources.workingCount)) {
-    left.push(textItem('ops-working', `${sources.workingCount} working`))
+    left.push(textItem('ops-working', `${sources.workingCount} working`, 'Fresh A1 fleet observation'))
   }
 
   if (sourcedNumber(sources.needsYouCount)) {
-    left.push(textItem('ops-needs-you', `${sources.needsYouCount} needs you`))
+    left.push(textItem('ops-needs-you', `${sources.needsYouCount} needs you`, 'Fresh A1/A3 fleet observation'))
   }
 
-  if (sources.todayTokens && sources.todayTokens.provenance) {
+  if (sources.todayTokens && sources.todayTokens.provenance && sourcedNumber(sources.todayTokens.total)) {
     left.push(textItem('ops-tokens', `${sources.todayTokens.total} tok`, sources.todayTokens.provenance))
   }
 
@@ -112,7 +196,13 @@ export function opsStatusbarItems(
   }
 
   if (sources.gateway?.health && sources.gateway.version) {
-    right.push(textItem('ops-gateway', `${sources.gateway.health} ${sources.gateway.version}`))
+    right.push(
+      textItem(
+        'ops-gateway',
+        `${sources.gateway.health} ${sources.gateway.version}`,
+        '/api/status gateway state + backend version · pinned owner'
+      )
+    )
   }
 
   if (sources.motionMode) {
@@ -145,23 +235,17 @@ export function opsStatusbarItems(
   return { left, right }
 }
 
-function tool(id: string, label: string, onSelect: () => void): TitlebarTool {
-  return { icon: <span aria-hidden="true" />, id, label, onSelect }
+function tool(id: string, label: string, icon: TitlebarTool['icon'], onSelect: () => void): TitlebarTool {
+  return { icon, id, label, onSelect }
 }
 
 export function OpsChrome({
   chatHotHidden = false,
   connectionId,
   connectionLabel,
-  dockOverlay = false,
-  fullscreen = false,
   host,
-  inspectorPopover = false,
   modelLabel,
-  onCloseDockOverlay,
-  onCloseInspector,
   onCycleMotion,
-  onExitFullscreen,
   onToggleDock,
   profile,
   profileLabel,
@@ -169,19 +253,19 @@ export function OpsChrome({
   viewLabel
 }: OpsChromeProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
+  const problemsCount = useStore($opsProblemsCount)
   const hostRef = useRef(host)
   hostRef.current = host
-  const sheetRelease = useRef<EscapeLayerHandle | null>(null)
-  const dockRelease = useRef<EscapeLayerHandle | null>(null)
-  const inspectorRelease = useRef<EscapeLayerHandle | null>(null)
-  const fullRelease = useRef<EscapeLayerHandle | null>(null)
 
   useEffect(() => {
     setOpsPaletteScope({ connectionId, profile })
-  }, [connectionId, profile])
+
+    return () => setOpsPaletteScope({ connectionId: '', profile: '' })
+  }, [connectionId, profile, viewLabel])
 
   useEffect(() => {
     const closeFocusedTab = (): OpsTabClose => hostRef.current?.closeFocusedTab?.() ?? 'pinned'
+
     const release = registerOpsKeymapHost({
       cycleTabs: direction => hostRef.current?.cycleTabs?.(direction),
       openSettings: () => hostRef.current?.openSettings?.(),
@@ -190,7 +274,6 @@ export function OpsChrome({
       go: view => hostRef.current?.go?.(view),
       newTask: () => hostRef.current?.newTask?.(),
       openShortcutSheet: () => {
-        hostRef.current?.openShortcutSheet?.()
         setSheetOpen(true)
       },
       editFocused: () => hostRef.current?.editFocused?.(),
@@ -198,7 +281,6 @@ export function OpsChrome({
       toggleInspector: () => hostRef.current?.toggleInspector?.(),
       toggleDock: () => {
         hostRef.current?.toggleDock?.()
-        onToggleDock?.()
       },
       moveSelection: delta => hostRef.current?.moveSelection?.(delta),
       openFocused: () => hostRef.current?.openFocused?.(),
@@ -206,22 +288,41 @@ export function OpsChrome({
       focusNextApproval: () => hostRef.current?.focusNextApproval?.(),
       exitFullscreen: () => {
         hostRef.current?.exitFullscreen?.()
-        onExitFullscreen?.()
       }
     })
 
     return release
-  }, [onExitFullscreen, onToggleDock])
+  }, [connectionId, profile, viewLabel])
 
   useEffect(() => {
     $opsProblemsCount.set(sourcedNumber(sources.problemsCount) ? sources.problemsCount : null)
-    const items = opsStatusbarItems(sources, profileLabel, { onCycleMotion, onToggleDock })
+
+    return () => {
+      $opsProblemsCount.set(null)
+    }
+  }, [connectionId, profile, sources.problemsCount])
+
+  useEffect(() => {
+    const items = opsStatusbarItems({ ...sources, problemsCount }, profileLabel, { onCycleMotion, onToggleDock })
     setStatusbarItemGroup(OPS_STATUSBAR_GROUP, items.left, 'left')
     setStatusbarItemGroup(OPS_STATUSBAR_GROUP, items.right, 'right')
-    setTitlebarToolGroup('ops-rail', [tool('ops-rail', 'Toggle rail', () => hostRef.current?.toggleRail?.())], 'left')
+    setTitlebarToolGroup(
+      'ops-rail',
+      [tool('ops-rail', 'Toggle rail', <PanelLeftIcon className="size-4" />, () => hostRef.current?.toggleRail?.())],
+      'left'
+    )
+    setTitlebarToolGroup(
+      'ops-dock',
+      [tool('ops-dock', 'Toggle dock', <PanelBottom className="size-4" />, () => hostRef.current?.toggleDock?.())],
+      'right'
+    )
     setTitlebarToolGroup(
       'ops-inspector',
-      [tool('ops-inspector', 'Toggle inspector', () => hostRef.current?.toggleInspector?.())],
+      [
+        tool('ops-inspector', 'Toggle inspector', <PanelLeftIcon className="size-4 rotate-180" />, () =>
+          hostRef.current?.toggleInspector?.()
+        )
+      ],
       'right'
     )
 
@@ -230,89 +331,42 @@ export function OpsChrome({
       setStatusbarItemGroup(OPS_STATUSBAR_GROUP, [], 'right')
       setTitlebarToolGroup('ops-rail', [], 'left')
       setTitlebarToolGroup('ops-inspector', [], 'right')
-      $opsProblemsCount.set(null)
+      setTitlebarToolGroup('ops-dock', [], 'right')
     }
-  }, [onCycleMotion, onToggleDock, profileLabel, sources])
+  }, [connectionId, profile, onCycleMotion, onToggleDock, profileLabel, problemsCount, sources])
 
+  // Escape belongs to the actual sheet, dock, inspector and split host.
   useEffect(() => {
-    sheetRelease.current = sheetOpen ? pushEscapeLayer(OPS_LAYER_PRIORITY) : null
-    dockRelease.current = dockOverlay ? pushEscapeLayer(OPS_LAYER_PRIORITY) : null
-    inspectorRelease.current = inspectorPopover ? pushEscapeLayer(OPS_LAYER_PRIORITY) : null
-    fullRelease.current = fullscreen ? pushEscapeLayer(OPS_FULLSCREEN_PRIORITY) : null
-    const sheet = sheetRelease.current
-    const dock = dockRelease.current
-    const inspector = inspectorRelease.current
-    const full = fullRelease.current
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) {
-        return
-      }
-
-      if (sheet?.isTop()) {
-        event.preventDefault()
-        setSheetOpen(false)
-
-        return
-      }
-
-      if (dock?.isTop()) {
-        event.preventDefault()
-        onCloseDockOverlay?.()
-
-        return
-      }
-
-      if (inspector?.isTop()) {
-        event.preventDefault()
-        onCloseInspector?.()
-
-        return
-      }
-
-      if (full?.isTop()) {
-        event.preventDefault()
-        onExitFullscreen?.()
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      sheet?.()
-      dock?.()
-      inspector?.()
-      full?.()
-    }
-  }, [dockOverlay, fullscreen, inspectorPopover, onCloseDockOverlay, onCloseInspector, onExitFullscreen, sheetOpen])
+    setSheetOpen(false)
+  }, [connectionId, profile, viewLabel])
 
   const crumb = [connectionLabel, profileLabel, viewLabel].filter(Boolean).join(' / ')
   const showChip = chatHotHidden && Boolean(modelLabel)
 
   return (
-    <div className="contents" data-ops-chrome="" data-ops-root="">
+    <div className="contents" data-ops-chrome="">
       <Contribute area={TITLEBAR_AREAS.center} id="ops-chrome">
-        <div data-ops-titlebar="">
+        <div className="flex min-w-0 items-center gap-2" data-ops-titlebar="">
           {crumb ? (
             <nav aria-label="Ops breadcrumb" data-ops-breadcrumb="">
               {crumb}
             </nav>
           ) : null}
-          <button data-ops-search-trigger="" onClick={() => openCommandPalettePage(OPS_PALETTE_PAGE)} type="button">
-            Search Ops
-          </button>
+          <Button
+            data-ops-search-trigger=""
+            onClick={() => openCommandPalettePage(OPS_PALETTE_PAGE)}
+            size="sm"
+            variant="ghost"
+          >
+            <SearchIcon className="size-4" /> Search Ops
+          </Button>
           {showChip ? (
-            <button
-              aria-disabled="true"
-              data-ops-model-chip=""
-              disabled
-              onClick={event => event.preventDefault()}
-              title={MODEL_EDIT_UNAVAILABLE}
-              type="button"
-            >
-              {modelLabel}
-            </button>
+            <ReadonlyModelPill
+              connectionId={connectionId}
+              label={modelLabel!}
+              profile={profile}
+              reason={MODEL_EDIT_UNAVAILABLE}
+            />
           ) : null}
         </div>
       </Contribute>

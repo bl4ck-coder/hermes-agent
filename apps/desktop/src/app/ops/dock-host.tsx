@@ -5,6 +5,9 @@
  */
 
 import type { ReactNode } from 'react'
+import { useStore } from '@nanostores/react'
+import { $opsProblemsCount } from './chrome'
+import { useOpsEscapeLayer } from './keymap'
 
 import { type DockSlot } from './navigation-store'
 import { Dock, type DockProblem } from './primitives/dock'
@@ -12,6 +15,7 @@ import { Dock, type DockProblem } from './primitives/dock'
 export type { DockProblem }
 
 export interface DockHostProps {
+  active?: boolean
   open: boolean
   slot: DockSlot
   label?: string
@@ -22,7 +26,19 @@ export interface DockHostProps {
   onClose: () => void
 }
 
-export function DockHost({ events, label, logLines, onClose, onSlot, open, problems, slot }: DockHostProps) {
+export function DockHost({
+  active = true,
+  events,
+  label,
+  logLines,
+  onClose,
+  onSlot,
+  open,
+  problems,
+  slot
+}: DockHostProps) {
+  const problemsCount = useStore($opsProblemsCount)
+  useOpsEscapeLayer(active && open, onClose)
   if (!open) {
     return null
   }
@@ -48,6 +64,7 @@ export function DockHost({ events, label, logLines, onClose, onSlot, open, probl
         onClose={onClose}
         onSlotChange={onSlot}
         problems={problems}
+        problemsCount={problemsCount}
         slot={slot}
       />
     </div>
