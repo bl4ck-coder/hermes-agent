@@ -5,7 +5,7 @@ import { createElement } from 'react'
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { OpsMotionReadout, OpsStreamText } from './primitives/presence-glyph'
+import { OpsMotionReadout, OpsMotionScope, OpsStreamText, ThinkingReadout } from './primitives/presence-glyph'
 import {
   EASE,
   EASE_DRAWER,
@@ -118,6 +118,15 @@ describe('motion resolution', () => {
     expect(css).toContain("[data-ops-motion='reduced'] .ops-kf-pop")
     expect(css).toContain("[data-ops-motion='reduced'] .ops-presence-pulse")
     expect(css).toContain("[data-ops-motion='reduced'] .ops-stream")
+    expect(css).toContain("[data-ops-motion='full'] .ops-drift")
+    expect(css).toContain("[data-ops-motion='full'] .ops-flip")
+    expect(css).toContain("[data-ops-motion='full'] .ops-stream__caret[data-blink='on']")
+    expect(css).toContain("[data-ops-motion='full'] .ops-presence-pulse")
+    expect(css).toContain("[data-ops-motion='reduced'] .glyph-spinner__strip")
+    expect(css).toContain('animation-name: ops-drift !important')
+    expect(css).toContain('animation-name: ops-flip !important')
+    expect(css).toContain('animation-name: ops-caret !important')
+    expect(css).toContain('animation-play-state: paused !important')
     expect(MOTION_ROW_DESCRIPTION).toBe('States still change and stay readable')
   })
 
@@ -144,6 +153,33 @@ describe('motion resolution', () => {
     installMatchMedia(true)
     const forced = render(createElement(OpsMotionReadout, { preference: 'full' }))
     expect(forced.container.textContent).toBe('full')
+  })
+
+  it('pauses the reused spinner when System flips to reduce, and keeps stream text', () => {
+    const media = installMatchMedia(false)
+    const view = render(
+      createElement(OpsMotionScope, {
+        preference: 'system',
+        children: [
+          createElement(ThinkingReadout, { seconds: 66, tokens: null }),
+          createElement(OpsStreamText, { text: 'sse delta still readable' })
+        ]
+      })
+    )
+    const spinner = () => view.container.querySelector('.glyph-spinner')
+
+    expect(view.container.querySelector('[data-ops-motion]')?.getAttribute('data-ops-motion')).toBe('full')
+    expect(spinner()?.getAttribute('data-paused')).toBeNull()
+    expect(view.container.textContent).toContain('sse delta still readable')
+
+    act(() => media.set(true))
+
+    expect(view.container.querySelector('[data-ops-motion-preference="system"]')?.getAttribute('data-ops-motion')).toBe(
+      'reduced'
+    )
+    expect(spinner()?.getAttribute('data-paused')).toBe('true')
+    expect(view.container.querySelector('.ops-stream__text')?.textContent).toBe('sse delta still readable')
+    expect(view.container.querySelector('.ops-stream__caret')?.getAttribute('data-blink')).toBe('off')
   })
 
   it('keeps reduced-motion streaming text readable and the caret still', () => {

@@ -243,7 +243,10 @@ export function resolvePresence(input: PresenceInput): PresenceResolution {
 
   if (input.gatewayUp && input.noWork) return pack('idle')
 
-  // Fresh read, no idle confirmation, no work event. Do not paint idle.
+  // Fresh read that names neither work nor idle. The freeze's unknown mark is
+  // "never observed" (no observed_at, handled above). This branch is a fresh
+  // observation that is still unclassified. It stays unknown so it cannot be
+  // painted idle. It is not a second presence state.
   return pack('unknown')
 }
 

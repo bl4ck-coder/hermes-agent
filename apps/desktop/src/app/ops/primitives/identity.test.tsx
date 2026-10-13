@@ -16,7 +16,7 @@ import {
   whyFooterContrast,
   whyFooterText
 } from '../motion'
-import { CanvasKindIcon, PresenceGlyph, ThinkingReadout } from './presence-glyph'
+import { CanvasKindIcon, OpsMotionScope, PresenceGlyph, ThinkingReadout } from './presence-glyph'
 import { Sigil } from './sigil'
 import { WhyFooter } from './why-footer'
 
@@ -116,6 +116,8 @@ describe('presence states', () => {
       expect(root?.getAttribute('data-state')).toBe(row.state)
       expect(root?.getAttribute('aria-label')).toContain(row.label)
       expect(glyph?.getAttribute('data-shape')).toBe(row.shape)
+      expect(glyph?.getAttribute('width')).toBe('12')
+      expect(glyph?.getAttribute('height')).toBe('12')
       expect(label?.textContent).toBe(row.label)
       expect(label?.getAttribute('data-copy')).toBe(resolved.copyColor)
       expect(resolved.copyColor).toMatch(/^#[0-9A-F]{6}$/)
@@ -193,6 +195,9 @@ describe('presence states', () => {
     expect(glyph?.getAttribute('data-shape')).toBe('reduced-disc')
     expect(glyph?.getAttribute('data-hollow')).toBe('false')
     expect(glyph?.getAttribute('data-gap')).toBe('0')
+    expect(glyph?.getAttribute('width')).toBe('12')
+    expect(glyph?.getAttribute('height')).toBe('12')
+    expect(container.querySelector('.ops-presence')?.getAttribute('data-paused')).toBe('true')
     expect(glyph?.getAttribute('data-shape')).not.toBe('ringed')
     expect(container.querySelector('.ops-presence__label')?.textContent).toBe('thinking')
   })
@@ -265,6 +270,10 @@ describe('sigil identity', () => {
       expect(spec.disc).toBeNull()
       expect(spec.rim).toBeNull()
       expect(view.container.querySelector('[data-empty-dot="true"]')).not.toBeNull()
+      const dot = view.container.querySelector('.ops-sigil__dot') as HTMLElement | null
+      expect(dot?.style.width).toBe('3px')
+      expect(dot?.style.height).toBe('3px')
+      expect(view.container.querySelector('.ops-sigil')?.getAttribute('data-size')).toBe('12')
       view.unmount()
     }
   })
@@ -316,8 +325,18 @@ describe('reused readout and kind icons', () => {
     const empty = render(<ThinkingReadout seconds={66} tokens={null} />)
 
     expect(empty.container.querySelector('[aria-label="thinking"]')).not.toBeNull()
+    expect(empty.container.querySelector('.glyph-spinner')?.getAttribute('data-paused')).toBeNull()
     expect(empty.container.querySelector('[data-tokens]')?.textContent).toBe('')
     empty.unmount()
+
+    const reduced = render(
+      <OpsMotionScope preference="reduced">
+        <ThinkingReadout seconds={66} tokens={null} />
+      </OpsMotionScope>
+    )
+    expect(reduced.container.querySelector('.glyph-spinner')?.getAttribute('data-paused')).toBe('true')
+    expect(reduced.container.querySelector('.ops-thinking')?.getAttribute('data-ops-motion')).toBe('reduced')
+    reduced.unmount()
 
     const known = render(<ThinkingReadout seconds={66} tokens={2700} />)
     expect(known.container.querySelector('[data-tokens]')?.textContent).toBe('2700')

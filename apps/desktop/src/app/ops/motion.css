@@ -212,6 +212,55 @@
   border-radius: 0;
 }
 
+/* Primitive-owned slot. Do not wait for a consumer stylesheet. */
+.ops-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.ops-presence__slot {
+  display: inline-flex;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  aspect-ratio: 1;
+}
+
+.ops-presence__glyph {
+  display: block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  aspect-ratio: 1;
+  overflow: visible;
+}
+
+.ops-sigil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  box-sizing: border-box;
+  font-size: 6px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.ops-sigil__dot {
+  display: block;
+  flex: none;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+}
+
 [data-ops-motion='reduced'] .ops-kf-rise,
 [data-ops-motion='reduced'] .ops-kf-done,
 [data-ops-motion='reduced'] .ops-kf-strike,
@@ -234,17 +283,19 @@
   transform: none;
 }
 
+/* Same paused path as an offscreen row: Reduced stops the reused spinner. */
+[data-ops-motion='reduced'] .glyph-spinner__strip {
+  animation-play-state: paused !important;
+}
+
 .ops-presence[data-paused='true'] .ops-presence-pulse {
   animation: none;
 }
 
-/* Full is an explicit override of the OS reduce blanket in styles.css. */
+/* Full is an explicit override of the OS reduce blanket in styles.css.
+   Specificity beats `* { animation-duration/iteration-count !important }`. */
 @media (prefers-reduced-motion: reduce) {
-  [data-ops-motion='full'] .ops-kf-rise {
-    animation-duration: var(--dur-panel) !important;
-    animation-iteration-count: 1 !important;
-  }
-
+  [data-ops-motion='full'] .ops-kf-rise,
   [data-ops-motion='full'] .ops-kf-land,
   [data-ops-motion='full'] .ops-kf-done,
   [data-ops-motion='full'] .ops-kf-strike,
@@ -252,20 +303,96 @@
   [data-ops-motion='full'] .ops-kf-grow {
     animation-duration: var(--dur-panel) !important;
     animation-iteration-count: 1 !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-rise {
+    animation-name: ops-rise !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-land {
+    animation-name: ops-land !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-done {
+    animation-name: ops-done !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-strike {
+    animation-name: ops-strike !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-slide {
+    animation-name: ops-slide !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-grow {
+    animation-name: ops-grow !important;
   }
 
   [data-ops-motion='full'] .ops-kf-pop,
   [data-ops-motion='full'] .ops-kf-add {
     animation-duration: var(--dur-micro) !important;
     animation-iteration-count: 1 !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-pop {
+    animation-name: ops-pop !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-add {
+    animation-name: ops-add !important;
+  }
+
+  [data-ops-motion='full'] .ops-drift,
+  [data-ops-motion='full'].ops-drift {
+    animation-name: ops-drift !important;
+    animation-duration: 8s !important;
+    animation-iteration-count: infinite !important;
+    animation-direction: alternate !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-flip,
+  [data-ops-motion='full'].ops-flip {
+    animation-name: ops-flip !important;
+    animation-duration: var(--dur-view) !important;
+    animation-iteration-count: 1 !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-stream__caret[data-blink='on'] {
+    animation-name: ops-caret !important;
+    animation-duration: 1s !important;
+    animation-timing-function: step-end !important;
+    animation-iteration-count: infinite !important;
+    animation-play-state: running !important;
   }
 
   [data-ops-motion='full'] .ops-presence-pulse {
-    animation-duration: 1000ms !important;
+    animation-name: ops-presence-pulse !important;
+    animation-duration: var(--ops-pulse-period, 1000ms) !important;
     animation-iteration-count: infinite !important;
+    animation-play-state: running !important;
   }
 
-  [data-ops-motion='full'] .ops-stream {
+  [data-ops-motion='full'] .glyph-spinner:not([data-paused='true']) .glyph-spinner__strip {
+    animation-name: glyph-spinner-advance !important;
+    animation-duration: var(--glyph-spinner-duration, 1700ms) !important;
+    animation-iteration-count: infinite !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='reduced'] .glyph-spinner__strip {
+    animation-name: glyph-spinner-advance !important;
+    animation-duration: var(--glyph-spinner-duration, 1700ms) !important;
+    animation-iteration-count: infinite !important;
+    animation-play-state: paused !important;
+  }
+
+  [data-ops-motion='full'] .ops-stream,
+  [data-ops-motion='reduced'] .ops-stream {
     opacity: 1 !important;
   }
 }

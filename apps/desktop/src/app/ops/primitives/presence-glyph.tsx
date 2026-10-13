@@ -1,6 +1,6 @@
 import '../motion.css'
 
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { Brain, Circle, Clock, Cpu, FileText, Radio, Sparkles, Users, Webhook, Wrench } from 'lucide-react'
 
 import { GlyphSpinner } from '@/components/ui/glyph-spinner'
@@ -54,11 +54,15 @@ const GEOMETRY: Record<PresenceShape, Record<string, string>> = {
   'static-disc': { 'data-disc-d': '8', 'data-stroke': '0', 'data-pulse': 'off' }
 }
 
+const OpsMotionContext = createContext<ResolvedMotion | null>(null)
+
 function GlyphSvg({ shape, color }: { shape: PresenceShape; color: string }) {
   const common = {
     'aria-hidden': true as const,
     className: 'ops-presence__glyph',
     'data-shape': shape,
+    height: 12,
+    width: 12,
     ...GEOMETRY[shape]
   }
 
@@ -144,13 +148,16 @@ export function PresenceGlyph({
   glyphColor,
   copyColor,
   pulse = false,
-  motion = 'full',
+  motion: motionProp = 'full',
   className
 }: PresenceGlyphProps) {
   const visible = usePaneVisible()
+  const scoped = useContext(OpsMotionContext)
+  const motion = scoped ?? motionProp
   const shape = presenceShape(state, motion)
   const pulsing = pulse && motionFeatureOn(motion, 'pulse') && visible && state === 'working'
   const shapeName = SHAPE_NAME[shape]
+  const paused = !visible || motion === 'reduced'
 
   return (
     <span
@@ -158,12 +165,12 @@ export function PresenceGlyph({
       className={cn('ops-presence', className)}
       data-focus-shape="rect"
       data-ops-motion={motion}
-      data-paused={visible ? undefined : 'true'}
+      data-paused={paused ? 'true' : undefined}
       data-pulse={pulsing ? 'on' : 'off'}
       data-state={state}
       role="img"
     >
-      <span className={pulsing ? 'ops-presence-pulse' : undefined}>
+      <span className={pulsing ? 'ops-presence__slot ops-presence-pulse' : 'ops-presence__slot'}>
         <GlyphSvg color={glyphColor} shape={shape} />
       </span>
       <span className="ops-presence__label" data-copy={copyColor} style={{ color: copyColor }}>
@@ -183,9 +190,11 @@ export function OpsMotionScope({ preference, children }: { preference: MotionPre
   const mode = useOpsMotion(preference)
 
   return (
-    <div data-ops-motion={mode} data-ops-motion-preference={preference}>
-      {children}
-    </div>
+    <OpsMotionContext.Provider value={mode}>
+      <div data-ops-motion={mode} data-ops-motion-preference={preference}>
+        {children}
+      </div>
+    </OpsMotionContext.Provider>
   )
 }
 
@@ -196,7 +205,9 @@ export function OpsMotionReadout({ preference }: { preference: MotionPreference 
 }
 
 /** SSE text stays in the DOM. Reduced motion stops the caret blink, not the words. */
-export function OpsStreamText({ text, motion }: { text: string; motion: ResolvedMotion }) {
+export function OpsStreamText({ text, motion: motionProp }: { text: string; motion?: ResolvedMotion }) {
+  const scoped = useContext(OpsMotionContext)
+  const motion = scoped ?? motionProp ?? 'full'
   const blink = motionFeatureOn(motion, 'caret')
 
   return (
@@ -207,13 +218,25 @@ export function OpsStreamText({ text, motion }: { text: string; motion: Resolved
   )
 }
 
-/** G45: existing GlyphSpinner breathe + ActivityTimerText. Null tokens render nothing. */
-export function ThinkingReadout({ seconds, tokens }: { seconds: number; tokens: number | null }) {
+/** G45: existing GlyphSpinner breathe + ActivityTimerText. Null tokens render nothing.
+ *  Reduced (local or System→reduce) uses GlyphSpinner's paused path. No second spinner. */
+export function ThinkingReadout({
+  seconds,
+  tokens,
+  motion: motionProp
+}: {
+  seconds: number
+  tokens: number | null
+  motion?: ResolvedMotion
+}) {
+  const scoped = useContext(OpsMotionContext)
+  const motion = motionProp ?? scoped ?? 'full'
   const shown = tokensText(tokens)
+  const paused = motion === 'reduced'
 
   return (
-    <span className="ops-thinking">
-      <GlyphSpinner ariaLabel="thinking" className="ops-thinking__spinner" spinner="breathe" />
+    <span className="ops-thinking" data-ops-motion={motion}>
+      <GlyphSpinner ariaLabel="thinking" className="ops-thinking__spinner" paused={paused} spinner="breathe" />
       <ActivityTimerText seconds={seconds} />
       <span data-tokens="">{shown}</span>
     </span>
