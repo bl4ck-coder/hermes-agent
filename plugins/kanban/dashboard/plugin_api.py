@@ -25,7 +25,8 @@ from typing import Any, Callable, Iterator, Optional
 
 from fastapi import (
     APIRouter, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status as http_status)
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from starlette.requests import Request
 from pydantic import BaseModel, Field
 
 from hermes_cli import kanban_db
@@ -1819,3 +1820,71 @@ async def stream_events(ws: WebSocket):
             pass
     finally:
         await tail.shutdown()
+
+
+# --- SSE: GET /events/stream?board=<slug> (ops-panel P1-05, A7) --------------------------------
+# Same producer, frame rows and cursor as the WebSocket above: each SSE message is one
+# ``task_events`` row and its SSE ``id`` is ``task_events.id``. Resume with the standard
+# ``Last-Event-ID`` header (EventSource sends it on reconnect) or ``?last_event_id=``; a missing
+# cursor starts at the board's tail (never a full-history replay), so a reconnect with the last
+# seen id loses nothing and repeats nothing.
+
+_SSE_KEEPALIVE_SECONDS = 15.0
+# Test seam: stop after N polls (None = run until the client disconnects).
+_SSE_MAX_POLLS: Optional[int] = None
+
+
+def _sse_cursor(header_value: Optional[str], query_value: Optional[str]) -> Optional[int]:
+    for raw in (header_value, query_value):
+        if raw is None or not str(raw).strip():
+            continue
+        try:
+            return max(0, int(str(raw).strip()))
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _sse_frame(event: dict) -> str:
+    return f"id: {event['id']}\nevent: kanban\ndata: {json.dumps(event, separators=(',', ':'))}\n\n"
+
+
+async def _sse_kanban_events(tail: "_EventTail", cursor: Optional[int],
+                             is_disconnected: Callable[[], Any]):
+    try:
+        if cursor is None:
+            cursor = await tail.latest()
+        yield f"retry: 2000\n: cursor {cursor}\n\n"
+        polls = 0
+        idle = 0.0
+        while True:
+            if await is_disconnected():
+                return
+            cursor, events = await tail.poll(cursor)
+            for ev in events:
+                yield _sse_frame(ev)
+            polls += 1
+            if _SSE_MAX_POLLS is not None and polls >= _SSE_MAX_POLLS:
+                return
+            if events:
+                idle = 0.0
+                continue  # drain a backlog (200 rows per poll) without sleeping
+            idle += _EVENT_POLL_SECONDS
+            if idle >= _SSE_KEEPALIVE_SECONDS:
+                idle = 0.0
+                yield ": keepalive\n\n"
+            await asyncio.sleep(_EVENT_POLL_SECONDS)
+    finally:
+        await tail.shutdown()
+
+
+@router.get("/events/stream")
+async def stream_events_sse(request: Request, board: Optional[str] = None,
+                            last_event_id: Optional[str] = None):
+    board_slug = _resolve_board(board)
+    cursor = _sse_cursor(request.headers.get("last-event-id"), last_event_id)
+    tail = _EventTail(board_slug)
+    return StreamingResponse(
+        _sse_kanban_events(tail, cursor, request.is_disconnected),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
