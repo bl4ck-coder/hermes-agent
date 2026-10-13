@@ -69,7 +69,7 @@ Count level-2 headings whose text is `Entry` plus a two-digit id. There are 19, 
 - Site: Outglow
 - Wireframes: W4
 - Rows: G37, G47, G48, G49
-- Seen: `Edit` on the Instructions node (`Product Discovery Agent`, version line, owner Arek). No editor panel opened. Three-column canvas and run panel still visible. Channels still `Set identity`.
+- Seen: `Edit` on the Instructions node (`Product Discovery Agent`, version line, owner Arek). No editor panel opened. Three-column canvas and run panel still visible. Channels still `Set identity`. No node spinner.
 - Freeze: Prompt `[Edit]` stays in the W4 fence. Do not invent the editor chrome the shot did not open.
 
 ## Entry 06
@@ -93,8 +93,8 @@ Count level-2 headings whose text is `Entry` plus a two-digit id. There are 19, 
 - Site: Outglow
 - Wireframes: W4
 - Rows: G37, G47, G48, G49, G54
-- Seen: same canvas, run panel open, Tools column cropped by the frame. Schedule, Triggers, Channels (`Set identity`), Memory, Agent, Instructions visible. Dotted grid. Zoom `100%`. Thinking `1m 6s · 2.7k tokens`. Usage banner in the run panel. No node spinner.
-- Freeze: partial view of W4, not a different layout. G54 is not depicted. Do not drop the right column because this frame crops it. Entry 01 is the uncropped sibling.
+- Seen: same canvas, run panel open. Only a `Tools` node is visible in the right column. Sub-agents and Skills are not drawn. Empty canvas to its right. Schedule, Triggers, Channels (`Set identity`), Memory, Agent, Instructions visible and rendered normally. Dotted grid. Zoom `100%`. Thinking `1m 6s · 2.7k tokens`. Usage banner in the run panel. The Tools node shows a partial-arc loading spinner and shimmer on that node only (original PNG, region x700-850 y72-108). Neighbours do not spin.
+- Freeze: partial view of W4, not a different layout. G54 is depicted in 07: per-node loading, neighbours unaffected. Hue is not copied; the freeze is gold shimmer. Do not drop the right column. Entries 01 and 08 are the complete G48 topology. The missing Sub-agents and Skills nodes are not proven by this frame. REPORT.md:58: nodes appear progressively during replay.
 
 ## Entry 08
 
@@ -105,7 +105,7 @@ Count level-2 headings whose text is `Entry` plus a two-digit id. There are 19, 
 - Site: Outglow
 - Wireframes: W4
 - Rows: G37, G47, G48, G49
-- Seen: run panel hidden. Three columns remain: inputs, Agent/Instructions, Tools/Sub-agents/Skills. Zoom `100%` bottom centre. Sidebar full. Dotted grid. No reflow into a new topology.
+- Seen: run panel hidden. Three columns remain: inputs, Agent/Instructions, Tools/Sub-agents/Skills. Zoom `100%` bottom centre. Sidebar full. Dotted grid. No reflow into a new topology. No node spinner.
 - Freeze: hide removes the panel only. G48 columns stay. This is the comparison shot for "run panel hidden".
 
 ## Entry 09
@@ -117,8 +117,8 @@ Count level-2 headings whose text is `Entry` plus a two-digit id. There are 19, 
 - Site: Outglow
 - Wireframes: W1 filter, W4 behind it
 - Rows: G17, G47, G48
-- Seen: sidebar search contains `design`. No result list opened. Canvas still shows Schedule, Triggers, Channels, Memory, Agent, Instructions. Right column cropped. Run panel still streaming (`Thinking 1m 4s · 2.6k tokens`).
-- Freeze: the filter accepts text. Do not invent results. An empty result is an empty state, not a failed page (W10).
+- Seen: sidebar search contains `design`. No result list opened. Canvas still shows Schedule, Triggers, Channels, Memory, Agent, Instructions. No right column visible. Empty canvas right of Agent/Instructions. No node spinner. Run panel still streaming (`Thinking 1m 4s · 2.6k tokens`).
+- Freeze: the filter accepts text. Do not invent results. An empty result is an empty state, not a failed page (W10). Do not drop the right column. Entries 01 and 08 are the complete G48 topology. The missing right column is not proven by this frame. REPORT.md:58: nodes appear progressively during replay.
 
 ## Entry 10
 
@@ -246,7 +246,7 @@ Count level-2 headings whose text is `Entry` plus a two-digit id. There are 19, 
 
 ## Blocker B2
 
-Gr8r Studio has no screenshot in the 19. REPORT section 4 describes the demo page and does not name a `gr8r-*.png`. R32 (one 24 px gutter) and R53 (1280 / 1024 / 800 on the Ops pane container) are frozen from SPEC section 12.3, SPEC row R53, and P0-04 `desktop-surface-audit.md` lines 100-114. They are not measured off a picture. No Orbit or Outglow shot was substituted for a Gr8r shot. W5 stays the SPEC fence.
+Gr8r Studio has no screenshot in the 19. REPORT section 1, line 15 describes the demo page and does not name a `gr8r-*.png`. R32 (one 24 px gutter) and R53 (1280 / 1024 / 800 on the Ops pane container) are frozen from SPEC section 12.3, SPEC row R53, and P0-04 `desktop-surface-audit.md` lines 100-114. They are not measured off a picture. No Orbit or Outglow shot was substituted for a Gr8r shot. W5 stays the SPEC fence.
 
 ## Blocker B3
 
@@ -266,8 +266,8 @@ No shot shows the icon rail (O44 middle state, G17, R53 under 1024 px). Entry 17
 | G17 | 02, 04, 09, 12 | Full sidebar. Persisted icon collapse is B3. |
 | G37 | 01, 03, 05, 07, 08 | Collapsible node headers depicted. |
 | G47 | 01, 03, 05, 07, 08, 09 | Dotted grid depicted. Gold at 6% is the freeze, not the shot's grey. |
-| G48 | 01, 03, 05, 07, 08, 09 | Three columns depicted in 01 and 08. 07 and 09 crop the right column. |
+| G48 | 01, 03, 05, 07, 08, 09 | Three columns depicted in 01 and 08 (complete topology). 07 shows only a `Tools` node in the right column (Sub-agents/Skills not drawn, empty canvas to its right). 09 has no right column visible (empty canvas right of Agent/Instructions). Not proven by the frame. REPORT.md:58: nodes appear progressively during replay. Do not drop the right column. |
 | G49 | 01, 03, 05, 07, 08 | Ports depicted in blue/orange. Freeze colours differ. |
-| G54 | 01, 07, 18 | Not depicted. Not cut. |
+| G54 | 01, 07, 18 | Depicted in 07 (per-node loading on Tools, neighbours unaffected; hue not copied, freeze is gold shimmer). Not depicted in 01 or 18. Not cut. |
 | R32 | 01, 06, 10, 11 | Not measured. Number is SPEC 24 px. Gr8r shot missing (B2). |
 | R53 | 06, 11, 17 | Not measured. Entry 17 is not the 1024 px rule (B3). Gr8r shot missing (B2). |
