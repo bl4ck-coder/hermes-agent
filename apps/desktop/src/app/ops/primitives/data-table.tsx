@@ -1,7 +1,7 @@
 import '../motion.css'
 
 import type { CSSProperties, ReactNode } from 'react'
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
@@ -117,6 +117,7 @@ function ariaSort(active: boolean, direction: SortDirection | null): 'ascending'
 
 function DescriptionCell({ rowId, text }: { rowId: string; text: string }) {
   const [open, setOpen] = useState(false)
+  const descriptionId = `${useId()}-${rowId}`
   const truncated = text.length > DESCRIPTION_PREVIEW
   const preview = truncated ? `${text.slice(0, DESCRIPTION_PREVIEW).trimEnd()}…` : text
 
@@ -127,7 +128,7 @@ function DescriptionCell({ rowId, text }: { rowId: string; text: string }) {
         <Popover onOpenChange={setOpen} open={open}>
           <PopoverTrigger asChild>
             <button
-              aria-controls={`ops-description-${rowId}`}
+              aria-controls={descriptionId}
               aria-expanded={open}
               className="ops-description__show"
               onKeyDown={event => {
@@ -141,7 +142,7 @@ function DescriptionCell({ rowId, text }: { rowId: string; text: string }) {
               Show
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" id={`ops-description-${rowId}`} role="dialog">
+          <PopoverContent align="start" id={descriptionId} role="dialog">
             <p data-full-description>{text}</p>
           </PopoverContent>
         </Popover>
@@ -265,18 +266,48 @@ export function DataTable<T>({
   )
 }
 
+/** Clip the native source of truth. The themed trigger is the only painted control. */
+export const nativeSourceStyle: CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: 0,
+  height: 0,
+  margin: 0,
+  padding: 0,
+  border: 0,
+  opacity: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+  pointerEvents: 'none'
+}
+
 /** R41: themed radix Select. The native select is the value source of truth. */
 export function OpsSelect({ label, name, onValueChange, options, value }: OpsSelectProps) {
-  const labelId = `ops-select-${name ?? label.replace(/\s+/g, '-').toLowerCase()}`
+  const labelId = `${useId()}-label`
+  const nativeRef = useRef<HTMLSelectElement>(null)
+
+  const commit = (next: string) => {
+    if (nativeRef.current && nativeRef.current.value !== next) {
+      nativeRef.current.value = next
+    }
+
+    onValueChange(next)
+  }
 
   return (
-    <div className="ops-select" data-radix="select" style={opsDensityStyle()}>
+    <div className="ops-select" data-radix="select" style={{ ...opsDensityStyle(), position: 'relative' }}>
       <span id={labelId}>{label}</span>
       <select
         aria-hidden="true"
+        className="sr-only"
         data-source-of-truth="native"
         name={name}
-        onChange={event => onValueChange(event.target.value)}
+        onChange={event => commit(event.target.value)}
+        ref={nativeRef}
+        style={nativeSourceStyle}
         tabIndex={-1}
         value={value}
       >
@@ -286,7 +317,7 @@ export function OpsSelect({ label, name, onValueChange, options, value }: OpsSel
           </option>
         ))}
       </select>
-      <Select onValueChange={onValueChange} value={value}>
+      <Select onValueChange={commit} value={value}>
         <SelectTrigger aria-labelledby={labelId}>
           <SelectValue />
         </SelectTrigger>
