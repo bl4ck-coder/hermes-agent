@@ -1,6 +1,6 @@
 import '../motion.css'
 
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -72,6 +72,40 @@ export function approvalPreview(item: Pick<OpsToastItem, 'command' | 'args'>, bu
   }
 }
 
+/** O8: a char budget is not enough. Approve only when the full string is inside the toast. */
+export function previewIsCropped(preview: HTMLElement, card: HTMLElement) {
+  const text = preview.getBoundingClientRect()
+  const box = card.getBoundingClientRect()
+
+  if (text.width === 0 && text.height === 0) {
+    return false
+  }
+
+  const view = preview.ownerDocument.defaultView
+  const viewportRight = view?.innerWidth ?? box.right
+  const viewportBottom = view?.innerHeight ?? box.bottom
+  const eps = 1
+  const pastCard =
+    text.right > box.right + eps ||
+    text.bottom > box.bottom + eps ||
+    text.left < box.left - eps ||
+    text.top < box.top - eps
+  const pastView = text.right > viewportRight + eps || text.bottom > viewportBottom + eps || text.left < -eps
+  const overflowed = preview.scrollWidth > preview.clientWidth + eps || preview.scrollHeight > preview.clientHeight + eps
+
+  return pastCard || pastView || overflowed
+}
+
+export const approvalPreviewStyle = {
+  display: 'block',
+  maxWidth: '100%',
+  minWidth: 0,
+  overflow: 'visible',
+  overflowWrap: 'anywhere',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word'
+} as const
+
 export function queueToasts(items: OpsToastItem[], dismissed: Pick<DismissalStore, 'has'>) {
   const seen = new Set<string>()
   const fresh = items.filter(item => {
@@ -104,23 +138,64 @@ export interface ToastQueueProps {
   dismissals?: DismissalStore
 }
 
-function ToastActions({ item, now }: { item: OpsToastItem; now: number }) {
+function ApprovalPreview({ item }: { item: OpsToastItem }) {
   const preview = approvalPreview(item)
+  const spanRef = useRef<HTMLSpanElement>(null)
+  const [cropped, setCropped] = useState(false)
+  const text = preview.fits ? preview.full : preview.text
 
-  if (item.kind === 'approval') {
-    if (preview.action === 'approve' && item.onApprove) {
-      return (
+  useLayoutEffect(() => {
+    const el = spanRef.current
+    const card = el?.closest('[data-toast-id]')
+
+    if (!el || !(card instanceof HTMLElement) || !preview.fits) {
+      setCropped(false)
+      return
+    }
+
+    const measure = () => setCropped(previewIsCropped(el, card))
+
+    measure()
+
+    if (typeof ResizeObserver === 'undefined') {
+      return
+    }
+
+    const observer = new ResizeObserver(measure)
+    observer.observe(card)
+    observer.observe(el)
+
+    return () => observer.disconnect()
+  }, [preview.fits, preview.full])
+
+  const approve = preview.action === 'approve' && !cropped && Boolean(item.onApprove)
+
+  return (
+    <>
+      <p data-preview-fits={approve ? 'true' : 'false'} style={{ maxWidth: '100%', minWidth: 0, overflow: 'visible' }}>
+        {item.message}
+        {text ? (
+          <span data-approval-preview data-geometrically-cropped={cropped ? 'true' : 'false'} ref={spanRef} style={approvalPreviewStyle}>
+            {text}
+          </span>
+        ) : null}
+      </p>
+      {approve ? (
         <Button onClick={item.onApprove} type="button">
           Approve
         </Button>
-      )
-    }
+      ) : (
+        <Button onClick={item.onReview} type="button">
+          Review
+        </Button>
+      )}
+    </>
+  )
+}
 
-    return (
-      <Button onClick={item.onReview} type="button">
-        Review
-      </Button>
-    )
+function ToastActions({ item, now }: { item: OpsToastItem; now: number }) {
+  if (item.kind === 'approval') {
+    return null
   }
 
   if (item.kind === 'blocked') {
@@ -143,18 +218,11 @@ function ToastActions({ item, now }: { item: OpsToastItem; now: number }) {
 }
 
 function ToastBody({ item }: { item: OpsToastItem }) {
-  if (item.kind !== 'approval') {
-    return <p>{item.message}</p>
+  if (item.kind === 'approval') {
+    return <ApprovalPreview item={item} />
   }
 
-  const preview = approvalPreview(item)
-
-  return (
-    <p data-preview-fits={preview.fits ? 'true' : 'false'}>
-      {item.message}
-      {preview.text ? <span data-approval-preview>{preview.text}</span> : null}
-    </p>
-  )
+  return <p>{item.message}</p>
 }
 
 export function ToastQueue({ dismissals, items, now, onNeedsYou }: ToastQueueProps) {
@@ -185,6 +253,7 @@ export function ToastQueue({ dismissals, items, now, onNeedsYou }: ToastQueuePro
           data-toast-id={item.id}
           key={item.id}
           role="status"
+          style={{ maxWidth: '100%', minWidth: 0, overflow: 'visible' }}
         >
           <AlertTitle className={toastTitleClassName()}>{item.kind}</AlertTitle>
           <AlertDescription>
