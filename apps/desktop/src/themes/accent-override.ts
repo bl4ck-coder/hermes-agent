@@ -22,3 +22,31 @@ export const $accentOverride = atom<null | string>(null)
 export function setAccentOverride(color: null | string): void {
   $accentOverride.set(color === null ? null : (normalizeHex(color) ?? $accentOverride.get()))
 }
+
+/**
+ * Selectable Gold Night accent fills. `deep` is the authored `gold-night`
+ * preset. `hi` is the authored `gold-night-hi` preset. Neither id is written
+ * to storage from here — `deep` and `null` clear the scratch atom so
+ * production paint stays the authored hexes.
+ */
+export const GOLD_NIGHT_ACCENT_VARIANTS = [
+  { id: 'deep', label: 'Deep', hex: '#C9A55A', themeName: 'gold-night' },
+  { id: 'hi', label: 'Hi', hex: '#E8C77A', themeName: 'gold-night-hi' }
+] as const
+
+export type GoldNightAccentId = (typeof GOLD_NIGHT_ACCENT_VARIANTS)[number]['id']
+
+export function goldNightAccentVariant(id: GoldNightAccentId) {
+  return GOLD_NIGHT_ACCENT_VARIANTS.find(variant => variant.id === id)!
+}
+
+/** Scratch selection only. Does not persist and does not rewrite a saved skin. */
+export function selectGoldNightAccent(id: GoldNightAccentId | null): void {
+  if (id === null || id === 'deep') {
+    setAccentOverride(null)
+
+    return
+  }
+
+  setAccentOverride(goldNightAccentVariant(id).hex)
+}

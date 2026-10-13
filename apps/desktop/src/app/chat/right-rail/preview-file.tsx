@@ -1121,7 +1121,7 @@ export function LocalFilePreview({
           </div>
         )}
         {saveError && (
-          <div className="shrink-0 border-b border-destructive/40 bg-destructive/10 px-3 py-1.5 text-[0.7rem] text-destructive">
+          <div className="shrink-0 border-b border-destructive/40 bg-destructive/10 px-3 py-1.5 text-[0.7rem] text-gn-destructive-copy">
             {t.preview.saveFailed(saveError)}
           </div>
         )}

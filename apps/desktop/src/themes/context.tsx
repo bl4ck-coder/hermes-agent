@@ -21,7 +21,7 @@ import { $activeGatewayProfile, normalizeProfileKey } from '@/store/profile'
 import { $connection } from '@/store/session'
 import { setAppearance } from '@/store/translucency'
 
-import { $accentOverride } from './accent-override'
+import { $accentOverride, GOLD_NIGHT_ACCENT_VARIANTS } from './accent-override'
 import {
   $backendCustomCSS,
   $backendThemes,
@@ -31,7 +31,17 @@ import {
 } from './backend-sync'
 import { $chatFontFamily, resolveChatFontFamily } from './chat-font'
 import { harmonize, readableInk } from './color'
-import { BUILTIN_THEME_LIST, DEFAULT_SKIN_NAME, DEFAULT_TYPOGRAPHY, nousTheme, RETIRED_SKINS } from './presets'
+import {
+  BUILTIN_THEME_LIST,
+  DEFAULT_SKIN_NAME,
+  DEFAULT_TYPOGRAPHY,
+  goldNightHiTheme,
+  goldNightTheme,
+  GOLD_NIGHT_CONSUMED_VARS,
+  GOLD_NIGHT_CUSTOM_CSS,
+  nousTheme,
+  RETIRED_SKINS
+} from './presets'
 import { retintTheme } from './retint'
 import type { DesktopTheme, DesktopThemeColors, DesktopThemeTypography } from './types'
 import { $userThemes, listAllThemes, resolveTheme } from './user-themes'
@@ -181,7 +191,7 @@ function synthLightColors(seed: DesktopTheme): DesktopThemeColors {
 
 /** Returns the seed palette for a given skin + mode (no overrides applied). */
 export function getBaseColors(skinName: string, mode: 'light' | 'dark'): DesktopThemeColors {
-  const seed = resolveTheme(skinName) ?? nousTheme
+  const seed = resolveTheme(skinName) ?? goldNightTheme
 
   if (mode === 'dark') {
     return seed.darkColors ?? seed.colors
@@ -191,7 +201,7 @@ export function getBaseColors(skinName: string, mode: 'light' | 'dark'): Desktop
 }
 
 function deriveTheme(skinName: string, mode: 'light' | 'dark'): DesktopTheme {
-  const seed = resolveTheme(skinName) ?? nousTheme
+  const seed = resolveTheme(skinName) ?? goldNightTheme
 
   return {
     ...seed,
@@ -204,6 +214,57 @@ function deriveTheme(skinName: string, mode: 'light' | 'dark'): DesktopTheme {
     // separately in $backendCustomCSS. The seed's own customCSS (non-built-in
     // backend skins) wins when both exist.
     customCSS: seed.customCSS ?? $backendCustomCSS.get()[skinName]
+  }
+}
+
+function goldNightSkin(name: string): boolean {
+  const skin = name.replace(/-(light|dark)$/, '')
+
+  return skin === 'gold-night' || skin === 'gold-night-hi'
+}
+
+/**
+ * `null` paints the authored theme. An approved Gold Night seed is retinted
+ * and then replaced with that variant's frozen surfaces, so secondary and
+ * userBubble stay graphite. Any other seed on Gold Night still calls
+ * retintTheme, then writes those graphite slots back. Other skins keep the
+ * existing retint.
+ */
+function paintGoldNightAccent(theme: DesktopTheme, override: string | null): DesktopTheme {
+  if (override === null) {
+    return theme
+  }
+
+  const retinted = retintTheme(theme, override)
+
+  if (!goldNightSkin(theme.name)) {
+    return retinted
+  }
+
+  const approved = GOLD_NIGHT_ACCENT_VARIANTS.find(variant => variant.hex.toLowerCase() === override.toLowerCase())
+
+  if (approved) {
+    const authored = approved.themeName === 'gold-night-hi' ? goldNightHiTheme : goldNightTheme
+
+    return { ...retinted, colors: authored.colors, darkColors: authored.darkColors }
+  }
+
+  const graphite = goldNightTheme.colors
+  const fix = (colors: DesktopThemeColors): DesktopThemeColors => ({
+    ...colors,
+    secondary: graphite.secondary,
+    secondaryForeground: graphite.secondaryForeground,
+    userBubble: graphite.userBubble,
+    userBubbleBorder: graphite.userBubbleBorder,
+    primaryForeground: graphite.primaryForeground,
+    accentForeground: graphite.accentForeground,
+    midgroundForeground: graphite.midgroundForeground
+  })
+
+  return {
+    ...retinted,
+    colors: fix(retinted.colors),
+    ...(retinted.darkColors ? { darkColors: fix(retinted.darkColors) } : {})
   }
 }
 
@@ -377,6 +438,8 @@ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark', chatFontFamily 
     INJECTED_FONT_URLS.add(typo.fontUrl)
   }
 
+  applyGoldNightTokens(root, skinName)
+
   // Inject / clear customCSS from the skin (mirrors web/src/themes/context.tsx).
   // A theme carries the optional customCSS field; we inject/remove a single
   // <style> tag to keep the DOM clean and avoid stale rules on switch.
@@ -419,6 +482,44 @@ if (typeof window !== 'undefined') {
   syncNativeTheme(pref, renderedModeFor(theme.colors, resolved))
 }
 
+function applyGoldNightTokens(root: HTMLElement, skinName: string) {
+  const id = 'hermes-gold-night-tokens'
+  const active = skinName === 'gold-night' || skinName === 'gold-night-hi'
+  const existing = document.getElementById(id) as HTMLStyleElement | null
+
+  if (!active) {
+    existing?.remove()
+
+    for (const key of Object.keys(GOLD_NIGHT_CONSUMED_VARS)) {
+      root.style.removeProperty(key)
+    }
+
+    return
+  }
+
+  const el = existing ?? document.createElement('style')
+
+  el.id = id
+  el.textContent = GOLD_NIGHT_CUSTOM_CSS
+
+  if (!existing) {
+    document.head.appendChild(el)
+  }
+
+  // Inline hexes beat styles.css color-mix and the generic dark mix knobs
+  // applyTheme just wrote. applyTheme rewrites those knobs on the next skin,
+  // so they are not in the remove list.
+  root.style.setProperty('--theme-mix-chrome', '100%')
+  root.style.setProperty('--theme-mix-sidebar', '100%')
+  root.style.setProperty('--theme-mix-card', '100%')
+  root.style.setProperty('--theme-mix-elevated', '100%')
+  root.style.setProperty('--theme-mix-bubble', '100%')
+
+  for (const [key, value] of Object.entries(GOLD_NIGHT_CONSUMED_VARS)) {
+    root.style.setProperty(key, value)
+  }
+}
+
 // ─── Context ────────────────────────────────────────────────────────────────
 
 interface ThemeContextValue {
@@ -449,7 +550,7 @@ interface ThemeContextValue {
 const SKIN_LIST = BUILTIN_THEME_LIST.map(({ name, label, description }) => ({ name, label, description }))
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: nousTheme,
+  theme: goldNightTheme,
   themeName: DEFAULT_SKIN_NAME,
   mode: 'light',
   resolvedMode: 'light',
@@ -559,12 +660,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 
   // Dev-only accent retint. `null` (always, in production) returns the theme
-  // untouched, and retintTheme is an identity when the seed already matches —
-  // so the picker costs nothing until it's actually moved off the default.
+  // untouched. On Gold Night an approved seed is written back to the frozen
+  // variant, and graphite surfaces are restored after any other retint.
   const accentOverride = useStore($accentOverride)
 
   const paintedTheme = useMemo(
-    () => (accentOverride === null ? activeTheme : retintTheme(activeTheme, accentOverride)),
+    () => paintGoldNightAccent(activeTheme, accentOverride),
     [activeTheme, accentOverride]
   )
 

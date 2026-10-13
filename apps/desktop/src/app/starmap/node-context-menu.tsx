@@ -166,7 +166,7 @@ export function NodeContextMenu({ onClose, onNodeRemoved, target }: NodeContextM
               />
             )}
           </div>
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {error ? <p className="text-xs text-gn-destructive-copy">{error}</p> : null}
           <DialogFooter>
             <Button disabled={saving} onClick={() => setEditing(null)} type="button" variant="ghost">
               Cancel
