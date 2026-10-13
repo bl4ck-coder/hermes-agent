@@ -19,7 +19,7 @@ vi.mock('@/store/gateway', async () => {
 vi.mock('@/store/session', async () => {
   const { atom } = await import('nanostores')
 
-  return { $awaitingResponse: atom(false), $busy: atom(false) }
+  return { $awaitingResponse: atom(false), $busy: atom(false), $connection: atom(null) }
 })
 vi.mock('react-router', () => ({ useNavigate: () => vi.fn() }))
 vi.mock('./local-setup-offer', () => ({ offerLocalSetupTip: () => false }))
