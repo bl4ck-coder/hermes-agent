@@ -7,8 +7,8 @@ import { Box } from '@/lib/icons'
 import { stubMenuDomApis } from '@/test/jsdom'
 
 import {
-  DESCRIPTION_PREVIEW,
   DataTable,
+  DESCRIPTION_PREVIEW,
   OPS_BODY_PX,
   OPS_GUTTER_PX,
   OPS_RAIL_ROW_PX,
@@ -19,16 +19,16 @@ import { Dock } from './dock'
 import { NodeCard, PORT_COLOR } from './node-card'
 import { TAB_INDICATOR_COLOR, TabStrip } from './tab-strip'
 import {
-  PREVIEW_BUDGET,
-  PROHIBITED_UNDO_KINDS,
-  UNDO_KINDS,
-  UNDO_MS,
-  ToastQueue,
   approvalPreview,
   approvalPreviewStyle,
   createDismissalStore,
-  previewIsCropped,
   type OpsToastItem,
+  PREVIEW_BUDGET,
+  previewIsCropped,
+  PROHIBITED_UNDO_KINDS,
+  ToastQueue,
+  UNDO_KINDS,
+  UNDO_MS,
   undoVisible
 } from './toast-queue'
 
@@ -76,6 +76,7 @@ function TabHarness({ maxVisible = 3 }: { maxVisible?: number }) {
     { id: 'two', label: 'Overflow two' },
     { id: 'three', label: 'Overflow three', icon: Box, indicator: 'unsaved' as const }
   ]
+
   const [activeId, setActiveId] = useState('office')
   const [open, setOpen] = useState(tabs)
   const closed = vi.fn()
@@ -144,6 +145,7 @@ describe('data table', () => {
 
   it('keeps the native select as the source of truth for the themed menu', () => {
     const onValueChange = vi.fn()
+
     const { container, rerender } = render(
       <OpsSelect
         label="Kind"
@@ -156,6 +158,7 @@ describe('data table', () => {
         value="log"
       />
     )
+
     const native = container.querySelector('[data-source-of-truth="native"]')
 
     expect(native).toBeInstanceOf(HTMLSelectElement)
@@ -278,6 +281,7 @@ describe('tab strip', () => {
     try {
       const onClose = vi.fn()
       const onActiveChange = vi.fn()
+
       const { container } = render(
         <TabStrip
           activeId="board"
@@ -290,6 +294,7 @@ describe('tab strip', () => {
           ]}
         />
       )
+
       const strip = container.querySelector('.ops-tab-strip') as HTMLElement
 
       expect(strip.getAttribute('data-layout')).toBe('narrow')
@@ -343,6 +348,7 @@ describe('tab strip', () => {
     try {
       const onClose = vi.fn()
       const onActiveChange = vi.fn()
+
       const { container } = render(
         <>
           <button type="button">Outside</button>
@@ -359,6 +365,7 @@ describe('tab strip', () => {
           />
         </>
       )
+
       const outside = [...container.querySelectorAll('button')].find(button => button.textContent === 'Outside') as HTMLButtonElement
       const trigger = screen.getByRole('button', { name: /Ops tabs, Board/ })
 
@@ -434,6 +441,7 @@ describe('tab strip', () => {
   it('cycles with Ctrl+Tab and refuses to close a pinned tab', () => {
     const onClose = vi.fn()
     const onActiveChange = vi.fn()
+
     const { container } = render(
       <TabStrip
         activeId="office"
@@ -445,6 +453,7 @@ describe('tab strip', () => {
         ]}
       />
     )
+
     const strip = container.querySelector('.ops-tab-strip') as HTMLElement
 
     fireEvent.keyDown(strip, { key: 'w', ctrlKey: true })
@@ -461,6 +470,7 @@ describe('dock and node card', () => {
       { id: 'p1', summary: 'policy' },
       { id: 'p2', summary: 'validation' }
     ]
+
     const { container, rerender } = render(
       <I18nProvider configClient={null}>
         <Dock logLines={[]} onSlotChange={() => undefined} problems={problems} slot="problems" />
@@ -489,6 +499,7 @@ describe('dock and node card', () => {
     const onEdit = vi.fn()
     const onChild = vi.fn()
     const onCanvasWheel = vi.fn()
+
     const { container } = render(
       <div onWheel={onCanvasWheel}>
         <NodeCard
@@ -505,6 +516,7 @@ describe('dock and node card', () => {
         </NodeCard>
       </div>
     )
+
     const collapse = screen.getByRole('button', { name: 'Prompt' })
     const edit = screen.getByRole('button', { name: 'Edit' })
     const child = screen.getByRole('button', { name: 'Child control' })
@@ -617,6 +629,7 @@ describe('toast queue', () => {
     const command = `${'x'.repeat(PREVIEW_BUDGET)} ${hidden}`
     const onApprove = vi.fn()
     const onReview = vi.fn()
+
     const { rerender } = render(
       <ToastQueue
         items={[item({ id: 'cut', kind: 'approval', command, onApprove, onReview, onUndo: vi.fn() })]}
@@ -659,6 +672,7 @@ describe('toast queue', () => {
     const onApprove = vi.fn()
     const onReview = vi.fn()
     const original = HTMLElement.prototype.getBoundingClientRect
+
     const rect = (left: number, top: number, right: number, bottom: number) =>
       ({
         x: left,
@@ -693,6 +707,7 @@ describe('toast queue', () => {
           now={now}
         />
       )
+
       const preview = container.querySelector('[data-approval-preview]') as HTMLElement
       const card = container.querySelector('[data-toast-id]') as HTMLElement
 

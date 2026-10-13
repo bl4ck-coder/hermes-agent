@@ -3,6 +3,8 @@ import '../motion.css'
 import type { ReactNode, WheelEvent } from 'react'
 import { useState } from 'react'
 
+import { useI18n } from '@/i18n'
+
 import { opsDensityStyle } from './data-table'
 
 /** G49. Gold changed, amber unset, garnet policy, champagne ok. */
@@ -33,12 +35,13 @@ export function NodeCard({
   collapsed,
   controls,
   defaultCollapsed = false,
-  editLabel = 'Edit',
+  editLabel,
   onCollapsedChange,
   onEdit,
   port = 'ok',
   title
 }: NodeCardProps) {
+  const copy = useI18n().t.ops
   const [internalCollapsed, setInternalCollapsed] = useState(defaultCollapsed)
   const [revealed, setRevealed] = useState(false)
   const isCollapsed = collapsed === undefined ? internalCollapsed : collapsed
@@ -59,8 +62,8 @@ export function NodeCard({
     <article
       className="ops-node"
       data-collapsed={isCollapsed ? 'true' : 'false'}
-      data-port={port}
       data-edge={port === 'unset' ? 'dashed' : 'solid'}
+      data-port={port}
       onBlur={event => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           setRevealed(false)
@@ -70,6 +73,7 @@ export function NodeCard({
       onMouseEnter={() => setRevealed(true)}
       onMouseLeave={event => {
         const active = event.currentTarget.ownerDocument.activeElement
+
         if (!event.currentTarget.contains(active)) {
           setRevealed(false)
         }
@@ -91,7 +95,7 @@ export function NodeCard({
           {title}
         </button>
         <span
-          aria-label={`port ${port}`}
+          aria-label={copy.node.port(port)}
           data-port-color={PORT_COLOR[port]}
           role="img"
           style={{
@@ -141,7 +145,7 @@ export function NodeCard({
                 style={{ opacity: revealed ? 1 : 0 }}
                 type="button"
               >
-                {editLabel}
+                {editLabel ?? copy.node.edit}
               </button>
             )}
             {controls}

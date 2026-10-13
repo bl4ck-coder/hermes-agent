@@ -4,11 +4,11 @@
  * right column. Interactive terminal stays cut (O64).
  */
 
-import type { ReactNode } from 'react'
 import { useStore } from '@nanostores/react'
+import type { ReactNode } from 'react'
+
 import { $opsProblemsCount } from './chrome'
 import { useOpsEscapeLayer } from './keymap'
-
 import { type DockSlot } from './navigation-store'
 import { Dock, type DockProblem } from './primitives/dock'
 
@@ -39,6 +39,7 @@ export function DockHost({
 }: DockHostProps) {
   const problemsCount = useStore($opsProblemsCount)
   useOpsEscapeLayer(active && open, onClose)
+
   if (!open) {
     return null
   }

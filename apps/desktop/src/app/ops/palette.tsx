@@ -3,9 +3,11 @@
 import { useMemo, useSyncExternalStore } from 'react'
 
 import { CommandGroup, CommandItem } from '@/components/ui/command'
+import { useI18n } from '@/i18n'
 import { closeCommandPalette, openCommandPalettePage } from '@/store/command-palette'
 
-import { MODEL_EDIT_UNAVAILABLE, MUTATION_UNAVAILABLE, OPS_PALETTE_PAGE, opsHost, type OpsView } from './keymap'
+import { OPS_PALETTE_PAGE, opsHost, type OpsView } from './keymap'
+import type { OpsCopy } from './locales'
 
 export { OPS_PALETTE_PAGE }
 
@@ -103,63 +105,64 @@ export interface OpsPaletteCommand {
   run?: () => void
 }
 
-export function opsPaletteCommands(): OpsPaletteCommand[] {
+export function opsPaletteCommands(copy: OpsCopy): OpsPaletteCommand[] {
   const go = (view: OpsView) => () => opsHost()?.go(view)
+  const label = copy.palette.commands
 
   return [
-    { id: 'go-office', label: 'Go to Office', keywords: ['office', 'navigate', 'g o'], run: go('office') },
-    { id: 'go-canvas', label: 'Go to Canvas', keywords: ['canvas', 'navigate', 'g c'], run: go('canvas') },
-    { id: 'go-board', label: 'Go to Board', keywords: ['board', 'navigate', 'g b'], run: go('board') },
-    { id: 'go-runs', label: 'Go to Runs', keywords: ['runs', 'navigate', 'g r'], run: go('runs') },
-    { id: 'go-skills', label: 'Go to Skills', keywords: ['skills', 'capabilities', 'g s'], run: go('skills') },
-    { id: 'settings', label: 'Settings', keywords: ['settings', 'shortcuts'], run: () => opsHost()?.openSettings() },
+    { id: 'go-office', label: label['go-office'], keywords: ['office', 'navigate', 'g o'], run: go('office') },
+    { id: 'go-canvas', label: label['go-canvas'], keywords: ['canvas', 'navigate', 'g c'], run: go('canvas') },
+    { id: 'go-board', label: label['go-board'], keywords: ['board', 'navigate', 'g b'], run: go('board') },
+    { id: 'go-runs', label: label['go-runs'], keywords: ['runs', 'navigate', 'g r'], run: go('runs') },
+    { id: 'go-skills', label: label['go-skills'], keywords: ['skills', 'capabilities', 'g s'], run: go('skills') },
+    { id: 'settings', label: label.settings, keywords: ['settings', 'shortcuts'], run: () => opsHost()?.openSettings() },
     {
       id: 'switch-theme',
-      label: 'Switch theme',
+      label: label['switch-theme'],
       keywords: ['theme', 'appearance'],
       run: () => openCommandPalettePage('theme')
     },
     {
       id: 'shortcut-sheet',
-      label: 'Shortcut sheet',
+      label: label['shortcut-sheet'],
       keywords: ['shortcuts', 'keymap', 'help'],
       run: () => opsHost()?.openShortcutSheet()
     },
     {
       id: 'focus-next-approval',
-      label: 'Go to next approval',
+      label: label['focus-next-approval'],
       keywords: ['approval', 'focus', 'needs you'],
       run: () => opsHost()?.focusNextApproval()
     },
     {
       id: 'create-task',
-      label: 'Create task',
+      label: label['create-task'],
       keywords: ['create', 'task', 'new'],
-      disabledReason: MUTATION_UNAVAILABLE
+      disabledReason: copy.reasons.mutation
     },
     {
       id: 'create-project',
-      label: 'Create project',
+      label: label['create-project'],
       keywords: ['create', 'project', 'new'],
-      disabledReason: MUTATION_UNAVAILABLE
+      disabledReason: copy.reasons.mutation
     },
     {
       id: 'approve',
-      label: 'Approve',
+      label: label.approve,
       keywords: ['approve', 'allow'],
-      disabledReason: 'No shortcut approves. Go to next approval only moves focus.'
+      disabledReason: copy.reasons.approve
     },
     {
       id: 'set-model',
-      label: 'Set model',
+      label: label['set-model'],
       keywords: ['model', 'picker'],
-      disabledReason: MODEL_EDIT_UNAVAILABLE
+      disabledReason: copy.reasons.modelEdit
     },
     {
       id: 'restore',
-      label: 'Restore profile',
+      label: label.restore,
       keywords: ['restore', 'write'],
-      disabledReason: MUTATION_UNAVAILABLE
+      disabledReason: copy.reasons.mutation
     }
   ]
 }
@@ -167,16 +170,17 @@ export function opsPaletteCommands(): OpsPaletteCommand[] {
 export function OpsPalettePage({ onSearch, search }: { onSearch?: (query: string) => void; search: string }) {
   const liveScope = useSyncExternalStore(subscribeScope, readOpsPaletteScope, readOpsPaletteScope)
   const query = search.trim().toLowerCase()
+  const copy = useI18n().t.ops
 
   const commands = useMemo(() => {
-    return opsPaletteCommands().filter(command => {
+    return opsPaletteCommands(copy).filter(command => {
       if (!query) {
         return true
       }
 
       return [command.label, ...command.keywords].some(part => part.toLowerCase().includes(query))
     })
-  }, [query])
+  }, [copy, query])
 
   const recent = query ? [] : readRecentSearches(liveScope)
 
@@ -203,7 +207,7 @@ export function OpsPalettePage({ onSearch, search }: { onSearch?: (query: string
   return (
     <div data-ops-palette-page={OPS_PALETTE_PAGE}>
       {recent.length > 0 && (
-        <CommandGroup data-ops-recent-searches={scopeId(liveScope)} heading="Recent searches">
+        <CommandGroup data-ops-recent-searches={scopeId(liveScope)} heading={copy.palette.recent}>
           {recent.map(row => (
             <CommandItem key={row} onSelect={() => onSearch?.(row)} value={`recent:${row}`}>
               {row}
@@ -211,7 +215,7 @@ export function OpsPalettePage({ onSearch, search }: { onSearch?: (query: string
           ))}
         </CommandGroup>
       )}
-      <CommandGroup heading="Ops">
+      <CommandGroup heading={copy.palette.group}>
         {commands.map(command => (
           <CommandItem
             aria-disabled={command.disabledReason ? true : undefined}

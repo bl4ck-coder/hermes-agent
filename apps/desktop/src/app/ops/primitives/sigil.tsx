@@ -21,6 +21,7 @@ export function Sigil({ name, colorOverride, className, size = SIGIL_SLOT_PX }: 
   const overrides = colorOverride && key && key !== 'default' ? { [key]: colorOverride } : {}
   const spec = resolveSigil(name, overrides)
   const dot = Math.max(3, Math.round(size / 4))
+
   const style: CSSProperties = {
     backgroundColor: spec.fill,
     color: spec.ink,

@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
+import { useI18n } from '@/i18n'
 
 /** Frozen density contract (SPEC §12.3). One gutter, 32px rows, 12–13px body. */
 export const OPS_GUTTER_PX = 24
@@ -152,14 +153,15 @@ function DescriptionCell({ rowId, text }: { rowId: string; text: string }) {
 }
 
 export function DataTable<T>({
-  caption = 'Table',
+  caption,
   columns,
-  emptyLabel = 'No rows',
+  emptyLabel,
   getRowId,
   onSortChange,
   rows,
   sort
 }: DataTableProps<T>) {
+  const copy = useI18n().t.ops
   const [internalSort, setInternalSort] = useState<DataTableSort | null>(null)
   const activeSort = sort === undefined ? internalSort : sort
   const activeColumn = columns.find(column => column.id === activeSort?.columnId)
@@ -178,7 +180,7 @@ export function DataTable<T>({
   return (
     <div className="ops-data-table" data-density="frozen" style={opsDensityStyle()}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: OPS_BODY_PX }}>
-        <caption className="sr-only">{caption}</caption>
+        <caption className="sr-only">{caption ?? copy.table.caption}</caption>
         <thead>
           <tr style={{ height: OPS_ROW_PX }}>
             {columns.map(column => {
@@ -194,7 +196,7 @@ export function DataTable<T>({
                 >
                   {column.sortable ? (
                     <button
-                      aria-label={`Sort by ${column.header}`}
+                      aria-label={copy.table.sortBy(column.header)}
                       data-sort-column={column.id}
                       onClick={() => commit(column.id, nextDirection(direction, column.id, activeSort?.columnId ?? null))}
                       onKeyDown={event => {
@@ -229,7 +231,7 @@ export function DataTable<T>({
           {ordered.length === 0 ? (
             <tr style={{ height: OPS_ROW_PX }}>
               <td colSpan={Math.max(columns.length, 1)} data-empty="true">
-                {emptyLabel}
+                {emptyLabel ?? copy.table.empty}
               </td>
             </tr>
           ) : (

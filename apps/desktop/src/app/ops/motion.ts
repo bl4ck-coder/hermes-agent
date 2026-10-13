@@ -162,15 +162,17 @@ const COUNTED: Record<GlyphState, CountedIn> = {
 const clean = (value: string | null | undefined) => (value ?? '').trim()
 
 export function resolveMotion(preference: MotionPreference, systemReduced: boolean): ResolvedMotion {
-  if (preference === 'reduced') return 'reduced'
-  if (preference === 'full') return 'full'
+  if (preference === 'reduced') {return 'reduced'}
+
+  if (preference === 'full') {return 'full'}
 
   return systemReduced ? 'reduced' : 'full'
 }
 
 export function motionFeatureOn(mode: ResolvedMotion, feature: MotionFeature): boolean {
-  if (feature === 'stream') return true
-  if (mode === 'reduced') return false
+  if (feature === 'stream') {return true}
+
+  if (mode === 'reduced') {return false}
 
   return true
 }
@@ -218,19 +220,23 @@ function toolLabel(name: string | null | undefined): string {
  * alone never yields idle: idle needs a fresh gateway-up + no-work read.
  */
 export function resolvePresence(input: PresenceInput): PresenceResolution {
-  if (input.unreachable) return pack('offline')
-  if (input.observedAt === null) return pack('unknown')
+  if (input.unreachable) {return pack('offline')}
+
+  if (input.observedAt === null) {return pack('unknown')}
 
   const age = input.now - input.observedAt
   const fresh = age <= FRESH_MS && !input.snapshotStale
 
-  if (!fresh) return pack('stale')
-  if (input.needsYou) return pack('needs_you')
-  if (input.blocked) return pack('blocked')
+  if (!fresh) {return pack('stale')}
+
+  if (input.needsYou) {return pack('needs_you')}
+
+  if (input.blocked) {return pack('blocked')}
 
   if (input.working) {
-    if (input.subState === 'thinking') return pack('working', 'thinking', true)
-    if (input.subState === 'tool') return pack('working', toolLabel(input.toolName), true)
+    if (input.subState === 'thinking') {return pack('working', 'thinking', true)}
+
+    if (input.subState === 'tool') {return pack('working', toolLabel(input.toolName), true)}
 
     return pack('working', 'working', false)
   }
@@ -238,10 +244,10 @@ export function resolvePresence(input: PresenceInput): PresenceResolution {
   if (input.completion && input.eventAt !== null) {
     const elapsed = input.now - input.eventAt
 
-    if (elapsed < DONE_HOLD_MS) return pack('done')
+    if (elapsed < DONE_HOLD_MS) {return pack('done')}
   }
 
-  if (input.gatewayUp && input.noWork) return pack('idle')
+  if (input.gatewayUp && input.noWork) {return pack('idle')}
 
   // Fresh read that names neither work nor idle. The freeze's unknown mark is
   // "never observed" (no observed_at, handled above). This branch is a fresh
@@ -264,7 +270,8 @@ export function monogram(name: string): string {
 
   for (const { segment } of segmenter.segment(name)) {
     parts.push(segment)
-    if (parts.length === 2) break
+
+    if (parts.length === 2) {break}
   }
 
   return parts.join('').toUpperCase()
@@ -305,18 +312,32 @@ export function resolveSigil(name: string | null | undefined, overrides: Record<
 }
 
 /** Joins only fields the caller supplied. Missing purpose is the frozen fallback, not a guessed sentence. */
-export function whyFooterText(meta: WhyMeta): string {
+export interface WhyFooterCopy {
+  missingReason: string
+  prefix: string
+  observed: (value: string) => string
+}
+
+/** Frozen English contract; the rendered footer passes `t.ops.why`. */
+export const WHY_FOOTER_EN: WhyFooterCopy = {
+  missingReason: MISSING_REASON,
+  prefix: 'why · what for:',
+  observed: value => `observed ${value}`
+}
+
+export function whyFooterText(meta: WhyMeta, copy: WhyFooterCopy = WHY_FOOTER_EN): string {
   const source = clean(meta.source)
   const reason = clean(meta.purpose) || clean(meta.why)
   const observed = clean(meta.observedAt)
 
-  if (!source && !reason && !observed) return MISSING_REASON
+  if (!source && !reason && !observed) {return copy.missingReason}
 
-  const parts = ['why · what for:']
+  const parts = [copy.prefix]
 
-  if (source) parts.push(source)
-  if (observed) parts.push(`observed ${observed}`)
-  parts.push(reason || MISSING_REASON)
+  if (source) {parts.push(source)}
+
+  if (observed) {parts.push(copy.observed(observed))}
+  parts.push(reason || copy.missingReason)
 
   return parts.join(' · ')
 }
@@ -326,7 +347,7 @@ export function whyFooterContrast(surface: string = WHY_SURFACE): number | null 
 }
 
 export function tokensText(tokens: number | null | undefined): string {
-  if (tokens == null || Number.isNaN(tokens)) return ''
+  if (tokens == null || Number.isNaN(tokens)) {return ''}
 
   return String(tokens)
 }

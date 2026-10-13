@@ -6,6 +6,7 @@ import { LogTail } from '@/components/chat/log-tail'
 import { ResponsiveTabs } from '@/components/ui/tab-dropdown'
 import { TextTab, TextTabMeta } from '@/components/ui/text-tab'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useI18n } from '@/i18n'
 import { X } from '@/lib/icons'
 
 import { opsDensityStyle } from './data-table'
@@ -32,16 +33,12 @@ export interface DockProps {
   problemsCount?: number | null
 }
 
-const SLOT_LABEL: Record<DockSlot, string> = {
-  log: 'Log',
-  events: 'Events',
-  problems: 'Problems'
-}
+const SLOTS: DockSlot[] = ['log', 'events', 'problems']
 
 export function Dock({
   events,
   label,
-  logEmptyLabel = 'No log lines',
+  logEmptyLabel,
   logLines,
   onClose,
   onSlotChange,
@@ -50,15 +47,17 @@ export function Dock({
   slot
 }: DockProps) {
   const narrow = useMediaQuery(TAB_STRIP_NARROW)
+  const copy = useI18n().t.ops
   const count = problemsCount === undefined ? problems.length : problemsCount
-  const tabs = (Object.keys(SLOT_LABEL) as DockSlot[]).map(id => ({
+
+  const tabs = SLOTS.map(id => ({
     id,
-    label: SLOT_LABEL[id],
-    meta: id === 'problems' ? (count ?? 'unavailable') : undefined
+    label: copy.dock.slots[id],
+    meta: id === 'problems' ? (count ?? copy.unavailable) : undefined
   }))
 
   return (
-    <section aria-label="Ops dock" className="ops-dock" data-terminal="cut" style={opsDensityStyle()}>
+    <section aria-label={copy.dock.label} className="ops-dock" data-terminal="cut" style={opsDensityStyle()}>
       <header style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
         {narrow ? (
           <ResponsiveTabs onChange={id => onSlotChange(id as DockSlot)} tabs={tabs} value={slot} />
@@ -69,7 +68,7 @@ export function Dock({
                 {tab.label}
                 {tab.id === 'problems' && (
                   <TextTabMeta data-problems-count={count === null ? 'unavailable' : String(count)}>
-                    {count ?? 'unavailable'}
+                    {count ?? copy.unavailable}
                   </TextTabMeta>
                 )}
               </TextTab>
@@ -78,19 +77,19 @@ export function Dock({
         )}
         {label ? <span data-dock-label>{label}</span> : null}
         {onClose && (
-          <button aria-label="Close dock" onClick={onClose} type="button">
+          <button aria-label={copy.dock.close} onClick={onClose} type="button">
             <X aria-hidden size={14} />
           </button>
         )}
       </header>
-      {slot === 'log' && <LogTail emptyLabel={logEmptyLabel} lines={logLines} />}
-      {slot === 'events' && <div data-slot="events">{events ?? <p data-empty="true">No events</p>}</div>}
+      {slot === 'log' && <LogTail emptyLabel={logEmptyLabel ?? copy.dock.noLog} lines={logLines} />}
+      {slot === 'events' && <div data-slot="events">{events ?? <p data-empty="true">{copy.dock.noEvents}</p>}</div>}
       {slot === 'problems' && (
         <ul data-slot="problems">
           {count === null ? (
-            <li data-unavailable="true">Problems unavailable</li>
+            <li data-unavailable="true">{copy.dock.problemsUnavailable}</li>
           ) : problems.length === 0 ? (
-            <li data-empty="true">No problems</li>
+            <li data-empty="true">{copy.dock.noProblems}</li>
           ) : (
             problems.map(problem => <li key={problem.id}>{problem.summary}</li>)
           )}

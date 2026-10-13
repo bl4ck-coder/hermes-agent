@@ -2,9 +2,10 @@ import '../motion.css'
 
 import { useLayoutEffect, useRef, useState } from 'react'
 
+import { toastTitleClassName } from '@/components/notifications'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { toastTitleClassName } from '@/components/notifications'
+import { useI18n } from '@/i18n'
 
 import { opsDensityStyle } from './data-table'
 
@@ -85,11 +86,13 @@ export function previewIsCropped(preview: HTMLElement, card: HTMLElement) {
   const viewportRight = view?.innerWidth ?? box.right
   const viewportBottom = view?.innerHeight ?? box.bottom
   const eps = 1
+
   const pastCard =
     text.right > box.right + eps ||
     text.bottom > box.bottom + eps ||
     text.left < box.left - eps ||
     text.top < box.top - eps
+
   const pastView = text.right > viewportRight + eps || text.bottom > viewportBottom + eps || text.left < -eps
   const overflowed = preview.scrollWidth > preview.clientWidth + eps || preview.scrollHeight > preview.clientHeight + eps
 
@@ -108,14 +111,17 @@ export const approvalPreviewStyle = {
 
 export function queueToasts(items: OpsToastItem[], dismissed: Pick<DismissalStore, 'has'>) {
   const seen = new Set<string>()
+
   const fresh = items.filter(item => {
     if (dismissed.has(item.id) || seen.has(item.id)) {
       return false
     }
 
     seen.add(item.id)
+
     return true
   })
+
   const byKind = new Map<OpsToastKind, OpsToastItem>()
 
   for (const item of fresh) {
@@ -150,6 +156,7 @@ function ApprovalPreview({ item }: { item: OpsToastItem }) {
 
     if (!el || !(card instanceof HTMLElement) || !preview.fits) {
       setCropped(false)
+
       return
     }
 
@@ -194,6 +201,8 @@ function ApprovalPreview({ item }: { item: OpsToastItem }) {
 }
 
 function ToastActions({ item, now }: { item: OpsToastItem; now: number }) {
+  const copy = useI18n().t.ops
+
   if (item.kind === 'approval') {
     return null
   }
@@ -201,7 +210,7 @@ function ToastActions({ item, now }: { item: OpsToastItem; now: number }) {
   if (item.kind === 'blocked') {
     return (
       <Button onClick={item.onOpen} type="button">
-        Open
+        {copy.toast.open}
       </Button>
     )
   }
@@ -209,7 +218,7 @@ function ToastActions({ item, now }: { item: OpsToastItem; now: number }) {
   if (undoVisible(item, now)) {
     return (
       <Button data-undo-ms={String(UNDO_MS)} onClick={item.onUndo} type="button">
-        Undo
+        {copy.toast.undo}
       </Button>
     )
   }
@@ -226,6 +235,7 @@ function ToastBody({ item }: { item: OpsToastItem }) {
 }
 
 export function ToastQueue({ dismissals, items, now, onNeedsYou }: ToastQueueProps) {
+  const copy = useI18n().t.ops
   const [localDismissals] = useState(createDismissalStore)
   const [revision, setRevision] = useState(0)
   const store = dismissals ?? localDismissals
@@ -255,12 +265,12 @@ export function ToastQueue({ dismissals, items, now, onNeedsYou }: ToastQueuePro
           role="status"
           style={{ maxWidth: '100%', minWidth: 0, overflow: 'visible' }}
         >
-          <AlertTitle className={toastTitleClassName()}>{item.kind}</AlertTitle>
+          <AlertTitle className={toastTitleClassName()}>{copy.toast.kinds[item.kind]}</AlertTitle>
           <AlertDescription>
             <ToastBody item={item} />
             <div>
               <ToastActions item={item} now={now} />
-              <Button aria-label={`Dismiss ${item.kind}`} onClick={() => dismiss(item.id)} type="button" variant="text">
+              <Button aria-label={copy.toast.dismiss(copy.toast.kinds[item.kind])} onClick={() => dismiss(item.id)} type="button" variant="text">
                 ×
               </Button>
             </div>
@@ -269,7 +279,7 @@ export function ToastQueue({ dismissals, items, now, onNeedsYou }: ToastQueuePro
       ))}
       {hidden > 0 && (
         <Button data-needs-you="true" onClick={onNeedsYou} type="button" variant="text">
-          +{hidden} more → Needs-you
+          {copy.toast.moreNeedsYou(hidden)}
         </Button>
       )}
     </div>

@@ -5,6 +5,7 @@ import { useRef, useState } from 'react'
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useI18n } from '@/i18n'
 import type { IconComponent } from '@/lib/icons'
 import { ChevronDown, X } from '@/lib/icons'
 
@@ -137,13 +138,15 @@ function dismissEnclosingMenu(node: HTMLElement) {
 }
 
 function CloseTab({ onClose, tab }: { onClose?: (id: string) => void; tab: TabStripTab }) {
+  const copy = useI18n().t.ops
+
   if (!canClose(tab) || !onClose) {
     return null
   }
 
   return (
     <button
-      aria-label={`Close ${tab.label}`}
+      aria-label={copy.tabs.close(tab.label)}
       data-close-tab={tab.id}
       data-ops-tab-close={tab.id}
       onClick={event => {
@@ -180,6 +183,7 @@ function TabButton({
   onSelect: (id: string) => void
   tab: TabStripTab
 }) {
+  const copy = useI18n().t.ops
   const Icon = tab.icon
   const closable = canClose(tab)
 
@@ -207,7 +211,7 @@ function TabButton({
         {tab.indicator && <Indicator indicator={tab.indicator} />}
       </button>
       {closable && onClose && (
-        <button aria-label={`Close ${tab.label}`} data-ops-tab-close={tab.id} onClick={() => onClose(tab.id)} type="button">
+        <button aria-label={copy.tabs.close(tab.label)} data-ops-tab-close={tab.id} onClick={() => onClose(tab.id)} type="button">
           <X aria-hidden size={12} />
         </button>
       )}
@@ -265,6 +269,7 @@ function NarrowStrip({
   onClose?: (id: string) => void
   tabs: TabStripTab[]
 }) {
+  const copy = useI18n().t.ops
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   return (
@@ -278,16 +283,16 @@ function NarrowStrip({
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <button
-            aria-label={active ? `Ops tabs, ${active.label}` : 'Ops tabs'}
+            aria-label={active ? copy.tabs.labelActive(active.label) : copy.tabs.label}
             data-active="true"
             data-narrow-trigger=""
-            style={{ borderBottom: '2px solid #C9A55A' }}
             onKeyDown={event => {
               if (event.key === 'ArrowDown' && focusOpenMenuItem(event.currentTarget)) {
                 event.preventDefault()
               }
             }}
             ref={triggerRef}
+            style={{ borderBottom: '2px solid #C9A55A' }}
             type="button"
           >
             {active ? <TabFace tab={active} /> : null}
@@ -339,6 +344,7 @@ function NarrowStrip({
 
 export function TabStrip({ activeId, layout, maxVisible = 6, onActiveChange, onClose, tabs }: TabStripProps) {
   const mediaNarrow = useMediaQuery(TAB_STRIP_NARROW)
+  const copy = useI18n().t.ops
   const narrow = layout ? layout === 'dropdown' : mediaNarrow
   const { overflow, visible } = partitionTabs(tabs, activeId, maxVisible)
   const [overflowOpen, setOverflowOpen] = useState(false)
@@ -366,7 +372,7 @@ export function TabStrip({ activeId, layout, maxVisible = 6, onActiveChange, onC
       onKeyDown={event => onStripKeyDown(event, tabs, activeId, onActiveChange, onClose)}
       style={opsDensityStyle()}
     >
-      <div aria-label="Ops tabs" role="tablist">
+      <div aria-label={copy.tabs.label} role="tablist">
         {visible.map(tab => (
           <TabButton active={tab.id === activeId} key={tab.id} onClose={onClose} onSelect={onActiveChange} tab={tab} />
         ))}
@@ -375,7 +381,7 @@ export function TabStrip({ activeId, layout, maxVisible = 6, onActiveChange, onC
             <DropdownMenuTrigger asChild>
               <button
                 aria-expanded={overflowOpen}
-                aria-label={`More tabs, ${overflow.length} overflow`}
+                aria-label={copy.tabs.more(overflow.length)}
                 data-ops-tab-overflow=""
                 onKeyDown={event => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -396,6 +402,7 @@ export function TabStrip({ activeId, layout, maxVisible = 6, onActiveChange, onC
                   onSelect={event => {
                     if ((event.target as HTMLElement | null)?.closest?.('[data-close-tab]')) {
                       event.preventDefault()
+
                       return
                     }
 

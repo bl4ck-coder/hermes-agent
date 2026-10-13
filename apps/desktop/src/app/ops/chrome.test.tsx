@@ -5,6 +5,7 @@ import { Slot } from '@/contrib/react/slot'
 import { registry } from '@/contrib/registry'
 import type { HermesApiRequest } from '@/global'
 import { I18nProvider } from '@/i18n'
+import { en } from '@/i18n/en'
 import { $commandPaletteOpen, $commandPalettePage, closeCommandPalette } from '@/store/command-palette'
 
 import { $opsProblemsCount, OPS_STATUSBAR_GROUP, OpsChrome, type OpsChromeProps, opsStatusbarItems } from './chrome'
@@ -279,7 +280,8 @@ describe('Ops chrome', () => {
         worktreeFocused: false
       },
       'judge',
-      {}
+      {},
+      en.ops
     )
 
     expect(items.left.map(item => item.id)).toEqual(['ops-profile', 'ops-run', 'ops-needs-you', 'ops-tokens'])

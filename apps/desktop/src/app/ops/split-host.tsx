@@ -12,9 +12,6 @@ import { useStore } from '@nanostores/react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
-import { $connectionsRegistry } from '@/store/connection-registry-state'
-import { $profiles } from '@/store/profile'
-
 import { allPaneIds, findGroupOfPane, findParentSplit } from '@/components/pane-shell/tree/model'
 import {
   $hiddenTreePanes,
@@ -27,10 +24,10 @@ import {
 } from '@/components/pane-shell/tree/store'
 import { registry } from '@/contrib/registry'
 import { isTopEscapeLayer, pushEscapeLayer } from '@/lib/escape-layers'
+import { $connectionsRegistry } from '@/store/connection-registry-state'
+import { $profiles } from '@/store/profile'
 
-import { OpsShell } from './index'
 import { useOpsBackendSources } from './chrome'
-import { setInspectorOpen, setRail } from './navigation-store'
 import {
   $opsChatSessionId,
   $opsFullscreen,
@@ -42,10 +39,10 @@ import {
   $opsView,
   $opsViewId,
   $opsWidthPx,
+  CHAT_MIN_WIDTH_PX,
   OPS_FULLSCREEN_ESCAPE_PRIORITY,
   OPS_MIN_WIDTH_PX,
   OPS_PANE_ID,
-  CHAT_MIN_WIDTH_PX,
   type OpsScope,
   planOpsFit,
   readOpsLayout,
@@ -53,6 +50,9 @@ import {
   resolveOpsPaneBox,
   setOpsRail
 } from './layout-store'
+import { setInspectorOpen, setRail } from './navigation-store'
+
+import { OpsShell } from './index'
 
 export interface OpsRouteBinding {
   isOpsRoute: (path: string) => boolean
@@ -479,6 +479,7 @@ export function focusExistingChat(): void {
   setTreePaneHidden('workspace', false)
 
   const root = document.querySelector<HTMLElement>('[data-session-anchor="workspace"]')
+
   const composer = root?.querySelector<HTMLElement>('textarea, [contenteditable="true"]')
 
   ;(composer ?? root)?.focus()
@@ -549,7 +550,7 @@ export function handleOpsEscape(event: {
 function onOpsKey(event: KeyboardEvent): void {
   // Bare keys belong to the focus-owned Desktop router / shell fallback. The
   // split host owns only its fullscreen Escape layer, never a second keymap.
-  if (!event.isComposing && event.key !== 'Process') handleOpsEscape(event)
+  if (!event.isComposing && event.key !== 'Process') {handleOpsEscape(event)}
 }
 
 type LiveSessionSource = {
@@ -585,6 +586,7 @@ export function watchOpsLiveSession(sessionMod: LiveSessionSource, dots: DotSour
     const row = sessionMod.$sessions.get().find(session => session.id === id)
     const title = row?.title?.trim() || id
     const state = dots.$sessionDotStateById.get()[id]
+
     const working =
       state === 'working' ||
       state === 'stalled' ||
@@ -634,6 +636,7 @@ async function wireStores(): Promise<void> {
     const connectionId = connectionsMod.$activeConnectionId.get() || connection?.connectionId || 'local'
     const profile = profileMod.$activeProfile.get() || connection?.profile || 'default'
     const remote = connection?.mode === 'remote'
+
     const next: OpsScope = {
       connectionId,
       profile,
@@ -694,6 +697,7 @@ export function hydrateOpsSplit(scope: OpsScope = $opsScope.get()): void {
  *  scope identity already matches the default atom (local/default 510/hidden). */
 export function noteOpsScope(next: OpsScope): void {
   const previous = $opsScope.get()
+
   const same =
     previous.connectionId === next.connectionId && previous.profile === next.profile && previous.remote === next.remote
 
@@ -761,7 +765,9 @@ export function ensureOpsSplitHost(): void {
         fitOpsFromStorage()
       }
     })
+
     let observed: Element | null = null
+
     const attach = () => {
       const split = opsSplitElement()
 
@@ -785,6 +791,7 @@ export function ensureOpsSplitHost(): void {
         fitOpsFromStorage()
       }
     }
+
     const scheduleAttach = () => {
       attach()
       queueMicrotask(attach)
@@ -812,7 +819,7 @@ export function LiveSessionBadge(): ReactNode {
   }
 
   return (
-    <button type="button" data-ops-live-badge="" onClick={activateLiveSessionBadge}>
+    <button data-ops-live-badge="" onClick={activateLiveSessionBadge} type="button">
       {live.title}
     </button>
   )
@@ -857,11 +864,13 @@ export function OpsPane(): ReactNode {
   const profileRows = useStore($profiles)
   const [measured, setMeasured] = useState(0)
   const rootWidth = measured > 0 ? measured : paneWidth
+
   const connections = registry?.connections.map(item => ({
     id: item.id,
     label: item.label,
     remote: item.kind !== 'local'
   }))
+
   const profiles = profileRows.map(item => ({ name: item.name }))
 
   useEffect(() => {
@@ -887,11 +896,9 @@ export function OpsPane(): ReactNode {
   return (
     <OpsShell
       active={open}
-      statusSources={{ gateway: observations?.gateway, todayTokens: observations?.todayTokens }}
-      modelLabel={observations?.modelLabel}
-      fullscreen={fullscreen}
       connections={connections && connections.length > 0 ? connections : undefined}
-      profiles={profiles.length > 0 ? profiles : undefined}
+      fullscreen={fullscreen}
+      modelLabel={observations?.modelLabel}
       onBackToChats={() => {
         if (fullscreen) {
           exitOpsFullscreen()
@@ -935,7 +942,9 @@ export function OpsPane(): ReactNode {
         $opsViewId.set(id ?? null)
       }}
       paneWidth={rootWidth}
+      profiles={profiles.length > 0 ? profiles : undefined}
       scope={scope}
+      statusSources={{ gateway: observations?.gateway, todayTokens: observations?.todayTokens }}
       view={view}
       viewId={viewId}
     />

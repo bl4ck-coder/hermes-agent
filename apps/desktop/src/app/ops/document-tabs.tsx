@@ -8,16 +8,18 @@
 import type { KeyboardEvent, ReactNode } from 'react'
 import { useEffect, useRef } from 'react'
 
-import { CheckCircle2, Eye, LayoutDashboard, NotebookTabs, Palette, Play, Users, type IconComponent } from '@/lib/icons'
+import { useI18n } from '@/i18n'
+import { CheckCircle2, Eye, type IconComponent, LayoutDashboard, NotebookTabs, Palette, Play, Users } from '@/lib/icons'
 
-import { TAB_INDICATOR_COLOR, TabStrip, type TabStripTab } from './primitives/tab-strip'
+import { opsNavLabel } from './locales'
 import {
+  emptySnapshot,
   type NavSnapshot,
   type OpsNarrow,
   type OpsTab,
-  type TabKind,
-  emptySnapshot
+  type TabKind
 } from './navigation-store'
+import { TAB_INDICATOR_COLOR, TabStrip, type TabStripTab } from './primitives/tab-strip'
 
 const KIND_ICON: Record<TabKind, IconComponent> = {
   office: LayoutDashboard,
@@ -60,13 +62,15 @@ export function DocumentTabs({
   snapshots,
   tabs
 }: DocumentTabsProps) {
+  const copy = useI18n().t.ops
   const selected = tabs.find(tab => tab.id === selectedId) ?? tabs[0]
+
   const stripTabs: TabStripTab[] = tabs.map(tab => ({
     closable: tab.closable,
     icon: KIND_ICON[tab.kind],
     id: tab.id,
     indicator: dots[tab.id] ?? null,
-    label: tab.label,
+    label: opsNavLabel(copy, tab.id, tab.label),
     pinned: tab.pinned,
     route: tab.route
   }))
@@ -165,6 +169,8 @@ function TabPanel({
   snapshot: NavSnapshot
   tab: OpsTab
 }) {
+  const copy = useI18n().t.ops
+  const label = opsNavLabel(copy, tab.id, tab.label)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -204,12 +210,12 @@ function TabPanel({
     >
       {tab.closable && active ? (
         <button data-ops-pin-toggle={tab.id} onClick={onTogglePin} type="button">
-          {pinned ? `Unpin ${tab.label}` : `Pin ${tab.label}`}
+          {pinned ? copy.tabs.unpin(label) : copy.tabs.pin(label)}
         </button>
       ) : null}
       <div data-ops-panel-body="">
         {tab.unavailable ? (
-          <p data-ops-unavailable="">No Desktop route for {tab.label}. This shell does not invent one.</p>
+          <p data-ops-unavailable="">{copy.tabs.noRoute(label)}</p>
         ) : (
           renderPanel(tab)
         )}

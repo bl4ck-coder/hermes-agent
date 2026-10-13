@@ -7,6 +7,7 @@
 
 import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 
+import { useI18n } from '@/i18n'
 import { comboFromEvent } from '@/lib/keybinds/combo'
 import { openCommandPalettePage } from '@/store/command-palette'
 
@@ -29,6 +30,7 @@ import {
   type OpsRailPreference,
   type OpsScope
 } from './layout-store'
+import { opsNavLabel } from './locales'
 import {
   applyHostDocument,
   captureSnapshot,
@@ -168,6 +170,7 @@ export function OpsShell({
   viewId = null
 }: OpsShellProps) {
   const [, setTick] = useState(0)
+  const copy = useI18n().t.ops
   const root = useRef<HTMLDivElement>(null)
   const [motion, setMotion] = useState<'system' | 'full' | 'reduced'>('system')
 
@@ -222,7 +225,12 @@ export function OpsShell({
   const narrow = hosted ? narrowFromPane(paneWidth, storedRail) : (narrowProp ?? narrowFromPane(paneWidth, storedRail))
   const inspectorIsOpen = hosted ? nav.inspectorOpen : (inspectorOpenProp ?? nav.inspectorOpen)
   const selectedTab = nav.tabs.find(tab => tab.id === nav.selectedTabId) ?? nav.tabs[0]
-  const crumb = hosted && selectedTab ? selectedTab.label : opsViewLabel(view)
+
+  const crumb =
+    hosted && selectedTab
+      ? opsNavLabel(copy, selectedTab.id, selectedTab.label)
+      : opsNavLabel(copy, view || 'office', opsViewLabel(view))
+
   const overlay = narrow.inspector === 'overlay'
 
   const revision = JSON.stringify({
@@ -487,10 +495,10 @@ export function OpsShell({
         />
       ) : null}
       <div data-ops-breadcrumb="">
-        <span>Ops</span>
+        <span>{copy.brand}</span>
         <span aria-hidden="true"> ▸ </span>
         <span data-ops-connection="">{connectionLabel}</span>
-        {remote ? <span data-ops-readonly=""> read-only</span> : null}
+        {remote ? <span data-ops-readonly=""> {copy.readOnly}</span> : null}
         <span aria-hidden="true"> ▸ </span>
         <span>{profile}</span>
         <span aria-hidden="true"> ▸ </span>
@@ -499,7 +507,7 @@ export function OpsShell({
       </div>
       <div data-ops-toolbar="" style={{ flex: '0 0 auto', position: 'relative', zIndex: 5 }}>
         <button data-ops-back="" onClick={onBackToChats} type="button">
-          ← Chats
+          {copy.toolbar.back}
         </button>
         <button
           aria-keyshortcuts="["
@@ -508,7 +516,7 @@ export function OpsShell({
           onClick={cycleStoredRail}
           type="button"
         >
-          Rail
+          {copy.toolbar.rail}
         </button>
         <button
           aria-keyshortcuts="]"
@@ -517,20 +525,20 @@ export function OpsShell({
           onClick={toggleInspector}
           type="button"
         >
-          Inspector
+          {copy.toolbar.inspector}
         </button>
         <button
           data-ops-dock-toggle=""
           onClick={() => setDock(connectionId, profile, { dockOpen: !nav.dockOpen })}
           type="button"
         >
-          Dock
+          {copy.toolbar.dock}
         </button>
         <button data-ops-copy-link="" onClick={onCopyLink} type="button">
-          Copy link
+          {copy.toolbar.copyLink}
         </button>
         <button
-          aria-label={fullscreen ? 'Restore split' : 'Full screen Ops'}
+          aria-label={fullscreen ? copy.toolbar.restoreSplit : copy.toolbar.fullScreen}
           aria-pressed={fullscreen}
           data-ops-fullscreen-toggle=""
           onClick={onToggleFullscreen}
@@ -612,7 +620,7 @@ export function OpsShell({
             tabs={nav.tabs}
           />
           <button data-ops-open-chat="" onClick={onOpenChat} type="button">
-            Open the existing chat
+            {copy.toolbar.openChat}
           </button>
         </div>
         {!overlay && inspectorIsOpen ? inspector : null}
