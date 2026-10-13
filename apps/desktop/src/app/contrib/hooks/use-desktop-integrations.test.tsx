@@ -35,7 +35,26 @@ const { hudWindowMock, peerWindowMock } = vi.hoisted(() => ({
 
 const closeActiveTab = vi.hoisted(() => vi.fn(() => true))
 
-vi.mock('@/app/chat/close-tab', () => ({ closeActiveTab }))
+// routeCloseTabChord is mocked to mirror its desktop rungs (PTY first, then
+// closeActiveTab) so the spy observes the close path; Ops rungs live in keymap.test.
+vi.mock('@/app/chat/close-tab', async () => {
+  const terminal = await vi.importActual<{ focusedInteractiveTerminalOwnsWordErase: () => boolean }>(
+    '@/app/right-sidebar/terminal/terminal-context-menu'
+  )
+
+  return {
+    closeActiveTab,
+    routeCloseTabChord: (shape: string, load?: (id: string) => void) => {
+      if (shape === 'bare' && terminal.focusedInteractiveTerminalOwnsWordErase()) {
+        return 'pty'
+      }
+
+      closeActiveTab(load)
+
+      return 'desktop-closed'
+    }
+  }
+})
 
 vi.mock('@/store/mcp-deeplink-install', () => ({
   requestMcpInstallFromDeepLink: vi.fn()
