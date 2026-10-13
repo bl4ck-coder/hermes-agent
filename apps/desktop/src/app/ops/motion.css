@@ -1,0 +1,398 @@
+/* Ops motion tokens. Values are the P0-05 freeze: 140/220/320 and two eases.
+   T10's 600ms glow is not a token and is not declared here. */
+
+:root {
+  --dur-micro: 140ms;
+  --dur-panel: 220ms;
+  --dur-view: 320ms;
+  --ease: cubic-bezier(.23, 1, .32, 1);
+  --ease-drawer: cubic-bezier(.32, .72, 0, 1);
+  --ops-pulse-period: 1000ms;
+  --ops-pulse-min: 0.72;
+}
+
+@keyframes ops-rise {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes ops-land {
+  from {
+    transform: translateY(-6px);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes ops-done {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ops-strike {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes ops-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes ops-slide {
+  from {
+    transform: translateX(var(--ops-slide-x, -8px));
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes ops-grow {
+  from {
+    grid-template-rows: 0fr;
+  }
+
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+@keyframes ops-add {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes ops-presence-pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: var(--ops-pulse-min, 0.72);
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes ops-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+@keyframes ops-flip {
+  from {
+    opacity: 0.96;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ops-caret {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.ops-kf-rise {
+  animation: ops-rise var(--dur-panel) var(--ease) both;
+}
+
+.ops-kf-land {
+  animation: ops-land var(--dur-panel) var(--ease) both;
+}
+
+.ops-kf-done {
+  animation: ops-done var(--dur-panel) var(--ease) both;
+}
+
+.ops-kf-strike {
+  animation: ops-strike var(--dur-panel) var(--ease) both;
+}
+
+.ops-kf-pop {
+  animation: ops-pop var(--dur-micro) var(--ease) both;
+}
+
+.ops-kf-slide {
+  animation: ops-slide var(--dur-panel) var(--ease-drawer) both;
+}
+
+.ops-kf-grow {
+  animation: ops-grow var(--dur-panel) var(--ease) both;
+}
+
+.ops-kf-add {
+  animation: ops-add var(--dur-micro) var(--ease) both;
+}
+
+.ops-drift {
+  animation: ops-drift 8s var(--ease) infinite alternate;
+}
+
+.ops-flip {
+  animation: ops-flip var(--dur-view) var(--ease) both;
+}
+
+.ops-presence-pulse {
+  animation: ops-presence-pulse var(--ops-pulse-period, 1000ms) var(--ease) infinite;
+}
+
+.ops-stream {
+  opacity: 1;
+}
+
+.ops-stream__caret[data-blink='on'] {
+  animation: ops-caret 1s step-end infinite;
+}
+
+/* Focus wraps the control as a rounded rect. It is not the glyph and not the needs-you ring. */
+.ops-presence:focus-visible {
+  outline: 2px solid #f2e8d5;
+  outline-offset: 4px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px #e8c77a;
+}
+
+.ops-presence__glyph,
+.ops-presence__glyph:focus,
+.ops-presence__glyph:focus-visible {
+  outline: none;
+  border-radius: 0;
+}
+
+/* Primitive-owned slot. Do not wait for a consumer stylesheet. */
+.ops-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.ops-presence__slot {
+  display: inline-flex;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  aspect-ratio: 1;
+}
+
+.ops-presence__glyph {
+  display: block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  aspect-ratio: 1;
+  overflow: visible;
+}
+
+.ops-sigil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  box-sizing: border-box;
+  font-size: 6px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.ops-sigil__dot {
+  display: block;
+  flex: none;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+}
+
+[data-ops-motion='reduced'] .ops-kf-rise,
+[data-ops-motion='reduced'] .ops-kf-done,
+[data-ops-motion='reduced'] .ops-kf-strike,
+[data-ops-motion='reduced'] .ops-kf-slide,
+[data-ops-motion='reduced'] .ops-kf-grow,
+[data-ops-motion='reduced'] .ops-kf-add,
+[data-ops-motion='reduced'] .ops-stream {
+  animation: none !important;
+  transform: none;
+  opacity: 1;
+}
+
+[data-ops-motion='reduced'] .ops-kf-land,
+[data-ops-motion='reduced'] .ops-kf-pop,
+[data-ops-motion='reduced'] .ops-drift,
+[data-ops-motion='reduced'] .ops-flip,
+[data-ops-motion='reduced'] .ops-presence-pulse,
+[data-ops-motion='reduced'] .ops-stream__caret {
+  animation: none !important;
+  transform: none;
+}
+
+/* Same paused path as an offscreen row: Reduced stops the reused spinner. */
+[data-ops-motion='reduced'] .glyph-spinner__strip {
+  animation-play-state: paused !important;
+}
+
+.ops-presence[data-paused='true'] .ops-presence-pulse {
+  animation: none;
+}
+
+/* Full is an explicit override of the OS reduce blanket in styles.css.
+   Specificity beats `* { animation-duration/iteration-count !important }`. */
+@media (prefers-reduced-motion: reduce) {
+  [data-ops-motion='full'] .ops-kf-rise,
+  [data-ops-motion='full'] .ops-kf-land,
+  [data-ops-motion='full'] .ops-kf-done,
+  [data-ops-motion='full'] .ops-kf-strike,
+  [data-ops-motion='full'] .ops-kf-slide,
+  [data-ops-motion='full'] .ops-kf-grow {
+    animation-duration: var(--dur-panel) !important;
+    animation-iteration-count: 1 !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-rise {
+    animation-name: ops-rise !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-land {
+    animation-name: ops-land !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-done {
+    animation-name: ops-done !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-strike {
+    animation-name: ops-strike !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-slide {
+    animation-name: ops-slide !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-grow {
+    animation-name: ops-grow !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-pop,
+  [data-ops-motion='full'] .ops-kf-add {
+    animation-duration: var(--dur-micro) !important;
+    animation-iteration-count: 1 !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-pop {
+    animation-name: ops-pop !important;
+  }
+
+  [data-ops-motion='full'] .ops-kf-add {
+    animation-name: ops-add !important;
+  }
+
+  [data-ops-motion='full'] .ops-drift,
+  [data-ops-motion='full'].ops-drift {
+    animation-name: ops-drift !important;
+    animation-duration: 8s !important;
+    animation-iteration-count: infinite !important;
+    animation-direction: alternate !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-flip,
+  [data-ops-motion='full'].ops-flip {
+    animation-name: ops-flip !important;
+    animation-duration: var(--dur-view) !important;
+    animation-iteration-count: 1 !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-stream__caret[data-blink='on'] {
+    animation-name: ops-caret !important;
+    animation-duration: 1s !important;
+    animation-timing-function: step-end !important;
+    animation-iteration-count: infinite !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .ops-presence-pulse {
+    animation-name: ops-presence-pulse !important;
+    animation-duration: var(--ops-pulse-period, 1000ms) !important;
+    animation-iteration-count: infinite !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='full'] .glyph-spinner:not([data-paused='true']) .glyph-spinner__strip {
+    animation-name: glyph-spinner-advance !important;
+    animation-duration: var(--glyph-spinner-duration, 1700ms) !important;
+    animation-iteration-count: infinite !important;
+    animation-play-state: running !important;
+  }
+
+  [data-ops-motion='reduced'] .glyph-spinner__strip {
+    animation-name: glyph-spinner-advance !important;
+    animation-duration: var(--glyph-spinner-duration, 1700ms) !important;
+    animation-iteration-count: infinite !important;
+    animation-play-state: paused !important;
+  }
+
+  [data-ops-motion='full'] .ops-stream,
+  [data-ops-motion='reduced'] .ops-stream {
+    opacity: 1 !important;
+  }
+}
