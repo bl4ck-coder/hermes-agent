@@ -1,8 +1,8 @@
 # Gold Night tokens (P0-05)
 
-Status: r1. Tokens, contrast, type, icons, focus, density, and the one gutter are frozen. This file does not edit a theme, a plugin, or a font binary.
-Base: `2ab328a9c66` (`feat/ops-panel` after the P0-04 merge). Branch: `ops/P0-05`.
-Rows: O56 (sigil disc only; the sigil rule is in `presence-motion.md`), G18, G76, R30 (shimmer colour only), R31 (duration tokens named here; the motion contract is in `presence-motion.md`). Also D5 and SPEC §12.3.
+Status: r2. Tokens, contrast, type, icons, focus, density, and the one gutter are frozen. This file does not edit a theme, a plugin, or a font binary.
+Base: `2ab328a9c66` (`feat/ops-panel` after the P0-04 merge). Branch: `ops/P0-05`. Round 2 applies the meta r1 delta on `a90c6baf849`. Docs only.
+Rows: O56 (sigil disc list in §6.3; the sigil rule is in `presence-motion.md`), G18, G76, R30 (shimmer colour only), R31 (duration tokens named here; the motion contract is in `presence-motion.md`). Also D5 and SPEC §12.3.
 Wireframes W1–W12 and the 19-screenshot index are P0-08. This card does not sign visual fidelity. Judge signs that. Builder signs the arithmetic below.
 
 Model policy P2 is not exercised. This slice writes no model, no `ops-policy.yaml`, and no profile config.
@@ -73,9 +73,11 @@ Opaque composites of `#E8C77A` over the reading surfaces (sRGB, alpha premultipl
 | panel `#16140F` | `#231F15` | `#272218` | `#2F291C` |
 | raised `#1F1B14` | `#2B251A` | `#2F291C` | `#373020` |
 
-`border` / `input` / `sidebarBorder` in the theme object: `#2F291C`.
+`border` / `sidebarBorder` / `userBubbleBorder`: `#2F291C`.
 
-Accent. The gradient `#C9A55A` → `#E8C77A` is primary actions and focus only. It is not body text, not a surface wash, and not a second text ramp.
+`input` is `#1F1B14` here, in §1 (raised alias), and in §5. It is not a border hex. Every theme-object key in §1, §3, and §5 has exactly one hex.
+
+Accent. The gradient `#C9A55A` → `#E8C77A` is primary actions and focus only. It is not body text, not a surface wash, and not a second text ramp. The presence working glyph and its working/thinking/tool label may use `#E8C77A` (SPEC §12.3 ● gold). No other text uses the accent. No text uses `#C9A55A`.
 
 | Slot | Hex | Role |
 |---|---|---|
@@ -89,9 +91,9 @@ Accent. The gradient `#C9A55A` → `#E8C77A` is primary actions and focus only. 
 
 Accent variants. `accent-override.ts` is a DEV-only scratch atom. It is not persisted (`accent-override.ts:1-13`). Production `gold-night` paints the authored hexes above with the override null.
 
-Two seeds are safe to feed that override, because both already clear 4.5:1 as text on every reading surface and as a fill with `#0E0D0B` ink:
+Two seeds are safe to feed that override as fills, because both clear 4.5:1 with `#0E0D0B` ink. The "if painted as text" column is a contrast fact only. It is not a license to use either hex as body text. Production text follows the carve-out above.
 
-| Seed | Hex | Text min on raised | Ink `#0E0D0B` on the fill |
+| Seed | Hex | If painted as text, min on raised (not a text license) | Ink `#0E0D0B` on the fill |
 |---|---|---|---|
 | deep (default) | `#C9A55A` | 7.357:1 | 8.337:1 |
 | hi | `#E8C77A` | 10.514:1 | 11.916:1 |
@@ -130,7 +132,7 @@ P0.5 bundle, next to those woff2 files, `fontUrl` omitted (a remote stylesheet i
 
 Icons. `lucide-react` `0.577.0` is already the dependency (`apps/desktop/package.json:132`). Stroke `1.5`. Sizes: 14 px on rail, table, and status; 16 px on inspector, toast, and empty. No new icon package. Presence shapes are the glyphs in `presence-motion.md`, not lucide icons.
 
-Focus ring. 2 px ivory `#F2E8D5` inner, 2 px gold `#E8C77A` outer, 2 px offset. It is a hollow ring. Working is a filled disc that pulses. A ring must not be used as the working glyph. Both ring colours clear 3:1 against raised (ivory 14.104:1, gold hi 10.514:1). `ring` / `midground` / `composerRing` are the outer gold, not the button fill `#C9A55A`.
+Focus ring. 2 px ivory `#F2E8D5` inner, 2 px gold `#E8C77A` outer, 2 px offset. It wraps the control, never the glyph. It is a hollow ring around the row, button, or chip. Working is a filled disc that pulses. A ring must not be used as the working glyph. The reduced-motion working substitute is the filled 8 px disc plus a 1 px stroke that meets the disc at 0 px gap (geometry in `presence-motion.md`). That stroke is the disc's edge, not this focus ring, and not the needs-you ◉. Both ring colours clear 3:1 against raised (ivory 14.104:1, gold hi 10.514:1). `ring` / `midground` / `composerRing` are the outer gold, not the button fill `#C9A55A`.
 
 Density and gutter. One gutter: `--gn-gutter: 24px` (SPEC §12.3, Gr8r R32). No second gutter variable. Row heights above are the density. Do not add a compact gutter.
 
@@ -181,6 +183,8 @@ Formula, copied from that file so a judge can reproduce without this worktree's 
 
 Runner: Python 3.14.7 stdlib, same arithmetic. Script was not committed (deliverable is this file and `presence-motion.md`). Inputs and outputs are below. Floor is 4.5:1 for every text tier on every supported reading surface. Non-text glyph floor used only as a note is 3:1. It is not the acceptance floor.
 
+r2 additions (stale `#A89880`, the four §6.3 discs) were recomputed with that formula in Python 3.14.7 and in Node. Disc channels use `Math.round(a + (b - a) * t)`, the same half-up rule as `color.ts` `mix`. The two runners agree to 0.001. Ratios below are that output rounded to 3 decimals. FAILS 0.
+
 Surface luminance from that run: base `0.004054`, panel `0.007054`, raised `0.011257`. Worst reading surface for light text is raised.
 
 ### 6.1 Text tiers on reading surfaces
@@ -192,14 +196,16 @@ Every row is a text tier, including Why footer and state copy. Minimum must be �
 | primary | `#F2E8D5` | 15.983 | 15.143 | 14.104 | 14.104 | pass |
 | secondary / idle copy / done copy | `#CDBB98` | 10.321 | 9.778 | 9.107 | 9.107 | pass |
 | tertiary / why footer / unknown copy | `#9A8F7A` | 6.090 | 5.770 | 5.374 | 5.374 | pass |
-| working copy / thinking copy / tool copy | `#E8C77A` | 11.916 | 11.289 | 10.514 | 10.514 | pass |
-| stale copy | `#C9A55A` | 8.337 | 7.899 | 7.357 | 7.357 | pass |
+| working glyph / working copy / thinking copy / tool copy | `#E8C77A` | 11.916 | 11.289 | 10.514 | 10.514 | pass |
+| stale glyph / stale copy | `#A89880` | 6.908 | 6.545 | 6.096 | 6.096 | pass |
 | needs-you copy | `#D4893A` | 6.881 | 6.519 | 6.072 | 6.072 | pass |
 | blocked copy / failed copy | `#BF6D59` | 5.131 | 4.861 | 4.528 | 4.528 | pass |
 | offline copy | `#8A8376` | 5.170 | 4.898 | 4.562 | 4.562 | pass |
 | connected copy | `#6F8F72` | 5.409 | 5.125 | 4.773 | 4.773 | pass |
 
 Why footer is not a fourth hex. SPEC §12.3 asked for a solid hex at ≥ 4.5:1 on `#16140F`. Tertiary `#9A8F7A` on panel is 5.770:1, and it also clears raised (5.374:1), so the footer uses that solid. No translucent why text.
+
+The working row is the §3 carve-out. No other text uses `#E8C77A` or `#C9A55A`. Stale is the hatched-neutral family with unknown (`#9A8F7A`), not the accent. Shape ◍ and the label `stale` keep it apart from unknown ◌. The stale glyph uses the same hex as the stale copy because both clear 4.5:1.
 
 Needs-you amber `#D4893A` is not a SPEC hex. SPEC said "amber" and gave no hex. This one clears 4.5:1 and is not the gold pair. Connected sage `#6F8F72` is the same kind of fill-in: SPEC required one muted sage and gave no hex. Plugin `#3ECF8E` was measured (8.587:1 on raised) and rejected because it is not muted sage.
 
@@ -216,7 +222,22 @@ Blocked copy is a lift, not the SPEC glyph. Inputs: `#B4533C` on raised is 3.463
 
 Plugin muted on the plugin's own `#161618` is 4.203:1 (fail). Plugin ink `#E6E4DC` on plugin `#040405` is 16.097:1 (pass) and is still not the preset text.
 
-### 6.3 Paired foregrounds on action fills
+### 6.3 Sigil discs (O56)
+
+K = 4 gold-tint discs. They are the sRGB stops of `#C9A55A` → `#E8C77A` at t = 0, 1/3, 2/3, 1. Channel = `Math.round(a + (b - a) * t)`. Each is measured with monogram ink `#0E0D0B`. Floor 4.5:1. Ivory `#F2E8D5` on every stop is ≤ 1.917:1 and is forbidden.
+
+O56 requires a gold-tint disc. These four fills are that disc. They are fills, not text, and not a second text ramp. The only text on a disc is `#0E0D0B`. The §3 carve-out is unchanged.
+
+| Index | t | Disc | Ink `#0E0D0B` | Ivory `#F2E8D5` | Verdict |
+|---|---|---|---|---|---|
+| 0 | 0 | `#C9A55A` | 8.337 | 1.917 | pass (ink) |
+| 1 | 1/3 | `#D3B065` | 9.405 | 1.699 | pass (ink) |
+| 2 | 2/3 | `#DEBC6F` | 10.664 | 1.499 | pass (ink) |
+| 3 | 1 | `#E8C77A` | 11.916 | 1.341 | pass (ink) |
+
+These discs are not theme-object keys. They do not change the one-hex rule in §1, §3, and §5. The pick rule is in `presence-motion.md` §1.4: `list[hashString(trimmed name) % 4]`.
+
+### 6.4 Paired foregrounds on action fills
 
 | Ink | Fill | Ratio | Verdict |
 |---|---|---|---|
@@ -241,7 +262,7 @@ Every W screen uses this sheet. No screen gets a local palette. ASCII wireframes
 |---|---|
 | W1, W1b | Reading surfaces, 24 px gutter, focus ring, fresh-count colours from `presence-motion.md` |
 | W2 | Legend colours from that file, why footer `#9A8F7A` on panel |
-| W3 | Sigil pair `#0E0D0B` on `#C9A55A` (ivory on that disc is 1.917:1 and is forbidden) |
+| W3 | Monogram ink `#0E0D0B` on the hashed disc from §6.3 (ivory on any of those discs is ≤ 1.917:1 and is forbidden) |
 | W4 | Node surfaces are panel/raised. Why line is the why tier. |
 | W5 | Card surface panel, hairline 8%, sigil pair above |
 | W6, W7, W8 | Text tiers only. Tokens and ages are tabular. |
