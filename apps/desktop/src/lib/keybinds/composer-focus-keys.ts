@@ -151,6 +151,7 @@ export function composerFocusBlockedBySurface(): boolean {
     switcherActive() ||
     $workspaceIsPage.get() ||
     isFocusWithin('[data-terminal]') ||
+    isFocusWithin('[data-ops-root]') ||
     Boolean(document.querySelector(OVERLAY_SURFACE))
   )
 }
