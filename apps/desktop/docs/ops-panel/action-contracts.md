@@ -209,31 +209,99 @@ Shared for this section unless an entry overrides: auth inherited dashboard toke
 
 ### PUT /api/tools/toolsets/{name} — verified
 
-- Handler: `hermes_cli/web_routers/tools.py:280`.
-- Scope: `?profile=` plus toolset name. Sibling writes `/model`, `/provider`, `/env` (`tools.py:472`, `:504`, `:590`) are not SPEC section 4.1 citations. Do not bind them as the Tools node save. Model pins on a toolset are governed fields only once A6 exists; until then they are not an Ops write.
-- Storage: profile config toolset enablement.
-- Event: none. Error: inherited. Status: verified. A5 owner P2.
+- Handler: `hermes_cli/web_routers/tools.py:281` `toggle_toolset`.
+- Schema: `ToolsetToggle` (`web_models.py:496-498`): `{enabled: bool, profile?: string}`. Path `{name}` is the toolset key. No other body fields.
+- Scope precedence: `body.profile` wins over query `?profile=` (`tools.py:291`, `scope_profile = body.profile or profile`). Both omitted: the process profile, via `config_write_scope`.
+- Auth: inherited dashboard token. Remote connection forbidden (section 5 shared rule).
+- Storage: that profile's `config.yaml` only. Config-only toolsets write `<name>.enabled` (`tools.py:296-300`). Others rewrite `platform_toolsets` for `_toolset_configuration_platform(name)` via `_save_platform_tools` (`:302-308`). Not `.env`.
+- Event: none. Enable may spawn `hermes tools post-setup` in the background (`:312-336`). A spawn failure is logged and does not fail the toggle (`:337-338`). Response `{ok, name, platform, enabled, post_setup_started}`.
+- Error: 400 `Unknown toolset: {name}` (`tools.py:205-210`). Status: verified. A5 owner P2.
+- Sibling writes `/model`, `/provider`, `/env` (`tools.py:472`, `:504`, `:590`) are not SPEC section 4.1 citations. Do not bind them as the Tools node save. Model pins on a toolset are governed fields only once A6 exists; until then they are not an Ops write.
 
 ### PUT /api/skills/toggle — verified
 
-- Handler: `skills.py:379` `toggle_skill`. Body `SkillToggle` name + enabled, optional profile (`web_models.py:480` area).
-- Storage: disabled-skill set in that profile's config (`:384-391`).
-- Event: none (prompt cache is not an Ops event). Error: inherited. Status: verified. A5 owner P2.
+- Handler: `skills.py:380` `toggle_skill`.
+- Schema: `SkillToggle` (`web_models.py:480-483`): `{name: string, enabled: bool, profile?: string}`.
+- Scope precedence: `body.profile` wins over query `?profile=` (`skills.py:384`).
+- Auth: inherited dashboard token.
+- Storage: the disabled-skill set in that profile's `config.yaml` via `save_disabled_skills` (`:386-391`). Not `.env`. Not `SKILL.md`.
+- Event: none. Toggle does not clear the skills prompt cache (create and content do). Do not document a cache event on this route.
+- Error: inherited scope errors. Status: verified. A5 owner P2.
 
-### PUT /api/memory/provider and PUT /api/memory/providers/{name}/config — verified
+### POST /api/skills/hub/install — verified one identifier, not a bundle
 
-- Handlers: `ops.py:507` and `memory_providers.py:551`.
-- Schema: provider name; config object for the second route. Secrets in config stay masked on read. This slice did not open the config schema field-by-field. Blank secret axes: `not exposed` to the renderer; the write accepts only fields the existing form already posts.
-- Storage: profile config memory section. Not `.env` raw.
-- Event: none. Error: inherited. Status: verified. A5 owner P2. `POST /api/memory/reset` (`ops.py:528`) is not a SPEC section 4 citation. Not offered.
+- Handler: `skills.py:97` `install_skill_hub`.
+- Schema: `SkillInstallRequest` (`web_models.py:423-425`): `{identifier: string, profile?: string}`. One identifier. No `identifiers[]`, no pack id.
+- Scope precedence: `body.profile` wins over query `?profile=` (`skills.py:101`).
+- Auth: inherited dashboard token.
+- Storage: no synchronous file write. Spawns `hermes -p <profile> skills install <identifier> --yes` (`_common.py:104-111`). The official catalog is a flat `{skills: [...]}` (`skills.py:123-141`), not starter packs.
+- Event: none. Response on spawn: `{ok: true, pid, name}`. HTTP 200 does not mean the skill is on disk yet.
+- Error: 400 `identifier is required` when the identifier is empty (`_common.py:114-118`); 500 `Failed to install skill: ...` when the spawn fails (`_common.py:109`).
+- Status: verified handler for one skill. This is the Browse install under G72. It does not implement G10 or G82. Looping it from the client and calling that Add all is forbidden. No bundle endpoint is proposed; those rows are Cuts (ledger crosswalk).
+
+### PUT /api/memory/provider and PUT /api/memory/providers/{name}/config — verified, two stores
+
+Neither route has `body.profile`. Scope is query `?profile=` only. A profile field in the JSON is not read. Do not document body-over-query precedence here.
+
+Shared: auth inherited dashboard token; remote forbidden; A5 owner P2. Secrets stay masked on read. The renderer never receives `.env` values.
+
+#### PUT /api/memory/provider
+
+- Handler: `ops.py:507` `set_memory_provider`.
+- Schema: `MemoryProviderSelect` (`web_models.py:396-397`): `{provider: string}`. `""` or `"built-in"` disables the external provider.
+- Scope: query `?profile=` inside `config_write_scope` (`ops.py:516`).
+- Storage: that profile's `config.yaml` `memory.provider` (`:519-522`). This select does not write `.env`.
+- Event: none. Response `{ok, active}`.
+- Error: 400 unknown or not-ready provider (`web_server_memory.py:376-388`). The check runs inside the target profile scope so a provider that is ready only in the launch profile is not written into the target (`ops.py:512-515`).
+
+#### PUT /api/memory/providers/{name}/config
+
+- Handler: `memory_providers.py:551` `update_memory_provider_config`.
+- Schema: `MemoryProviderConfigUpdate` (`web_models.py:33-34`): `{values: object}`. Path `{name}`. Query `surface=declared` selects the declared schema. Omitted `surface` is the native provider. No body profile.
+- Name charset `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`, else 404 (`memory_providers.py:43`, `:46-47`, `:497-505`).
+
+Native path (`surface` omitted), `:566-574` calling `:473-492` and `:456-470`:
+
+- Non-secret fields: if the loaded provider overrides `MemoryProvider.save_config`, that method writes under the hermes home and returns (`:456-463`). Otherwise merge into `config.yaml` `memory.<name>` and `save_config` (`:465-470`).
+- Secret fields that carry `_env_key`: `save_env_value` (`:483-492`). `.env` is authoritative for those secrets. A blank secret on this path does not clear the env key; only a non-empty submission is saved.
+- After the native write succeeds, `config.yaml` `memory.provider` is set to `name` (`:571-574`).
+
+Declared path (`surface=declared`), `:559-565` calling `:308-316`:
+
+- No declared schema: 404.
+- Submitted values are stringified (`:563`).
+- Non-secret fields go to the declared store: flat JSON mode `0600` (`_write_provider_flat`, `:174-178`), or the Honcho host block (`_write_provider_honcho`, `:181`) when `provider.storage == STORAGE_HONCHO_HOST_BLOCK`. Not "always config.yaml".
+- Declared secrets with `env_key` go to `.env` via `save_env_value` (`:134-143`).
+- If `memory.provider` was not this name, it is set in `config.yaml` (`:314-316`).
+
+- Event: none. Declared response `{ok: true}`. Native response `{ok: true, active: name}`.
+- Error: 404 unknown name or unknown declared schema; 400 on `ValueError` from coercion (`:51-62`); 500 on other failures. Do not say storage is only the profile config memory section.
+- `POST /api/memory/reset` (`ops.py:528`) is not a SPEC section 4 citation. Not offered.
 
 ### PUT /api/messaging/platforms/{id} — verified
 
-- Handler: `messaging.py:883`.
-- Schema: platform id in the path. Body is the platform config the existing Desktop form posts. `.env` values are never rendered (SPEC section 7). Channels show set/unset.
-- Storage: profile messaging config. Secrets in `.env`, not in the response.
-- Event: none. Error: inherited. Status: verified. A5 owner P2.
-- G7 Connect uses the existing onboarding posts (`messaging.py:581` WhatsApp start, `:712` Telegram start, and their apply routes) and `POST /api/mcp/servers/{name}/auth` (`mcp.py:254`). Manage uses `PUT /api/mcp/servers/{name}/enabled` (`mcp.py:372`). Those are verified handlers, same auth, profile query, storage in that profile's messaging/MCP config. Event: none. Error: inherited, plus onboarding 4xx from the platform module. Not a new adapter.
+- Handler: `messaging.py:883` `update_messaging_platform`.
+- Schema: `MessagingPlatformUpdate` (`web_models.py:61-66`): `{enabled?: bool, env: {string: string}, clear_env: string[], profile?: string}`. Path `{platform_id}`.
+- Scope precedence: `body.profile` wins over query `?profile=` (`messaging.py:887`, `target_profile = body.profile or profile`).
+- Auth: inherited dashboard token.
+- Gate before any write: `enabled: true` runs `_multiplex_port_binding_conflict`. A conflict is 409 and does not touch `.env` or `config.yaml` (`:888-897`).
+- Storage: `clear_env` keys call `remove_env_value` (`:922-923`); non-blank `env` values call `save_env_value` (`:924-925`). `.env` is authoritative for platform secrets. `enabled`, when present, is written through `_write_platform_enabled` (`:927-928`). Not config-only.
+- A key outside that platform's `env_vars` is 400 (`:899-903`). A redacted credential preview is 400 and is not saved (`:917-918`). An empty env value is skipped, not written (`:915-916`).
+- Event: none on the kanban bus. A live multiplexer serving this named profile may rebuild adapters immediately. Response `{ok: true, platform, hot_served}` (`:939-942`). `hot_served: true` means that profile does not need a gateway restart for this write. `false` does not mean the write failed. Do not document the write as next-session-only.
+- Error: 400 bad key, bad value, or redacted preview; 409 multiplex conflict before write; 500 via `http_failure` (`:930`). Status: verified. A5 owner P2. The renderer shows set/unset, never raw `.env` (SPEC section 7).
+
+### G7 Connect / Manage — verified handlers, concrete bodies
+
+Connect is not `PUT /api/messaging/platforms/{id}`.
+
+- WhatsApp start: `POST /api/messaging/whatsapp/onboarding/start` (`messaging.py:581`). Body `WhatsAppOnboardingStart` (`web_models.py:75-78`): `{mode?: string, allowed_users?: string, profile?: string}`. The handler takes no query profile; scope is `body.profile` (`:582-586`). Storage: in-memory onboarding session plus that profile's WhatsApp session dir. Event: none. Error: platform-module 4xx/502. Not a new adapter.
+- WhatsApp apply: `POST /api/messaging/whatsapp/onboarding/{pairing_id}/apply` (`messaging.py:624`). Body `WhatsAppOnboardingApply` (`web_models.py:80-83`): `{mode?: string, allowed_users?: string, profile?: string}`. Scope precedence: `body.profile or query profile or the session's record.profile` (`:636`). Storage: `.env` `WHATSAPP_MODE`, `WHATSAPP_DM_POLICY`, `WHATSAPP_ALLOWED_USERS` (only when non-blank), `WHATSAPP_ENABLED`, plus `_write_platform_enabled("whatsapp", true)` (`:639-646`). Event: none. The handler may restart the gateway; response includes `needs_restart`. Error: 409 if the session is not `connected` (`:628-629`); save failures through `_onboarding_save_errors`.
+- Telegram start: `POST /api/messaging/telegram/onboarding/start` (`messaging.py:712`). Body `TelegramOnboardingStart` (`web_models.py:68-69`): `{bot_name?: string}`. No profile field and no query profile. Storage: in-memory pairing plus the external pairing service. Event: none. Error: 502 incomplete pairing payload (`:721-722`).
+- Telegram apply: `POST /api/messaging/telegram/onboarding/{pairing_id}/apply` (`messaging.py:774`). Body `TelegramOnboardingApply` (`web_models.py:71-73`): `{allowed_user_ids: string[], profile?: string}`. Scope precedence: `body.profile` wins over query `?profile=` (`:790`). Storage: `.env` `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_USERS`, plus `_write_platform_enabled("telegram", true)` (`:794-796`). Event: none. Response includes `needs_restart`. Error: 400 non-numeric or empty allow-list (`:777-781`); 404 unknown pairing (`:697`); 409 not ready (`:788`).
+- MCP Connect: `POST /api/mcp/servers/{name}/auth` (`mcp.py:254`). No JSON body. Scope is query `?profile=` only (`:270`, passed into the flow at `:293`). Auth: `_require_token` (`:261`). Storage: starts an OAuth flow; it does not write the token into the renderer. Event: none. Error: 404 unknown server (`:278-279`); 409 plugin-provided server (`:280-281`); 400 stdio or header-auth server (`:283-286`).
+- Manage: `PUT /api/mcp/servers/{name}/enabled` (`mcp.py:372`). Body `MCPEnabledToggle` (`web_models.py:355-357`): `{enabled: bool, profile?: string}`. Scope precedence: `body.profile` wins over query (`:377`). Storage: that profile's `config.yaml` `mcp_servers.{name}.enabled`. Takes effect on next session/gateway (`:374`). Event: none. Error: 409 plugin-provided server (`:382-385`); 404 missing server (`:387-388`).
+
+Not a new adapter. Do not imply `PUT /api/messaging/platforms/{id}` covers Connect.
 
 ### Schedule writes — verified, ownership in the ledger
 
@@ -258,11 +326,41 @@ Shared for this section unless an entry overrides: auth inherited dashboard toke
 
 ### PUT /api/config/raw — verified handler, A6 absent
 
-- Handler: `hermes_cli/web_routers/analytics.py:53`.
-- Schema: raw YAML body the existing editor posts.
-- Storage: that profile's `config.yaml`.
-- Event: none. Error: 400 on schema/parse failures from the existing validator. No P2 refusal today.
-- Status: verified. A6 owner P2. A5 owner P2. Conflict dialog (Keep mine / Take theirs / Diff) needs the expected-hash A5 does not have yet. Do not fake it with mtime alone in the client.
+- Handler: `hermes_cli/web_routers/analytics.py:53` `update_config_raw`.
+- Schema: `RawConfigUpdate` (`web_models.py:523-525`): `{yaml_text: string, profile?: string}`. Not a bare YAML body. The YAML text is the `yaml_text` field.
+- Scope precedence: `body.profile` wins over query `?profile=` (`analytics.py:59`, `body.profile or profile`).
+- Auth: inherited dashboard token.
+- Storage: full-document replace of that profile's `config.yaml` via `save_config(parsed, merge_existing=False)` (`:60-64`). Omitted keys are deleted. This is not the merge used by `PUT /api/config`.
+- There is no config-schema validator on this route. `yaml.safe_load` must yield a mapping, or 400 `YAML must be a mapping` (`:56-58`). `yaml.YAMLError` is 400 `Invalid YAML` (`:72-73`). Unreadable-file refusal belongs to `PUT /api/config`, not here.
+- Event: not none when the replace changes `approvals.mode` on this process's own profile. That case calls `_broadcast_gateway_session_info()` (`:66-67`). Other profiles do not get that broadcast (`_is_other_profile`). No kanban event.
+- Error: 400 parse or non-mapping. No P2 refusal today.
+- Status: verified handler. A6 owner P2, including this route. A5 owner P2. Conflict dialog (Keep mine / Take theirs / Diff) needs the expected-hash A5 does not have yet. Do not fake it with mtime alone in the client.
+
+### POST /api/model/set — verified handler, A6 absent (O40)
+
+SPEC section 12.8 O40 cites `POST /api/model/set`. That is not `PUT /api/profiles/{name}/model`.
+
+- Handler: `hermes_cli/web_routers/models.py:376` `set_model_assignment`.
+- Schema: `ModelAssignment` (`web_models.py:105-123`): `{scope: string, provider: string, model: string, task?: string, reasoning_effort?: string|null, base_url?: string, api_key?: string, confirm_expensive_model?: bool, profile?: string}`. `scope` is `main` or `auxiliary`. `task` `""` means every auxiliary slot. `task` `"__reset__"` resets every auxiliary slot to `provider="auto"`. Omitted `reasoning_effort` leaves the override; explicit null clears it (`model_fields_set`, `models.py:412`).
+- Scope precedence: `body.profile` wins over query `?profile=` (`models.py:419`).
+- Auth: inherited dashboard token.
+- Storage: that profile's `config.yaml`. `scope=main` writes `model.provider` and `model.default` (and `base_url` / `api_key` when sent). `scope=auxiliary` writes `auxiliary.<task>.*`. Applies to new sessions only. A running chat PTY hot-swaps through the `/model` slash command, not this route (`:378-380`).
+- Event: none on this route.
+- Error: 400 if `scope` is not `main` or `auxiliary` (`:385-386`). 503 `Restart required: ...` on dashboard code skew, before the write (`:392-395`). Expensive-model warning with `confirm_expensive_model` false returns 200 `{ok: false, confirm_required: true, confirm_message}` and does not enter the profile scope (`:400-410`). 500 `Failed to save model assignment` via `http_failure` (`:388`).
+- Status: verified handler. No P2 refusal in this function. A6 owner P2. Until A6 exists, the Ops model chip stays read-only (O50). Do not send a disallowed pair because the handler will store it.
+
+### PUT /api/config — verified (O41)
+
+SPEC O41 writes `approvals.mode` through `/api/config`, not through raw YAML. Raw replace can also change the key; it is a different contract (above).
+
+- Handler: `hermes_cli/web_routers/config_env.py:117` `update_config`.
+- Schema: `ConfigUpdate` (`web_models.py:11-13`): `{config: object, profile?: string}`. The autonomy control sends `config.approvals.mode` as one of `manual`, `smart`, `off` (`web_server_config.py:143`). Orbit labels Ask first / Safe / Full are not wire values. Do not send them.
+- Scope precedence: `body.profile` wins over query `?profile=` (`config_env.py:123`).
+- Auth: inherited dashboard token.
+- Storage: deep-merge of `config` over the existing `config.yaml` (`:131-146`), under `_CONFIG_MUTATION_LOCK`. Not a full replace. An unreadable or non-mapping file is refused before the merge (`require_readable_config_before_write`, `config.py:1965-1996`, raises `RuntimeError`).
+- Event: `_broadcast_gateway_session_info()` only when `approvals.mode` changed and the target is this process's own profile (`:140`, `:151-152`). No kanban event. A save of another profile does not refresh this process's sessions.
+- Error: the route's `http_failure` maps failures, including the unreadable-file `RuntimeError`, to 500 `Internal server error` (`:155-156`). This route does not return the raw-YAML 400. There is no second confirm.
+- Status: verified. P2 does not govern `approvals.mode`. A5 owner P2. Not a Cut.
 
 ### POST /api/gateway/restart — verified, confirm required
 
@@ -344,6 +442,56 @@ Mount prefix: `/api/plugins/kanban`. Handlers in `plugins/kanban/dashboard/plugi
 
 SPEC section 11.10: keyboard moves are an accessible alternative to drag. They call the same PATCH. No second endpoint. Owner of the keys: P0.5 keymap, after R23's dynamic signature. This slice does not bind them.
 
+## 6b. Projects and Undo (section 12.8 writes the board section does not cover)
+
+### projects.create / projects.archive — verified RPC (R4, R22)
+
+SPEC R4 is list / create / archive / favourites. SPEC R22's "Create project" is the same create. There is no REST `/api/projects`. Desktop already speaks JSON-RPC. Do not invent a REST twin.
+
+- Handlers: `tui_gateway/methods_projects.py:91` `projects.create`, `:104` `projects.archive`. List is `:81` `projects.list` (read). Registry wrapper `_projects_method` (`:27-43`) is profile-scoped.
+- Schema, create: `ProjectsCreateParams` (`tui_gateway/contracts/projects_pets.py:73-84`): `{name: string, folders?: string[], slug?: string, primary_path?: string, description?: string, icon?: string, color?: string, board_slug?: string, use?: bool, profile?: string}`. `use: true` also calls `set_active`.
+- Schema, archive: `ProjectsArchiveParams` (`:125-126`): `{id: string, restore?: bool, profile?: string}`. `restore: true` calls `restore_project`; otherwise `archive_project` (`methods_projects.py:107`).
+- Auth: the Desktop gateway session that already carries `projects.*`. Not the dashboard REST token. Profile is the RPC `profile` param the desktop wrapper adds (`projects_pets.py:4-6`).
+- Scope: that profile's `projects.db` via `pdb.connect_closing()` (`methods_projects.py:36`).
+- Storage: `projects` and `project_folders` in that db (`hermes_cli/projects_db.py`). `archived` is a column. Favourites are not. Favourites stay a local pref, storage `none` on the server, event `none`.
+- Event: `record_feature_used("projects")` on create (`methods_projects.py:98-99`). No kanban event.
+- Error: JSON-RPC, not HTTP. `5062` no such project, `5063` invalid argument (duplicate primary path is the create refusal named on the contract, `projects_pets.py:88`), `5061` any other failure (`methods_projects.py:13`, `:38-43`).
+- Status: verified handlers. Live RPC was not called. `projects.delete` exists (`:111`) and is not an R4 action. Do not bind it. Not a Cut of R4.
+
+### R46 Undo — legal reverse set only; illegal pairs are a named gap
+
+SPEC R46: Undo for move, archive, and reassign within 8 s. Never for approval or stop. The existing handlers do not reverse every pair they accept. Do not promise a universal reverse PATCH. Do not cut R46.
+
+Rule: Undo targets the landed status, not the status the client requested. `review` → `todo` lands in `ready` (`kanban_workflow.py:132-133`). The reverse of that landing is `ready` → `review`, which `can_move` allows. Reversing the requested `todo` would be a different pair.
+
+A status Undo may call `PATCH /tasks/{id}` with `status` = previous only when `can_move(landed, previous)` is true (`kanban_workflow.py:69-79`). Otherwise the handler returns 409. Sending it is a contract violation.
+
+Legal reverses (forward pair whose reverse `can_move` accepts), from `DEFAULT_WORKFLOW.manual` plus archive-always / archived→`triage|todo|ready`:
+
+- triage→todo, triage→ready, triage→archived
+- todo→triage, todo→scheduled, todo→ready, todo→archived
+- scheduled→todo, scheduled→ready
+- ready→triage, ready→todo, ready→scheduled, ready→blocked, ready→review, ready→done, ready→archived
+- blocked→ready
+- review→ready
+- done→ready
+
+Illegal reverses. The forward move is allowed. The reverse PATCH is not. Includes the two pairs called out in r1: `archived`→`done`, and `ready`→`running`.
+
+- scheduled→triage, scheduled→archived
+- running→triage, running→todo, running→scheduled, running→ready, running→blocked, running→review, running→done, running→archived
+- blocked→triage, blocked→todo, blocked→scheduled, blocked→done, blocked→archived
+- review→triage, review→todo, review→done, review→archived
+- done→triage, done→todo, done→archived
+
+Reassign Undo may call `POST /tasks/{id}/reassign` back to the previous profile. If the task is still `running`, `reclaim_first` is required or the handler returns 409 (`plugin_api.py:1041-1043`). Reassign does not restore a cancelled run. A reassign that reclaimed `running` cannot be undone into `running`: every `*→running` reverse is illegal. That case is in the gap below, not a reverse PATCH.
+
+Approval and stop have no reverse route. The toast does not offer Undo for them.
+
+Races: `PATCH` has no `expected_status`. If any task event arrives after the write and before the click, disable Undo. Do not fire a reverse against a card the client no longer owns.
+
+Gap, not a Cut, not an existing adapter: `POST /api/plugins/kanban/tasks/{id}/undo` does not exist. Owner P1. Proposed body `{kind: "move"|"archive"|"reassign", expected_status, previous_status?, expected_assignee?, previous_assignee?}`. It would have to restore a prior status the manual matrix rejects, and a prior run/claim the current PATCH cannot revive. Until that route exists, the 8 s control is enabled only for the legal set above and for assignee-only reassign that does not need to re-enter `running`. A click on an illegal pair does nothing and does not call PATCH. This restriction is the verified matrix, recorded here so Planner does not have to re-decide the pairs. It is not a silent cut of R46.
+
 ## 7. Section 12.8 actions not already named
 
 | ID | Action | Contract |
@@ -354,24 +502,30 @@ SPEC section 11.10: keyboard moves are an accessible alternative to drag. They c
 | O15 | New task | `POST /tasks` section 6. |
 | O16 | Run now | `POST /api/cron/jobs/{id}/trigger` section 5. Template half is a Cut (ledger). |
 | O29 | Steer/Stop, Approve, Comment, Unblock | sections 3 and 4 steer, 6 comment. Unblock is A-unblock, not the three-call composition. |
-| O50 | Model chip write | `PUT .../model` section 5, through A5/A6 when those exist. Until A6, the chip menu is read-only. Owner of the write UI: P5. |
+| O40 | Default model menu | `POST /api/model/set` section 5. Not the profile-model PUT. A6 absent; chip stays read-only until A6. |
+| O41 | Agent autonomy | `PUT /api/config` section 5. Wire values `manual` / `smart` / `off`. Not the Orbit labels. Not raw YAML. |
+| O50 | Model chip write | `PUT .../model` section 5, through A5/A6 when those exist. Until A6, the chip menu is read-only. Owner of the write UI: P5. The default-model menu is O40, not this row. |
 | O62 | Blocked toast | `[Open]` only. Unblock needs a note, so the toast does not call A-unblock. Status: UI rule, no extra endpoint. |
 | O72 | Inline Approve/Deny/Comment | section 3.2 and `POST .../comments`. One click. |
 | O74 | Unblock / Retry ready | A-unblock. Retry-ready is the same op when expected_status is `blocked` or `scheduled`. Not a bare PATCH. |
-| G7 | Connect / Manage | section 5 messaging and MCP. |
-| G12 | Create / open skill | `POST /api/skills` `skills.py:418` body name, content, category. `PUT /api/skills/content` `:433`. 400 if `success` is false. Storage: skill dir SKILL.md. Event: none. Status: verified. A5 owner P2. |
+| G7 | Connect / Manage | section 5 G7. Concrete onboarding and MCP bodies. Not implied by the platform PUT. |
+| G10 | Starter packs + Add all | Cut. Same missing bundle resource as G82. Ledger crosswalk, outside the 20-id set. No bundle endpoint is proposed. Single-skill install is G72 Browse, not this row. |
+| G72 | Starter-pack metadata + Browse library | Adapt, partial cut of pack metadata. Browse stays: `GET /api/skills/hub/official` and `EmbeddedHubPicker` (`apps/desktop/src/app/capabilities/skills/embedded-hub-picker.tsx`). Install is section 5 hub/install, one identifier. Do not render "8 skills" or "2.4k installs": the official payload has no install count (`skills.py:77-81`). |
+| G12 | Create / open skill | `POST /api/skills` `skills.py:418` body name, content, category, optional profile. `PUT /api/skills/content` `:433`. 400 if `success` is false. Storage: skill dir SKILL.md. Event: none. Status: verified. A5 owner P2. Not hub install. |
 | G20 | Save / Export | Per-node saves are section 5. Export: `POST /api/profiles/{name}/export` `profiles.py:1095`. Auth inherited. Storage: an export archive, not a profile mutation of the source. Event: none. Status: verified. Share is this export, not a new endpoint. |
 | G21, G43 | Test run / Stop | section 3.5 and 3.3. Header is the profile pill plus the prompt. No 7-day parameter. |
 | G25 | Stop, steer, attach | Stop and steer: sections 3.3 and 4. Attach is a Cut of this row's third control. No attach endpoint is implied. |
 | G32, G86 | Owner / change note | No owner field. Owner = last writer on the A5 manifest. Change note is an A5 field. Both proposed, owner P2. Do not write them into SOUL.md frontmatter from the client. |
 | G46 | Steer send-gating | section 4. UI only. |
 | G57 | Save disabled at 0 dirty | UI. The writes are section 5. No "save all" endpoint. P5 may loop the per-node writes; a failed one stops the loop and does not claim the rest saved. A5, when present, is still per node. |
-| G82 | Add all | Cut. Ledger. No bundle endpoint. |
+| G82 | Add all | Cut. Ledger. No bundle endpoint. Do not loop hub/install. |
+| R4 | Projects list / create / archive / favourites | section 6b. Favourites local. Create and archive are `projects.create` / `projects.archive`. |
 | R6, R17, R19, R39, R47 | Drag, body, done/ready, pickers, title | `PATCH` section 6. Pin (R19) is a local pref, storage `none` on the server, event `none`. |
 | R20 | Open, Duplicate, Copy link, Archive, Reassign | Open is navigation. Duplicate has no route: client `POST /tasks` with copied title/body/assignee/priority, new id. Copy link is the clipboard, storage `none`. Archive is PATCH `archived`. Reassign is section 6. Delete is forbidden. |
 | R21, R49 | Bulk archive / reassign / ready | `POST /tasks/bulk` section 6. |
+| R22 | Palette Create task / Create project | Create task: `POST /tasks` section 6. Create project: section 6b `projects.create`. Go to, Search, Switch theme, Shortcuts: existing Desktop palette. No new endpoint. |
 | R42 | Within-column reorder | Disabled. Ledger. No position write. |
-| R46 | Undo within 8 s | Reverse `PATCH` or `POST /reassign` for move, archive, reassign. Never for approval or stop (those have no reverse route). Status: UI plus the same verified writes. No `/undo` endpoint. |
+| R46 | Undo within 8 s | section 6b. Legal reverse set only. Illegal pairs, including archived→done and ready→running, do not call PATCH. Named gap `POST .../undo`, owner P1. Never for approval or stop. Not a Cut. |
 | R48 | Column add | `POST /tasks` on todo and ready only. |
 | R57 | Unarchive | `PATCH` to `triage`, `todo`, or `ready`. Ledger. |
 | O47 | Dirty / event dots | Local stores only. No server write. |
@@ -381,13 +535,14 @@ SPEC section 11.10: keyboard moves are an accessible alternative to drag. They c
 | O73 | Open git review | Navigation to the existing review surface. Ops does not call `POST /api/git/review/commit` or `/push`. Those routes exist (`hermes_cli/web_routers/git.py:187`, `:192`) and are not planned Ops actions. |
 | R44 | Live update keeps focus | UI invariant. No write. |
 
-Rows in sections 3-5 and 12.8 whose citation is a read, a local pref, a Cut with no write, or an existing Desktop surface are not given a fake write. Examples: O1-O2 fleet reads, O7 activity, O56 sigil, R4 favourites (local), G28 filter (cut), R23 keys (no new bind in this slice).
+Rows in sections 3-5 and 12.8 whose citation is a read, a local pref, a Cut with no write, or an existing Desktop surface are not given a fake write. Examples: O1-O2 fleet reads, O7 activity, O56 sigil, R4 favourites (local; create/archive are section 6b), G28 filter (cut), G10/G82 bundles (cut), R23 keys (no new bind in this slice).
 
 ## 8. Phase owners for anything not verified
 
 | Endpoint | Owner | Why it is not implied by an existing adapter |
 |---|---|---|
 | `POST /api/plugins/kanban/tasks/{id}/unblock` | P1 | three current calls are not one transaction and do not check claim revision |
+| `POST /api/plugins/kanban/tasks/{id}/undo` | P1 | legal reverses use PATCH or reassign; archived→done, ready→running, and the other illegal pairs in section 6b are not that handler. Not a bundle endpoint. Not a Cut of R46. |
 | `POST /api/approvals/{id}/respond` and `GET /api/approvals/pending` | P1 A3 | in-process pop is not cross-profile durable dedupe |
 | A5 inside each Canvas mutation, plus restore | P2 | `atomic_write_text` is not a backup transaction |
 | A6 on model, raw YAML, restore, fallback_providers, auxiliary | P2 | model PUT accepts any pair today |

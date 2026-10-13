@@ -121,7 +121,7 @@ SPEC: if the hub has no bundles, cut this. The hub has no starter-pack bundles.
 - "bundle" in `hermes_cli/skills_hub.py` is one skill's fetched files, not a multi-skill pack.
 - No `starter pack` / `Add all` route in this tree. `reference-index.md` already says Add all was not given a contract.
 
-Cut the row. Reason: there is nothing to list in the confirm dialog, and inventing a client-side "install every search hit" would not be the hub bundle SPEC asked for. Single-skill install stays on G12.
+Cut the row. Reason: there is nothing to list in the confirm dialog, and inventing a client-side "install every search hit" would not be the hub bundle SPEC asked for. Single-skill hub install is not this row and is not G12 (G12 is `POST /api/skills` create/open). It is the Browse install, contracted in `action-contracts.md` and kept on G72. G10, which is the starter-pack row that required the same bundle, is Cut outside this 20-id set. See the crosswalk below. Do not add a `### G10` heading here.
 
 ### G84 Provider auth status — verified Adapt
 
@@ -129,7 +129,9 @@ Cut the row. Reason: there is nothing to list in the confirm dialog, and inventi
 
 ### R4 Projects — verified Adapt
 
-Schema `hermes_cli/projects_db.py:29-40` has `archived`, no favourites column. JSON-RPC `projects.list` (`tui_gateway/methods_projects.py:81`), `projects.create` (`:91`), `projects.archive` (`:104`). Favourites stay a local pref, as the row already says. Not a Cut. Live RPC not called.
+Schema `hermes_cli/projects_db.py:29-42` has `projects.archived` and `project_folders`, no favourites column. JSON-RPC `projects.list` (`tui_gateway/methods_projects.py:81`), `projects.create` (`:91`), `projects.archive` (`:104`).
+
+Write axes are in `action-contracts.md` section 6b, not repeated as a 21st ledger heading: create body `ProjectsCreateParams`, archive body `ProjectsArchiveParams`, profile-scoped `projects.db`, JSON-RPC errors 5061/5062/5063, favourites local (storage none, event none). `projects.delete` is not bound. Live RPC was not called. Not a Cut.
 
 ### R23 Key ownership — documentary verified, dynamic signature pending
 
@@ -176,12 +178,25 @@ Unarchive is `PATCH` status to one of the three legal targets. There is no `/una
 | G28 | filter expression | webhook list and `events` | create and list schemas have no filter |
 | G61 | kanban workflow templates section | cron blueprints | same catalog failure as O16 |
 | G70 | the row (author avatar and relative Updated) | other skill columns on other rows | list route has neither field |
-| G82 | the row (Add all / starter packs) | single-skill hub install | no bundle resource |
+| G82 | the row (Add all / starter packs) | single-skill hub install, which is G72 Browse, not G12 | no bundle resource |
 | R34 | the row | nothing on this citation | only source failed |
 
-Not cut: O41, O56, O58, O64, G27, G68, G84, R4, R23, R42, R57.
+Not cut inside this 20-id set: O41, O56, O58, O64, G27, G68, G84, R4, R23, R42, R57.
 
 R23 stays Adapt. Its dynamic signature stays pending. That pending state is a blocker, not a Cut, and not a PASS of implementation.
+
+## Bundle impact outside the 20-id set
+
+This section is not a verify heading. A parser that collects `### <id>` must still see exactly the 20 names in the header. G10 and G72 are not in SPEC section 12.6. They are the Adapt rows whose cited feature depends on the bundle resource G82 already failed.
+
+Scan of SPEC section 12.8 for bundle / starter / Add all / hub: only G10, G72, G82. No other matrix id cites that resource. W12's "packs row" is the same G10 feature, not a separate id.
+
+| ID | Paper | r2 disposition | What is cut | What survives | Reason |
+|---|---|---|---|---|---|
+| G10 | Adapt | Cut | the row: starter packs and Add all | nothing on this citation. Single-skill install is G72, not a pack. | `GET /api/skills/hub/official` is a flat skill list (`skills.py:123-141`). `POST /api/skills/hub/install` takes one identifier (`:97-103`). No pack resource. Same failure as G82. No bundle endpoint is proposed. |
+| G72 | Adapt | Adapt, partial cut | starter-pack metadata, including "8 skills" and "2.4k installs" | Browse library | SPEC already said install counts only if the hub reports them. Official payload fields are name, description, source, identifier, trust_level, repo, tags (`skills.py:77-81`). No install count. Browse is `EmbeddedHubPicker` (`apps/desktop/src/app/capabilities/skills/embedded-hub-picker.tsx`) plus the flat hub list. Install contract is `action-contracts.md` hub/install. |
+
+G10 is a full-row flip. G72 is not. Flipping G72 would hide the surviving picker. Coverage arithmetic is `coverage.md`. Do not force the r1 total 213/230.
 
 ## Blockers (not cuts)
 
