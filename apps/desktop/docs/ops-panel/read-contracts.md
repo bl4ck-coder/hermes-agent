@@ -1,6 +1,6 @@
 # Ops panel read contracts (P0-01)
 
-Status: documentation only. Round 2 corrected the r1 false negatives on gateway `session_id`/`usage`, the ACK-vs-settlement mix-up, the missing O24/G5/R2/`/links` inventory, and the A1 freshness gate. Round 3 completes usable axes (including onboarding schemas, `?board=` on runs/inspect, cron blueprint profile scope, and `config.get` Params/Result) and makes the A1 mixed-input gate a single policy with `observed_at` separate from `event_at`/`updated_at`. Those round-2 repairs stay. Round 4 states the A2 and A7 axes that round 3 left unlabeled. Unknown parts of those axes are `incomplete`, not guessed. No adapters, no runtime config, no mutation probes.
+Status: documentation only. Round 2 corrected the r1 false negatives on gateway `session_id`/`usage`, the ACK-vs-settlement mix-up, the missing O24/G5/R2/`/links` inventory, and the A1 freshness gate. Round 3 completes usable axes (including onboarding schemas, `?board=` on runs/inspect, cron blueprint profile scope, and `config.get` Params/Result) and makes the A1 mixed-input gate a single policy with `observed_at` separate from `event_at`/`updated_at`. Those round-2 repairs stay. Round 4 states the A2 and A7 axes that round 3 left unlabeled. Unknown parts of those axes are `incomplete`, not guessed. Round 4 also locks old gateway-up with no work, and old authoritative-empty, to `unknown` in both the A1 gate and the tables. No adapters, no runtime config, no mutation probes.
 Repo: `hermes-agent` at `865ba906c1a` (`feat/ops-panel` base; `ops/P0-01` is docs on that tree).
 SPEC: vault `01-Projects/Hermes/desktop-ops-panel/SPEC.md` v4, sections 3-5 and 12.8.
 Model policy P2 is a write-time rule (SPEC section 4.4). This file does not install `ops-policy.yaml` and does not change any profile.
@@ -850,24 +850,33 @@ Work-bearing inputs: a kanban `workers/active` row, a gateway run whose status i
 One gate. First match. One output. There is no second paragraph and no "newest input" rule that can disagree with this list.
 
 1. Every presence input missing → `unknown`. Never `idle`. `precedence=missing`.
-2. Any work-bearing input whose latest successful observation is old and whose body still reports that work, with no fresher successful observation of the same input that contradicts it → `stale`. A fresh gateway-up does not override this. This is the only output for old running + fresh gateway-up, and for old pending + fresh gateway-up. `precedence=stale`.
+2. Any work-bearing input whose latest successful observation is old and whose body still reports that work, with no fresher successful observation of the same input that contradicts it → `stale`. A fresh gateway-up does not override this. This is the only output for old running + fresh gateway-up, and for old pending + fresh gateway-up. `precedence=stale`. Rule 2 does not fire for gateway-up, and it does not fire when the body reports no such work. An old gateway-up with no work is not `stale`.
 3. Only inputs with `observed_at` within 5 seconds may select an operational state, first match:
    1. fresh pending approval for that profile → `needs_you`, sub_state `waiting_approval`
    2. fresh kanban `workers/active` row or fresh gateway run status `running` → `working`. A missing approval list does not change this, does not invent `needs_you`, and does not demote the row to `unknown`.
    3. fresh assigned task `status=blocked` → `blocked`
    4. fresh gateway-up, and every work-bearing input is a fresh authoritative empty (a successful read whose body reports no such work) → `idle`. Missing work and old work do not license this rule.
    5. fresh observation that platforms are configured and the backend cannot reach them → `offline`
-4. Otherwise → `unknown`. Never `idle`. A missing gateway read does not become `idle`.
+4. Otherwise → `unknown`. Never `idle`. A missing gateway read does not become `idle`. This rule owns an old (>5s) gateway-up reading with no work, and an old authoritative empty. Both are `unknown`, not `stale`. Gateway-up is not work-bearing, so rule 2 cannot fire on it. An old empty is not fresh, so rule 3.4 cannot fire on it. Example: now=100, gateway-up `observed_at`=70, no work-bearing body reporting work → `unknown`. Example: now=100, workers/active `observed_at`=70, body empty, gateway-up `observed_at`=99 → `unknown`, not `idle`.
 
 Counterexample that rule 2 owns, and that rule 3.4 must not also answer: now=100, running `observed_at`=70, gateway-up `observed_at`=99. The running observation is old. Output is `stale`, `precedence=stale`, `freshness_s`=30. Not `idle`.
 
-Single-input table. One input class per cell. It does not decide a mixed profile. The fresh gateway-up cell is idle only when that cell is the whole input (no other presence input is old-with-work or missing). Mixed cases use the next table, which is the gate.
+Single-input table. One input class per cell. It does not decide a mixed profile. Walk each cell through rules 1-4. The running and pending columns mean the body still reports that work. The gateway-up column means gateway-up is observed and every work-bearing input in the cell is an authoritative empty of the same validity (a successful read whose body reports no such work). It does not mean those work reads are missing. Missing work does not license rule 3.4.
 
 | Input validity | running | pending approval | gateway-up, no work |
 |---|---|---|---|
 | fresh (≤5s) | working | needs_you | idle |
-| old (>5s) | stale | stale | stale |
+| old (>5s) | stale | stale | unknown |
 | missing | unknown | unknown | unknown |
+
+Cell equals gate:
+- fresh running → rule 3.2 `working`. fresh pending → rule 3.1 `needs_you`.
+- fresh gateway-up, no work → rule 3.4 `idle` only because the work-bearing inputs in that cell are fresh authoritative empties, not missing reads.
+- old running → rule 2 `stale`. old pending → rule 2 `stale`.
+- old (>5s) gateway-up, no work → rule 4 `unknown`. Not `stale`. now=100, gateway-up `observed_at`=70, no work-bearing body reporting work → `unknown`.
+- missing → rule 1 `unknown` when that input is the only presence input in the cell.
+
+Old authoritative-empty is not the old running or old pending cell. It is rule 4 `unknown`. Mixed cases use the next table, which is the same gate.
 
 Mixed decision table. One output per row. Clocks are `observed_at` unless the row names `event_at`. No cell uses `updated_at` as the observation clock.
 
@@ -877,11 +886,13 @@ Mixed decision table. One output per row. Clocks are `observed_at` unless the ro
 | old pending (`observed_at` >5s, body still lists that pending) + fresh gateway-up | stale | rule 2 only. Not idle. |
 | fresh running + missing pending | working | rule 3.2. Missing pending does not invent `needs_you` and does not demote to `unknown`. |
 | fresh authoritative empty of the work-bearing inputs + fresh gateway-up | idle | rule 3.4. The empty is a successful read, not a missing read and not an old read. |
+| old authoritative empty (`observed_at` >5s, body reports no such work), no fresher observation that reports work; gateway-up fresh, old, or missing | unknown | rule 4. Not rule 2 (the body does not report work). Not rule 3.4 (the empty is not fresh). A fresh gateway-up does not make this idle. now=100, workers observed_at=70 body empty, gateway_up observed_at=99 → unknown. |
+| fresh gateway-up + missing work-bearing reads (not an authoritative empty) | unknown | rule 4. Rule 3.4 does not fire. Missing work does not license idle. |
 | successful re-read, body unchanged | presence = the gate on the new `observed_at` and the unchanged body. `event_at` / `updated_at` do not move. | one output: re-evaluate. A quiet run whose `updated_at` is old is fresh running if the body still says `running`. |
 | failed revalidation after a successful observation that is now >5s, body still reports work | stale | rule 2. `observed_at` is not set to the failure time. |
 | failed revalidation with no prior successful observation | unknown | rule 1. The failure timestamp is not `observed_at`. |
 
-Never map unknown → idle. Never map old running → working. Never map old running + fresh gateway-up → idle. Never map a missing observation → idle. Never treat `updated_at` as `observed_at`.
+Never map unknown → idle. Never map old running → working. Never map old running + fresh gateway-up → idle. Never map a missing observation → idle. Never treat `updated_at` as `observed_at`. Never map old gateway-up with no work → stale. Never map old authoritative-empty → stale or idle.
 
 - Scope: the serve connection. Tenant is not a presence axis. Optional `board` filters kanban inputs only; it does not create a board query on gateway or cron reads.
 - Auth: session token.
