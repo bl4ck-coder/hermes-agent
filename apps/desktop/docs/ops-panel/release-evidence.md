@@ -532,3 +532,12 @@ Tests: Ops frontend suite 46 files / 449 tests pass; tsc and eslint clean on tou
 
 Remaining: Office, Agents, Skills, Channels and the Settings page body are still English-only copy (only the inspector, rail and nav are localized); the long Escape frame comes from leaving fullscreen, not from the board.
 Screenshots: box `/workspace/ops-live/b11/` (contact-sheet.png, before-after.png, before/ = B10).
+
+## B12 — Fusion of Orbit × Outglow × Gr8r (2026-10-14)
+
+- Fusion matrix: `apps/desktop/docs/ops-panel/fusion-matrix.md` (visual language + interaction patterns; adopted / adopted-and-improved / missing).
+- Builds: Orbit Sigil avatar orbs in presence-coloured pills with `ops-think` pulse (reduced-motion off); radial stage. Gr8r greeting (locale date), board card mono id + assignee Sigil, column status glyphs. Outglow dotted-grid canvas + card-node chrome.
+- Main-content i18n: `T()` codemod over 20 tsx files (420 strings) + `main-i18n-table.ts` with 424 keys for es fr de ru ja zh zh-hant ar; English is identity.
+- Tests: ops vitest 46 files / 455 tests pass (new `b12.test.tsx`); tsc clean; build OK.
+- Live round (off-screen, venv Python, `%TEMP%\ops-live-b12r1`): pageErrors 0. fps p95 13.4 ms on office/board-scroll/board-drag/canvas; board-drag max 133 ms at release (fullscreen exit, as in B11).
+- Deferred: free card-drag; Outglow chat→canvas auto-compose (needs a proposal-only backend path, never auto-apply). Residual English: stat-card labels, composer placeholder/quick prompts, column ids, presence pills (JS constants, not JSX).
