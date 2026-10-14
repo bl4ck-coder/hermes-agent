@@ -51,8 +51,8 @@ describe('ops client', () => {
   })
 
   it('dispatch parses @assignee', () => {
-    expect(parseDispatch('@Builder  fix the build ')).toEqual({ assignee: 'builder', title: 'fix the build' })
-    expect(parseDispatch('just a title')).toEqual({ assignee: null, title: 'just a title' })
+    expect(parseDispatch('@Builder  fix the build ')).toEqual({ assignee: 'builder', title: 'fix the build', project: null })
+    expect(parseDispatch('just a title')).toEqual({ assignee: null, title: 'just a title', project: null })
   })
 
   it('freshness is at most 5 s and never invents presence', () => {

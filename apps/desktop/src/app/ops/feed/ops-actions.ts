@@ -8,6 +8,7 @@ import { connectionScoped, hermesApi } from '@/api/client'
 
 import type { KanbanAction } from '../office/needs-you'
 
+import { opsCall } from './diag'
 import type { KanbanTask, OpsApi } from './ops-client'
 
 const K = '/api/plugins/kanban'
@@ -78,7 +79,7 @@ export type EnvRows = Record<string, { is_set: boolean; category?: string; descr
 
 export function createOpsActions(api: OpsApi = hermesApi) {
   const call = <T>(method: string, path: string, body?: unknown) =>
-    Promise.resolve().then(() => api<T>({ ...connectionScoped(), path, method, body }))
+    Promise.resolve().then(() => opsCall(method, path, () => api<T>({ ...connectionScoped(), path, method, body })))
 
   const comment = (taskId: string, body: string) => call<{ ok: boolean }>('POST', `${K}/tasks/${enc(taskId)}/comments`, { body, author: 'ops' })
   const setStatus = (taskId: string, status: string) => call<unknown>('PATCH', `${K}/tasks/${enc(taskId)}`, { status })

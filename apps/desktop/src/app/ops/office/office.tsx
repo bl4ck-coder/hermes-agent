@@ -265,12 +265,13 @@ function FleetTable({ fleet, nowS, onOpenProfile, onOpenRun }: { fleet: FleetRes
 
 export function routingLine(text: string): string {
   if (!text.trim()) {
-    return 'Type a task. Start with @profile to assign it; otherwise it goes to triage.'
+    return 'Type a task. Start with @profile to assign it, add #project to file it; otherwise it goes to triage.'
   }
 
-  const { assignee } = parseDispatch(text)
+  const { assignee, project } = parseDispatch(text)
+  const where = project ? ` · project ${project}` : ''
 
-  return assignee ? `Assigned to ${assignee}` : 'Unassigned → triage'
+  return assignee ? `Assigned to ${assignee}${where}` : `Unassigned → triage${where}`
 }
 
 function Dispatch({
@@ -481,6 +482,8 @@ export function OfficeView(props: OfficeViewProps) {
       <SectionFrame error={errors.usage} id="cost" loading={props.usage === null} title="Today">
         <span data-ops-tokens="input">Input tokens {num(props.usage?.input_tokens)}</span>
         <span data-ops-tokens="output">Output tokens {num(props.usage?.output_tokens)}</span>
+        {/* X10: provenance always shown; no money figure (no price is configured in Hermes). */}
+        <small data-ops-usage-provenance="">source: {props.usage?.provenance ?? '/api/ops/usage/today'} · no $ (no price configured)</small>
       </SectionFrame>
       <SectionFrame error={errors.activity} id="activity" loading={props.activity === null && !props.taskEvents?.length} title="Activity">
         {props.taskEvents && props.taskEvents.length ? (

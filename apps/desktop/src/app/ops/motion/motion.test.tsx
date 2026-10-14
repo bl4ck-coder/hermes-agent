@@ -63,7 +63,7 @@ describe('W9 settings (P5-03)', () => {
     expect(loadPrefs().defaultTab).toBe('board')
     fireEvent.click(screen.getByLabelText('Motion: System'))
     expect(localStorage.getItem('hermes.ops.motion')).toBe('full')
-    fireEvent.click(screen.getByText('Open Desktop settings'))
+    fireEvent.click(screen.getByText('Desktop appearance'))
     expect(routes).toEqual(['/settings'])
     fireEvent.click(screen.getByText('Shortcut sheet'))
     expect(document.querySelector('[data-ops-shortcut-sheet]')).toBeTruthy()
@@ -71,7 +71,7 @@ describe('W9 settings (P5-03)', () => {
 
   it('malformed prefs fall back to defaults', () => {
     localStorage.setItem('hermes.ops.prefs', '{bad')
-    expect(loadPrefs()).toEqual({ defaultTab: 'office', dateFormat: 'relative' })
+    expect(loadPrefs()).toEqual({ defaultTab: 'office', dateFormat: 'relative', theme: 'gold-night', openOnLaunch: false, notifyApprovals: false, notifyBlocked: false })
   })
 })
 

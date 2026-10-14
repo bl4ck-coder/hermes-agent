@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
 
+import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
 import { elapsedMs, initialRun, reduceRun, type RunView } from './run-stream'
 
 export interface CanvasData {
@@ -22,6 +23,86 @@ export interface CanvasData {
   identity?: { name: string; description: string } | null
   /** P7: /api/memory for the profile. */
   memory?: { active: string; builtin_files?: Record<string, number> } | null
+  /** G86 (P8 b5): the note captured with the newest Prompt backup; null = none, undefined = not loaded. */
+  promptNote?: string | null
+}
+
+/** P8 b5: drawn edge geometry. Node slots are laid out per column in CANVAS_NODES order. */
+export const EDGE_COL_W = 300
+export const EDGE_ROW_H = 96
+
+export function nodeSlot(id: CanvasNodeId): { x: number; y: number } {
+  const col = CANVAS_COLUMN[id]
+  const row = CANVAS_NODES.filter(n => CANVAS_COLUMN[n] === col).indexOf(id)
+  const c = { left: 0, centre: 1, right: 2 }[col]
+
+  return { x: c * EDGE_COL_W + EDGE_COL_W / 2, y: row * EDGE_ROW_H + EDGE_ROW_H / 2 }
+}
+
+/** Horizontal-tangent cubic from the right edge of `a` to the left edge of `b` (vertical when same column). */
+export function edgePath(a: CanvasNodeId, b: CanvasNodeId): string {
+  const p = nodeSlot(a)
+  const q = nodeSlot(b)
+
+  if (p.x === q.x) {
+    return `M ${p.x} ${p.y + 20} C ${p.x} ${(p.y + q.y) / 2}, ${q.x} ${(p.y + q.y) / 2}, ${q.x} ${q.y - 20}`
+  }
+
+  const dir = q.x > p.x ? 1 : -1
+  const x1 = p.x + (dir * EDGE_COL_W) / 2 - dir * 12
+  const x2 = q.x - (dir * EDGE_COL_W) / 2 + dir * 12
+  const mx = (x1 + x2) / 2
+
+  return `M ${x1} ${p.y} C ${mx} ${p.y}, ${mx} ${q.y}, ${x2} ${q.y}`
+}
+
+/** Ctrl/Cmd + wheel zooms by one step; a plain wheel pans vertically (Shift = horizontally). */
+export function wheelAction(e: { deltaY: number; deltaX?: number; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }): { zoom: 1 | -1 } | { pan: [number, number] } | null {
+  if (e.ctrlKey || e.metaKey) {
+    return e.deltaY === 0 ? null : { zoom: e.deltaY < 0 ? 1 : -1 }
+  }
+
+  const d = e.deltaY || e.deltaX || 0
+
+  return d === 0 ? null : { pan: e.shiftKey ? [-d, 0] : [0, -d] }
+}
+
+/** G42: every node opens a detail popover; these are its rows (no invented values). */
+export function nodeDetail(id: CanvasNodeId, d: CanvasData): [string, string][] {
+  switch (id) {
+    case 'model':
+      return d.model ? [['Provider', d.model.provider || 'unset'], ['Model', d.model.model || 'unset']] : [['State', 'unknown']]
+
+    case 'prompt':
+      return d.prompt
+        ? [
+            ['Exists', d.prompt.exists ? 'yes' : 'no'],
+            ['Lines', String((d.prompt.content ?? '').split(/\r?\n/).filter(Boolean).length)],
+            ['Last change', d.promptNote ?? (d.promptNote === null ? 'no note' : 'unknown')]
+          ]
+        : [['State', 'unknown']]
+
+    case 'schedule':
+      return d.cron ? d.cron.slice(0, 8).map(j => [String(j.name ?? j.id), j.enabled === false ? 'paused' : (j.failure_streak ?? 0) > 0 ? `${j.failure_streak} failing` : 'ok']) : [['State', 'unknown']]
+
+    case 'identity':
+      return d.identity ? [['Name', d.identity.name], ['Description', d.identity.description || 'unset']] : [['State', 'unknown']]
+
+    case 'memory':
+      return d.memory ? [['Provider', d.memory.active || 'built-in'], ...Object.entries(d.memory.builtin_files ?? {}).map(([k, v]) => [k, `${v} bytes`] as [string, string])] : [['State', 'unknown']]
+
+    case 'skills':
+      return [['Installed', typeof d.skills === 'number' ? String(d.skills) : 'unknown']]
+
+    case 'delegation':
+      return d.delegation ? [['Inherits model', d.delegation.inherit_model ? 'yes' : 'no'], ['Provider', d.delegation.provider ?? '—'], ['Model', d.delegation.model ?? '—']] : [['State', 'unknown']]
+
+    case 'policy':
+      return d.policy ? [['Source', d.policy.source], ...(d.policy.violations ?? []).map(v => [v.field, (v as { message?: string }).message ?? 'violation'] as [string, string])] : [['State', 'unknown']]
+
+    default:
+      return [['State', UNAVAILABLE]]
+  }
 }
 
 export const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5] as const
@@ -103,7 +184,10 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
       }
 
       return d.prompt.exists
-        ? { text: (d.prompt.content ?? '').split(/\r?\n/).find(l => l.trim()) ?? '(empty)', state: 'ok' }
+        ? {
+            text: `${(d.prompt.content ?? '').split(/\r?\n/).find(l => l.trim()) ?? '(empty)'}${d.promptNote ? ` · last change: ${d.promptNote}` : ''}`,
+            state: 'ok'
+          }
         : { text: 'Unset', state: 'unset' }
     case 'schedule': {
       if (!d.cron) {
@@ -175,11 +259,14 @@ export function CanvasView({
   data,
   readOnly,
   runs,
+  onOpenRoute,
   now = () => Date.now()
 }: {
   profile: string
   data: CanvasData
   readOnly?: boolean
+  /** G51: the unset Identity CTA opens Desktop's profile setup. */
+  onOpenRoute?: (route: string) => void
   runs?: RunsBridge | null
   now?: () => number
 }) {
@@ -189,6 +276,9 @@ export function CanvasView({
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
   const [collapsed, setCollapsed] = useState<Set<CanvasNodeId>>(() => new Set())
+  const [detail, setDetail] = useState<CanvasNodeId | null>(null)
+  const dirtyCount = useCanvasDirtyCount(profile)
+  const [saveNote, setSaveNote] = useState<string | null>(null)
 
   const toggle = (id: CanvasNodeId) =>
     setCollapsed(c => {
@@ -278,6 +368,21 @@ export function CanvasView({
       <header>
         <strong>Canvas · {profile}</strong>
         {readOnly ? <span data-ops-badge="remote">remote: read-only</span> : null}
+        {/* G57: one header save for every dirty node; disabled at 0. */}
+        {readOnly ? null : (
+        <button
+          data-ops-save-all={dirtyCount}
+          disabled={readOnly || dirtyCount === 0}
+          onClick={async () => {
+            const r = await saveAllCanvas(profile)
+            setSaveNote(r.failed.length ? `Saved ${r.saved}; not saved: ${r.failed.join(', ')}` : `Saved ${r.saved}`)
+          }}
+          type="button"
+        >
+          Save all ({dirtyCount})
+        </button>
+        )}
+        {saveNote ? <span role="status">{saveNote}</span> : null}
       </header>
       <div
         aria-label="Canvas viewport (drag the background or Shift+arrows to pan)"
@@ -322,6 +427,19 @@ export function CanvasView({
           }
         }}
         onPointerUp={() => (drag.current = null)}
+        onWheel={e => {
+          const a = wheelAction(e)
+
+          if (!a) {
+            return
+          }
+
+          if ('zoom' in a) {
+            setZoom(z => stepZoom(z, a.zoom))
+          } else {
+            setPan(p => clampPan({ x: p.x + a.pan[0], y: p.y + a.pan[1] }))
+          }
+        }}
         role="group"
         style={{ overflow: 'hidden', position: 'relative', touchAction: 'none' }}
         tabIndex={0}
@@ -334,9 +452,30 @@ export function CanvasView({
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          transformOrigin: '0 0'
+          transformOrigin: '0 0',
+          position: 'relative'
         }}
       >
+        <svg
+          aria-hidden
+          data-ops-edge-layer=""
+          height={EDGE_ROW_H * 4}
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
+          viewBox={`0 0 ${EDGE_COL_W * 3} ${EDGE_ROW_H * 4}`}
+          width="100%"
+        >
+          {CANVAS_EDGES.map(([a, b]) => (
+            <path
+              d={edgePath(a, b)}
+              data-ops-edge-lit={run.lit.has(a) && run.lit.has(b) ? '' : undefined}
+              data-ops-edge-path={`${a}->${b}`}
+              fill="none"
+              key={`${a}-${b}`}
+              stroke={collapsed.has(a) || collapsed.has(b) ? 'var(--ops-muted, #6b6b6b)' : 'var(--ops-gold, #c9a227)'}
+              strokeWidth={1.5}
+            />
+          ))}
+        </svg>
         {CANVAS_NODES.map(id => {
           const b = nodeBody(id, data)
           const closed = collapsed.has(id)
@@ -356,8 +495,30 @@ export function CanvasView({
               <button aria-expanded={!closed} aria-label={`${closed ? 'Expand' : 'Collapse'} ${id}`} onClick={() => toggle(id)} type="button">
                 {closed ? '+' : '−'}
               </button>
-              <span data-ops-node-title="">{id}</span>
+              <button aria-expanded={detail === id} aria-haspopup="dialog" data-ops-node-title="" onClick={() => setDetail(d => (d === id ? null : id))} type="button">
+                {id}
+              </button>
               {closed ? null : <span data-ops-node-body="">{b.text}</span>}
+              {id === 'identity' && b.state === 'unset' ? (
+                <button data-ops-identity-cta="" data-ops-port-colour="amber" disabled={readOnly || !onOpenRoute} onClick={() => onOpenRoute?.(`/profiles?profile=${encodeURIComponent(profile)}&edit=identity`)} type="button">
+                  Set identity
+                </button>
+              ) : null}
+              {detail === id ? (
+                <div aria-label={`${id} details`} data-ops-node-detail={id} onKeyDown={e => e.key === 'Escape' && setDetail(null)} role="dialog">
+                  <dl>
+                    {nodeDetail(id, data).map(([k, v], i) => (
+                      <div key={`${k}-${i}`}>
+                        <dt>{k}</dt>
+                        <dd>{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <button onClick={() => setDetail(null)} type="button">
+                    Close
+                  </button>
+                </div>
+              ) : null}
             </div>
           )
         })}

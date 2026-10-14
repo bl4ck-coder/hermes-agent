@@ -34,7 +34,7 @@ export function opsLivePanel(
 
   // P3 Canvas has no write paths at all (readOnly is the remote badge); the writable Canvas is P5.
   if (tab.kind === 'canvas') {
-    return <CanvasContainer profile={profile} />
+    return <CanvasContainer onOpenRoute={onOpenRoute} profile={profile} />
   }
 
   // P4 Board: Mine = the scoped profile.

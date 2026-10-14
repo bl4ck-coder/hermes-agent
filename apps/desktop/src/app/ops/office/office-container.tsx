@@ -10,6 +10,7 @@ import { createOpsClient, type OpsClient, parseDispatch } from '../feed/ops-clie
 import { OPS_POLL_MS, useOpsFeed } from '../feed/ops-feed'
 
 import { type AttachmentLite, boardTasks, deliveredToday } from './control-room'
+import { useOpsNotifications } from './notifications'
 import { OfficeView } from './office'
 
 type Loaded<T> = T | null
@@ -138,11 +139,23 @@ export function OfficeContainer({
 
   const dispatch = useCallback(
     async (text: string) => {
-      const { assignee, title } = parseDispatch(text)
-      await client.dispatch(title, assignee)
+      const { assignee, title, project } = parseDispatch(text)
+      await client.dispatch(title, assignee, null, project)
       board.reload()
     },
     [client, board]
+  )
+
+  // R54: opt-in, silent OS notifications for new approvals and newly blocked tasks.
+  useOpsNotifications(
+    listOrNull(pending.value?.items)?.map(x => {
+      const r = x as { id?: unknown; approval_id?: unknown }
+
+      return String(r.id ?? r.approval_id ?? '')
+    }) ?? null,
+    Array.isArray(board.value?.columns)
+      ? board.value.columns.filter(c => c.name === 'blocked').flatMap(c => (Array.isArray(c.tasks) ? c.tasks : [])).map(t => ({ id: t.id, title: t.title }))
+      : null
   )
 
   const openTask = onOpenTask ?? (onOpenRoute ? (id: string) => onOpenRoute(`/kanban?task=${encodeURIComponent(id)}`) : undefined)

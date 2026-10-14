@@ -9,6 +9,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { createOpsActions, type OpsActions, type TaskDetail, type TaskEvent, type TaskRun } from '../feed/ops-actions'
 
+import { LinkedText } from './entity-links'
+
 const VERB: Record<string, string> = {
   created: 'created',
   assigned: 'assigned to',
@@ -284,7 +286,7 @@ export function TaskTabView({
         <ul>
           {(detail.comments ?? []).map((c, i) => (
             <li key={c.id ?? i}>
-              <strong>{c.author ?? 'unknown'}</strong> {c.body}
+              <strong>{c.author ?? 'unknown'}</strong> <LinkedText onOpenTask={onOpenTask} text={c.body ?? ''} />
             </li>
           ))}
         </ul>

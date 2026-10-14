@@ -143,6 +143,6 @@ describe('Office container (integration with the client)', () => {
     await act(async () => {
       fireEvent.submit(document.querySelector('[data-ops-dispatch]') as HTMLElement)
     })
-    expect(client.dispatch).toHaveBeenCalledWith('ship it', 'builder')
+    expect(client.dispatch).toHaveBeenCalledWith('ship it', 'builder', null, null)
   })
 })

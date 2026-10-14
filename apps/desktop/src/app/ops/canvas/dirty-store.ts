@@ -36,5 +36,56 @@ export function useCanvasDirty(profile: string): boolean {
 
 export function resetCanvasDirty() {
   dirty.clear()
+  savers.clear()
   listeners.forEach(l => l())
+}
+
+/* G57 (P8 b5): each dirty node editor registers how to save itself; the Canvas header saves them all. */
+type Saver = () => Promise<boolean>
+const savers = new Map<string, Map<string, Saver>>()
+
+export function registerCanvasSaver(profile: string, node: string, save: Saver | null) {
+  const m = savers.get(profile) ?? new Map<string, Saver>()
+
+  if (save) {
+    m.set(node, save)
+  } else {
+    m.delete(node)
+  }
+
+  savers.set(profile, m)
+}
+
+export const canvasDirtyCount = (profile: string) => dirty.get(profile)?.size ?? 0
+
+export function useCanvasDirtyCount(profile: string): number {
+  return useSyncExternalStore(
+    l => (listeners.add(l), () => listeners.delete(l)),
+    () => canvasDirtyCount(profile),
+    () => canvasDirtyCount(profile)
+  )
+}
+
+/** Saves sequentially (each save is its own A5 transaction); a refusal never stops the rest. */
+export async function saveAllCanvas(profile: string): Promise<{ saved: number; failed: string[] }> {
+  const failed: string[] = []
+  let saved = 0
+
+  for (const [node, save] of [...(savers.get(profile) ?? new Map<string, Saver>()).entries()]) {
+    if (!dirty.get(profile)?.has(node)) {
+      continue
+    }
+
+    try {
+      if (await save()) {
+        saved += 1
+      } else {
+        failed.push(node)
+      }
+    } catch {
+      failed.push(node)
+    }
+  }
+
+  return { saved, failed }
 }

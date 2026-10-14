@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PolicyView } from '../feed/ops-client'
 
-import { setCanvasDirty } from './dirty-store'
+import { registerCanvasSaver, setCanvasDirty } from './dirty-store'
 import {
   createNodeClient,
   diffLines,
@@ -71,6 +71,25 @@ export function NodeEditor({
 
     return () => setCanvasDirty(profile, node, false)
   }, [profile, node, dirtyNow])
+
+  // G57: Save all (n) on the Canvas header saves this draft with its note, like the node's own Save.
+  useEffect(() => {
+    if (!s || !dirtyNow || ro) {
+      registerCanvasSaver(profile, node, null)
+
+      return
+    }
+
+    registerCanvasSaver(profile, node, async () => {
+      setS({ ...s, status: 'saving' })
+      const next = await save(s, profile, client, note || undefined)
+      setS(next)
+
+      return next.status === 'saved' || next.status === 'clean'
+    })
+
+    return () => registerCanvasSaver(profile, node, null)
+  }, [s, dirtyNow, ro, profile, node, client, note])
 
   const openHistory = useCallback(async () => {
     try {

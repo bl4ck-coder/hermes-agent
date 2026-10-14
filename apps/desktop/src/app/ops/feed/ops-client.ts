@@ -7,6 +7,8 @@
 import { connectionScoped, hermesApi } from '@/api/client'
 import type { HermesApiRequest } from '@/global'
 
+import { opsCall } from './diag'
+
 export type Presence = 'working' | 'needs_you' | 'blocked' | 'idle' | 'offline' | 'unknown' | 'stale'
 
 export interface FleetRun {
@@ -144,8 +146,8 @@ const q = (params: Record<string, string | null | undefined>) => {
 }
 
 export function createOpsClient(api: OpsApi = hermesApi) {
-  const get = <T>(path: string) => api<T>({ ...connectionScoped(), path })
-  const send = <T>(method: string, path: string, body: unknown) => api<T>({ ...connectionScoped(), path, method, body })
+  const get = <T>(path: string) => opsCall('GET', path, () => api<T>({ ...connectionScoped(), path }))
+  const send = <T>(method: string, path: string, body: unknown) => opsCall(method, path, () => api<T>({ ...connectionScoped(), path, method, body }))
 
   return {
     fleet: (board?: string | null) => get<FleetResponse>(`/api/ops/fleet${q({ board })}`),
@@ -167,11 +169,12 @@ export function createOpsClient(api: OpsApi = hermesApi) {
     usageToday: () => get<UsageToday>('/api/ops/usage/today'),
     board: (tenant?: string | null) => get<KanbanBoard>(`/api/plugins/kanban/board${q({ tenant })}`),
     cronJobs: (profile?: string | null) => get<CronJobLite[]>(`/api/cron/jobs${q({ profile: profile || 'all' })}`),
-    dispatch: (title: string, assignee: string | null, tenant?: string | null) =>
+    dispatch: (title: string, assignee: string | null, tenant?: string | null, projectId?: string | null) =>
       send<{ task?: KanbanTask; id?: string }>('POST', '/api/plugins/kanban/tasks', {
         title,
         assignee: assignee || null,
         tenant: tenant || null,
+        ...(projectId ? { project_id: projectId } : {}),
         // O58: no @assignee means the kanban triage lane routes it (honest "Unassigned → triage").
         triage: !assignee
       }),
@@ -185,11 +188,20 @@ export function createOpsClient(api: OpsApi = hermesApi) {
 export type OpsClient = ReturnType<typeof createOpsClient>
 
 /** "@builder fix the build" -> { assignee: 'builder', title: 'fix the build' } */
-export function parseDispatch(text: string): { assignee: string | null; title: string } {
-  const trimmed = text.trim()
-  const m = /^@([a-z0-9][a-z0-9_-]{0,63})\s+(.+)$/i.exec(trimmed)
+/** G66 (P8 b5): a leading @profile assigns; a #project token anywhere files it (first one wins). */
+export function parseDispatch(text: string): { assignee: string | null; title: string; project: string | null } {
+  let rest = text.trim()
+  let project: string | null = null
+  const pm = /(^|\s)#([a-z0-9][a-z0-9_-]{0,63})(?=\s|$)/i.exec(rest)
 
-  return m ? { assignee: m[1].toLowerCase(), title: m[2].trim() } : { assignee: null, title: trimmed }
+  if (pm) {
+    project = pm[2].toLowerCase()
+    rest = (rest.slice(0, pm.index) + rest.slice(pm.index + pm[0].length)).replace(/\s+/g, ' ').trim()
+  }
+
+  const m = /^@([a-z0-9][a-z0-9_-]{0,63})\s+(.+)$/i.exec(rest)
+
+  return m ? { assignee: m[1].toLowerCase(), title: m[2].trim(), project } : { assignee: null, title: rest, project }
 }
 
 export const FRESH_S = 5
