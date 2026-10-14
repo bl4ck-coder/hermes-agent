@@ -420,3 +420,55 @@ Gates: Ops vitest 43 files / 402 tests pass; tsc 0; eslint 0 errors. Ops pytest 
 Gates: Ops vitest 44 files / 417 tests pass; tsc 0; eslint 0 errors. Pytest (kanban plugin + Ops): 244 pass, 0 fail.
 Commits: f2ecae28d3 (L2), f668a19415 (MF7 backend), c041302d3f (MF7 client), plus this evidence commit.
 Grades after B8: every section is 9; Diagnostics/lifecycle is 9 (was 8.5).
+
+## B9: live pass, 60 fps, S5 flag, PR
+
+Tip: `ops/P8-polish` = `feat/ops-panel` = 07eed7622a.
+
+**Live pass.** Built dist from ops/P8-polish and drove it with Playwright `_electron` (`apps/desktop/scripts/ops-live/live.mjs`) against the real Hermes home on Ignacio. Gateway :8642 was pid 6816 before and after; no restart. Only reads were made, plus one Canvas draft that was typed and then discarded. No profile was saved. The board fingerprint (task ids per column) was identical before and after.
+
+| Section | Status | console err | page err | HTTP≥400 / failed |
+|---|---|---|---|---|
+| Office | OK | 0 | 0 | 0/0 |
+| Board (41 cards) | OK | 0 | 0 | 0/0 |
+| Canvas (10 nodes) | OK | 0 | 0 | 0/0 |
+| Canvas draft (typed + discarded) | OK | 0 | 0 | 0/0 |
+| Fleet | OK | 0 | 0 | 0/0 |
+| Teams | OK | 0 | 0 | 0/0 |
+| Skills | OK | 0 | 0 | 0/0 |
+| Channels | OK | 0 | 0 | 0/0 |
+| Settings | OK | 0 | 0 | 0/0 |
+| Diagnostics (connected, A1–A7, writes on) | OK | 0 | 0 | 0/0 |
+
+**Bugs fixed:**
+- The Ops UI was unstyled in the real app; fixed with ops-base.css.
+- Fleet showed "unavailable" because the host fed it nothing.
+- A stray "0" appeared under every panel.
+- The rail count had no label.
+- Office showed "unknown connection".
+- Canvas edges were misaligned.
+- The icon rail was clipped.
+
+**Frame timing** (rAF sampler in the running app, 75 Hz display, ms):
+
+| Scenario | frames | p50 | p95 | p99 | >16.7 | >33 |
+|---|---|---|---|---|---|---|
+| Office motion | 451 | 13.3 | 13.4 | 13.5 | 3 | 1 |
+| Board scroll | 378 | 13.3 | 13.4 | 13.5 | 1 | 0 |
+| Board drag (cancelled) | 358 | 13.3 | 13.4 | 13.5 | 3 | 2 |
+| Canvas pan/zoom | 377 | 13.3 | 13.4 | 13.5 | 0 | 0 |
+
+p95 is well under 16.7 ms everywhere, so no optimization was needed.
+
+**S5.**
+- `hermes_cli/legacy_writes.py` adds a `legacy_write_gate` dependency on 9 legacy write routes: PUT config/raw, profiles soul/description/model, skills/toggle, and toolsets {name}/model/provider/env.
+- `HERMES_RETIRE_LEGACY_WRITES=1` makes them return 410 `legacy_write_retired`. The flag is off by default because the classic Desktop Settings still calls these routes, and it is reversible.
+- It is env-only, so there is no config read per request.
+- Capability token `ops.legacy_writes.flag`; `/api/status` also exposes `legacy_writes_retired`.
+- Settings > Security reads `data-ops-legacy-routes="flag"`.
+- Tests: `tests/hermes_cli/test_ops_legacy_writes.py` (14).
+
+**Tests.**
+- vitest Ops: 45 files / 424 tests pass. tsc: 0 errors. eslint: 0 errors.
+- pytest S5/capabilities: pass.
+- Broad 40-file pytest selection: 693 pass. The remaining failures are pre-existing on Windows at base 2fcb5d61ee, plus 9 that fail only because the clone sits inside the real HERMES_HOME (real-home I/O guard). Those 9 pass with the new code from a %TEMP% worktree.
