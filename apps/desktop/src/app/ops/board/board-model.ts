@@ -20,6 +20,14 @@ export interface BoardTask {
   started_at?: number | null
   completed_at?: number | null
   current_run_started_at?: number | null
+  /* P8 b3: fields the board route already sends (plugin_api._task_dict + rollups). */
+  body?: string | null
+  last_heartbeat_at?: number | null
+  consecutive_failures?: number | null
+  skills?: string[] | null
+  comment_count?: number | null
+  progress?: { done: number; total: number } | null
+  link_counts?: { parents: number; children: number } | null
 }
 
 export interface BoardData {
@@ -33,7 +41,7 @@ export interface BoardData {
 /** Columns a person may drag into. `running` is claim-only on the server (never offered). */
 export const MOVABLE = ['triage', 'todo', 'ready', 'blocked', 'scheduled', 'review', 'done'] as const
 
-export type BoardLayout = 'board' | 'list' | 'table' | 'calendar' | 'timeline' | 'review'
+export type BoardLayout = 'board' | 'list' | 'table' | 'calendar' | 'timeline' | 'files' | 'favorites' | 'review'
 
 export interface BoardFilter {
   tenant?: string | null
@@ -216,6 +224,33 @@ export function createBoardClient(api: OpsApi = hermesApi) {
       send<{ task: BoardTask | null }>('PATCH', `/api/plugins/kanban/tasks/${encodeURIComponent(id)}`, { status: 'archived' }),
     bulk: (ids: string[], patch: { status?: string; assignee?: string; archive?: boolean }) =>
       send<{ results: { id: string; ok: boolean; error?: string }[] }>('POST', '/api/plugins/kanban/tasks/bulk', { ids, ...patch }),
+    /** R47 / R17: title, body and priority edits go through the same server-validated PATCH. */
+    patch: (id: string, fields: { title?: string; body?: string; priority?: number }) =>
+      send<{ task: BoardTask | null }>('PATCH', `/api/plugins/kanban/tasks/${encodeURIComponent(id)}`, fields),
+    /** R40 / R20: full create (body, priority, assignee, triage); Duplicate reuses it. */
+    createFull: (t: { title: string; body?: string | null; assignee?: string | null; priority?: number; column?: string; tenant?: string | null; skills?: string[] | null }) =>
+      send<{ task?: BoardTask }>('POST', '/api/plugins/kanban/tasks', {
+        title: t.title,
+        body: t.body || null,
+        assignee: t.assignee || null,
+        tenant: t.tenant || null,
+        priority: t.priority ?? 0,
+        skills: t.skills ?? null,
+        triage: t.column === 'triage'
+      }),
+    /** R68: a task's parent/child links (the board only carries counts). */
+    links: (id: string) =>
+      send<{ links?: { parents?: string[]; children?: string[] } }>('GET', `/api/plugins/kanban/tasks/${encodeURIComponent(id)}`).then(d => ({
+        parents: Array.isArray(d?.links?.parents) ? d.links.parents : [],
+        children: Array.isArray(d?.links?.children) ? d.links.children : []
+      })),
+    /** R11 / R70: attachments of one task; upload is the kanban multipart route. */
+    attachments: (id: string) =>
+      send<{ attachments?: unknown[] } | unknown[]>('GET', `/api/plugins/kanban/tasks/${encodeURIComponent(id)}/attachments`).then(r =>
+        Array.isArray(r) ? r : Array.isArray((r as { attachments?: unknown[] })?.attachments) ? (r as { attachments: unknown[] }).attachments : []
+      ),
+    upload: (id: string, file: { filename: string; contentType?: string; bytes: ArrayBuffer }) =>
+      api<{ attachment: Record<string, unknown> | null }>({ ...connectionScoped(), path: `/api/plugins/kanban/tasks/${encodeURIComponent(id)}/attachments`, method: 'POST', upload: file }),
     create: (title: string, status: string, assignee?: string | null, tenant?: string | null) =>
       send<{ task?: BoardTask }>('POST', '/api/plugins/kanban/tasks', {
         title,

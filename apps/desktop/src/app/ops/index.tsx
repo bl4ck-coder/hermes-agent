@@ -115,7 +115,7 @@ export interface OpsShellProps {
   onSelectProfile?: (name: string) => void
   onOpenRoute?: (route: string) => void
   /** P3: live Office/Canvas panels, injected by the host so the shell stays data-free. */
-  livePanel?: (tab: OpsTab, profile: string, onOpenRoute?: (route: string) => void) => ReactNode
+  livePanel?: (tab: OpsTab, profile: string, onOpenRoute?: (route: string) => void, connectionId?: string) => ReactNode
 }
 
 function panelFor(tab: OpsTab, onOpenRoute?: (route: string) => void, live?: ReactNode) {
@@ -640,7 +640,7 @@ export function OpsShell({
             onTogglePin={id => togglePin(connectionId, profile, id)}
             overlay={overlay && inspectorIsOpen ? inspector : null}
             pins={nav.pins}
-            renderPanel={tab => panelFor(tab, onOpenRoute, livePanel?.(tab, profile, onOpenRoute))}
+            renderPanel={tab => panelFor(tab, onOpenRoute, livePanel?.(tab, profile, onOpenRoute, connectionId))}
             selectedId={nav.selectedTabId}
             snapshots={nav.snapshots}
             tabs={nav.tabs}

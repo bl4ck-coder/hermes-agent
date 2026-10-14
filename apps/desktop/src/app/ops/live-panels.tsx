@@ -17,7 +17,12 @@ export function hasOpsBridge(): boolean {
   return Boolean(w?.hermesDesktop?.api)
 }
 
-export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route: string) => void): ReactNode {
+export function opsLivePanel(
+  tab: OpsTab,
+  profile: string,
+  onOpenRoute?: (route: string) => void,
+  connectionId = 'local'
+): ReactNode {
   if (!hasOpsBridge()) {
     return null
   }
@@ -33,7 +38,7 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
 
   // P4 Board: Mine = the scoped profile.
   if (tab.kind === 'board') {
-    return <BoardContainer me={profile} />
+    return <BoardContainer connection={connectionId} me={profile} onOpenRoute={onOpenRoute} />
   }
 
   // W9 Ops settings is a live lens; other lenses (W12) keep their existing route buttons.
