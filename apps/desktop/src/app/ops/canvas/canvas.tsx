@@ -16,6 +16,17 @@ export interface CanvasData {
   prompt: PromptNode | null
   cron: CronJobLite[] | null
   delegation: DelegationView | null
+  /** P6: skill count from /api/profiles; undefined = not loaded. */
+  skills?: number | null
+}
+
+export const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5] as const
+
+export function stepZoom(z: number, dir: 1 | -1): number {
+  const i = ZOOM_STEPS.findIndex(v => v >= z)
+  const at = i < 0 ? ZOOM_STEPS.length - 1 : i
+
+  return ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, at + dir))]
 }
 
 export const CANVAS_NODES = ['prompt', 'model', 'tools', 'skills', 'delegation', 'schedule', 'policy', 'channels', 'memory'] as const
@@ -63,9 +74,27 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
       return d.prompt.exists
         ? { text: (d.prompt.content ?? '').split(/\r?\n/).find(l => l.trim()) ?? '(empty)', state: 'ok' }
         : { text: 'Unset', state: 'unset' }
+    case 'schedule': {
+      if (!d.cron) {
+        return { text: 'unknown', state: 'unknown' }
+      }
 
-    case 'schedule':
-      return d.cron ? { text: `${d.cron.length} cron jobs`, state: d.cron.length ? 'ok' : 'unset' } : { text: 'unknown', state: 'unknown' }
+      const next = d.cron
+        .filter(j => j.enabled !== false)
+        .map(j => (typeof j.next_run_at === 'number' ? j.next_run_at * 1000 : typeof j.next_run_at === 'string' ? Date.parse(j.next_run_at) : NaN))
+        .filter(Number.isFinite)
+        .sort((a, b) => a - b)[0]
+
+      const failing = d.cron.filter(j => (j.failure_streak ?? 0) > 0).length
+
+      return {
+        text: `${d.cron.length} cron jobs${next ? `, next ${new Date(next).toISOString()}` : ''}${failing ? `, ${failing} failing` : ''}`,
+        state: failing ? 'policy' : d.cron.length ? 'ok' : 'unset'
+      }
+    }
+
+    case 'skills':
+      return typeof d.skills === 'number' ? { text: `${d.skills} skills installed`, state: d.skills ? 'ok' : 'unset' } : { text: 'unknown', state: 'unknown' }
 
     case 'delegation':
       return d.delegation
@@ -107,6 +136,22 @@ export function CanvasView({
   now?: () => number
 }) {
   const [run, setRun] = useState<RunView>(initialRun)
+  const [zoom, setZoom] = useState(1)
+  const [collapsed, setCollapsed] = useState<Set<CanvasNodeId>>(() => new Set())
+
+  const toggle = (id: CanvasNodeId) =>
+    setCollapsed(c => {
+      const n = new Set(c)
+
+      if (n.has(id)) {
+        n.delete(id)
+      } else {
+        n.add(id)
+      }
+
+      return n
+    })
+
   const [input, setInput] = useState('Say hello and name the tools you can use.')
   const [, tick] = useState(0)
   const sub = useRef<string | null>(null)
@@ -183,14 +228,40 @@ export function CanvasView({
         <strong>Canvas · {profile}</strong>
         {readOnly ? <span data-ops-badge="remote">remote: read-only</span> : null}
       </header>
-      <div data-ops-canvas-nodes="" role="list">
+      <div aria-label="Canvas zoom" data-ops-canvas-zoom={String(zoom)} role="toolbar">
+        <button aria-label="Zoom out" disabled={zoom <= ZOOM_STEPS[0]} onClick={() => setZoom(z => stepZoom(z, -1))} type="button">
+          −
+        </button>
+        <span>{Math.round(zoom * 100)}%</span>
+        <button aria-label="Zoom in" disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]} onClick={() => setZoom(z => stepZoom(z, 1))} type="button">
+          +
+        </button>
+        <button aria-label="Fit" onClick={() => setZoom(1)} type="button">
+          Fit
+        </button>
+        <button aria-label="Collapse all" onClick={() => setCollapsed(c => (c.size === CANVAS_NODES.length ? new Set() : new Set(CANVAS_NODES)))} type="button">
+          {collapsed.size === CANVAS_NODES.length ? 'Expand all' : 'Collapse all'}
+        </button>
+      </div>
+      <div data-ops-canvas-nodes="" role="list" style={{ transform: `scale(${zoom})`, transformOrigin: '0 0' }}>
         {CANVAS_NODES.map(id => {
           const b = nodeBody(id, data)
+          const closed = collapsed.has(id)
 
           return (
-            <div data-ops-lit={run.lit.has(id) ? '' : undefined} data-ops-node={id} data-ops-port={b.state} key={id} role="listitem">
+            <div
+              data-ops-collapsed={closed ? '' : undefined}
+              data-ops-lit={run.lit.has(id) ? '' : undefined}
+              data-ops-node={id}
+              data-ops-port={b.state}
+              key={id}
+              role="listitem"
+            >
+              <button aria-expanded={!closed} aria-label={`${closed ? 'Expand' : 'Collapse'} ${id}`} onClick={() => toggle(id)} type="button">
+                {closed ? '+' : '−'}
+              </button>
               <span data-ops-node-title="">{id}</span>
-              <span data-ops-node-body="">{b.text}</span>
+              {closed ? null : <span data-ops-node-body="">{b.text}</span>}
             </div>
           )
         })}
