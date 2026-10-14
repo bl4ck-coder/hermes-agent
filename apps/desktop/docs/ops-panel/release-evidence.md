@@ -556,3 +556,15 @@ Screenshots: box `/workspace/ops-live/b11/` (contact-sheet.png, before-after.png
 - Fleet status chips: failing garnet, running gold, idle muted.
 - Tests: 49 files / 468 pass (new b14.test.tsx); tsc clean.
 - Live b14r1 (off-screen, venv Python): pageErrors 0, all sections ok, boardUnchanged; fps p95 13.4 ms. Evidence /workspace/ops-live/b14/.
+
+## B15 — Channels/Settings/Diagnostics i18n, empty-state reset, compact compose (32b282ed1f)
+- Channels: Manage/Connect, All/Connected counts, categories, Install {n}, Installing…; the empty search has a "Show all apps" reset.
+- Diagnostics probe text, Settings legacy-routes/start-page text, Office "source:", and the Ops settings tab label are localized.
+- The compose textarea starts at 1 row and grows when there is text.
+- Tests: 50 files / 472 pass. Live b15r1: pageErrors 0, every section ok, board unchanged. Evidence: /workspace/ops-live/b15/.
+
+## B16 — Diagnostics capability i18n + drag screen-reader announcements (95908cb5d9)
+- Capability rows and the connection line are localized at render time; the copied report stays English.
+- Board drag: a polite aria-live region announces start, move and same-column drops (visually hidden via :where([data-ops-sr])).
+- 540 keys per locale. Tests: 51 files / 475 pass; tsc clean.
+- Live b16r1: pageErrors 0, board unchanged, drag p95 13.4 ms / max 13.7 ms. Evidence: /workspace/ops-live/b16/ (before-after.png, before-after-drag.png, contact-sheet.png).
