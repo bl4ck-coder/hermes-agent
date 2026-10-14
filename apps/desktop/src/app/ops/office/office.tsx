@@ -5,6 +5,8 @@
 
 import { useState } from 'react'
 
+import { describeEvent } from '../detail/task-tab'
+import type { KanbanEvent } from '../feed/kanban-stream'
 import type {
   ApprovalItem,
   CronJobLite,
@@ -32,6 +34,8 @@ export interface OfficeViewProps {
   cron: CronJobLite[] | null
   inFlight: KanbanTask[] | null
   activity: Record<string, unknown>[] | null
+  /** P7 F1 (O7): live task_events from the kanban stream, newest first; null = no stream. */
+  taskEvents?: KanbanEvent[] | null
   readOnly?: boolean
   layout?: OfficeLayout
   onLayout?: (layout: OfficeLayout) => void
@@ -287,6 +291,22 @@ export function OfficeView(props: OfficeViewProps) {
       </section>
       <section aria-label="Activity" data-ops-activity="">
         <h3>Activity</h3>
+        {props.taskEvents && props.taskEvents.length ? (
+          <ul aria-label="Task events" data-ops-task-events="">
+            {props.taskEvents.slice(0, 20).map(e => {
+              const d = describeEvent(e)
+
+              return (
+                <li data-ops-handoff={d.handoff ? '' : undefined} data-ops-task-event={e.id} key={e.id}>
+                  <button disabled={!props.onOpenTask} onClick={() => props.onOpenTask?.(e.task_id)} type="button">
+                    {e.task_id}
+                  </button>{' '}
+                  {d.verb} {d.target} <time>{e.created_at ? new Date(e.created_at * 1000).toISOString() : 'unknown'}</time>
+                </li>
+              )
+            })}
+          </ul>
+        ) : null}
         {props.activity === null ? (
           <span>{unknown}</span>
         ) : (

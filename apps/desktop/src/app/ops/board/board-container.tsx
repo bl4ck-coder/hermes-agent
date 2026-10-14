@@ -1,10 +1,11 @@
-/** Board container (ops-panel P4-02): A7 push trigger + 5 s poll fallback (D12), server-validated moves. */
+/** Board container (ops-panel P4-02, P7 F1): kanban task_events push (A7 SSE) + 5 s poll fallback (D12), server-validated moves. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { useKanbanStream } from '../feed/kanban-stream'
 import { createOpsActions, type OpsActions } from '../feed/ops-actions'
-import { createOpsClient, type OpsClient } from '../feed/ops-client'
-import { OPS_POLL_MS, useOpsFeed } from '../feed/ops-feed'
+import type { OpsClient } from '../feed/ops-client'
+import { OPS_POLL_MS, type OpsSseBridge } from '../feed/ops-feed'
 
 import { BoardView } from './board'
 import { type BoardClient, type BoardData, type BoardTask, createBoardClient, errorReason, isBoard, type MoveRecord, serverMove } from './board-model'
@@ -12,21 +13,23 @@ import { type BoardClient, type BoardData, type BoardTask, createBoardClient, er
 export function BoardContainer({
   client: c,
   actions: a,
-  feedClient,
+  feedClient: _feedClient,
+  bridge,
   me,
   readOnly,
   pollMs = OPS_POLL_MS
 }: {
   client?: BoardClient
   actions?: OpsActions
+  /** @deprecated P7: the board follows its own kanban stream; kept for callers. */
   feedClient?: Pick<OpsClient, 'fleet'>
+  bridge?: OpsSseBridge | null
   me?: string | null
   readOnly?: boolean
   pollMs?: number
 }) {
   const client = useMemo(() => c ?? createBoardClient(), [c])
-  const fc = useMemo(() => feedClient ?? createOpsClient(), [feedClient])
-  const feed = useOpsFeed(null, fc)
+  const stream = useKanbanStream(bridge)
   const [board, setBoard] = useState<BoardData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -74,10 +77,10 @@ export function BoardContainer({
     }
   }, [client])
 
-  // A pushed fleet change triggers an immediate reload; the poll is only the fallback.
+  // A pushed kanban event triggers an immediate reload; the poll is only the fallback.
   useEffect(() => {
     void reload()
-  }, [reload, feed.fleet])
+  }, [reload, stream.version])
 
   useEffect(() => {
     const t = setInterval(() => void reload(), pollMs)
@@ -136,6 +139,7 @@ export function BoardContainer({
       me={me}
       move={(id, to) => void move(id, to)}
       notice={notice}
+      pushMode={stream.mode}
       readOnly={readOnly}
       subtask={(parent, title) => void write(() => actions.createSubtask(parent, title), () => void reload())}
       unarchive={id => void write(() => actions.setStatus(id, 'todo'), () => (void loadArchived(), void reload()))}

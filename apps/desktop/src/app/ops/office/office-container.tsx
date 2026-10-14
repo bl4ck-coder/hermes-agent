@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { useKanbanStream } from '../feed/kanban-stream'
 import { createOpsActions, type OpsActions } from '../feed/ops-actions'
 import { createOpsClient, type OpsClient, parseDispatch } from '../feed/ops-client'
 import { OPS_POLL_MS, useOpsFeed } from '../feed/ops-feed'
@@ -59,6 +60,17 @@ export function OfficeContainer({
   const cron = useOpsResource(() => client.cronJobs(), [client])
   const board = useOpsResource(() => client.board(), [client])
   const activity = useOpsResource(() => client.resolvedApprovals(), [client])
+  const stream = useKanbanStream()
+
+  // A kanban push refreshes the board-derived sections and Needs-you at once (poll stays the fallback).
+  useEffect(() => {
+    if (stream.version) {
+      board.reload()
+      pending.reload()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.version])
+
   const [nowS, setNowS] = useState(() => Date.now() / 1000)
 
   useEffect(() => {
@@ -105,6 +117,7 @@ export function OfficeContainer({
       onOpenTask={onOpenTask}
       pending={listOrNull(pending.value?.items)}
       readOnly={readOnly}
+      taskEvents={stream.mode === 'stream' || stream.events.length ? stream.events : null}
       usage={usage.value}
     />
   )

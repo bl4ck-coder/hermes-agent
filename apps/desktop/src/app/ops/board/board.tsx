@@ -41,6 +41,8 @@ export interface BoardViewProps extends BoardActions {
   board: BoardData | null
   error?: string | null
   notice?: string | null
+  /** P7 F1: live = kanban push stream; poll = 5 s fallback. */
+  pushMode?: 'connecting' | 'stream' | 'poll'
   lastMove?: MoveRecord | null
   me?: string | null
   readOnly?: boolean
@@ -248,6 +250,11 @@ export function BoardView(props: BoardViewProps) {
         </section>
       ) : null}
 
+      {props.pushMode ? (
+        <span data-ops-push={props.pushMode} role="status">
+          {props.pushMode === 'stream' ? 'Live' : props.pushMode === 'poll' ? 'Polling every 5 s' : 'Connecting'}
+        </span>
+      ) : null}
       {props.notice ? (
         <p data-ops-snapback="" role="alert">
           {props.notice}
