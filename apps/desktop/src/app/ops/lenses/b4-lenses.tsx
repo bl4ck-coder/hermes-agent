@@ -5,12 +5,14 @@
  */
 import { useMemo, useState } from 'react'
 
+import { connectionScoped, hermesApi } from '@/api/client'
 import { listOAuthProviders } from '@/api/config'
 import { getMcpCatalog, listMcpServers } from '@/api/mcp'
 import { getMessagingPlatforms } from '@/api/messaging'
 import { getOfficialSkills, getSkills, installSkillFromHub } from '@/api/skills'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
+import { opsCall } from '../feed/diag'
 import { type ActiveWorker, createOpsActions } from '../feed/ops-actions'
 import type { BoardTask } from '../office/control-room'
 import { fmtAge } from '../office/control-room'
@@ -27,13 +29,15 @@ import {
   type FleetProfile,
   fleetRows,
   type OfficialLite,
+  type RunStats,
   searchRows,
   type SkillLite,
   skillRows,
   type StarterPack,
   starterPacks,
   tagTone,
-  teams
+  teams,
+  WEEK_S
 } from './b4-model'
 
 const why = (e: unknown) => (e instanceof Error ? e.message : e ? String(e) : null)
@@ -45,6 +49,8 @@ export interface B4Client {
   profiles: () => Promise<FleetProfile[]>
   tasks: () => Promise<BoardTask[] | null>
   workers: () => Promise<ActiveWorker[]>
+  /** R72 (P8 b6): task_runs per profile since `since` (epoch s); rejects on an older backend. */
+  runStats?: (since: number) => Promise<RunStats>
   skills: (profile: string) => Promise<SkillLite[]>
   official: (profile: string) => Promise<OfficialLite[]>
   install: (identifier: string, profile: string) => Promise<unknown>
@@ -65,6 +71,10 @@ export function createB4Client(): B4Client {
     },
     tasks: () => ops.boardTasks() as Promise<BoardTask[] | null>,
     workers: () => ops.activeWorkers().then(r => r?.workers ?? []),
+    runStats: since =>
+      opsCall('GET', '/api/plugins/kanban/runs/stats', () =>
+        hermesApi<{ profiles?: RunStats }>({ ...connectionScoped(), path: `/api/plugins/kanban/runs/stats?since=${Math.floor(since)}` })
+      ).then(r => r?.profiles ?? {}),
     skills: profile => getSkills(profile),
     official: profile => getOfficialSkills(profile).then(r => r?.skills ?? []),
     install: (identifier, profile) => installSkillFromHub(identifier, profile),
@@ -100,14 +110,21 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
   const profiles = useOpsResource(() => client.profiles(), [client])
   const tasks = useOpsResource(() => client.tasks(), [client])
   const workers = useOpsResource(() => client.workers(), [client], 10_000)
+
+  const stats = useOpsResource(
+    () => (client.runStats ? client.runStats(Math.floor(Date.now() / 1000) - WEEK_S) : Promise.reject(new Error('no run stats'))),
+    [client],
+    60_000
+  )
+
   const [tab, setTab] = useState<AgentsTab>('fleet')
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<DataTableSort | null>({ columnId: 'lastActive', direction: 'desc' })
   const now = nowS ?? Math.floor(Date.now() / 1000)
 
   const rows = useMemo(
-    () => (profiles.value ? fleetRows(profiles.value, tasks.value ?? null, workers.value ?? null, now) : null),
-    [profiles.value, tasks.value, workers.value, now]
+    () => (profiles.value ? fleetRows(profiles.value, tasks.value ?? null, workers.value ?? null, now, stats.value ?? null) : null),
+    [profiles.value, tasks.value, workers.value, now, stats.value]
   )
 
   const open = (name: string) => onOpenRoute?.(`/profiles?profile=${encodeURIComponent(name)}`)
@@ -152,7 +169,19 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
               { id: 'model', header: 'Model', sortable: true, sortValue: r => r.model, cell: r => r.model ?? 'unknown' },
               { id: 'lane', header: 'Lane', sortable: true, sortValue: r => r.lane, cell: r => r.lane ?? '—' },
               { id: 'active', header: 'Active tasks', sortable: true, tabular: true, sortValue: r => r.active, cell: r => String(r.active) },
-              { id: 'runs7d', header: 'Runs 7d', sortable: true, tabular: true, sortValue: r => r.runs7d, cell: r => String(r.runs7d) },
+              {
+                id: 'runs7d',
+                header: 'Runs 7d',
+                sortable: true,
+                tabular: true,
+                sortValue: r => r.runs7d,
+                cell: r => (
+                  <span data-ops-runs-source={r.runsSource} title={r.runsSource === 'runs' ? 'Worker runs started in the last 7 days' : 'Task starts (this Hermes has no run stats)'}>
+                    {r.runs7d}
+                    {r.failed7d ? <small data-ops-runs-failed=""> · {r.failed7d} failed</small> : null}
+                  </span>
+                )
+              },
               { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : 'never') },
               { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{r.status}</span> }
             ]}

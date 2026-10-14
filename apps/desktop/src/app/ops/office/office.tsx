@@ -17,6 +17,7 @@ import type {
   UsageToday
 } from '../feed/ops-client'
 import { parseDispatch, shownPresence } from '../feed/ops-client'
+import { EASE, effectiveReduced, loadMotion, MOTION, systemPrefersReduced } from '../motion/motion'
 import { ToastQueue } from '../primitives/toast-queue'
 
 import {
@@ -28,6 +29,7 @@ import {
   stuckItems
 } from './control-room'
 import { DeliveredList, MyQueue, ProjectTable, SectionFrame, type SectionId, StatCards, StuckList } from './control-room-view'
+import { CopyLink } from './copy-link'
 import { type KanbanAction, NeedsYouQueue, type PolicyNeed } from './needs-you'
 import { activityRow, focusNeedsYouRow, toastsFromPending } from './office-toasts'
 import { layoutOrrery, ORRERY_CAP } from './orrery'
@@ -41,11 +43,15 @@ export interface OfficeViewProps {
   nowS: number
   pending: ApprovalItem[] | null
   usage: UsageToday | null
+  /** X10: per-profile tokens today; null entry = that profile did not answer. */
+  usageByProfile?: Record<string, UsageToday | null> | null
   cron: CronJobLite[] | null
   inFlight: KanbanTask[] | null
   activity: Record<string, unknown>[] | null
   /** P7 F1 (O7): live task_events from the kanban stream, newest first; null = no stream. */
   taskEvents?: KanbanEvent[] | null
+  /** X7/X11: override the resolved motion (tests, host). */
+  reducedMotion?: boolean
   readOnly?: boolean
   layout?: OfficeLayout
   onLayout?: (layout: OfficeLayout) => void
@@ -183,22 +189,51 @@ function CronStrip({ cron, onOpenCron }: { cron: CronJobLite[] | null; onOpenCro
   )
 }
 
+/** X7 (P8 b6): a handoff (assigned/reassigned with both ends known) younger than this draws an orrery arc. */
+export const HANDOFF_ARC_WINDOW_S = 10
+
+export function handoffArcs(events: KanbanEvent[] | null | undefined, nowS: number): { id: number; from: string; to: string }[] {
+  const out: { id: number; from: string; to: string }[] = []
+
+  for (const e of events ?? []) {
+    const p = (e.payload ?? {}) as { from?: unknown; assignee?: unknown }
+
+    if ((e.kind === 'assigned' || e.kind === 'reassigned') && typeof p.from === 'string' && p.from && typeof p.assignee === 'string' && p.assignee && p.from !== p.assignee && nowS - e.created_at <= HANDOFF_ARC_WINDOW_S) {
+      out.push({ id: e.id, from: p.from, to: p.assignee })
+    }
+  }
+
+  return out
+}
+
 function Orrery({
   fleet,
   nowS,
   onOpenProfile,
-  onLayout
+  onLayout,
+  events,
+  reduced
 }: {
   fleet: FleetResponse
   nowS: number
+  /** X7: recent task events (handoff arcs). */
+  events?: KanbanEvent[] | null
+  /** X7/X11: resolved reduced motion; arcs, drift and halos are off. */
+  reduced?: boolean
   onOpenProfile?: (p: string) => void
   onLayout?: (l: OfficeLayout) => void
 }) {
   const { centre, orbs, overflow } = layoutOrrery(fleet.profiles, p => shownPresence(p, nowS))
+  // X11: drift and halos only while a run is live (A1 active_runs), never under reduced motion.
+  const live = new Set(fleet.profiles.filter(p => (p.active_runs?.length ?? 0) > 0).map(p => p.profile))
+  const moving = !reduced && live.size > 0
+  const at = new Map([centre, ...orbs].map(o => [o.profile, o]))
+  const arcs = reduced ? [] : handoffArcs(events, nowS).filter(a => at.has(a.from) && at.has(a.to))
 
   const orb = (o: { profile: string; presence: Presence; ring: number; x: number; y: number }) => (
     <button
       aria-label={`${o.profile}: ${PRESENCE_LABEL[o.presence]}`}
+      data-ops-halo={moving && live.has(o.profile) ? '' : undefined}
       data-ops-orb={o.profile}
       data-ops-presence={o.presence}
       data-ops-ring={o.ring}
@@ -212,7 +247,29 @@ function Orrery({
   )
 
   return (
-    <div aria-label="Orrery" data-ops-orrery="" role="group" style={{ position: 'relative', minHeight: 240 }}>
+    <div aria-label="Orrery" data-ops-drift={moving ? '' : undefined} data-ops-orrery="" data-ops-reduced={reduced ? '' : undefined} role="group" style={{ position: 'relative', minHeight: 240 }}>
+      {arcs.length ? (
+        <svg aria-hidden data-ops-handoff-arcs="" style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }} viewBox="-200 -120 400 240">
+          {arcs.map(a => {
+            const p = at.get(a.from)!
+            const q = at.get(a.to)!
+            const mx = (p.x + q.x) / 2
+            const my = (p.y + q.y) / 2 - Math.max(24, Math.hypot(q.x - p.x, q.y - p.y) / 3)
+
+            return (
+              <path
+                d={`M ${p.x} ${p.y} Q ${mx} ${my} ${q.x} ${q.y}`}
+                data-ops-handoff-arc={`${a.from}->${a.to}`}
+                data-ops-ms={MOTION.view}
+                fill="none"
+                key={a.id}
+                stroke="var(--ops-gold, #c9a227)"
+                style={{ animation: `ops-arc ${MOTION.view}ms ${EASE} both` }}
+              />
+            )
+          })}
+        </svg>
+      ) : null}
       <div data-ops-orrery-centre={centre.profile}>{orb(centre)}</div>
       {orbs.map(orb)}
       {overflow.length ? (
@@ -233,6 +290,9 @@ function FleetTable({ fleet, nowS, onOpenProfile, onOpenRun }: { fleet: FleetRes
           <th scope="col">Presence</th>
           <th scope="col">Observed</th>
           <th scope="col">Runs</th>
+          <th scope="col">
+            <span className="sr-only">Link</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -249,14 +309,18 @@ function FleetTable({ fleet, nowS, onOpenProfile, onOpenRun }: { fleet: FleetRes
               {p.active_runs
                 ? p.active_runs.length
                   ? p.active_runs.map(r => (
-                      <button data-ops-open-run={String(r.id)} disabled={!onOpenRun} key={String(r.id)} onClick={() => onOpenRun?.(String(r.id))} type="button">
-                        #{String(r.id)}
-                      </button>
+                      <span key={String(r.id)}>
+                        <button data-ops-open-run={String(r.id)} disabled={!onOpenRun} onClick={() => onOpenRun?.(String(r.id))} type="button">
+                          #{String(r.id)}
+                        </button>
+                        <CopyLink id={String(r.id)} kind="run" label={`run ${String(r.id)}`} />
+                      </span>
                     ))
                   : 0
                 : unknown}
             </td>
-          </tr>
+          <td data-ops-copy-cell=""><CopyLink id={p.profile} kind="profile" /></td>
+</tr>
         ))}
       </tbody>
     </table>
@@ -356,6 +420,7 @@ export function localDay(nowS: number): string {
 const localTime = (s?: number | null) => (typeof s === 'number' && s > 0 ? new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'unknown')
 
 export function OfficeView(props: OfficeViewProps) {
+  const reducedMotion = props.reducedMotion ?? effectiveReduced(loadMotion(), systemPrefersReduced())
   const [localLayout, setLocalLayout] = useState<OfficeLayout>('orrery')
   const [focused, setFocused] = useState<SectionId | null>(null)
   const dispatchInput = useRef<HTMLInputElement | null>(null)
@@ -413,7 +478,7 @@ export function OfficeView(props: OfficeViewProps) {
       </div>
       {fleet ? (
         layout === 'orrery' ? (
-          <Orrery fleet={fleet} nowS={nowS} onLayout={setLayout} onOpenProfile={props.onOpenProfile} />
+          <Orrery events={props.taskEvents} fleet={fleet} nowS={nowS} onLayout={setLayout} onOpenProfile={props.onOpenProfile} reduced={reducedMotion} />
         ) : (
           <FleetTable fleet={fleet} nowS={nowS} onOpenProfile={props.onOpenProfile} onOpenRun={props.onOpenRun} />
         )
@@ -464,7 +529,8 @@ export function OfficeView(props: OfficeViewProps) {
                   {t.title}
                 </button>{' '}
                 {t.assignee ? `@${t.assignee}` : ''}
-              </li>
+              <CopyLink id={t.id} kind="task" label={t.title} />
+</li>
             ))}
           </ul>
         )}
@@ -482,6 +548,28 @@ export function OfficeView(props: OfficeViewProps) {
       <SectionFrame error={errors.usage} id="cost" loading={props.usage === null} title="Today">
         <span data-ops-tokens="input">Input tokens {num(props.usage?.input_tokens)}</span>
         <span data-ops-tokens="output">Output tokens {num(props.usage?.output_tokens)}</span>
+        {props.usageByProfile && Object.keys(props.usageByProfile).length ? (
+          <table aria-label="Tokens today per profile" data-ops-usage-profiles="">
+            <thead>
+              <tr>
+                <th scope="col">Profile</th>
+                <th scope="col">Input</th>
+                <th scope="col">Output</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(props.usageByProfile)
+                .sort(([, a], [, b]) => (b?.input_tokens ?? -1) + (b?.output_tokens ?? 0) - ((a?.input_tokens ?? -1) + (a?.output_tokens ?? 0)))
+                .map(([name, u]) => (
+                  <tr data-ops-usage-profile={name} key={name}>
+                    <th scope="row">{name}</th>
+                    <td>{typeof u?.input_tokens === 'number' ? u.input_tokens.toLocaleString('en-US') : '—'}</td>
+                    <td>{typeof u?.output_tokens === 'number' ? u.output_tokens.toLocaleString('en-US') : '—'}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        ) : null}
         {/* X10: provenance always shown; no money figure (no price is configured in Hermes). */}
         <small data-ops-usage-provenance="">source: {props.usage?.provenance ?? '/api/ops/usage/today'} · no $ (no price configured)</small>
       </SectionFrame>
@@ -497,7 +585,8 @@ export function OfficeView(props: OfficeViewProps) {
                     {e.task_id}
                   </button>{' '}
                   {d.verb} {d.target} <time>{localTime(e.created_at)}</time>
-                </li>
+                <CopyLink id={e.task_id} kind="task" />
+</li>
               )
             })}
           </ul>

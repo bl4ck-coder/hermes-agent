@@ -19,6 +19,7 @@ import {
   sigil,
   type StuckItem
 } from './control-room'
+import { CopyLink } from './copy-link'
 import type { OfficeThresholds } from './thresholds'
 
 export type SectionId = 'stats' | 'needs-you' | 'stuck' | 'queue' | 'projects' | 'in-flight' | 'delivered' | 'activity' | 'cost' | 'fleet'
@@ -134,7 +135,8 @@ export function StuckList({ items, onOpenTask, onOpenCron }: { items: StuckItem[
           <span data-ops-field="reason">{REASON[s.reason]}</span> <span data-ops-field="detail">{s.detail}</span>{' '}
           <span data-ops-field="age">{s.ageS === null ? 'age unknown' : `for ${fmtAge(s.ageS)}`}</span>
           {s.profile ? <span data-ops-field="profile"> @{s.profile}</span> : null}
-        </li>
+        {s.kind === 'task' ? <CopyLink id={s.id} kind="task" /> : <CopyLink id={s.id} kind="cron" />}
+</li>
       ))}
     </ul>
   )
@@ -171,7 +173,8 @@ export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: Board
               </button>{' '}
               <span data-ops-field="status">{r.task.status}</span>
               {r.why ? <span data-ops-field="why"> {r.why}</span> : null}
-            </li>
+            <CopyLink id={r.task.id} kind="task" label={r.task.title} />
+</li>
           ))}
         </ul>
       )}
@@ -195,6 +198,9 @@ export function ProjectTable({ rows, nowS, onOpenProject }: { rows: ProjectProgr
           <th scope="col">Progress</th>
           <th scope="col">Team</th>
           <th scope="col">Updated</th>
+          <th scope="col">
+            <span className="sr-only">Link</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -223,7 +229,8 @@ export function ProjectTable({ rows, nowS, onOpenProject }: { rows: ProjectProgr
               {p.team.length > 4 ? <span> +{p.team.length - 4}</span> : null}
             </td>
             <td>{p.updatedAt === null ? 'unknown' : `${fmtAge(nowS - p.updatedAt)} ago`}</td>
-          </tr>
+          <td data-ops-copy-cell=""><CopyLink id={p.id} kind="project" label={p.name ?? p.id} /></td>
+</tr>
         ))}
       </tbody>
     </table>
@@ -275,7 +282,8 @@ export function DeliveredList({
             ) : (
               <span data-ops-field="no-output">no files attached</span>
             )}
-          </li>
+          <CopyLink id={t.id} kind="task" label={t.title} />
+</li>
         )
       })}
     </ol>

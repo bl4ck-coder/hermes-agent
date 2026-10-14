@@ -396,3 +396,18 @@
     opacity: 1 !important;
   }
 }
+
+/* X7 / X11 (P8 b6): handoff arc draws once in 320 ms; drift and halos only while a run is live. */
+@keyframes ops-arc {
+  from { stroke-dasharray: 0 600; opacity: 1; }
+  to { stroke-dasharray: 600 0; opacity: 0.35; }
+}
+@keyframes ops-drift {
+  from { translate: 0 0; }
+  to { translate: 0 -3px; }
+}
+[data-ops-orrery][data-ops-drift] [data-ops-orb] { animation: ops-drift 6s ease-in-out infinite alternate; }
+[data-ops-orrery] [data-ops-halo] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ops-gold, #c9a227) 35%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  [data-ops-orrery] [data-ops-orb], [data-ops-handoff-arc] { animation: none !important; }
+}

@@ -29,11 +29,14 @@ export interface FleetRow {
   lane: string | null
   active: number
   runs7d: number
+  /** Where runs7d came from: real task_runs rows, or task starts on an older backend. */
+  runsSource: 'runs' | 'task-starts'
+  failed7d: number | null
   lastActive: number | null
   status: FleetStatus
 }
 
-const WEEK_S = 7 * 86_400
+export const WEEK_S = 7 * 86_400
 const OPEN = new Set(['triage', 'todo', 'ready', 'running', 'blocked', 'review'])
 
 /** O76: role = first clause of the profile description. */
@@ -51,7 +54,15 @@ export function roleOf(description?: string | null): string | null {
 
 const touchedAt = (t: BoardTask) => Math.max(t.last_heartbeat_at ?? 0, t.completed_at ?? 0, t.started_at ?? 0) || null
 
-export function fleetRows(profiles: FleetProfile[], tasks: BoardTask[] | null, workers: FleetWorker[] | null, nowS: number): FleetRow[] {
+export type RunStats = Record<string, { runs: number; failed: number; last_started_at?: number | null }>
+
+export function fleetRows(
+  profiles: FleetProfile[],
+  tasks: BoardTask[] | null,
+  workers: FleetWorker[] | null,
+  nowS: number,
+  stats: RunStats | null = null
+): FleetRow[] {
   return profiles.map(p => {
     const mine = tasks ? tasks.filter(t => t.assignee === p.name) : null
     const lanes = new Map<string, number>()
@@ -73,8 +84,10 @@ export function fleetRows(profiles: FleetProfile[], tasks: BoardTask[] | null, w
       model: p.model || null,
       lane,
       active: mine ? mine.filter(t => OPEN.has(t.status)).length : 0,
-      runs7d: mine ? mine.filter(t => (t.started_at ?? 0) >= nowS - WEEK_S).length : 0,
-      lastActive: last,
+      runs7d: stats ? (stats[p.name]?.runs ?? 0) : mine ? mine.filter(t => (t.started_at ?? 0) >= nowS - WEEK_S).length : 0,
+      runsSource: stats ? 'runs' : 'task-starts',
+      failed7d: stats ? (stats[p.name]?.failed ?? 0) : null,
+      lastActive: Math.max(last ?? 0, stats?.[p.name]?.last_started_at ?? 0) || null,
       status: !tasks && !workers ? 'unknown' : failing ? 'failing' : live ? 'running' : 'idle'
     }
   })

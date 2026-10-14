@@ -89,6 +89,9 @@ export interface BoardViewProps extends BoardActions {
   links?: [string, string][] | null
   files?: FileRow[] | null
   filesScanned?: number
+  filesHasMore?: boolean
+  filesLoadingMore?: boolean
+  loadMoreFiles?: () => void
 }
 
 function Windowed({ tasks, viewport, render }: { tasks: BoardTask[]; viewport: number; render: (t: BoardTask) => ReactNode }) {
@@ -486,7 +489,10 @@ export function BoardView(props: BoardViewProps) {
       ) : layout === 'files' ? (
         <FilesView
           files={props.files ?? null}
+          hasMore={props.filesHasMore}
+          loadingMore={props.filesLoadingMore}
           nowS={nowS}
+          onLoadMore={props.loadMoreFiles}
           onOpenFile={props.openFile}
           onOpenTask={openDrawer}
           onUpload={props.upload}

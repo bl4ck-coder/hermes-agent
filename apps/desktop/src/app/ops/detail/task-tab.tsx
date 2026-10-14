@@ -58,6 +58,29 @@ const hhmm = (s?: number | null) => {
 
 const dur = (r: TaskRun) => (typeof r.started_at === 'number' && typeof r.ended_at === 'number' ? `${r.ended_at - r.started_at} s` : 'unknown')
 
+/** X9: a worker run can report a diff in its metadata (``diff`` or ``diffstat``); newest run wins. */
+export function latestDiff(runs: { metadata?: unknown; started_at?: number | null }[]): string | null {
+  for (const r of [...runs].sort((x, y) => (y.started_at ?? 0) - (x.started_at ?? 0))) {
+    let m = r.metadata
+
+    if (typeof m === 'string') {
+      try {
+        m = JSON.parse(m)
+      } catch {
+        m = null
+      }
+    }
+
+    const d = (m as { diff?: unknown; diffstat?: unknown } | null)?.diff ?? (m as { diffstat?: unknown } | null)?.diffstat
+
+    if (typeof d === 'string' && d.trim()) {
+      return d
+    }
+  }
+
+  return null
+}
+
 export function TaskTabView({
   detail,
   error,
@@ -129,6 +152,93 @@ export function TaskTabView({
         <span data-ops-field="status">{t.status}</span>
         {t.current_step_key ? <span data-ops-field="step">step {t.current_step_key}</span> : null}
         {t.branch_name ? <span data-ops-field="branch">{t.branch_name}</span> : null}
+        <button onClick={() => onOpenRoute?.(`/kanban?task=${encodeURIComponent(t.id)}`)} type="button">
+          Open in Board
+        </button>
+      </header>
+      {/* X9 (P8 b6): evidence first (timeline, runs, log, diff, outputs), then every action. */}
+      <div data-ops-evidence="">
+      <section aria-label="Timeline" data-ops-timeline="">
+        <h3>Timeline</h3>
+        <button onClick={() => setOpen(new Set(events.map(e => e.id)))} type="button">
+          Expand all
+        </button>
+        <button onClick={() => setOpen(new Set())} type="button">
+          Collapse all
+        </button>
+        <ol>
+          {events.map(e => {
+            const d = describeEvent(e)
+
+            return (
+              <li data-ops-event={e.kind} data-ops-handoff={d.handoff ? '' : undefined} key={e.id}>
+                <code>{hhmm(e.created_at)}</code> {d.verb} <code>{d.target}</code>
+                <button aria-expanded={open.has(e.id)} onClick={() => setOpen(s => (s.has(e.id) ? new Set([...s].filter(x => x !== e.id)) : new Set([...s, e.id])))} type="button">
+                  {open.has(e.id) ? 'Hide' : 'Details'}
+                </button>
+                {open.has(e.id) ? <pre data-ops-event-payload="">{JSON.stringify(e.payload, null, 2)}</pre> : null}
+              </li>
+            )
+          })}
+        </ol>
+      </section>
+
+      <section aria-label="Runs" data-ops-runs="">
+        <h3>Runs ({runs.length})</h3>
+        <table>
+          <tbody>
+            {runs.map(r => (
+              <tr data-ops-run-row={r.id} key={r.id}>
+                <td>#{r.id}</td>
+                <td>{r.profile ?? 'unknown'}</td>
+                <td>{r.status}</td>
+                <td>{r.outcome ?? ''}</td>
+                <td>{dur(r)}</td>
+                <td>{r.summary ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      {loadLog ? (
+        <section aria-label="Worker log" data-ops-worker-log="">
+          <h3>Worker log</h3>
+          <button
+            onClick={() =>
+              void loadLog().then(
+                l => setLog(l.exists ? `${l.truncated ? '…(tail)\n' : ''}${l.content}` : 'No worker log: this task never spawned a worker.'),
+                e => setLog(`Log unavailable: ${e instanceof Error ? e.message : 'request failed'}`)
+              )
+            }
+            type="button"
+          >
+            {log === null ? 'Show worker log' : 'Refresh log'}
+          </button>
+          {log !== null ? <pre data-ops-log="">{log}</pre> : null}
+        </section>
+      ) : null}
+
+      <section aria-label="Diff" data-ops-diff="">
+        <h3>Diff</h3>
+        {(() => {
+          const d = latestDiff(runs)
+
+          return d ? <pre data-ops-diff-body="">{d}</pre> : <p data-ops-empty="diff">No diff reported by the latest run.</p>
+        })()}
+      </section>
+
+      <section aria-label="Attachments" data-ops-attachments="">
+        <h3>Outputs ({detail.attachments?.length ?? 0})</h3>
+        <ul>
+          {(detail.attachments ?? []).map(a => (
+            <li key={a.id}>{a.filename}</li>
+          ))}
+        </ul>
+      </section>
+
+      </div>
+      <div aria-label="Task actions" data-ops-task-actions="">
         <label>
           Assignee
           <select aria-label="assignee" disabled={readOnly} onChange={e => void act({ kind: 'assign', value: e.target.value }, 'Reassigned')} value={t.assignee ?? ''}>
@@ -138,10 +248,7 @@ export function TaskTabView({
             ))}
           </select>
         </label>
-        <button onClick={() => onOpenRoute?.(`/kanban?task=${encodeURIComponent(t.id)}`)} type="button">
-          Open in Board
-        </button>
-      </header>
+      </div>
       {msg ? <p role="status">{msg}</p> : null}
       {t.workspace_path ? (
         <p data-ops-field="workspace">
@@ -209,76 +316,6 @@ export function TaskTabView({
             <input aria-label="new subtask" onChange={e => setSub(e.target.value)} placeholder="Add subtask" value={sub} />
           </form>
         ) : null}
-      </section>
-
-      <section aria-label="Timeline" data-ops-timeline="">
-        <h3>Timeline</h3>
-        <button onClick={() => setOpen(new Set(events.map(e => e.id)))} type="button">
-          Expand all
-        </button>
-        <button onClick={() => setOpen(new Set())} type="button">
-          Collapse all
-        </button>
-        <ol>
-          {events.map(e => {
-            const d = describeEvent(e)
-
-            return (
-              <li data-ops-event={e.kind} data-ops-handoff={d.handoff ? '' : undefined} key={e.id}>
-                <code>{hhmm(e.created_at)}</code> {d.verb} <code>{d.target}</code>
-                <button aria-expanded={open.has(e.id)} onClick={() => setOpen(s => (s.has(e.id) ? new Set([...s].filter(x => x !== e.id)) : new Set([...s, e.id])))} type="button">
-                  {open.has(e.id) ? 'Hide' : 'Details'}
-                </button>
-                {open.has(e.id) ? <pre data-ops-event-payload="">{JSON.stringify(e.payload, null, 2)}</pre> : null}
-              </li>
-            )
-          })}
-        </ol>
-      </section>
-
-      <section aria-label="Runs" data-ops-runs="">
-        <h3>Runs ({runs.length})</h3>
-        <table>
-          <tbody>
-            {runs.map(r => (
-              <tr data-ops-run-row={r.id} key={r.id}>
-                <td>#{r.id}</td>
-                <td>{r.profile ?? 'unknown'}</td>
-                <td>{r.status}</td>
-                <td>{r.outcome ?? ''}</td>
-                <td>{dur(r)}</td>
-                <td>{r.summary ?? ''}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      {loadLog ? (
-        <section aria-label="Worker log" data-ops-worker-log="">
-          <h3>Worker log</h3>
-          <button
-            onClick={() =>
-              void loadLog().then(
-                l => setLog(l.exists ? `${l.truncated ? '…(tail)\n' : ''}${l.content}` : 'No worker log: this task never spawned a worker.'),
-                e => setLog(`Log unavailable: ${e instanceof Error ? e.message : 'request failed'}`)
-              )
-            }
-            type="button"
-          >
-            {log === null ? 'Show worker log' : 'Refresh log'}
-          </button>
-          {log !== null ? <pre data-ops-log="">{log}</pre> : null}
-        </section>
-      ) : null}
-
-      <section aria-label="Attachments" data-ops-attachments="">
-        <h3>Attachments ({detail.attachments?.length ?? 0})</h3>
-        <ul>
-          {(detail.attachments ?? []).map(a => (
-            <li key={a.id}>{a.filename}</li>
-          ))}
-        </ul>
       </section>
 
       <section aria-label="Comments" data-ops-comments="">

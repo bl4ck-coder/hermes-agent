@@ -77,32 +77,82 @@ export function BoardContainer({
     }
   }, [client, layout, linkKey])
 
-  // R11 / R70: files across the most recently active tasks, read only while Files is open.
+  // R11 / R70: files, read only while Files is open. Board-wide paged route first (P8 b6); an older
+  // backend without it (404) falls back to scanning the most recently active tasks.
+  const [filesNext, setFilesNext] = useState<string | null>(null)
+  const [filesScope, setFilesScope] = useState<'board' | 'scan' | null>(null)
+  const [filesMore, setFilesMore] = useState(false)
+
+  const toRow = (a: Record<string, unknown>, title: Map<string, string>): FileRow => {
+    const taskId = String(a.task_id ?? '')
+
+    return { ...(a as object), id: String(a.id), filename: String(a.filename ?? 'file'), taskId, taskTitle: String(a.task_title ?? title.get(taskId) ?? taskId) } as FileRow
+  }
+
   useEffect(() => {
     if (layout !== 'files') {
       return
     }
 
     let live = true
-    const ids = fileKey ? fileKey.split(',') : []
     const title = new Map(tasks.map(t => [t.id, t.title]))
     setFiles(null)
-    Promise.all(
-      ids.map(id =>
-        Promise.resolve()
-          .then(() => client.attachments(id))
-          .then(
-            xs => (xs as Record<string, unknown>[]).map(a => ({ ...(a as object), id: String(a.id), filename: String(a.filename ?? 'file'), taskId: id, taskTitle: title.get(id) ?? id }) as FileRow),
-            () => [] as FileRow[]
-          )
+    Promise.resolve()
+      .then(() => client.recentAttachments(null))
+      .then(
+        page => {
+          if (live) {
+            setFilesScope('board')
+            setFiles(page.attachments.map(x => toRow(x, title)))
+            setFilesNext(page.next)
+          }
+        },
+        () => {
+          const ids = fileKey ? fileKey.split(',') : []
+          Promise.all(
+            ids.map(id =>
+              Promise.resolve()
+                .then(() => client.attachments(id))
+                .then(
+                  xs => (xs as Record<string, unknown>[]).map(x => toRow({ task_id: id, ...x }, title)),
+                  () => [] as FileRow[]
+                )
+            )
+          ).then(all => {
+            if (live) {
+              setFilesScope('scan')
+              setFiles(all.flat())
+              setFilesNext(null)
+            }
+          })
+        }
       )
-    ).then(all => live && setFiles(all.flat()))
 
     return () => {
       live = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, layout, fileKey])
+
+  const loadMoreFiles = useCallback(async () => {
+    if (!filesNext || filesMore) {
+      return
+    }
+
+    setFilesMore(true)
+
+    try {
+      const title = new Map(tasks.map(t => [t.id, t.title]))
+      const page = await client.recentAttachments(filesNext)
+      setFiles(f => [...(f ?? []), ...page.attachments.map(x => toRow(x, title))])
+      setFilesNext(page.next)
+    } catch (e) {
+      setNotice(`More files unavailable: ${errorReason(e)}`)
+    } finally {
+      setFilesMore(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, filesNext, filesMore, board])
 
   const loadArchived = useCallback(async () => {
     try {
@@ -215,10 +265,13 @@ export function BoardContainer({
       }
       error={error}
       files={files}
-      filesScanned={fileTasks.length}
+      filesHasMore={!!filesNext}
+      filesLoadingMore={filesMore}
+      filesScanned={filesScope === 'scan' ? fileTasks.length : undefined}
       lastMove={lastMove}
       links={links}
       loadArchived={() => void loadArchived()}
+      loadMoreFiles={loadMoreFiles}
       me={me}
       move={(id, to) => void move(id, to)}
       notice={notice}

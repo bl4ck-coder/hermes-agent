@@ -249,6 +249,12 @@ export function createBoardClient(api: OpsApi = hermesApi) {
       send<{ attachments?: unknown[] } | unknown[]>('GET', `/api/plugins/kanban/tasks/${encodeURIComponent(id)}/attachments`).then(r =>
         Array.isArray(r) ? r : Array.isArray((r as { attachments?: unknown[] })?.attachments) ? (r as { attachments: unknown[] }).attachments : []
       ),
+    /** R70 (P8 b6): every attachment on the board, newest first; keyset paging by id. */
+    recentAttachments: (beforeId?: string | null, limit = 50) =>
+      send<{ attachments?: Record<string, unknown>[]; next_before_id?: number | null }>(
+        'GET',
+        `/api/plugins/kanban/attachments?limit=${limit}${beforeId ? `&before_id=${encodeURIComponent(beforeId)}` : ''}`
+      ).then(r => ({ attachments: Array.isArray(r?.attachments) ? r.attachments : [], next: r?.next_before_id != null ? String(r.next_before_id) : null })),
     upload: (id: string, file: { filename: string; contentType?: string; bytes: ArrayBuffer }) =>
       api<{ attachment: Record<string, unknown> | null }>({ ...connectionScoped(), path: `/api/plugins/kanban/tasks/${encodeURIComponent(id)}/attachments`, method: 'POST', upload: file }),
     create: (title: string, status: string, assignee?: string | null, tenant?: string | null) =>

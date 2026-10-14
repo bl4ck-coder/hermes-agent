@@ -166,7 +166,7 @@ export function createOpsClient(api: OpsApi = hermesApi) {
         choice
       })
     },
-    usageToday: () => get<UsageToday>('/api/ops/usage/today'),
+    usageToday: (profile?: string | null) => get<UsageToday>(`/api/ops/usage/today${profile ? `?profile=${encodeURIComponent(profile)}` : ''}`),
     board: (tenant?: string | null) => get<KanbanBoard>(`/api/plugins/kanban/board${q({ tenant })}`),
     cronJobs: (profile?: string | null) => get<CronJobLite[]>(`/api/cron/jobs${q({ profile: profile || 'all' })}`),
     dispatch: (title: string, assignee: string | null, tenant?: string | null, projectId?: string | null) =>

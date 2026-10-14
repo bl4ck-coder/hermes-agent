@@ -361,6 +361,9 @@ export function FilesView({
   tasks,
   nowS,
   scanned,
+  hasMore,
+  loadingMore,
+  onLoadMore,
   readOnly,
   onUpload,
   onOpenFile,
@@ -369,8 +372,12 @@ export function FilesView({
   files: FileRow[] | null
   tasks: BoardTask[]
   nowS: number
-  /** How many tasks were scanned for files (honest scope note). */
+  /** How many tasks were scanned for files (old backends only; honest scope note). */
   scanned?: number
+  /** R70 (P8 b6): board-wide paging. */
+  hasMore?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
   readOnly?: boolean
   onUpload?: (taskId: string, file: File) => Promise<unknown>
   onOpenFile?: (f: FileRow) => void
@@ -452,7 +459,18 @@ export function FilesView({
         ) : null}
       </div>
       {msg ? <p role="status">{msg}</p> : null}
-      {typeof scanned === 'number' ? <p data-ops-field="scope">Files from the {scanned} most recently active tasks.</p> : null}
+      {typeof scanned === 'number' ? (
+        <p data-ops-field="scope">Files from the {scanned} most recently active tasks (this Hermes has no board-wide file list).</p>
+      ) : sorted ? (
+        <p data-ops-field="scope">
+          {sorted.length} file{sorted.length === 1 ? '' : 's'} on this board{hasMore ? ' so far' : ''}.
+          {hasMore ? (
+            <button data-ops-files-more="" disabled={loadingMore || !onLoadMore} onClick={() => onLoadMore?.()} type="button">
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          ) : null}
+        </p>
+      ) : null}
       {sorted === null ? (
         <p data-ops-loading="">Files loading…</p>
       ) : sorted.length === 0 ? (

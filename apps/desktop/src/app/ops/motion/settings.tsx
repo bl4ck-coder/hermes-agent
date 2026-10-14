@@ -61,7 +61,7 @@ export function loadPrefs(): OpsPrefs {
 
 /** R55: the route Desktop should open at startup, or null to keep its own default. */
 export function opsLaunchRoute(p: OpsPrefs = loadPrefs()): string | null {
-  return p.openOnLaunch ? `/ops?tab=${p.defaultTab}` : null
+  return p.openOnLaunch ? `/ops/${p.defaultTab}` : null
 }
 
 export function savePrefs(p: OpsPrefs) {

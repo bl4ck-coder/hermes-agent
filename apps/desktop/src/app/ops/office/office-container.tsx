@@ -6,6 +6,7 @@ import { captureGatewayFileDownload } from '@/lib/media'
 
 import { useKanbanStream } from '../feed/kanban-stream'
 import { createOpsActions, type OpsActions } from '../feed/ops-actions'
+import type { UsageToday } from '../feed/ops-client'
 import { createOpsClient, type OpsClient, parseDispatch } from '../feed/ops-client'
 import { OPS_POLL_MS, useOpsFeed } from '../feed/ops-feed'
 
@@ -52,6 +53,9 @@ export function useOpsResource<T>(load: () => Promise<T>, deps: unknown[], pollM
   return { value, error, reload: () => setTick(n => n + 1) }
 }
 
+/** X10: profiles whose usage is read per refresh (one request each). */
+export const USAGE_PROFILE_MAX = 12
+
 export function OfficeContainer({
   readOnly = false,
   client: clientProp,
@@ -74,6 +78,18 @@ export function OfficeContainer({
   const client = useMemo(() => clientProp ?? createOpsClient(), [clientProp])
   const actions = useMemo(() => actionsProp ?? createOpsActions(), [actionsProp])
   const feed = useOpsFeed(null, client)
+  // X10 (P8 b6): tokens today per profile (the route takes ?profile=), capped like the orrery.
+  const usageNames = (Array.isArray(feed.fleet?.profiles) ? feed.fleet.profiles.map(p => p.profile) : []).slice(0, USAGE_PROFILE_MAX).join('\0')
+
+  const usageBy = useOpsResource(
+    async () =>
+      Object.fromEntries(
+        await Promise.all(usageNames.split('\0').filter(Boolean).map(async n => [n, await client.usageToday(n).then(v => v, () => null)] as const))
+      ) as Record<string, UsageToday | null>,
+    [client, usageNames],
+    60_000
+  )
+
   const pending = useOpsResource(() => client.pendingApprovals(), [client])
   const usage = useOpsResource(() => client.usageToday(), [client])
   const cron = useOpsResource(() => client.cronJobs(), [client])
@@ -211,6 +227,7 @@ export function OfficeContainer({
       taskEvents={stream.mode === 'stream' || stream.events.length ? stream.events : null}
       tasks={tasks}
       usage={usage.value}
+      usageByProfile={usageBy.value}
     />
   )
 }

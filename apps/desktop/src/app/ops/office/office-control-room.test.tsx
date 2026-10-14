@@ -224,7 +224,7 @@ describe('X5 jobs reachable in one click', () => {
         onOpenTask={task}
       />
     )
-    fireEvent.click(within(document.querySelector('[data-ops-in-flight-task="run-ok"]') as HTMLElement).getByRole('button'))
+    fireEvent.click(within(document.querySelector('[data-ops-in-flight-task="run-ok"]') as HTMLElement).getByRole('button', { name: 'Task run-ok' }))
     expect(task).toHaveBeenCalledWith('run-ok')
     fireEvent.click(document.querySelector('[data-ops-cron-failure="c1"]')!)
     expect(route).toHaveBeenCalledWith('/cron?job=c1')

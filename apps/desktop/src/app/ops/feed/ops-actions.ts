@@ -41,6 +41,8 @@ export interface TaskRun {
   summary?: string | null
   started_at?: number | null
   ended_at?: number | null
+  /** JSON text or object; a worker may report ``diff`` / ``diffstat`` here (X9). */
+  metadata?: unknown
 }
 
 export interface TaskDetail {
