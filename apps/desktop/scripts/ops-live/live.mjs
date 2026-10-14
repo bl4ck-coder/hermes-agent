@@ -218,6 +218,7 @@ if (want('settings-inspector')) await section('08b-settings-inspector', async ()
 })
 if (want('draft')) await section('03b-canvas-draft', async () => {
   // One reversible draft edit: open the prompt editor, type, then Discard. Never Review & save.
+  await go('/ops/canvas')
   await page.locator('[data-ops-node-title]').first().click({ timeout: 8000 })
   await sleep(1000)
   const ta = page.locator('[data-ops-node-editor] textarea').first()
