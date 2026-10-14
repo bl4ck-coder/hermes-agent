@@ -5,6 +5,7 @@
  */
 
 import type { ReactNode } from 'react'
+
 import { T } from '../main-i18n'
 
 const SAFE_URL = /^(https?:\/\/|mailto:)/i

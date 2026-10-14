@@ -8,9 +8,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { createOpsActions, type OpsActions, type TaskDetail, type TaskEvent, type TaskRun } from '../feed/ops-actions'
+import { T } from '../main-i18n'
 
 import { LinkedText } from './entity-links'
-import { T } from '../main-i18n'
 
 const VERB: Record<string, string> = {
   created: 'created',

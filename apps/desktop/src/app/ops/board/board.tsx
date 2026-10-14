@@ -6,13 +6,13 @@
  * (R71/R58), favourites (R74), card menu (R20), New-task modal (R40), inline rename (R47), Markdown body (R17).
  */
 
-import { T } from '../main-i18n'
-import { Sigil } from '../primitives/sigil'
 import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 import { boardInspectorSummary, taskInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
+import { T } from '../main-i18n'
+import { Sigil } from '../primitives/sigil'
 
 import {
   allTasks,

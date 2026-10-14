@@ -11,12 +11,12 @@ import { describeEvent } from '../detail/task-tab'
 import { useKanbanStream } from '../feed/kanban-stream'
 import { type ActiveWorker, createOpsActions, type OpsActions } from '../feed/ops-actions'
 import type { KanbanTask } from '../feed/ops-client'
+import { T } from '../main-i18n'
 import { listOrNull, useOpsResource } from '../office/office-container'
 import { activityRow } from '../office/office-toasts'
 
 import { createB4Client } from './b4-lenses'
 import { type AppCard, appCards, appGlyph, appsInTags } from './b4-model'
-import { T } from '../main-i18n'
 
 const why = (e: unknown) => (e instanceof Error ? e.message : e ? String(e) : null)
 /** P8: local time for the operator (was UTC ISO). */

@@ -8,10 +8,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
 import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
+import { T } from '../main-i18n'
 
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
 import { elapsedMs, initialRun, reduceRun, type RunView } from './run-stream'
-import { T } from '../main-i18n'
 
 export interface CanvasData {
   model: ModelNode | null

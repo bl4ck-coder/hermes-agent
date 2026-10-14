@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 import { opsCall } from '../feed/diag'
 import { type ActiveWorker, createOpsActions } from '../feed/ops-actions'
+import { T } from '../main-i18n'
 import type { BoardTask } from '../office/control-room'
 import { fmtAge } from '../office/control-room'
 import { useOpsResource } from '../office/office-container'
@@ -39,7 +40,6 @@ import {
   teams,
   WEEK_S
 } from './b4-model'
-import { T } from '../main-i18n'
 
 const why = (e: unknown) => (e instanceof Error ? e.message : e ? String(e) : null)
 

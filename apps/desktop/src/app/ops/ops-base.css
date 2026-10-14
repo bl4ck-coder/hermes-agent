@@ -304,8 +304,8 @@
 :where([data-ops-orb][data-ops-presence='blocked']) { border-color: #b4474b; }
 :where([data-ops-orb][data-ops-presence='unknown'], [data-ops-orb][data-ops-presence='offline']) { opacity: 0.72; }
 @keyframes ops-think { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ops-gold, #c9a227) 45%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
-[data-ops-orb][data-ops-thinking] { animation: ops-think 1.8s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { [data-ops-orb][data-ops-thinking] { animation: none; } }
+:where([data-ops-orb][data-ops-thinking]) { animation: ops-think 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-orb][data-ops-thinking]) { animation: none; } }
 /* Gr8r: board card id chip + avatar, status glyph per column. */
 :where([data-ops-card] [data-ops-assignee]) { align-items: center; display: inline-flex; gap: 5px; min-width: 0; }
 :where([data-ops-card-id]) { color: var(--ops-muted); font: 10.5px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: 0.02em; }

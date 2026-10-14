@@ -3,8 +3,6 @@
  * a null is rendered as "unknown", never 0. Updates never move focus.
  */
 
-import { opsMainLocale, T } from '../main-i18n'
-import { Sigil } from '../primitives/sigil'
 import { type RefObject, useRef, useState } from 'react'
 
 import { describeEvent } from '../detail/task-tab'
@@ -19,8 +17,10 @@ import type {
   UsageToday
 } from '../feed/ops-client'
 import { parseDispatch, shownPresence } from '../feed/ops-client'
+import { opsMainLocale, T } from '../main-i18n'
 import { EASE, effectiveReduced, loadMotion, MOTION, systemPrefersReduced } from '../motion/motion'
 import { opsTimezone } from '../motion/tz'
+import { Sigil } from '../primitives/sigil'
 import { ToastQueue } from '../primitives/toast-queue'
 
 import {
@@ -267,9 +267,9 @@ function Orrery({
       aria-label={`${o.profile}: ${PRESENCE_LABEL[o.presence]}`}
       data-ops-halo={moving && live.has(o.profile) ? '' : undefined}
       data-ops-orb={o.profile}
-      data-ops-thinking={live.has(o.profile) && !reduced ? '' : undefined}
       data-ops-presence={o.presence}
       data-ops-ring={o.ring}
+      data-ops-thinking={live.has(o.profile) && !reduced ? '' : undefined}
       key={o.profile}
       onClick={() => onOpenProfile?.(o.profile)}
       style={{ position: 'absolute', left: `calc(50% + ${o.x}px)`, top: `calc(50% + ${o.y}px)`, transform: 'translate(-50%, -50%)', whiteSpace: 'nowrap' }}

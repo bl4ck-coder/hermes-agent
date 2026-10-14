@@ -4,6 +4,7 @@
  */
 
 import { useSyncExternalStore } from 'react'
+
 import { T } from '../main-i18n'
 
 export interface OfficeThresholds {

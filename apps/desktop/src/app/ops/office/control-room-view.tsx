@@ -6,6 +6,8 @@
 
 import { type ReactNode, useState } from 'react'
 
+import { T } from '../main-i18n'
+
 import {
   type AttachmentLite,
   type BoardTask,
@@ -21,7 +23,6 @@ import {
 } from './control-room'
 import { CopyLink } from './copy-link'
 import type { OfficeThresholds } from './thresholds'
-import { T } from '../main-i18n'
 
 export type SectionId = 'stats' | 'needs-you' | 'stuck' | 'queue' | 'projects' | 'in-flight' | 'delivered' | 'activity' | 'cost' | 'fleet'
 

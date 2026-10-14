@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PolicyView } from '../feed/ops-client'
+import { T } from '../main-i18n'
 
 import { registerCanvasSaver, setCanvasDirty } from './dirty-store'
 import { clearDraft, loadDraft, saveDraft } from './drafts'
@@ -30,7 +31,6 @@ import {
   WRITABLE_NODES,
   type WritableNode
 } from './node-editor'
-import { T } from '../main-i18n'
 
 const LABEL: Record<WritableNode, string> = { prompt: 'Prompt (SOUL.md)', raw_yaml: 'Raw config.yaml', model: 'Model' }
 

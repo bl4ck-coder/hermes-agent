@@ -5,6 +5,7 @@
 
 import { type DragEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 
+import { T } from '../main-i18n'
 import { fmtAge, fmtBytes } from '../office/control-room'
 
 import type { BoardTask } from './board-model'
@@ -25,7 +26,6 @@ import {
   touched
 } from './board-plus'
 import { Markdown } from './markdown'
-import { T } from '../main-i18n'
 
 /* ------------------------------ R47 inline title ------------------------------ */
 
