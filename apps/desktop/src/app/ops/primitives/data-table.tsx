@@ -245,6 +245,7 @@ export function DataTable<T>({
 
                   return (
                     <td
+                      data-col={column.id}
                       data-tabular={tabular ? 'true' : 'false'}
                       key={column.id}
                       style={

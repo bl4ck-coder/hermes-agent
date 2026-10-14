@@ -607,3 +607,20 @@
 :where([data-ops-thresholds] > label) { color: var(--ops-muted); display: inline-flex; flex-direction: column; font-size: 12px; gap: 4px; }
 :where([data-ops-thresholds] > label > input) { color: var(--ops-fg); font-variant-numeric: tabular-nums; width: 90px; }
 :where([data-ops-thresholds] > button) { background: transparent; color: var(--ops-muted); }
+
+/* ---- B30: drag highlight without re-render; skill names by attribute (B29 td:first-child never matched) ---- */
+:where([data-ops-skill-open]) { background: transparent; border-color: transparent; font-weight: 600; padding: 1px 4px; }
+:where([data-ops-skill-open]:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; color: var(--ops-gold); }
+
+/* Fleet columns by id: model reads as a quiet mono tag, lane as a chip, numbers right-aligned. */
+:where(.ops-data-table td[data-tabular='true']) { font-variant-numeric: tabular-nums; }
+:where(.ops-data-table td[data-col='model']) { color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+:where(.ops-data-table td[data-col='lane']) { font-size: 12px; }
+:where([data-ops-fleet-status='running']) { color: var(--ops-gold); }
+:where([data-ops-fleet-status='running'])::before { animation: ops-glow 1.6s ease-in-out infinite; background: var(--ops-gold); border-radius: 50%; content: ''; display: inline-block; height: 6px; margin-right: 6px; vertical-align: middle; width: 6px; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-fleet-status='running'])::before { animation: none; } }
+:where([data-ops-motion='reduced'] [data-ops-fleet-status='running'])::before { animation: none; }
+/* Teams: the catch-all lane spans the row so it does not tower over the real teams. */
+:where([data-ops-teams] > li[data-ops-team='No lane']) { grid-column: 1 / -1; order: 1; }
+/* Settings: a control that follows its own row (e.g. Cambiar under Approval mode) tucks under it. */
+:where([data-ops-settings-group] > dl > dd + dd) { min-height: 0; padding-top: 0; }
