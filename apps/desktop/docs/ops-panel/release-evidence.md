@@ -580,3 +580,10 @@ Scores (1–10, after B19 → after B22): Canvas 5→8, Channels 6→8, Teams 5�
 - B21 (cf530f7fec): Channels equal-height cards with the action pinned to the foot, connected apps first with gold glyphs; Teams as cards with member avatars, plural open counts and empty copy; Skills starter packs as a grid with an install progress bar; Canvas leftovers localized; next cron run as a local date instead of ISO.
 - B22 (8ca36d36f9): Needs-you rows get avatars, tinted kind pills (garnet for blocked/failing/policy), right-aligned ages, compact inputs; board titles lead at 13/600 with mono ids, blocked/running cards get an inset edge tint, done cards recede; tab switch fades in (opacity only); Channels left-aligned; "No lane" localized.
 - Tests: 57 files / 496 pass; tsc clean. Live b20r1–b22r1: pageErrors 0, board unchanged; drag and pan/zoom max 13.5 ms in b22r1, one 40 ms board-scroll frame. Evidence: /workspace/ops-live/b20/–b22/.
+## B23–B26 — toward 9/10 (Fleet, Settings, Diagnostics, frame budget)
+Scores (after B22 → after B26): Fleet 6→8, Diagnostics 6→8, Settings 6→7, Skills 7→8, Canvas 8→8, Board 8→8, Office 8→8, Channels 8, Teams 8.
+- B23 (5307c45eb2): sortable headers become quiet caps with a gold active sort and ↑/↓; non-sortable headers localized (Skills "DESCRIPTION"); Fleet agent cell = avatar + name + quiet role; zero counts recede; failures garnet; Diagnostics capabilities and connection as status lights in a grid; fleet copy localized.
+- B24 (5430e1540a): secret presence as a mono chip grid with green lights; board views as a segmented switcher with New task primary; Canvas node detail below its node; Office live cards lifted with a state edge; kit names wrap.
+- B25 (f86e28e6c9): Canvas run panel status pill (localized, state light, reduced-motion safe); drifting orbs drop shadows.
+- B26 (8dee375052): removed an unscoped `:where(:has(> [data-ops-count]))` and a toolbar `:has()`; Office p99 26.5 → 13.5 ms.
+- Tests: 61 files / 510 pass; tsc clean. Live b23r1–b26r1: pageErrors 0, board unchanged. b26r1 max frames: one 66.8 ms Office frame, one 40 ms drag frame (p99 13.5 / 26.6 ms). Evidence: /workspace/ops-live/b23/–b26/.
