@@ -243,8 +243,21 @@ type ViewMap = Record<string, SavedView[]>
 
 export const viewsStore = store<ViewMap>('hermes.ops.boardViews', v => (v && typeof v === 'object' && !Array.isArray(v) ? (v as ViewMap) : {}))
 
-/** Views belong to a (connection, project) scope; '*' = no project filter. */
-export const viewScope = (connection: string | null | undefined, project: string | null | undefined) => `${connection || 'local'}\u0000${project || '*'}`
+/**
+ * SPEC v2.1 7 R67: views belong to a (connection, tenant/board, profile, project) scope; '*' = unscoped.
+ * The two-part legacy form (connection, project) maps to tenant '*' and profile '*'.
+ */
+export const viewScope = (
+  connection: string | null | undefined,
+  project: string | null | undefined,
+  tenant?: string | null,
+  profile?: string | null
+) => (tenant || profile ? `${connection || 'local'}\u0000${tenant || '*'}\u0000${profile || '*'}\u0000${project || '*'}` : `${connection || 'local'}\u0000${project || '*'}`)
+
+/** SPEC v2.1 7 R69: no persisted manual rank exists in kanban, so "Manual" is Cut; stored views fall back to Priority. */
+export function effectiveSort(by: SortBy | undefined | null): Exclude<SortBy, 'manual'> {
+  return by === 'updated' ? 'updated' : 'priority'
+}
 
 export function listViews(scope: string): SavedView[] {
   const v = viewsStore.get()[scope]

@@ -2,7 +2,7 @@
  * Board (ops-panel P4-02, P8 b3): Board/List/Table/Calendar/Timeline/Files/Favorites layouts plus the
  * Review lens over one backend board. Columns are windowed (fixed rows) so 400 cards mount only the
  * visible slice. Moves are server-validated: optimistic, then snap-back with the server's reason.
- * P8 b3: saved views (R67), dependency timeline (R68), group/sort (R69), files (R11/R70), rich cards
+ * P8 b3: saved views (R67), relation timeline (R68), group/sort (R69), files (R11/R70), rich cards
  * (R71/R58), favourites (R74), card menu (R20), New-task modal (R40), inline rename (R47), Markdown body (R17).
  */
 
@@ -40,7 +40,7 @@ import {
   TimelineView,
   updatedLabel
 } from './board-parts'
-import { type Favourite, type GroupBy, listViews, removeView, saveView, type SortBy, viewScope, viewsStore } from './board-plus'
+import { effectiveSort, type Favourite, type GroupBy, listViews, removeView, saveView, type SortBy, viewScope, viewsStore } from './board-plus'
 
 /** P8 b3: cards carry signals (tags, priority, subtasks, heartbeat, comments), so rows are taller. */
 export const ROW_H = 76
@@ -121,7 +121,7 @@ export function BoardView(props: BoardViewProps) {
   const [subDraft, setSubDraft] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const [groupBy, setGroupBy] = useState<GroupBy>('status')
-  const [sortBy, setSortBy] = useState<SortBy>('manual')
+  const [sortBy, setSortBy] = useState<SortBy>('priority')
   const [menu, setMenu] = useState<string | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<BoardTask | null>(null)
   const [modal, setModal] = useState<string | null>(null)
@@ -134,7 +134,7 @@ export function BoardView(props: BoardViewProps) {
     props.onLayoutChange?.(l)
   }
 
-  const scope = viewScope(props.connection, filter.project)
+  const scope = viewScope(props.connection, filter.project, filter.tenant, props.me ?? null)
   const views = listViews(scope)
 
   const shown = useMemo(() => {
@@ -263,7 +263,7 @@ export function BoardView(props: BoardViewProps) {
       setFilter({ ...v.filter })
       setLayout(v.layout)
       setGroupBy(v.groupBy ?? 'status')
-      setSortBy(v.sortBy ?? 'manual')
+      setSortBy(effectiveSort(v.sortBy))
       setActiveView(v.id)
     }
   }
@@ -323,7 +323,6 @@ export function BoardView(props: BoardViewProps) {
               <option value="priority">Group: Priority</option>
             </select>
             <select aria-label="sort by" onChange={e => setSortBy(e.target.value as SortBy)} value={sortBy}>
-              <option value="manual">Sort: Manual</option>
               <option value="priority">Sort: Priority</option>
               <option value="updated">Sort: Updated</option>
             </select>

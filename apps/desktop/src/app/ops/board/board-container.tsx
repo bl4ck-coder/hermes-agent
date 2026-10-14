@@ -10,7 +10,7 @@ import type { OpsClient } from '../feed/ops-client'
 import { OPS_POLL_MS, type OpsSseBridge } from '../feed/ops-feed'
 
 import { BoardView } from './board'
-import { allTasks, type BoardClient, type BoardData, type BoardLayout, type BoardTask, createBoardClient, errorReason, isBoard, type MoveRecord, serverMove } from './board-model'
+import { allTasks, type BoardClient, type BoardData, type BoardLayout, type BoardTask, createBoardClient, errorReason, isBoard, MOVE_UNDO_MS, type MoveRecord, serverMove, undoRefusal } from './board-model'
 import type { FileRow } from './board-parts'
 import { copyText, taskLink, touched } from './board-plus'
 
@@ -204,6 +204,17 @@ export function BoardContainer({
     return () => clearInterval(t)
   }, [reload, pollMs])
 
+  // Undo is offered for MOVE_UNDO_MS only.
+  useEffect(() => {
+    if (!lastMove) {
+      return
+    }
+
+    const t = setTimeout(() => setLastMove(null), MOVE_UNDO_MS)
+
+    return () => clearTimeout(t)
+  }, [lastMove])
+
   const move = useCallback(
     async (id: string, to: string) => {
       if (!board) {
@@ -292,7 +303,19 @@ export function BoardContainer({
       }}
       subtask={(parent, title) => void write(() => actions.createSubtask(parent, title), () => void reload())}
       unarchive={id => void write(() => actions.setStatus(id, 'todo'), () => (void loadArchived(), void reload()))}
-      undo={rec => void move(rec.id, rec.from)}
+      undo={rec => {
+        const why = undoRefusal(board, rec)
+
+        setLastMove(null)
+
+        if (why) {
+          setNotice(why)
+
+          return
+        }
+
+        void move(rec.id, rec.from)
+      }}
       upload={async (taskId, file) => {
         const bytes = await file.arrayBuffer()
         const r = await client.upload(taskId, { filename: file.name, contentType: file.type || undefined, bytes })

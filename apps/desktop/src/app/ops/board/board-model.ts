@@ -138,6 +138,31 @@ export interface MoveRecord {
   to: string
 }
 
+/** Undo window (R46): the same 8 s as the toast queue. */
+export const MOVE_UNDO_MS = 8_000
+
+/**
+ * SPEC v2.1 7 Move: Undo is a new validated mutation (the inverse transition), never a blind restore.
+ * Refused when the task is gone, moved again since, or running now. The server still validates the move.
+ */
+export function undoRefusal(b: BoardData | null, rec: MoveRecord): string | null {
+  const now = b ? statusOf(b, rec.id) : null
+
+  if (now === null) {
+    return `Undo refused: ${rec.id} is no longer on this board.`
+  }
+
+  if (now === 'running') {
+    return `Undo refused: ${rec.id} is running now.`
+  }
+
+  if (now !== rec.to) {
+    return `Undo refused: ${rec.id} changed since (now ${now}).`
+  }
+
+  return null
+}
+
 export interface MoveOutcome {
   board: BoardData
   ok: boolean

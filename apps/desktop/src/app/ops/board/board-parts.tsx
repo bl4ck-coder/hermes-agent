@@ -1,5 +1,5 @@
 /**
- * Board P8 b3 parts: rich card (R71/R58/R47/R20), grouped List/Table (R69), dependency Timeline (R68),
+ * Board P8 b3 parts: rich card (R71/R58/R47/R20), grouped List/Table (R69), relation Timeline (R68; task_links are hierarchy, not execution dependencies),
  * Files (R11/R70), Favourites (R74), New-task modal (R40) and the Markdown body editor (R17).
  */
 
@@ -302,7 +302,7 @@ export function TimelineView({
             <option value="project">Project</option>
           </select>
         </label>
-        {links === null ? <span data-ops-loading="">dependencies loading</span> : <span data-ops-field="links">{m.curves.length} dependencies</span>}
+        {links === null ? <span data-ops-loading="">relations loading</span> : <span data-ops-field="links">{m.curves.length} parent/child relations</span>}
       </div>
       {tasks.length === 0 ? (
         <p data-ops-empty="timeline">No tasks match.</p>
