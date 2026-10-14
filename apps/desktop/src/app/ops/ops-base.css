@@ -393,3 +393,11 @@
 :where([data-ops-root]) :where(tbody tr:hover) { background: var(--ops-surface); }
 @media (prefers-reduced-motion: reduce) { :where([data-ops-card]:hover) { transform: none; } }
 :where([data-ops-motion='reduced'] [data-ops-card]:hover) { transform: none; }
+
+/* ---- B19: drag stays cheap (no hover lift or transitions while a card is in flight), alarm chips, empty states ---- */
+:where([data-ops-columns][data-ops-drag-active]) :where([data-ops-card]) { box-shadow: none; transform: none; transition: none; }
+:where([data-ops-columns][data-ops-drag-active]) :where([data-ops-column][data-ops-drop='over']) { background: color-mix(in srgb, var(--ops-gold) 6%, transparent); }
+/* Counts that mean trouble read as trouble, even in the quiet strip. */
+:where([data-ops-strip]) :where([data-ops-count][data-ops-alarm]) { color: #d77b7f; }
+/* Empty states: centred, calm, with the next action visible rather than a bare italic line. */
+:where([data-ops-empty], [data-ops-inspector-empty]) { border: 1px dashed var(--ops-line); border-radius: var(--ops-radius); color: var(--ops-muted); padding: 14px; text-align: center; }

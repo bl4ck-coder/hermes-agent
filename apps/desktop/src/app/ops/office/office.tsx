@@ -17,7 +17,7 @@ import type {
   UsageToday
 } from '../feed/ops-client'
 import { parseDispatch, shownPresence } from '../feed/ops-client'
-import { opsMainLocale, T } from '../main-i18n'
+import { opsMainLocale, T, P } from '../main-i18n'
 import { EASE, effectiveReduced, loadMotion, MOTION, systemPrefersReduced } from '../motion/motion'
 import { opsTimezone } from '../motion/tz'
 import { Sigil } from '../primitives/sigil'
@@ -192,7 +192,7 @@ function TodayStrip({ cron, inFlight, nowS, th }: { cron: CronJobLite[] | null; 
     <div aria-label={T("Today strip")} data-ops-strip="today">
       <span data-ops-count="cron-24h">{T("Cron next 24 h")}{' '}{n(c.next24)}</span>
       <span data-ops-count="running">{T("Running")}{' '}{n(c.running)}</span>
-      <span data-ops-count="overdue">{T("Overdue")}{' '}{n(c.overdue)}</span>
+      <span data-ops-alarm={Number(c.overdue) > 0 ? '' : undefined} data-ops-count="overdue">{T("Overdue")}{' '}{n(c.overdue)}</span>
     </div>
   )
 }
@@ -208,7 +208,7 @@ function CronStrip({ cron, onOpenCron }: { cron: CronJobLite[] | null; onOpenCro
   return (
     <div data-ops-strip="cron">
       <span data-ops-count="cron-enabled">{enabled.length} {T("cron jobs")}</span>
-      <span data-ops-count="cron-failing">{failing.length} {T("failing")}</span>
+      <span data-ops-alarm={failing.length ? '' : undefined} data-ops-count="cron-failing">{P(failing.length, '{n} failing')}</span>
       {failing.slice(0, 3).map(j => (
         <button data-ops-cron-failure={j.id} disabled={!onOpenCron} key={j.id} onClick={() => onOpenCron?.(j.id)} type="button">
           {j.name || j.id} ({j.failure_streak})

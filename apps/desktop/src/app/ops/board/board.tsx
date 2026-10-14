@@ -453,7 +453,7 @@ export function BoardView(props: BoardViewProps) {
       ) : null}
 
       {layout === 'board' || layout === 'review' ? (
-        <div data-ops-columns="">
+        <div data-ops-columns="" data-ops-drag-active={dragging ? '' : undefined}>
           <span aria-live="polite" data-ops-sr="" role="status">
             {announce}
           </span>
