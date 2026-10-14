@@ -410,7 +410,7 @@ export function BoardView(props: BoardViewProps) {
         </p>
       ) : null}
       {props.lastMove && !readOnly ? (
-        <button data-ops-undo="" onClick={() => props.undo(props.lastMove!)} type="button">
+        <button data-ops-undo="" data-ops-write="" onClick={() => props.undo(props.lastMove!)} type="button">
           Undo move {props.lastMove.id} to {props.lastMove.to}
         </button>
       ) : null}
@@ -423,10 +423,10 @@ export function BoardView(props: BoardViewProps) {
               <option key={s}>{s}</option>
             ))}
           </select>
-          <button onClick={() => (props.bulkMove([...selected], bulkTo), setSelected(new Set()))} type="button">
+          <button data-ops-write="" onClick={() => (props.bulkMove([...selected], bulkTo), setSelected(new Set()))} type="button">
             Move selected
           </button>
-          <button onClick={() => (props.archive([...selected]), setSelected(new Set()))} type="button">
+          <button data-ops-write="" onClick={() => (props.archive([...selected]), setSelected(new Set()))} type="button">
             Archive selected
           </button>
         </div>

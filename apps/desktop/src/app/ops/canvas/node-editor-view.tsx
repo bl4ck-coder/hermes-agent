@@ -178,7 +178,7 @@ export function NodeEditor({
       {!ro ? (
         <div role="toolbar">
           <input aria-label="note" onChange={e => setNote(e.target.value)} placeholder="note (optional)" value={note} />
-          <button disabled={!isDirty(s) || s.status === 'saving'} onClick={() => setPreview(true)} type="button">
+          <button data-ops-write="" disabled={!isDirty(s) || s.status === 'saving'} onClick={() => setPreview(true)} type="button">
             Review & save
           </button>
           <button disabled={!isDirty(s)} onClick={() => ((clearDraft(connection, profile, node), setS(discard(s))), setPreview(false))} type="button">
@@ -204,8 +204,8 @@ export function NodeEditor({
               {s.base.provider}/{s.base.model} → {s.draft.provider}/{s.draft.model} (config.yaml is re-written; comments are not kept)
             </p>
           )}
-          <button
-            data-ops-confirm-save=""
+          <button data-ops-confirm-save=""
+            data-ops-write=""
             onClick={async () => {
               setS({ ...s, status: 'saving' })
               setS(await save(s, profile, client, note || undefined))
@@ -281,7 +281,7 @@ export function NodeEditor({
               <li data-ops-history-item={h.backup} key={h.backup}>
                 #{h.sequence} {h.note ?? ''}{' '}
                 {!ro ? (
-                  <button onClick={async () => (setS(await restore(s, profile, h.backup, client)), void openHistory())} type="button">
+                  <button data-ops-write="" onClick={async () => (setS(await restore(s, profile, h.backup, client)), void openHistory())} type="button">
                     Restore
                   </button>
                 ) : null}

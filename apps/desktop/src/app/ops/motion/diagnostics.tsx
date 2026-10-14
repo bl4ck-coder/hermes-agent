@@ -19,6 +19,7 @@ import {
   subscribeSim
 } from '../feed/diag'
 import { useKanbanStream } from '../feed/kanban-stream'
+import { setOpsConnection } from '../feed/write-gate'
 
 export function DiagnosticsPanel({
   policySource,
@@ -42,9 +43,13 @@ export function DiagnosticsPanel({
     setProbing(true)
 
     try {
-      setConn(connectionView((await fetcher('/api/status')) as never))
+      const v = connectionView((await fetcher('/api/status')) as never)
+      setConn(v)
+      setOpsConnection(v)
     } catch (e) {
-      setConn(connectionView(null, e))
+      const v = connectionView(null, e)
+      setConn(v)
+      setOpsConnection(v)
     }
 
     setResults(await probe(fetcher))

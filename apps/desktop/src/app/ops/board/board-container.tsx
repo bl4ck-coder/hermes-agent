@@ -8,6 +8,7 @@ import { useKanbanStream } from '../feed/kanban-stream'
 import { createOpsActions, type OpsActions } from '../feed/ops-actions'
 import type { OpsClient } from '../feed/ops-client'
 import { OPS_POLL_MS, type OpsSseBridge } from '../feed/ops-feed'
+import { opsWriteGate } from '../feed/write-gate'
 
 import { BoardView } from './board'
 import { allTasks, type BoardClient, type BoardData, type BoardLayout, type BoardTask, createBoardClient, errorReason, isBoard, MOVE_UNDO_MS, type MoveRecord, serverMove, undoRefusal } from './board-model'
@@ -221,6 +222,12 @@ export function BoardContainer({
         return
       }
 
+      if (!opsWriteGate().enabled) {
+        setNotice(opsWriteGate().reason)
+
+        return
+      }
+
       busy.current += 1
       const out = await serverMove(board, id, to, client.move, setBoard)
       busy.current -= 1
@@ -237,6 +244,12 @@ export function BoardContainer({
 
   const bulk = useCallback(
     async (ids: string[], patch: { status?: string; archive?: boolean }) => {
+      if (!opsWriteGate().enabled) {
+        setNotice(opsWriteGate().reason)
+
+        return
+      }
+
       try {
         const r = await client.bulk(ids, patch)
         const failed = (r?.results ?? []).filter(x => !x.ok)

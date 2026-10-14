@@ -261,7 +261,7 @@ export function TaskTabView({
           {confirmStop === live.id ? (
             <>
               <span>Stop run {live.id}? The worker is terminated.</span>
-              <button data-ops-stop-confirm="" disabled={busy} onClick={() => (setConfirmStop(null), void act({ kind: 'stop', value: String(live.id) }, 'Stopped'))} type="button">
+              <button data-ops-stop-confirm="" data-ops-write="" disabled={busy} onClick={() => (setConfirmStop(null), void act({ kind: 'stop', value: String(live.id) }, 'Stopped'))} type="button">
                 Confirm stop
               </button>
               <button onClick={() => setConfirmStop(null)} type="button">
@@ -269,13 +269,13 @@ export function TaskTabView({
               </button>
             </>
           ) : (
-            <button data-ops-stop="" onClick={() => setConfirmStop(live.id)} type="button">
+            <button data-ops-stop="" data-ops-write="" onClick={() => setConfirmStop(live.id)} type="button">
               Stop
             </button>
           )}
           <form onSubmit={e => (e.preventDefault(), steer.trim() && void act({ kind: 'steer', value: steer.trim() }, 'Steer sent').then(ok => ok && setSteer('')))}>
             <input aria-label="steer" onChange={e => setSteer(e.target.value)} placeholder="Steer the running worker" value={steer} />
-            <button disabled={busy || !steer.trim()} type="submit">
+            <button data-ops-write="" disabled={busy || !steer.trim()} type="submit">
               Steer
             </button>
           </form>
@@ -288,10 +288,10 @@ export function TaskTabView({
           {!readOnly ? (
             <>
               <input aria-label="unblock note" onChange={e => setNote(e.target.value)} placeholder="Unblock note" value={note} />
-              <button disabled={busy || !note.trim()} onClick={() => void act({ kind: 'unblock', value: note.trim() }, 'Unblocked').then(ok => ok && setNote(''))} type="button">
+              <button data-ops-write="" disabled={busy || !note.trim()} onClick={() => void act({ kind: 'unblock', value: note.trim() }, 'Unblocked').then(ok => ok && setNote(''))} type="button">
                 Unblock
               </button>
-              <button onClick={() => void act({ kind: 'retry' }, 'Moved to ready')} type="button">
+              <button data-ops-write="" onClick={() => void act({ kind: 'retry' }, 'Moved to ready')} type="button">
                 Retry → ready
               </button>
             </>

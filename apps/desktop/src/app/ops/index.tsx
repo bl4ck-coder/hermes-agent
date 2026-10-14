@@ -16,6 +16,7 @@ import { OpsChrome, type OpsStatusSources } from './chrome'
 import { DockHost, type DockProblem } from './dock-host'
 import { DocumentTabs } from './document-tabs'
 import { useKanbanStream } from './feed/kanban-stream'
+import { useWriteGateOn } from './feed/write-gate'
 import { Inspector } from './inspector'
 import {
   claimOpsFocusedChord,
@@ -183,6 +184,8 @@ export function OpsShell({
   const [, setTick] = useState(0)
   const copy = useI18n().t.ops
   const root = useRef<HTMLDivElement>(null)
+  // B8 L2: every [data-ops-write] control is disabled with the reason while the connection check says writes are unsafe.
+  const writeGate = useWriteGateOn(root)
   // P5-03: persisted Full / Reduced / System (SPEC 12.3); same cycle as before.
   const [motion, setMotion] = useMotionMode()
 
@@ -486,6 +489,7 @@ export function OpsShell({
       data-ops-sash="layout-tree"
       data-ops-scope={connectionId}
       data-ops-tabs={narrow.tabs}
+      data-ops-writes-gate={writeGate.enabled ? 'on' : 'off'}
       onKeyDown={onShellKeyDown}
       ref={root}
       style={{

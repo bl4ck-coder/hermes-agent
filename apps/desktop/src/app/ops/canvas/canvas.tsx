@@ -370,8 +370,8 @@ export function CanvasView({
         {readOnly ? <span data-ops-badge="remote">remote: read-only</span> : null}
         {/* G57: one header save for every dirty node; disabled at 0. */}
         {readOnly ? null : (
-        <button
-          data-ops-save-all={dirtyCount}
+        <button data-ops-save-all={dirtyCount}
+          data-ops-write=""
           disabled={readOnly || dirtyCount === 0}
           onClick={async () => {
             const r = await saveAllCanvas(profile)
@@ -557,7 +557,7 @@ export function CanvasView({
       </button>
       <section aria-label="Test run" data-ops-run-panel="" hidden={!runOpen}>
         <textarea aria-label="Test run input" onChange={e => setInput(e.target.value)} value={input} />
-        <button data-ops-test-run="" disabled={!runs || active} onClick={() => void start()} type="button">
+        <button data-ops-test-run="" data-ops-write="" disabled={!runs || active} onClick={() => void start()} type="button">
           Test run
         </button>
         {!runs ? <span>Runs bridge unavailable</span> : null}

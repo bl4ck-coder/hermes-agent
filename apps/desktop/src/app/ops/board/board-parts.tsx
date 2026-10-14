@@ -450,7 +450,7 @@ export function FilesView({
                 </option>
               ))}
             </select>
-            <button data-ops-upload="" disabled={!target} onClick={() => input.current?.click()} type="button">
+            <button data-ops-upload="" data-ops-write="" disabled={!target} onClick={() => input.current?.click()} type="button">
               Upload
             </button>
             <input aria-label="upload file" hidden multiple onChange={e => void send(e.target.files)} ref={input} type="file" />
@@ -678,7 +678,7 @@ export function NewTaskModal({
         <input aria-label="new task priority" max={10} min={0} onChange={e => setPriority(Math.max(0, Math.min(10, Number(e.target.value) || 0)))} type="number" value={priority} />
       </label>
       {err ? <p role="alert">Not created: {err}</p> : null}
-      <button data-ops-create="" disabled={!cleanTitle || busy} onClick={() => void submit()} type="button">
+      <button data-ops-create="" data-ops-write="" disabled={!cleanTitle || busy} onClick={() => void submit()} type="button">
         {busy ? 'Creating…' : 'Create'} <kbd>Ctrl+Enter</kbd>
       </button>
       <button onClick={onClose} type="button">
@@ -732,8 +732,8 @@ export function BodyEditor({ body, readOnly, onSave }: { body: string | null | u
         <Markdown text={draft} />
       </div>
       {err ? <p role="alert">Not saved: {err}</p> : null}
-      <button
-        data-ops-save-body=""
+      <button data-ops-save-body=""
+        data-ops-write=""
         disabled={busy || draft === (body ?? '')}
         onClick={async () => {
           setBusy(true)

@@ -365,7 +365,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
             {packs.map(p => (
               <li data-ops-pack={p.id} key={p.id}>
                 <strong>{p.title}</strong> <span data-ops-pack-meta="">{p.skills.length} skills{p.missing.length < p.skills.length ? ` · ${p.skills.length - p.missing.length} installed` : ''}</span>
-                <button data-ops-add-all={p.id} disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
+                <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
                   {p.missing.length === 0 ? 'All added' : 'Add all'}
                 </button>
               </li>

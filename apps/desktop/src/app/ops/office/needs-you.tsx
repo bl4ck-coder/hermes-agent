@@ -149,25 +149,25 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                   ) : item.origin === 'jsonrpc' ? (
                     <>
                       {fullFits ? (
-                        <button data-ops-approve={key} disabled={sending} onClick={() => void run(key, () => p.onApprove?.(item))} type="button">
+                        <button data-ops-approve={key} data-ops-write="" disabled={sending} onClick={() => void run(key, () => p.onApprove?.(item))} type="button">
                           {label(key, 'Approve', 'Approved')}
                         </button>
                       ) : (
                         <span data-ops-review={key}>Review</span>
                       )}
                       {p.onDeny && item.actions.includes('deny') ? (
-                        <button data-ops-deny={key} disabled={sending || busy[`d:${key}`] === 'sending' || busy[`d:${key}`] === 'done'} onClick={() => void run(`d:${key}`, () => p.onDeny?.(item))} type="button">
+                        <button data-ops-deny={key} data-ops-write="" disabled={sending || busy[`d:${key}`] === 'sending' || busy[`d:${key}`] === 'done'} onClick={() => void run(`d:${key}`, () => p.onDeny?.(item))} type="button">
                           {label(`d:${key}`, 'Deny', 'Denied')}
                         </button>
                       ) : null}
                     </>
                   ) : item.origin === 'kanban_review' ? (
                     <>
-                      <button data-ops-approve={key} disabled={sending} onClick={() => void run(key, () => p.onKanban?.({ kind: 'approve_review', taskId: item.id }))} type="button">
+                      <button data-ops-approve={key} data-ops-write="" disabled={sending} onClick={() => void run(key, () => p.onKanban?.({ kind: 'approve_review', taskId: item.id }))} type="button">
                         {label(key, 'Approve', 'Approved')}
                       </button>
                       <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder="What to change" value={note} />
-                      <button
+                      <button data-ops-write=""
                         disabled={sending || !note.trim()}
                         onClick={() => void run(key, () => p.onKanban?.({ kind: 'request_changes', taskId: item.id, note: note.trim() }))}
                         type="button"
@@ -181,8 +181,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                         Open
                       </button>
                       <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder="Unblock note" value={note} />
-                      <button
-                        data-ops-unblock={key}
+                      <button data-ops-unblock={key}
+                        data-ops-write=""
                         disabled={sending || !note.trim()}
                         onClick={() => void run(key, () => p.onKanban?.({ kind: 'unblock', taskId: item.id, note: note.trim() }))}
                         type="button"
@@ -201,8 +201,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                         placeholder="Comment"
                         value={notes[`c:${key}`] ?? ''}
                       />
-                      <button
-                        data-ops-comment={key}
+                      <button data-ops-comment={key}
+                        data-ops-write=""
                         disabled={!(notes[`c:${key}`] ?? '').trim()}
                         onClick={() =>
                           void run(`c:${key}`, () => p.onKanban?.({ kind: 'comment', taskId: item.id, note: (notes[`c:${key}`] ?? '').trim() })).then(() =>
@@ -256,7 +256,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                 </td>
                 <td>
                   {p.readOnly ? null : (
-                    <button data-ops-cron-run={j.id} disabled={busy[key] === 'sending'} onClick={() => void run(key, () => p.onCronRun?.(j.id))} type="button">
+                    <button data-ops-cron-run={j.id} data-ops-write="" disabled={busy[key] === 'sending'} onClick={() => void run(key, () => p.onCronRun?.(j.id))} type="button">
                       {label(key, 'Run now', 'Triggered')}
                     </button>
                   )}

@@ -394,7 +394,7 @@ function Dispatch({
         ref={inputRef}
         value={text}
       />
-      <button disabled={sending || !text.trim()} type="submit">
+      <button data-ops-write="" disabled={sending || !text.trim()} type="submit">
         Dispatch
       </button>
       <kbd>Enter</kbd>

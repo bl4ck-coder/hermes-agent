@@ -17,6 +17,8 @@ import { TITLEBAR_AREAS } from '@/sdk/areas'
 import { openCommandPalettePage } from '@/store/command-palette'
 import type { AnalyticsResponse, ModelInfoResponse, StatusResponse } from '@/types/hermes'
 
+import { connectionView } from './feed/diag'
+import { setOpsConnection } from './feed/write-gate'
 import {
   OPS_PALETTE_PAGE,
   type OpsKeymapHost,
@@ -93,6 +95,8 @@ export function useOpsBackendSources(connectionId: string, profile: string, enab
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
+    // B8 L2: a new scope starts unchecked; only this scope's own /api/status answer may close writes.
+    setOpsConnection(null)
 
     const read = async () => {
       const owner = { connectionId, profile }
@@ -108,6 +112,7 @@ export function useOpsBackendSources(connectionId: string, profile: string, enab
       }
 
       const status = results[0].status === 'fulfilled' ? results[0].value : null
+      setOpsConnection(results[0].status === 'fulfilled' ? connectionView(status as never) : connectionView(null, results[0].reason))
       const usage = results[1].status === 'fulfilled' ? results[1].value : null
       const model = results[2].status === 'fulfilled' ? results[2].value : null
       // Existing analytics groups session starts by backend LOCAL calendar day.
