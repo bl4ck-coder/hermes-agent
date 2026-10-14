@@ -1,12 +1,15 @@
 /** Office container (ops-panel P3-02): wires OfficeView to the P3-01 client and feed. */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+
+import { captureGatewayFileDownload } from '@/lib/media'
 
 import { useKanbanStream } from '../feed/kanban-stream'
 import { createOpsActions, type OpsActions } from '../feed/ops-actions'
 import { createOpsClient, type OpsClient, parseDispatch } from '../feed/ops-client'
 import { OPS_POLL_MS, useOpsFeed } from '../feed/ops-feed'
 
+import { type AttachmentLite, boardTasks, deliveredToday } from './control-room'
 import { OfficeView } from './office'
 
 type Loaded<T> = T | null
@@ -19,11 +22,22 @@ export function useOpsResource<T>(load: () => Promise<T>, deps: unknown[], pollM
   const [value, setValue] = useState<Loaded<T>>(null)
   const [error, setError] = useState<unknown>(null)
   const [tick, setTick] = useState(0)
+  const prevDeps = useRef<unknown[] | null>(null)
 
   useEffect(() => {
     let live = true
+    // F5 (P8): a scope change (profile, client) drops the previous scope's answer instead of showing
+    // it as current until the new one lands.
+    const changed = prevDeps.current !== null && (prevDeps.current.length !== deps.length || deps.some((d, i) => !Object.is(d, prevDeps.current![i])))
+    prevDeps.current = deps
 
-    load().then(
+    if (changed) {
+      setValue(null)
+      setError(null)
+    }
+
+    // F5 (P8): a load that throws synchronously (missing bridge/method) becomes this section's error.
+    Promise.resolve().then(load).then(
       v => live && (setValue(v), setError(null)),
       e => live && setError(e)
     )
@@ -67,7 +81,32 @@ export function OfficeContainer({
   const board = useOpsResource(() => client.board(), [client])
   const activity = useOpsResource(() => client.resolvedApprovals(), [client])
   const blueprints = useOpsResource(() => actions.blueprints(profile), [actions, profile], 60_000)
+  const projects = useOpsResource(() => actions.projects(), [actions], 30_000)
+  const policy = useOpsResource(() => client.policy(profile), [client, profile], 30_000)
   const stream = useKanbanStream()
+  const tasks = boardTasks(board.value)
+  const nowForDelivered = Math.floor(Date.now() / 60_000) * 60
+  const deliveredIds = (deliveredToday(tasks, nowForDelivered) ?? []).slice(0, 10).map(t => t.id)
+  const deliveredKey = deliveredIds.join(',')
+  const [attachments, setAttachments] = useState<Record<string, AttachmentLite[] | null | undefined>>({})
+
+  // X4/X8: outputs for delivered tasks (newest 10), one request per task, refreshed when the set changes.
+  useEffect(() => {
+    let live = true
+
+    for (const id of deliveredKey ? deliveredKey.split(',') : []) {
+      Promise.resolve()
+        .then(() => actions.attachments(id))
+        .then(
+          r => live && setAttachments(m => ({ ...m, [id]: Array.isArray(r) ? (r as AttachmentLite[]) : Array.isArray((r as { attachments?: unknown })?.attachments) ? (r as { attachments: AttachmentLite[] }).attachments : null })),
+          () => live && setAttachments(m => ({ ...m, [id]: null }))
+        )
+    }
+
+    return () => {
+      live = false
+    }
+  }, [actions, deliveredKey])
 
   // A kanban push refreshes the board-derived sections and Needs-you at once (poll stays the fallback).
   useEffect(() => {
@@ -108,13 +147,44 @@ export function OfficeContainer({
     [client, board]
   )
 
+  const openTask = onOpenTask ?? (onOpenRoute ? (id: string) => onOpenRoute(`/kanban?task=${encodeURIComponent(id)}`) : undefined)
+  const fleetView = Array.isArray(feed.fleet?.profiles) ? feed.fleet : null
+
+  // X5: a live run opens its task (the run history lives on the task tab).
+  const openRun = (runId: string) => {
+    const run = fleetView?.profiles.flatMap(p => p.active_runs ?? []).find(r => String(r.id) === runId)
+
+    if (run?.task_id) {
+      openTask?.(run.task_id)
+    }
+  }
+
+  const violations = Array.isArray(policy.value?.violations)
+    ? policy.value.violations.map(v => ({ ...v, profile }))
+    : policy.value
+      ? []
+      : null
+
   return (
     <OfficeView
+      attachments={attachments}
+      errors={{ pending: pending.error, board: board.error, cron: cron.error, usage: usage.error, activity: activity.error, projects: projects.error, policy: policy.error }}
+      onNewProfile={onOpenRoute ? () => onOpenRoute('/profiles') : undefined}
+      onOpenAttachment={(_t, a) => {
+        if (a.stored_path) {
+          void captureGatewayFileDownload()(a.stored_path, a.filename)
+        }
+      }}
+      onOpenRun={openTask ? openRun : undefined}
+      policy={violations}
+      profile={profile}
+      projects={listOrNull(projects.value?.projects)}
+      tasks={tasks}
       activity={listOrNull(activity.value?.items)}
       blueprints={listOrNull(blueprints.value?.blueprints)}
       connectionLabel={connectionLabel}
       cron={listOrNull(cron.value)}
-      fleet={Array.isArray(feed.fleet?.profiles) ? feed.fleet : null}
+      fleet={fleetView}
       fleetError={feed.error}
       inFlight={inFlight}
       nowS={nowS}
@@ -125,7 +195,7 @@ export function OfficeContainer({
       onKanban={async a => (await actions.kanban(a), pending.reload(), board.reload())}
       onOpenProfile={onOpenProfile}
       onOpenRoute={onOpenRoute}
-      onOpenTask={onOpenTask}
+      onOpenTask={openTask}
       pending={listOrNull(pending.value?.items)}
       readOnly={readOnly}
       taskEvents={stream.mode === 'stream' || stream.events.length ? stream.events : null}

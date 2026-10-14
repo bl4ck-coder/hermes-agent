@@ -27,6 +27,17 @@ export interface KanbanStreamState {
   events: KanbanEvent[]
   /** Bumps once per pushed batch; consumers reload on change. */
   version: number
+  /** P8 b2: why the stream is not live (shown by Diagnostics / Activity); null while live. */
+  reason?: string | null
+}
+
+/** P8 b2: an open that has not answered after this long counts as failed (the poll covers meanwhile). */
+export const KANBAN_OPEN_TIMEOUT_MS = 10_000
+
+const statusOf = (e: unknown) => {
+  const m = /^(\d{3})\b/.exec(e instanceof Error ? e.message : String(e ?? ''))
+
+  return m ? Number(m[1]) : null
 }
 
 export function parseKanbanFrame(data: string | undefined): KanbanEvent | null {
@@ -56,11 +67,13 @@ export const KANBAN_RECONNECT_MS = [2_000, 5_000, 15_000, 30_000] as const
 export function createKanbanStream({
   bridge,
   board = null,
-  reconnectMs = KANBAN_RECONNECT_MS
+  reconnectMs = KANBAN_RECONNECT_MS,
+  openTimeoutMs = KANBAN_OPEN_TIMEOUT_MS
 }: {
   bridge: OpsSseBridge | null
   board?: string | null
   reconnectMs?: readonly number[]
+  openTimeoutMs?: number
 }) {
   let state: KanbanStreamState = { mode: 'connecting', events: [], version: 0 }
   const listeners = new Set<() => void>()
@@ -68,6 +81,7 @@ export function createKanbanStream({
   let off: (() => void) | null = null
   let running = false
   let attempt = 0
+  let opens = 0
   let retry: ReturnType<typeof setTimeout> | null = null
   // Bounded dedupe: the ids that can still be replayed are the recent ones.
   const seen = new Set<number>()
@@ -79,11 +93,19 @@ export function createKanbanStream({
   }
 
   // P8: an ended or failed stream falls back to poll, then reconnects with backoff (was: poll forever).
-  const fallBack = () => {
+  const fallBack = (why: unknown = 'stream ended') => {
     sub = null
-    set({ mode: 'poll' })
+    const status = statusOf(why)
+    // 401/403: credentials will not fix themselves in 2 s; wait the longest step instead of hammering.
+    const auth = status === 401 || status === 403
 
-    if (!running || !reconnectMs.length) {
+    if (auth) {
+      attempt = Math.max(attempt, reconnectMs.length - 1)
+    }
+
+    set({ mode: 'poll', reason: auth ? `auth refused (${status})` : why instanceof Error ? why.message : String(why) })
+
+    if (!running || !reconnectMs.length || retry) {
       return
     }
 
@@ -103,10 +125,21 @@ export function createKanbanStream({
       return
     }
 
+    let settled = false
+    const myOpen = ++opens
+    // Slow reply: give up on this open after openTimeoutMs; if it answers later it is closed unused.
+    const timer = openTimeoutMs > 0 ? setTimeout(() => !settled && myOpen === opens && fallBack(`no answer in ${openTimeoutMs / 1000} s`), openTimeoutMs) : null
+
     Promise.resolve()
       .then(() => bridge.open({ path: KANBAN_STREAM_PATH, ...(board ? { board } : {}) } as { path: string }))
       .then(r => {
-        if (!running) {
+        settled = true
+
+        if (timer) {
+          clearTimeout(timer)
+        }
+
+        if (!running || myOpen !== opens || state.mode === 'poll' && retry) {
           if (!r.ended) {
             void bridge.close(r.subscriptionId)
           }
@@ -122,9 +155,19 @@ export function createKanbanStream({
 
         sub = r.subscriptionId
         attempt = 0
-        set({ mode: 'stream' })
+        set({ mode: 'stream', reason: null })
       })
-      .catch(() => fallBack())
+      .catch(e => {
+        settled = true
+
+        if (timer) {
+          clearTimeout(timer)
+        }
+
+        if (myOpen === opens) {
+          fallBack(e)
+        }
+      })
   }
 
   return {
@@ -153,7 +196,7 @@ export function createKanbanStream({
         }
 
         if (p.type === 'end') {
-          fallBack()
+          fallBack(`stream ended${(p as { code?: string }).code ? ` (${(p as { code?: string }).code})` : ''}`)
 
           return
         }

@@ -67,7 +67,7 @@ describe('Office view', () => {
     expect(screen.getByText('Input tokens unknown')).toBeTruthy()
     expect(screen.getByText('Output tokens 1,234')).toBeTruthy()
     expect(screen.getByText('Cron unknown')).toBeTruthy()
-    expect(screen.getByText('Needs you unknown')).toBeTruthy()
+    expect(document.querySelector('[data-ops-section="needs-you"]')?.getAttribute('data-ops-state')).toBe('loading')
     expect(document.body.textContent).not.toMatch(/\b0 (profiles|failing)\b/)
   })
 
@@ -132,7 +132,7 @@ describe('Office container (integration with the client)', () => {
     render(<OfficeContainer client={client as never} />)
     await waitFor(() => expect(document.querySelector('[data-ops-approve="jsonrpc:a1"]')).not.toBeNull())
     expect(screen.getByText('nightly (2)')).toBeTruthy()
-    expect(screen.getByText(/build @builder/)).toBeTruthy()
+    expect(document.querySelector('[data-ops-in-flight-task="t1"]')?.textContent).toMatch(/build\s*@builder/)
     expect(screen.getByText('Input tokens 10')).toBeTruthy()
     await act(async () => {
       fireEvent.click(document.querySelector('[data-ops-approve="jsonrpc:a1"]') as HTMLElement)

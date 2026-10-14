@@ -121,6 +121,8 @@ export function createOpsActions(api: OpsApi = hermesApi) {
     /** The route answers {run: {...}}; unwrap so callers get the row (a bare row is accepted too). */
     runDetail: (runId: string | number) =>
       call<{ run?: TaskRun } & Partial<TaskRun>>('GET', `${K}/runs/${enc(String(runId))}`).then(r => (r && typeof r === 'object' && 'run' in r && r.run ? r.run : (r as TaskRun))),
+    /** X4 (P8 b2): a task's attachments (newest output for Delivered). */
+    attachments: (taskId: string) => call<{ attachments?: { id: string; filename: string; size?: number | null; created_at?: number | null; stored_path?: string | null }[] } | unknown[]>('GET', `${K}/tasks/${enc(taskId)}/attachments`),
     reclaim: (taskId: string) => call<unknown>('POST', `${K}/tasks/${enc(taskId)}/reclaim`, {}),
     createSubtask: (parentId: string, title: string, assignee?: string | null) =>
       call<{ task?: { id: string } }>('POST', `${K}/tasks`, { title, assignee: assignee || null, parents: [parentId] }),

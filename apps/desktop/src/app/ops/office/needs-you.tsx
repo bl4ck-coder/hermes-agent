@@ -23,6 +23,17 @@ export interface NeedsYouProps {
   onKanban?: (a: KanbanAction) => Promise<unknown> | void
   onCronRun?: (jobId: string) => Promise<unknown> | void
   onOpenTask?: (taskId: string) => void
+  /** X3 (P8): model-policy violations; the fix lives on the profile's Canvas Model node. */
+  policy?: PolicyNeed[] | null
+  onOpenProfile?: (profile: string) => void
+}
+
+export interface PolicyNeed {
+  profile: string
+  field: string
+  provider: string
+  model: string
+  reason: string
 }
 
 /** D3: one click only when the full command fits unabridged in the row. */
@@ -33,7 +44,8 @@ const KIND: Record<string, string> = {
   gateway_run: 'Run approval',
   kanban_review: 'Review',
   kanban_blocked: 'Blocked',
-  cron_failure: 'Cron failing'
+  cron_failure: 'Cron failing',
+  policy: 'Policy'
 }
 
 const age = (s: number | null | undefined) =>
@@ -65,7 +77,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
   }
 
   const label = (key: string, idle: string, done: string) => (busy[key] === 'done' ? done : busy[key] === 'failed' ? `Retry ${idle.toLowerCase()}` : idle)
-  const total = p.items.length + failing.length
+  const policy = Array.isArray(p.policy) ? p.policy : []
+  const total = p.items.length + failing.length + policy.length
 
   return (
     <section aria-label="Needs you" data-ops-needs-you="">
@@ -175,6 +188,26 @@ export function NeedsYouQueue(p: NeedsYouProps) {
               </tr>
             )
           })}
+          {policy.map(v => {
+            const key = `policy:${v.profile}:${v.field}`
+
+            return (
+              <tr data-ops-approval={key} data-ops-origin="policy" key={key}>
+                <td>{v.profile}</td>
+                <td>{KIND.policy}</td>
+                <td>
+                  {v.field}: {v.provider}/{v.model}
+                </td>
+                <td>unknown</td>
+                <td>{v.reason}</td>
+                <td>
+                  <button data-ops-policy-fix={v.profile} disabled={!p.onOpenProfile} onClick={() => p.onOpenProfile?.(v.profile)} type="button">
+                    Fix on Canvas
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
           {failing.map(j => {
             const key = `cron:${j.id}`
 
@@ -200,6 +233,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
           })}
         </tbody>
       </table>
+      {total === 0 ? <p data-ops-empty="needs-you">Nothing needs you right now.</p> : null}
     </section>
   )
 }
