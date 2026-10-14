@@ -680,4 +680,8 @@
 :where([data-ops-app][data-ops-app-connected='true'], [data-ops-app]:has([data-ops-app-connected])) { box-shadow: inset 0 0 0 1px color-mix(in srgb, #3fb950 35%, transparent), 0 0 24px -12px color-mix(in srgb, #3fb950 60%, transparent); }
 :where([data-ops-probe-row]) { border-radius: 10px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent); }
 :where([data-ops-diag-connection]) :where(svg, [data-dot]) { filter: drop-shadow(0 0 5px #3fb950); }
-@media (prefers-reduced-motion: reduce) { :where([data-ops-roster] > li, [data-ops-app]) { transition: none; transform: none; } }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-roster] > li, [data-ops-app]) { transition: none; transform: none; } }/* B33b: frame budget. glass15 showed GPU-bound frames (long frames with ~2 ms main-thread render and no script) after the batch above.
+   Repeated elements keep the inset highlight (cheap) but drop the large blurred outer shadows; only singletons (dispatch, Needs-you, selected node) keep a glow. */
+:where([data-ops-roster] > li, [data-ops-column], [data-ops-node], [data-ops-team], [data-ops-card]) { box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); }
+:where([data-ops-app]:hover) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 30%, transparent); }
+:where([data-ops-app][data-ops-app-connected='true'], [data-ops-app]:has([data-ops-app-connected])) { box-shadow: inset 0 0 0 1px color-mix(in srgb, #3fb950 35%, transparent); }
