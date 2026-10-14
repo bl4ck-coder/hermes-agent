@@ -47,26 +47,22 @@ def test_reversible(no_config, monkeypatch):
     assert c.put("/x").status_code == 200
 
 
-def test_config_flag_and_env_override(monkeypatch):
-    import hermes_cli.config as cfg
-
-    monkeypatch.delenv(ENV_FLAG, raising=False)
-    monkeypatch.setattr(cfg, "load_config", lambda *a, **k: {"ops": {"retire_legacy_writes": True}})
-    assert legacy_writes_retired() is True
-    monkeypatch.setenv(ENV_FLAG, "0")
+@pytest.mark.parametrize("v", ["", "0", "false", "off", "nope"])
+def test_falsy_values_keep_routes(no_config, monkeypatch, v):
+    monkeypatch.setenv(ENV_FLAG, v)
     assert legacy_writes_retired() is False
 
 
-def test_config_error_fails_open_to_default(monkeypatch):
+def test_gate_never_reads_config(monkeypatch):
     import hermes_cli.config as cfg
 
-    monkeypatch.delenv(ENV_FLAG, raising=False)
+    monkeypatch.setenv(ENV_FLAG, "0")
 
     def boom(*a, **k):
-        raise RuntimeError("bad yaml")
+        raise AssertionError("gate must not read config")
 
     monkeypatch.setattr(cfg, "load_config", boom)
-    assert legacy_writes_retired() is False
+    assert _app().put("/x").status_code == 200
 
 
 def test_every_legacy_route_is_gated():

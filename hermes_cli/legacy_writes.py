@@ -1,9 +1,9 @@
 """S5: reversible retirement of the legacy write routes that bypass the A5 transaction / A6 policy path.
 
 Default OFF: the routes keep working, because the regular Desktop Settings/Skills/Toolsets/Bots UI still
-uses them. Enable retirement with ``HERMES_RETIRE_LEGACY_WRITES=1`` (env wins, ``0`` forces off) or
-``ops.retire_legacy_writes: true`` in config.yaml. Retired routes answer 410 with a pointer to the A5 path.
-Flip the flag back to restore them; nothing is deleted."""
+uses them. Enable retirement with ``HERMES_RETIRE_LEGACY_WRITES=1`` in the backend environment. Retired
+routes answer 410 with a pointer to the A5 path. Unset it (or ``0``) to restore them; nothing is deleted.
+Env-only on purpose: reading config.yaml per request would touch the profile config cache."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from fastapi import HTTPException
 
 ENV_FLAG = "HERMES_RETIRE_LEGACY_WRITES"
 _TRUE = {"1", "true", "yes", "on"}
-_FALSE = {"0", "false", "no", "off"}
 
 LEGACY_WRITE_ROUTES = (
     "PUT /api/config/raw",
@@ -29,18 +28,7 @@ LEGACY_WRITE_ROUTES = (
 
 
 def legacy_writes_retired() -> bool:
-    raw = os.environ.get(ENV_FLAG, "").strip().lower()
-    if raw in _TRUE:
-        return True
-    if raw in _FALSE:
-        return False
-    try:
-        from hermes_cli.config import load_config
-
-        ops = (load_config() or {}).get("ops") or {}
-        return bool(ops.get("retire_legacy_writes", False)) if isinstance(ops, dict) else False
-    except Exception:
-        return False
+    return os.environ.get(ENV_FLAG, "").strip().lower() in _TRUE
 
 
 def legacy_write_gate() -> None:

@@ -283,7 +283,7 @@ export function SettingsView({
           <dd>Hermes refuses Ops, Board and approval writes from a foreign Origin (separate from the Host check).</dd>
           <dt>Legacy write routes</dt>
           <dd data-ops-legacy-routes="flag">
-            Older Hermes routes (profile soul/model/description, raw config, skills toggle, toolsets) bypass A5/A6. Ops never calls them. Set HERMES_RETIRE_LEGACY_WRITES=1 (or ops.retire_legacy_writes in config.yaml) to retire them (410); off by default because the classic Settings still uses them.
+            Older Hermes routes (profile soul/model/description, raw config, skills toggle, toolsets) bypass A5/A6. Ops never calls them. Set HERMES_RETIRE_LEGACY_WRITES=1 in the backend environment to retire them (410); off by default because the classic Settings still uses them.
           </dd>
         </dl>
       </Group>
