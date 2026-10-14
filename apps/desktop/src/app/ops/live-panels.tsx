@@ -55,7 +55,7 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
   }
 
   if (tab.kind === 'run') {
-    return <RunDetailContainer id={id} />
+    return <RunDetailContainer id={id} onOpenRoute={onOpenRoute} />
   }
 
   // Lenses (W12) keep their existing route buttons.
