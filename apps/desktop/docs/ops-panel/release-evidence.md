@@ -1,4 +1,4 @@
-# Ops panel release evidence (P5 task 3, updated P6, P7)
+# Ops panel release evidence (P5 task 3, updated P6, P7, P8 batch 1)
 
 Generated 2026-10-13 ART from SPEC §12.8 (230 rows). Screenshots: live GUI/screenshot checks waived by Nacho; real-data screenshots are therefore NOT attached. Evidence = jsdom/integration tests named per row.
 
@@ -14,7 +14,7 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | O4 | Adapt | Built | Chips = recent task templates/workflow_template_id and cron blueprints | src/app/ops/office/office-p7.test.tsx |
 | O5 | Keep | Built | Needs-you actions per origin: jsonrpc Approve (full args only), review Approve/Request changes (note), blocked Unblock (note)/Open, cron Run now; server refusal shown | src/app/ops/office/needs-you.test.tsx |
 | O6 | Keep | Built | In flight = running board column | src/app/ops/office/office.test.tsx |
-| O7 | Keep | Built | Activity = resolved approvals with who/what/when; task_events feed not wired | src/app/ops/feed/kanban-stream.test.tsx |
+| O7 | Keep | Built | Activity = resolved approvals with who/what/when + live task_events feed (stream reconnects with backoff, P8) | src/app/ops/feed/kanban-stream.test.tsx, src/app/ops/p8-batch1.test.tsx |
 | O8 | Adapt | Built | Approval toast: Approve only when full command fits unabridged (char budget + geometry); otherwise [Review] focuses the Needs-you row | src/app/ops/office/office-toasts.test.tsx, primitives/toast-queue tests |
 | O9 | Adapt | Built | Lenses deep-link existing Desktop routes | src/app/ops/navigation.test.tsx |
 | O10 | Keep | Built | Rail Fleet with presence (P0.5) | src/app/ops/navigation.test.tsx |
@@ -238,3 +238,14 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | R60 | Adapt | Built | Recent searches on the palette's Ops page, stored locally per connection + profile. | src/app/ops/keymap.test.tsx |
 | R61 | Adapt | Built | An Office header with the date and the connection, no greeting copy. | src/app/ops/office/office-p7.test.tsx |
 | R62 | Adapt | Built | A Projects lens row opens an overview (counts and throughput) filtered to that project. | src/app/ops/lenses/lenses.test.tsx |
+
+
+## P8 batch 1 (2026-10-14 ART): P7 self-review hardening
+
+No status flips (totals unchanged). Rows re-verified with new behavioural assertions in src/app/ops/p8-batch1.test.tsx:
+- O7 / A7 stream: ended or failed stream reconnects with backoff (2/5/15/30 s), stop cancels the retry; dedupe set bounded at 1000 ids.
+- O29 Stop/Steer: refused Steer keeps the typed text; Stop on an already-ended run (409) says 'Run already ended.' and reloads; one action in flight; failure block only for the newest run.
+- O27/O28 task tab: a slow response for a previous task id never overwrites the current task; per-task view state resets on id change; timeline times are local, not UTC.
+- O12/O16/R26 lenses: empty states for Projects, Templates, Resolved; Activity shows 'Connecting' while the stream opens; favourites survive blocked localStorage.
+- G39/G56 canvas pan: pointer capture + cancel/lost-capture end the drag; pan clamped to +/-2000 px.
+- O47 board dot: switching profile or connection no longer re-marks the Board tab unread.
