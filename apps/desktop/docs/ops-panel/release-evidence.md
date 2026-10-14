@@ -619,3 +619,9 @@ Scores (after B26 → after B29): Board 8→9, Canvas 8→9, Office 8→9, Setti
 
 - The glass12 capture was stale: a cp1252 byte from a PowerShell append made ops-base.css unloadable, and the live script hid the failed build. All appended blocks have been re-encoded as UTF-8, and b-live.ps1 now stops with BUILD FAILED.
 - glass14: no frame over 33 ms in any sample (max 27-30 ms). No artifacts warning.
+## B33 (glass15-glass18)
+
+- glass15: large blurred outer shadows on repeated cards, columns and nodes made frames GPU-bound. Long frames had ~2 ms of main-thread render and no script; office max was 257 ms. B33b keeps only inset highlights on repeated elements. glass16 and glass17 were clean again (office max 29.6 / 37.4 ms; board drag 29.6 / 15.6 ms).
+- glass18: p95 15.1 ms in every sample; office and drag each had 2 frames at 44 ms.
+- Build masking: b-live.ps1 stops with BUILD FAILED. Appends are written with UTF-8 (no BOM) through .NET only.
+- After the Hermes v0.22.0 update (gateway pid 230108), the isolated live run works unchanged with the existing venv Python path.

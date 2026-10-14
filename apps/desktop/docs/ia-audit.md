@@ -89,3 +89,14 @@ Legend: **Done** = landed in this pass and checked in the live screenshot. **Nex
 | Office | The greeting was 20 px (a (0,0,1) rule beat the display size). | 34 px editorial serif in gold. |
 | Board | Flat cards. | Lit cards: a gold-tinted gradient, an inner highlight, a soft drop and a hover edge. |
 | Agents (empty) | A small line of text in a blank overlay. | The empty state sits on a lit glass card. |
+## B33 layout batch (glass15-glass18)
+
+| Screen | Before | After |
+|---|---|---|
+| Artifacts | Files and links appeared only as table rows. | The newest 8 appear as preview cards (type or host badge, name, session, time) above the table. |
+| Cron | Dozens of identical "Completado - silent (empty output)" rows. | Consecutive identical runs fold into one row with a count, and each run is still one click away inside the fold. |
+| Fleet / Skills | Table only. | A Table/Cards pill (remembered per lens). Cards show the name and every non-empty column as label:value. |
+| Skills Hub | A white cross-origin page inside Gold Night. | Opens with Docusaurus' `docusaurus-theme=` query matching the painted mode, in a rounder, deeper frame. |
+| Board | Flat columns. | Lit columns with a gold top wash and an inner highlight. |
+| Office (below the Orbit) | The dispatch bar and Needs-you list sat flat. | The dispatch bar is lit; Needs-you is a lit card with row hover. |
+| Canvas / Teams / Channels / Diagnostics / Sessions / App Settings | | One upgrade each: a dot grid plus a selected-node glow; busy-team glow; app card hover lift plus a connected rim; probe rows with an inner highlight; gold date-group headers; a lit active nav pill. |
