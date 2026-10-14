@@ -104,8 +104,8 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
 
 function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: FleetFeed; tab: OpsTab | null }) {
   const copy = useI18n().t.ops
-  const detail = useInspectorDetail()
   const want = detailKindForSlot(active)
+  const detail = useInspectorDetail(want)
 
   if (active === 'fleet') {
     return <FleetList feed={fleet} filter="" />

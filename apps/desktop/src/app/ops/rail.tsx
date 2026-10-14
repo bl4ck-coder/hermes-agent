@@ -488,15 +488,17 @@ export function Rail({
             {icons ? nav(lens.id, lens.label).slice(0, 1) : nav(lens.id, lens.label)}
             {icons || !lens.hint ? null : <kbd>{lens.hint}</kbd>}
           </button>
-          <button
-            aria-label={pins.includes(`lens:${lens.id}`) ? copy.rail.unpinItem(nav(lens.id, lens.label)) : copy.rail.pinItem(nav(lens.id, lens.label))}
-            data-ops-pin-toggle={`lens:${lens.id}`}
-            onClick={() => onTogglePin(`lens:${lens.id}`)}
-            style={fit}
-            type="button"
-          >
-            {icons ? '★' : pins.includes(`lens:${lens.id}`) ? copy.rail.unpin : copy.rail.pin}
-          </button>
+          {icons ? null : (
+            <button
+              aria-label={pins.includes(`lens:${lens.id}`) ? copy.rail.unpinItem(nav(lens.id, lens.label)) : copy.rail.pinItem(nav(lens.id, lens.label))}
+              data-ops-pin-toggle={`lens:${lens.id}`}
+              onClick={() => onTogglePin(`lens:${lens.id}`)}
+              style={fit}
+              type="button"
+            >
+              {pins.includes(`lens:${lens.id}`) ? copy.rail.unpin : copy.rail.pin}
+            </button>
+          )}
         </div>
       ))}
       <button aria-expanded={moreOpen} data-ops-more="" onClick={() => setMoreOpen(open => !open)} style={fit} type="button">

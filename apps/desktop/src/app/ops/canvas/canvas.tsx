@@ -129,6 +129,7 @@ export function nodeDetail(id: CanvasNodeId, d: CanvasData): [string, string][] 
         ? [
             ['Exists', d.prompt.exists ? 'yes' : 'no'],
             ['Lines', String((d.prompt.content ?? '').split(/\r?\n/).filter(Boolean).length)],
+            ['Words', String((d.prompt.content ?? '').split(/\s+/).filter(Boolean).length)],
             ['Last change', d.promptNote ?? (d.promptNote === null ? 'no note' : 'unknown')]
           ]
         : [['State', 'unknown']]
@@ -586,7 +587,7 @@ export function CanvasView({
               data-ops-port-colour={PORT_COLOUR[b.state]}
               key={id}
               role="listitem"
-              style={{ gridColumn: { left: 1, centre: 2, right: 3 }[CANVAS_COLUMN[id]] }}
+              style={{ gridColumn: { left: 1, centre: 2, right: 3 }[CANVAS_COLUMN[id]], gridRow: CANVAS_NODES.filter(n => CANVAS_COLUMN[n] === CANVAS_COLUMN[id]).indexOf(id) + 1 }}
             >
               <button aria-expanded={!closed} aria-label={`${closed ? 'Expand' : 'Collapse'} ${id}`} onClick={() => toggle(id)} type="button">
                 {closed ? '+' : '−'}

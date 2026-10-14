@@ -28,18 +28,55 @@ export interface InspectorDetail {
   why: string
 }
 
-let current: InspectorDetail | null = null
-let owner: object | null = null
+const details: Partial<Record<InspectorDetailKind, InspectorDetail>> = {}
+const owners: Partial<Record<InspectorDetailKind, object>> = {}
+let last: InspectorDetail | null = null
 const listeners = new Set<() => void>()
 
-export function publishInspectorDetail(detail: InspectorDetail | null, by: object | null = null): void {
-  current = detail
-  owner = detail ? by : null
-  listeners.forEach(listener => listener())
+const emit = () => listeners.forEach(listener => listener())
+
+/**
+ * Publish one view's detail. Each kind has its own slot, so a kept-alive Board tab that re-publishes on
+ * every poll never overwrites the Settings or Canvas detail. `null` with a kind clears that slot; `null`
+ * with no kind clears every slot.
+ */
+export function publishInspectorDetail(detail: InspectorDetail | null, by: object | null = null, kind?: InspectorDetailKind): void {
+  if (detail) {
+    details[detail.kind] = detail
+
+    if (by) {
+      owners[detail.kind] = by
+    } else {
+      delete owners[detail.kind]
+    }
+
+    last = detail
+  } else if (kind) {
+    delete details[kind]
+    delete owners[kind]
+
+    if (last?.kind === kind) {
+      last = null
+    }
+  } else {
+    for (const k of Object.keys(details) as InspectorDetailKind[]) {
+      delete details[k]
+      delete owners[k]
+    }
+
+    last = null
+  }
+
+  emit()
 }
 
-export function getInspectorDetail(): InspectorDetail | null {
-  return current
+/** The detail for one kind; with no argument, the most recently published one. */
+export function getInspectorDetail(kind?: InspectorDetailKind | null): InspectorDetail | null {
+  if (kind === undefined) {
+    return last
+  }
+
+  return kind ? (details[kind] ?? null) : null
 }
 
 function subscribe(listener: () => void): () => void {
@@ -50,17 +87,20 @@ function subscribe(listener: () => void): () => void {
   }
 }
 
-export function useInspectorDetail(): InspectorDetail | null {
-  return useSyncExternalStore(subscribe, getInspectorDetail, () => null)
+export function useInspectorDetail(kind: InspectorDetailKind | null): InspectorDetail | null {
+  return useSyncExternalStore(subscribe, () => (kind ? (details[kind] ?? null) : null), () => null)
 }
 
-/** Publish while mounted; clear on unmount (only if this view still owns the slot). */
+/** Publish while mounted; on unmount clear the slot only if this instance still owns it. */
 export function usePublishInspectorDetail(detail: InspectorDetail | null): void {
   const key = detail ? JSON.stringify(detail) : ''
   const me = useRef<object>({})
+  const kind = detail?.kind ?? null
 
   useEffect(() => {
-    publishInspectorDetail(detail, me.current)
+    if (detail) {
+      publishInspectorDetail(detail, me.current)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
@@ -68,11 +108,11 @@ export function usePublishInspectorDetail(detail: InspectorDetail | null): void 
     const token = me.current
 
     return () => {
-      if (owner === token) {
-        publishInspectorDetail(null)
+      if (kind && owners[kind] === token) {
+        publishInspectorDetail(null, null, kind)
       }
     }
-  }, [])
+  }, [kind])
 }
 
 /** Which detail kind an Inspector slot shows. */

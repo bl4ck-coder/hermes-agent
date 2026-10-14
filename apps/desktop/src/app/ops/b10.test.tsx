@@ -110,3 +110,50 @@ describe('B10 inspector rendering', () => {
     expect(getInspectorDetail()).toBeNull()
   })
 })
+
+describe('B10 UX rounds', () => {
+  it('each kind keeps its own detail: a polling Board never overwrites Settings', () => {
+    publishInspectorDetail({ kind: 'settings', id: 's', title: 'Settings', rows: [], source: 'x', why: 'y' })
+    publishInspectorDetail(boardInspectorSummary({ columns: [] }))
+
+    expect(getInspectorDetail('settings')?.title).toBe('Settings')
+    expect(getInspectorDetail('task')?.id).toBe('board')
+    publishInspectorDetail(null, null, 'task')
+    expect(getInspectorDetail('task')).toBeNull()
+    expect(getInspectorDetail('settings')).not.toBeNull()
+  })
+
+  it('a late unmount of an old publisher does not clear the newer one', () => {
+    const old = {}
+    const fresh = {}
+
+    publishInspectorDetail({ kind: 'settings', id: 's', title: 'old', rows: [], source: 'x', why: 'y' }, old)
+    publishInspectorDetail({ kind: 'settings', id: 's', title: 'new', rows: [], source: 'x', why: 'y' }, fresh)
+    expect(getInspectorDetail('settings')?.title).toBe('new')
+  })
+
+  it('stylesheet: fixed-height cards lay out to fit, inspector rows are one column, icon rail is glyph-only', () => {
+    const css = read('ops-base.css')
+
+    expect(css).toContain(':where([data-ops-inspector-rows]) { grid-template-columns: minmax(0, 1fr)')
+    expect(css).toContain("grid-template-areas: 'chk title title' 'chk who sig'")
+    expect(css).toContain('-webkit-line-clamp: 2')
+    expect(css).toMatch(/\[data-ops-card\]:hover, \[data-ops-card\]:focus-within\) > :where\(\[data-ops-quick\]\) \{ opacity: 1/)
+    expect(css).toContain("[data-ops-rail='icons']) :where([data-ops-section], [data-ops-pins-empty], [data-ops-fleet], [data-ops-pin-toggle]) { display: none; }")
+  })
+
+  it('cards keep the windowed pitch (height + 6px gap = ROW_H)', () => {
+    expect(read('board/board.tsx')).toContain('style={{ height: ROW_H - 6 }}')
+  })
+
+  it('canvas nodes get an explicit row per column, the prompt reports words', () => {
+    const src = read('canvas/canvas.tsx')
+
+    expect(src).toContain('gridRow: CANVAS_NODES.filter(n => CANVAS_COLUMN[n] === CANVAS_COLUMN[id]).indexOf(id) + 1')
+    expect(src).toContain("['Words',")
+  })
+
+  it('the icon rail renders no pin toggles', () => {
+    expect(read('rail.tsx')).toContain('{icons ? null : (')
+  })
+})

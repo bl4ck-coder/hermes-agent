@@ -100,7 +100,7 @@ const lens = async id => {
 }
 const want = s => STEPS.includes('all') || STEPS.includes(s)
 log.toastDismissed = await page.evaluate(() => {
-  const el = [...document.querySelectorAll('body *')].find(n => n.childElementCount === 0 && /Another Hermes installation/.test(n.textContent || ''))
+  const el = [...document.querySelectorAll('body *')].filter(n => /Another Hermes installation/.test(n.textContent || '')).sort((a, b) => (a.textContent || '').length - (b.textContent || '').length)[0]
   for (let p = el; p && p !== document.body; p = p.parentElement) { const b = p.querySelector('button'); if (b) { b.click(); return true } }
   return false
 }).catch(() => false)
@@ -180,7 +180,15 @@ if (want('fps')) await sampleFps('canvas-pan-zoom', async end => {
 if (want('card')) await section('02b-board-card', async () => {
   // Read-only: one single click opens the card drawer (double-click would rename, so never double-click).
   await go('/ops/board')
-  await page.locator('[data-ops-open-task]').first().click({ timeout: 8000 })
+  const open = page.locator('[data-ops-open-task]').first()
+  try {
+    await open.click({ timeout: 5000 })
+  } catch (e) {
+    // Keyboard path (also proves the card title is reachable): focus it and press Enter once.
+    log.cardClickError = String(e).slice(0, 1500)
+    await open.focus()
+    await page.keyboard.press('Enter')
+  }
   await sleep(1200)
   return `inspector=${await page.locator('[data-ops-inspector-detail]').getAttribute('data-ops-inspector-detail').catch(() => 'none')}`
 })
