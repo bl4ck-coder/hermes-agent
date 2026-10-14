@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 
 import { BoardContainer } from './board/board-container'
 import { CanvasContainer } from './canvas/canvas-container'
-import { AgentCardContainer, RunDetailContainer, TaskDetailContainer } from './detail/details'
+import { AgentCardContainer, RunDetailContainer } from './detail/details'
+import { TaskTabContainer } from './detail/task-tab'
 import { SettingsContainer } from './motion/settings'
 import { hostIdentityFromTab, type OpsTab } from './navigation-store'
 import { OfficeContainer } from './office/office-container'
@@ -50,7 +51,7 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
   }
 
   if (tab.kind === 'task') {
-    return <TaskDetailContainer id={id} onOpenRoute={onOpenRoute} />
+    return <TaskTabContainer id={id} onOpenRoute={onOpenRoute} />
   }
 
   if (tab.kind === 'run') {
