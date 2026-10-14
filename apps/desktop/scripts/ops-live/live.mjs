@@ -97,6 +97,7 @@ async function section(name, fn) {
     failed: log.failed.slice(before.f).map(x => `${x.err} ${x.url}`),
     stray
   }
+  log.fps[name].long = await page.evaluate(() => window.__opsLong || []).catch(() => [])
   save()
 }
 
@@ -107,6 +108,8 @@ async function sampleFps(name, act, ms = 5000) {
     w.__opsFrames = []
     let last = performance.now()
     w.__opsFpsOn = true
+    w.__opsLong = []; w.__opsT0 = performance.now()
+    try { w.__opsObs?.disconnect(); w.__opsObs = new PerformanceObserver(l => { for (const e of l.getEntries()) w.__opsLong.push([Math.round(e.startTime - w.__opsT0), Math.round(e.duration), e.entryType, (e.scripts || []).slice(0, 3).map(s => `  : `).join(' | ')]) }); w.__opsObs.observe({ type: 'long-animation-frame', buffered: false }) } catch { try { w.__opsObs.observe({ type: 'longtask' }) } catch {} }
     const tick = t => { w.__opsFrames.push(t - last); last = t; if (w.__opsFpsOn) requestAnimationFrame(tick) }
     requestAnimationFrame(tick)
   })
@@ -120,10 +123,13 @@ async function sampleFps(name, act, ms = 5000) {
   // B11: when each long frame happened (ms from sample start), to tell pickup from release.
   let acc = 0
   log.fps[name].spikes = d.map(x => { acc += x; return [Math.round(acc), +x.toFixed(1)] }).filter(([, x]) => x > 33.4)
+  log.fps[name].long = await page.evaluate(() => window.__opsLong || []).catch(() => [])
   save()
 }
 
 const ensureFull = async () => { const v = await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen').catch(() => null); if (v !== null && v !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1200) } }
+// App screens: no Ops fullscreen toggle (ensureFull promoted Ops over /artifacts, /capabilities, /messaging).
+const goApp = async route => { const v = await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen').catch(() => null); if (v === 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(800) } await page.evaluate(r => { location.hash = r }, `#${route}`); await sleep(2500) }
 const go = async route => { await page.evaluate(r => { location.hash = r }, `#${route}`); await sleep(2500); await ensureFull() }
 const lens = async id => {
   const btn = page.locator(`[data-ops-rail-list] button[data-ops-lens="${id}"]`).first()
@@ -157,6 +163,7 @@ if (want('probe')) {
     }
     return out
   })
+  log.fps[name].long = await page.evaluate(() => window.__opsLong || []).catch(() => [])
   save()
 }
 if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) } return await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr') })
@@ -310,7 +317,7 @@ if (want('diagnostics')) await section('09-diagnostics', async () => {
 // Glass/IA pass: the main Hermes screens outside Ops (read-only visits; Escape closes overlays).
 for (const [n, route] of [['20-app-chat', '/'], ['21-app-settings', '/settings'], ['22-app-profiles', '/profiles'], ['23-app-capabilities', '/capabilities'], ['24-app-messaging', '/messaging'], ['25-app-artifacts', '/artifacts'], ['26-app-cron', '/cron'], ['27-app-command-center', '/command-center'], ['28-app-agents', '/agents']]) {
   if (!want('app') && !want(n)) continue
-  await section(n, async () => { await go(route); if (route === '/') { await page.locator('button:has-text("Chats")').first().click({ timeout: 4000 }).catch(() => {}); await sleep(1500); log.chatStack = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.3, innerHeight * 0.3).slice(0, 14).map(e => { const c = getComputedStyle(e); return `${e.tagName.toLowerCase()}${e.getAttribute('data-slot') ? '[slot=' + e.getAttribute('data-slot') + ']' : ''}${e.hasAttribute('data-chat-surface') ? '[chat-surface]' : ''} bg=${c.backgroundColor} img=${c.backgroundImage.slice(0, 40)} cls=${(e.className && e.className.baseVal === undefined ? e.className : '').slice(0, 90)}` })).catch(e => String(e)) } return page.url() })
+  await section(n, async () => { await goApp(route); if (route === '/') { await page.locator('button:has-text("Chats")').first().click({ timeout: 4000 }).catch(() => {}); await sleep(1500); log.chatStack = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.3, innerHeight * 0.3).slice(0, 14).map(e => { const c = getComputedStyle(e); return `${e.tagName.toLowerCase()}${e.getAttribute('data-slot') ? '[slot=' + e.getAttribute('data-slot') + ']' : ''}${e.hasAttribute('data-chat-surface') ? '[chat-surface]' : ''} bg=${c.backgroundColor} img=${c.backgroundImage.slice(0, 40)} cls=${(e.className && e.className.baseVal === undefined ? e.className : '').slice(0, 90)}` })).catch(e => String(e)) } return page.url() })
   await page.keyboard.press('Escape').catch(() => {}); await sleep(300)
 }
 log.themeProbe = await page.evaluate(() => { const h = document.documentElement; const cs = el => { const e = document.querySelector(el); if (!e) return null; const c = getComputedStyle(e); return { bg: c.backgroundColor, img: c.backgroundImage.slice(0, 120) } }; return { attrs: [...h.attributes].map(a => `${a.name}=${a.value}`.slice(0, 80)), chat: cs('[data-chat-surface]'), bounds: cs("[data-slot='composer-bounds']"), sidebar: cs("[data-slot='sidebar-inner']"), ops: cs('[data-ops-root]') } }).catch(e => String(e))
