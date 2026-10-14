@@ -602,3 +602,8 @@ Scores (after B26 → after B29): Board 8→9, Canvas 8→9, Office 8→9, Setti
 - B31: probe chips sr-only 'available', secrets full-row 3 columns, channel copy clamp.
 - Glass layer (src/styles/glass/glass.css, components/ui/glass.tsx) app-wide in Gold Night; IA audit in docs/ia-audit.md.
 - Live b31r1 (before) vs glass2 (after): pageErrors 0, boardUnchanged true. office-motion p99 26.6 -> 13.5 ms (max 53.4 -> 80, one frame); board-drag p99 26.8 -> 26.6, max 53.5 -> 40; board-scroll max 40 -> 26.8; canvas max 26.7 -> 40. glass1 had a 240 ms Office frame with the blurred ops toast; blur removed from the toast in glass2.
+
+## Glass pass 2 + IA (26f9f57d9b)
+- Ambient static light layers (radial gold/amber/garnet, vignette, noise tile), translucent glass cards with light rims, lit primary buttons; no new backdrop-filter.
+- IA: Settings nav sections (Sistema / Conexiones y datos / Extensiones), sessions search above list + date groups, chat intro hint, agents empty hint, cron status chips + folded templates. Ops hover hints restored through Tip.
+- Live glass3: pageErrors 0, boardUnchanged true, zero frames over 33 ms in all four measurements (frame interval was ~15.1 ms this round vs ~13.3 ms before, so p95 numbers are not directly comparable).
