@@ -162,6 +162,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                 sortValue: r => r.name,
                 cell: r => (
                   <button data-ops-fleet-open={r.name} disabled={!onOpenRoute} onClick={() => open(r.name)} type="button">
+                    <Sigil name={r.name} size={16} />
                     <span>{r.name}</span>
                     {r.role ? <small data-ops-role="">{r.role}</small> : null}
                   </button>
@@ -169,7 +170,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
               },
               { id: 'model', header: 'Model', sortable: true, sortValue: r => r.model, cell: r => r.model ?? T('unknown') },
               { id: 'lane', header: 'Lane', sortable: true, sortValue: r => r.lane, cell: r => r.lane ?? '—' },
-              { id: 'active', header: 'Active tasks', sortable: true, tabular: true, sortValue: r => r.active, cell: r => String(r.active) },
+              { id: 'active', header: 'Active tasks', sortable: true, tabular: true, sortValue: r => r.active, cell: r => <span data-ops-zero={r.active ? undefined : ''}>{String(r.active)}</span> },
               {
                 id: 'runs7d',
                 header: 'Runs 7d',
@@ -177,8 +178,8 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                 tabular: true,
                 sortValue: r => r.runs7d,
                 cell: r => (
-                  <span data-ops-runs-source={r.runsSource} title={r.runsSource === 'runs' ? 'Worker runs started in the last 7 days' : 'Task starts (this Hermes has no run stats)'}>
-                    {r.runs7d}
+                  <span data-ops-runs-source={r.runsSource} title={r.runsSource === 'runs' ? T('Worker runs started in the last 7 days') : T('Task starts (this Hermes has no run stats)')}>
+                    <span data-ops-zero={r.runs7d ? undefined : ''}>{r.runs7d}</span>
                     {r.failed7d ? <small data-ops-runs-failed=""> · {r.failed7d} {T("failed")}</small> : null}
                   </span>
                 )
@@ -186,7 +187,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
               { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('never')) },
               { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{T(r.status)}</span> }
             ]}
-            emptyLabel={q ? 'No agent matches.' : 'No profiles.'}
+            emptyLabel={q ? T('No agent matches.') : T('No profiles.')}
             getRowId={r => r.name}
             onSortChange={setSort}
             rows={searchRows(rows, q, r => [r.name, r.model, r.lane, r.role])}
@@ -199,7 +200,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         <ul data-ops-roles="">
           {rows.map(r => (
             <li data-ops-role-row={r.name} key={r.name}>
-              <strong>{r.name}</strong> — {r.role ?? 'No role (the profile has no description).'}
+              <strong>{r.name}</strong> — {r.role ?? T('No role (the profile has no description).')}
             </li>
           ))}
           <li data-ops-roles-note="">{T("Roles are read-only here; edit a profile's description in Profiles.")}</li>

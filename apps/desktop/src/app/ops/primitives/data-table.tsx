@@ -222,7 +222,7 @@ export function DataTable<T>({
                       {typeof column.header === 'string' ? T(column.header) : column.header}
                     </button>
                   ) : (
-                    column.header
+                    typeof column.header === 'string' ? T(column.header) : column.header
                   )}
                 </th>
               )

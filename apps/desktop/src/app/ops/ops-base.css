@@ -495,3 +495,29 @@
 /* Channels cards read left-aligned like every other card; Teams cards keep their own height. */
 :where([data-ops-app-grid]) :where(li) { text-align: left; }
 :where([data-ops-teams]) { align-items: start; }
+
+/* ---- B23: tables (Fleet, Skills), Diagnostics as a status board ---- */
+/* Sortable headers are labels, not buttons: quiet caps, the active sort is gold with an arrow. */
+:where(.ops-data-table th) { border-bottom: 1px solid var(--ops-line-strong); }
+:where(.ops-data-table th) :where(button[data-sort-column]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; padding: 2px 4px; text-transform: uppercase; }
+:where(.ops-data-table th) :where(button[data-sort-column]:hover) { background: transparent; border-color: transparent; color: var(--ops-fg); }
+:where(.ops-data-table th[aria-sort='ascending'], .ops-data-table th[aria-sort='descending']) :where(button[data-sort-column]) { color: var(--ops-gold); }
+:where(.ops-data-table th[aria-sort='ascending']) :where(button[data-sort-column])::after { content: '↑'; margin-left: 4px; }
+:where(.ops-data-table th[aria-sort='descending']) :where(button[data-sort-column])::after { content: '↓'; margin-left: 4px; }
+:where(.ops-data-table td) { padding-bottom: 6px; padding-top: 6px; }
+/* Fleet: the agent cell is an avatar + name + quiet role, not a framed button; zeroes recede. */
+:where([data-ops-fleet-open]) { background: transparent; border-color: transparent; gap: 8px; padding: 2px 4px; }
+:where([data-ops-fleet-open]:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; }
+:where([data-ops-fleet-open] > span) { font-weight: 600; }
+:where([data-ops-fleet-open]) :where([data-ops-role]) { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-zero]) { color: var(--ops-muted); opacity: 0.6; }
+:where([data-ops-runs-failed]) { color: #d77b7f; }
+/* Diagnostics: the connection and each capability read as status lights in a two-column board. */
+:where([data-ops-diag-connection])::before, :where([data-ops-probe-row])::before { background: var(--ops-muted); border-radius: 50%; content: ''; display: inline-block; flex: none; height: 7px; margin-right: 8px; vertical-align: middle; width: 7px; }
+:where([data-ops-diag-connection='connected'])::before, :where([data-ops-probe-row][data-ops-probe-state='ok'])::before { background: #6fbf73; box-shadow: 0 0 0 3px color-mix(in srgb, #6fbf73 20%, transparent); }
+:where([data-ops-diag-connection='version-skew'], [data-ops-diag-connection='connecting'])::before { background: var(--ops-gold); }
+:where([data-ops-diag-connection='incompatible'], [data-ops-diag-connection='auth-failed'], [data-ops-diag-connection='unreachable'])::before, :where([data-ops-probe-row]:not([data-ops-probe-state='ok']))::before { background: #b4434b; }
+:where([data-ops-probe-results]) { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); list-style: none; margin: 10px 0; padding: 0; }
+:where([data-ops-probe-row]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 6px; display: flex; font-size: 12px; padding: 6px 10px; }
+:where([data-ops-probe-row]:not([data-ops-probe-state='ok'])) { border-color: color-mix(in srgb, #b4434b 45%, transparent); }
+:where([data-ops-diagnostics] > dl) { display: grid; gap: 4px 16px; grid-template-columns: max-content 1fr; }
