@@ -289,3 +289,29 @@ Board tests: src/app/ops/board/board-p8b3.test.tsx (14). Commit 72efcc7a41.
 | R40 | Adapt | Built | New-task modal ("n" or button): title with @profile, Markdown body + preview, column, priority; Ctrl+Enter; refusal keeps the modal and the text | board-p8b3 "R40" |
 | R47 | Keep | Built | Inline title rename (double-click/F2): Enter or blur commits exactly once, Esc cancels, unchanged title sends nothing | board-p8b3 "R47" |
 | R58 | Adapt | Built | Heartbeat tone thresholds shared with Office | board-p8b3 "R71 / R58" |
+
+## P8 batch 4 (2026-10-14 ART): Fleet, Skills, Channels lenses
+
+Agents, Skills and Channels & MCP are now live Ops lenses (lenses/b4-lenses.tsx, pure model lenses/b4-model.ts). Tests: src/app/ops/lenses/b4.test.tsx (10).
+
+| ID | Disposition | Status | Acceptance line | Evidence |
+|---|---|---|---|---|
+| R72 | Adapt | Built | Fleet table agent (role subtitle) / model / lane (most-worked tenant) / active tasks / runs 7d (task starts) / last active / status (running, failing, idle, unknown); sortable DataTable, search by name/model/lane/role; partial note if the board does not answer | b4.test "R72" |
+| R73 | Adapt | Built | Teams tab = tenant lanes: projects (open the board), open tasks, members; Roles tab read-only | b4.test "R72 / R73" |
+| O14 | Adapt | Built | New agent opens Desktop's profile create flow (/profiles?new=1) | b4.test "R72 / R73" |
+| O76 | Adapt | Built | Role = first clause of the profile description; absent = "No role" | b4.test "model" |
+| G6 / G63 | Adapt | Built | Channels & MCP: category rail (Messaging, Tools (MCP), Models) with counts, sectioned two-column cards (glyph, name, one line), search | b4.test "Channels lens" |
+| G7 | Adapt | Built | Per-card ✓ Connected + Manage, or Connect; both open Desktop's own flow (messaging, connectors, provider settings); warnings (gateway stopped, disabled) | b4.test "Channels lens" |
+| G15 | Adapt | Built | "Connect more apps" rail footer opens the quick-connect library | b4.test "G62/G15" |
+| G62 | Adapt | Built | "+" quick-connect popover: search, kind filter, grouped by category, Esc closes, a pick runs the connect route | b4.test "G62/G15" |
+| G83 | Adapt | Built | All / Connected counts; connected = configured MCP server or installed entry, platform with credentials, provider signed in | b4.test "Channels lens", "model" |
+| G84 | Adapt | Built | Models category = OAuth providers with signed-in state; click goes to provider setup | b4.test "Channels lens" |
+| G67 | Adapt | Built | Blueprint tags naming a known app/platform show its monogram icon | b4.test "G67" |
+| G10 / G82 | Adapt | Built | Starter packs = official hub catalog grouped by category (>= 2 skills; the hub has no bundle field). Add all confirms with every missing skill listed, installs into the focused profile, reports per-skill failures. A5 backup not taken (install is additive) | b4.test "G82" |
+| G12 | Keep | Built | Create skill and per-row Open go to Desktop's skill editor | b4.test "Skills lens" |
+| G68 | Adapt | Built | Type tag = category in one of six gold-family tones, stable per category | b4.test "Skills lens", "model" |
+| G69 | Keep | Built | Agents column: first 3 profiles with the skill enabled + "+N" popover; each opens the profile (scan capped at 12 profiles) | b4.test "Skills lens" |
+| G70 | Adapt | Cut | /api/skills has no author or mtime; shows Source (provenance) and Uses instead. Rebuild when the route reports them | n/a |
+| G71 | Keep | Built | Sortable headers on every data column; "Individual skills n" count pill tracks the search | b4.test "Skills lens" |
+| G72 | Adapt | Built | Pack metadata "n skills · m installed" (the hub reports no install counts, so none shown); Browse library = Desktop hub picker | b4.test "Skills lens", "G82" |
+| G81 | Keep | Built | Search by name, category, description | b4.test "Skills lens" |
