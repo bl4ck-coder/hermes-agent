@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional
 
 import hermes_yaml as yaml
 from fastapi import APIRouter, HTTPException, Query
+from fastapi import Depends as Depends
+from hermes_cli.legacy_writes import legacy_write_gate
 
 from hermes_cli.config import get_config_path, read_raw_config
 from hermes_cli.web_deps import late
@@ -50,7 +52,7 @@ async def get_config_raw(profile: Optional[str] = None):
     return await asyncio.to_thread(_run)
 
 
-@router.put("/api/config/raw")
+@router.put("/api/config/raw", dependencies=[Depends(legacy_write_gate)])
 async def update_config_raw(body: RawConfigUpdate, profile: Optional[str] = None):
     def _run():
         parsed = yaml.safe_load(body.yaml_text)

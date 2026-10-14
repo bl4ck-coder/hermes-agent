@@ -12,6 +12,8 @@ import sys
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi import Depends as Depends
+from hermes_cli.legacy_writes import legacy_write_gate
 
 from hermes_cli.web_deps import late
 from hermes_cli.web_server_profiles import _plugin_terminal_backend_rows
@@ -277,7 +279,7 @@ async def get_toolsets(profile: Optional[str] = None):
     return result
 
 
-@router.put("/api/tools/toolsets/{name}")
+@router.put("/api/tools/toolsets/{name}", dependencies=[Depends(legacy_write_gate)])
 async def toggle_toolset(name: str, body: ToolsetToggle, profile: Optional[str] = None):
     """Enable/disable a configurable toolset for its configuration platform
     (``platform_toolsets.cli`` for most; platform-restricted toolsets target
@@ -469,7 +471,7 @@ async def get_toolset_models(
     return await asyncio.to_thread(_read) or _no_models(name)
 
 
-@router.put("/api/tools/toolsets/{name}/model")
+@router.put("/api/tools/toolsets/{name}/model", dependencies=[Depends(legacy_write_gate)])
 async def select_toolset_model(
     name: str, body: ToolsetModelSelect, profile: Optional[str] = None):
     """Persist a backend model selection (``image_gen.model`` /
@@ -501,7 +503,7 @@ async def select_toolset_model(
     return {"ok": True, "name": name, "model": model_id, "plugin": plugin}
 
 
-@router.put("/api/tools/toolsets/{name}/provider")
+@router.put("/api/tools/toolsets/{name}/provider", dependencies=[Depends(legacy_write_gate)])
 async def select_toolset_provider(
     name: str, body: ToolsetProviderSelect, profile: Optional[str] = None):
     """Persist a provider selection via ``apply_provider_selection`` (shared with
@@ -587,7 +589,7 @@ async def select_toolset_provider(
     return await asyncio.to_thread(_run)
 
 
-@router.put("/api/tools/toolsets/{name}/env")
+@router.put("/api/tools/toolsets/{name}/env", dependencies=[Depends(legacy_write_gate)])
 async def save_toolset_env(name: str, body: ToolsetEnvUpdate, profile: Optional[str] = None):
     """Persist API keys to ``.env`` via ``save_env_value``.  Keys are validated
     against the union of the category's visible-provider ``env_vars`` so this

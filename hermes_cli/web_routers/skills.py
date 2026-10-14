@@ -11,6 +11,8 @@ import asyncio
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi import Depends as Depends
+from hermes_cli.legacy_writes import legacy_write_gate
 
 from hermes_cli.web_deps import late
 from hermes_cli.web_server_profiles import _hub_action_name, _installed_hub_identifiers
@@ -376,7 +378,7 @@ async def get_skills(profile: Optional[str] = None):
     return await asyncio.to_thread(_run)
 
 
-@router.put("/api/skills/toggle")
+@router.put("/api/skills/toggle", dependencies=[Depends(legacy_write_gate)])
 async def toggle_skill(body: SkillToggle, profile: Optional[str] = None):
     from hermes_cli.skills_config import get_disabled_skills, save_disabled_skills
 

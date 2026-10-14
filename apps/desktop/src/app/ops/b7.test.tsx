@@ -260,7 +260,7 @@ describe('Settings to 9', () => {
     expect(reset.disabled).toBe(false)
     fireEvent.click(reset)
     expect(JSON.parse(localStorage.getItem('hermes.ops.prefs')!).timezone).toBe('')
-    expect(document.querySelector('[data-ops-legacy-routes="deferred"]')).toBeTruthy()
+    expect(document.querySelector('[data-ops-legacy-routes="flag"]')).toBeTruthy()
     expect(document.querySelector('[data-ops-forget-drafts]')).toBeTruthy()
   })
 })
@@ -337,7 +337,7 @@ describe('UI sweep (static, every Ops source file)', () => {
     expect(files.filter(f => readFileSync(f, 'utf8').includes('dangerouslySetInnerHTML'))).toEqual([])
   })
 
-  it('S5 (deferred, documented): Ops source never names a legacy write route', () => {
+  it('S5 (flag, documented): Ops source never names a legacy write route', () => {
     const legacy = [/\/soul['`"]/, /\/api\/config\/raw/, /\/api\/skills\/toggle/, /\/api\/tools\/toolsets\//]
     const hits = files.filter(f => legacy.some(r => r.test(readFileSync(f, 'utf8'))))
 

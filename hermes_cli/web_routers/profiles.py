@@ -26,6 +26,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi import Depends as Depends
+from hermes_cli.legacy_writes import legacy_write_gate
 
 from hermes_cli.session_listing import subagent_listing_scope
 from hermes_cli.web_deps import late
@@ -1010,7 +1012,7 @@ async def get_profile_soul(name: str):
     return {"content": content, "exists": True}
 
 
-@router.put("/api/profiles/{name}/soul")
+@router.put("/api/profiles/{name}/soul", dependencies=[Depends(legacy_write_gate)])
 async def update_profile_soul(name: str, body: ProfileSoulUpdate):
     soul_path = _resolve_profile_dir(name) / "SOUL.md"
 
@@ -1032,7 +1034,7 @@ async def update_profile_soul(name: str, body: ProfileSoulUpdate):
     return {"ok": True}
 
 
-@router.put("/api/profiles/{name}/description")
+@router.put("/api/profiles/{name}/description", dependencies=[Depends(legacy_write_gate)])
 async def update_profile_description_endpoint(name: str, body: ProfileDescriptionUpdate):
     """Set or clear a profile's role description (kanban routing signal), stored as
     user-authored (``description_auto: false``) so the auto-describer won't overwrite it."""
@@ -1046,7 +1048,7 @@ async def update_profile_description_endpoint(name: str, body: ProfileDescriptio
     return {"ok": True, "description": text, "description_auto": False}
 
 
-@router.put("/api/profiles/{name}/model")
+@router.put("/api/profiles/{name}/model", dependencies=[Depends(legacy_write_gate)])
 async def update_profile_model_endpoint(name: str, body: ProfileModelUpdate):
     """Set the main model for a specific profile's config.yaml without touching the dashboard's
     own profile — ``POST /api/model/set`` (main scope) via the HERMES_HOME override."""

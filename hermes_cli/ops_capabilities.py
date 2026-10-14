@@ -25,8 +25,15 @@ OPS_CAPABILITIES: List[str] = [
     "kanban.tasks.expected_status",
     "kanban.runs.stats",
     "kanban.attachments.page",
+    "ops.legacy_writes.flag",
 ]
 
 
 def ops_capabilities() -> dict:
-    return {"version": OPS_CAPABILITIES_VERSION, "tokens": list(OPS_CAPABILITIES)}
+    from hermes_cli.legacy_writes import legacy_writes_retired
+
+    return {
+        "version": OPS_CAPABILITIES_VERSION,
+        "tokens": list(OPS_CAPABILITIES),
+        "legacy_writes_retired": legacy_writes_retired(),
+    }
