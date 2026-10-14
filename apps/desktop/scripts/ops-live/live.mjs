@@ -288,7 +288,7 @@ if (want('draft')) await section('03b-canvas-draft', async () => {
   const ta = page.locator('[data-ops-node-editor] textarea').first()
   await ta.click({ timeout: 8000 }); await page.keyboard.press('End'); await page.keyboard.type(' (ops live check)')
   await sleep(500); await shot('03b-canvas-draft-dirty')
-  await page.getByRole('button', { name: /^Discard$/ }).first().click({ timeout: 8000 })
+  await page.locator('[data-ops-node-discard]').first().click({ timeout: 8000 })
   return 'typed then discarded'
 })
 for (const [n, id, tab] of [['04-fleet', 'agents', 'fleet'], ['05-teams', 'agents', 'teams'], ['06-skills', 'skills'], ['07-channels', 'channels'], ['08-settings', 'settings']]) {

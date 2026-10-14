@@ -1,6 +1,5 @@
 import '../motion.css'
 
-import { T } from '../main-i18n'
 import type { CSSProperties, ReactNode } from 'react'
 import { useId, useRef, useState } from 'react'
 
@@ -13,6 +12,8 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { useI18n } from '@/i18n'
+
+import { T } from '../main-i18n'
 
 /** Frozen density contract (SPEC §12.3). One gutter, 32px rows, 12–13px body. */
 export const OPS_GUTTER_PX = 24

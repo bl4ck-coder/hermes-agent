@@ -26,9 +26,9 @@ import {
   keyboardTarget,
   MOVABLE,
   type MoveRecord,
-  windowRange
+  statusOf
 ,
-  statusOf} from './board-model'
+  windowRange} from './board-model'
 import {
   BodyEditor,
   CardMenu,
@@ -222,6 +222,7 @@ export function BoardView(props: BoardViewProps) {
   const card = (t: BoardTask) => (
     <div
       data-ops-card={t.id}
+      data-ops-dragging={dragging === t.id ? '' : undefined}
       draggable={!readOnly}
       key={t.id}
       onContextMenu={e => (e.preventDefault(), setMenu(t.id))}
@@ -237,7 +238,6 @@ export function BoardView(props: BoardViewProps) {
       }}
       onKeyDown={keyFor(t)}
       role="listitem"
-      data-ops-dragging={dragging === t.id ? '' : undefined}
       style={{ height: ROW_H - 6 }}
       tabIndex={0}
     >

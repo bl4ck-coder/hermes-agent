@@ -7,6 +7,8 @@
  */
 import { useSyncExternalStore } from 'react'
 
+import { T } from '../main-i18n'
+
 import type { NodeValue, WritableNode } from './node-editor'
 
 export type ProposalItem =
@@ -40,6 +42,7 @@ export function propose(profile: string, text: string, edges: readonly (readonly
 
     if (model) {
       items.push({ kind: 'model', provider: model[1], model: model[2] })
+
       continue
     }
 
@@ -47,6 +50,7 @@ export function propose(profile: string, text: string, edges: readonly (readonly
 
     if (replace) {
       items.push({ kind: 'prompt', mode: 'replace', text: replace[1].trim() })
+
       continue
     }
 
@@ -55,14 +59,16 @@ export function propose(profile: string, text: string, edges: readonly (readonly
     if (edge) {
       const [a, b] = [edge[1].toLowerCase(), edge[2].toLowerCase()]
       const wired = edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a))
-      items.push({ kind: 'note', text: wired ? `${a} → ${b} is already linked.` : `${a} → ${b}: ${EDGE_HINT}` })
+      items.push({ kind: 'note', text: wired ? `${a} → ${b} ${T('is already linked.')}` : `${a} → ${b}: ${T(EDGE_HINT)}` })
+
       continue
     }
 
     const node = /\badd\s+(?:an?\s+)?(\w+)\s+node\b/i.exec(line)
 
     if (node) {
-      items.push({ kind: 'note', text: `${node[1]} node: ${EDGE_HINT}` })
+      items.push({ kind: 'note', text: `${node[1]}: ${T(EDGE_HINT)}` })
+
       continue
     }
 

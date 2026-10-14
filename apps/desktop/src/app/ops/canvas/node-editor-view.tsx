@@ -10,8 +10,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PolicyView } from '../feed/ops-client'
 import { T } from '../main-i18n'
 
-import { registerCanvasSaver, setCanvasDirty } from './dirty-store'
 import { patchFor, takeStaged, useStagedVersion } from './compose'
+import { registerCanvasSaver, setCanvasDirty } from './dirty-store'
 import { clearDraft, loadDraft, saveDraft } from './drafts'
 import {
   createNodeClient,
@@ -212,7 +212,7 @@ export function NodeEditor({
           <input aria-label={T("note")} onChange={e => setNote(e.target.value)} placeholder={T("note (optional)")} value={note} />
           <button data-ops-write="" disabled={!isDirty(s) || s.status === 'saving'} onClick={() => setPreview(true)} type="button">
             {T("Review & save")}</button>
-          <button disabled={!isDirty(s)} onClick={() => ((clearDraft(connection, profile, node), setS(discard(s))), setPreview(false))} type="button">
+          <button data-ops-node-discard="" disabled={!isDirty(s)} onClick={() => ((clearDraft(connection, profile, node), setS(discard(s))), setPreview(false))} type="button">
             {T("Discard")}</button>
           <button onClick={() => void openHistory()} type="button">
             {T("History")}</button>

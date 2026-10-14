@@ -434,7 +434,7 @@ function Dispatch({
         <div aria-label={T("Blueprints")} data-ops-chips="">
           {blueprints.slice(0, 4).map(b => (
             <button data-ops-chip={b.key} disabled={!onOpenRoute} key={b.key} onClick={() => onOpenRoute?.(`/cron?blueprint=${encodeURIComponent(b.key)}`)} type="button">
-              {b.title}
+              {T(b.title)}
             </button>
           ))}
         </div>
@@ -510,7 +510,7 @@ export function OfficeView(props: OfficeViewProps) {
       <div aria-label={T("Fleet layout")} role="tablist">
         {(['orrery', 'table'] as const).map(l => (
           <button aria-selected={layout === l} data-ops-layout={l} key={l} onClick={() => setLayout(l)} role="tab" type="button">
-            {l === 'orrery' ? 'Orrery' : 'Table'}
+            {l === 'orrery' ? T('Orrery') : T('Table')}
           </button>
         ))}
       </div>

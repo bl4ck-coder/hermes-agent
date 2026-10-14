@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import { T } from '../main-i18n'
 
-import { acceptProposal, propose, type Proposal } from './compose'
+import { acceptProposal, type Proposal, propose } from './compose'
 
 export function ComposePanel({ profile, edges, readOnly, onStaged }: { profile: string; edges: readonly (readonly [string, string])[]; readOnly?: boolean; onStaged?: (nodes: string[]) => void }) {
   const [text, setText] = useState('')
@@ -40,7 +40,7 @@ export function ComposePanel({ profile, edges, readOnly, onStaged }: { profile: 
         </button>
       </form>
       {p ? (
-        <div data-ops-proposal={p.id} role="region" aria-label={T('Proposal')}>
+        <div aria-label={T('Proposal')} data-ops-proposal={p.id} role="region">
           <strong>{T('Proposal (not applied)')}</strong>
           <ul>
             {p.items.map((it, i) => (

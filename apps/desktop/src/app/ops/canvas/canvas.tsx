@@ -257,7 +257,7 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
       const failing = d.cron.filter(j => (j.failure_streak ?? 0) > 0).length
 
       return {
-        text: `${d.cron.length} cron jobs${next ? `, next ${new Date(next).toISOString()}` : ''}${failing ? `, ${failing} failing` : ''}`,
+        text: `${d.cron.length} ${T('cron jobs')}${next ? `, ${T('next')} ${new Date(next).toISOString()}` : ''}${failing ? `, ${failing} ${T('failing')}` : ''}`,
         state: failing ? 'policy' : d.cron.length ? 'ok' : 'unset'
       }
     }
@@ -608,7 +608,7 @@ export function CanvasView({
               <button aria-expanded={detail === id} aria-haspopup="dialog" data-ops-node-title="" onClick={() => setDetail(d => (d === id ? null : id))} type="button">
                 {id}
               </button>
-              {closed ? null : <span data-ops-node-body="">{b.text}</span>}
+              {closed ? null : <span data-ops-node-body="">{T(b.text)}</span>}
               {id === 'identity' && b.state === 'unset' ? (
                 <button data-ops-identity-cta="" data-ops-port-colour="amber" disabled={readOnly || !onOpenRoute} onClick={() => onOpenRoute?.(`/profiles?profile=${encodeURIComponent(profile)}&edit=identity`)} type="button">
                   {T("Set identity")}</button>
@@ -618,8 +618,8 @@ export function CanvasView({
                   <dl>
                     {nodeDetail(id, data).map(([k, v], i) => (
                       <div key={`${k}-${i}`}>
-                        <dt>{k}</dt>
-                        <dd>{v}</dd>
+                        <dt>{T(k)}</dt>
+                        <dd>{T(v)}</dd>
                       </div>
                     ))}
                   </dl>

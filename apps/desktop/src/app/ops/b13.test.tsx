@@ -1,13 +1,14 @@
-﻿/** P8 B13: free card-drag, Chat->Canvas compose (proposal-only), residual i18n. */
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { readFileSync } from 'node:fs'
+﻿import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+/** P8 B13: free card-drag, Chat->Canvas compose (proposal-only), residual i18n. */
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { acceptProposal, hasStaged, patchFor, propose, resetStaged, takeStaged } from './canvas/compose'
 import { ComposePanel } from './canvas/compose-view'
-import { MAIN_TRANSLATIONS } from './main-i18n-table'
 import { setOpsMainLocale, T } from './main-i18n'
+import { MAIN_TRANSLATIONS } from './main-i18n-table'
 
 const read = (f: string) => readFileSync(join(__dirname, f), 'utf8')
 
@@ -82,6 +83,7 @@ describe('B13 residual i18n', () => {
         expect(MAIN_TRANSLATIONS[l][k], `${l}:${k}`).toBeTruthy()
       }
     }
+
     setOpsMainLocale('es')
     expect(T('Working agents')).toBe('Agentes trabajando')
   })
