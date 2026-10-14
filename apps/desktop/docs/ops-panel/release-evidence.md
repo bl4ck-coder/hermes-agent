@@ -269,3 +269,23 @@ SPEC-v2 delta rows (from SPEC-v2-release-delta.md) now tracked here. Tests: src/
 
 F1 stream faults (Built, kanban-stream-faults.test.ts): mid-stream drop then reconnect with Last-Event-ID replay deduped and dead-subscription frames ignored; 401/403 wait the longest backoff step and record "auth refused"; 500 retries on the short step; an open with no answer in 10 s falls back to poll and the late answer is closed unused; stop during a slow open closes it.
 F5 Office review fixes: header date and activity times local (were UTC); dispatch keeps text + shows the server reason, one in flight; sections no longer render stale answers from a previous profile/client; synchronous request errors contained; live Office tasks were unclickable (no onOpenTask passed), now routed via the host.
+## P8 Office to 9 + batch 3 (2026-10-14 ART): Board
+
+Office: Stuck/Overdue thresholds are now named defaults (DEFAULT_THRESHOLDS: stale heartbeat 10 min, review overdue 24 h) and an Ops setting (Settings > Office thresholds, clamped, reset). A container test switches profile mid-load and asserts no stale section leaks (office/office-p8b3.test.tsx). Commit 7b0b2c2807.
+
+Board tests: src/app/ops/board/board-p8b3.test.tsx (14). Commit 72efcc7a41.
+
+| ID | Disposition | Status | Acceptance line | Evidence |
+|---|---|---|---|---|
+| R67 | Adapt | Built | Saved views: current filter + layout saved as a named tab per (connection, project) in local storage; restoring one gives the same filters, layout and cards; same name replaces | board-p8b3 "R67 saved views" |
+| R68 | Adapt | Built | Timeline: Weeks/Months, group by profile or project, today line, parent→child curves for visible links (dangling links dropped); links fetched lazily only while open (cap 40) | board-p8b3 "R68 timeline" |
+| R69 | Adapt | Built | List/table group by status/profile/project/priority with counts; collapsible groups (aria-expanded); sort manual/priority/updated | board-p8b3 "R69" |
+| R70 | Adapt | Built | Files view: list/grid, type, size, uploader, age; upload button + drop zone; refusal shows the server reason; scope note (40 most recent tasks; no list-all endpoint) | board-p8b3 "R11 / R70 files" |
+| R71 | Adapt | Built | Rich card: priority, tag chips (skills + #tenant), subtasks n/m, comment count, heartbeat colour (fresh/aging/stale, running only); quick actions all keyboard reachable | board-p8b3 "R71 / R58" |
+| R74 | Adapt | Built | Favourites view: starred tasks, profiles, projects, runs (legacy project favourites folded in); each opens in one click; empty copy | board-p8b3 "R74" |
+| R11 | Keep | Built | Upload attaches through POST /tasks/{id}/attachments and the file appears without a board reload | board-p8b3 "R11 / R70 files" |
+| R17 | Keep | Built | Description renders safe Markdown (no innerHTML; only http(s)/mailto links); drawer editor with toolbar + live preview, PATCH body, refusal keeps the editor | board-p8b3 "R17" |
+| R20 | Adapt | Built | Card menu (right-click, Shift+F10, ⋯): Open, Duplicate, Copy link, Archive (confirmed), Reassign; Delete is Cut (no endpoint, archive is the reversible path) | board-p8b3 "R20" |
+| R40 | Adapt | Built | New-task modal ("n" or button): title with @profile, Markdown body + preview, column, priority; Ctrl+Enter; refusal keeps the modal and the text | board-p8b3 "R40" |
+| R47 | Keep | Built | Inline title rename (double-click/F2): Enter or blur commits exactly once, Esc cancels, unchanged title sends nothing | board-p8b3 "R47" |
+| R58 | Adapt | Built | Heartbeat tone thresholds shared with Office | board-p8b3 "R71 / R58" |
