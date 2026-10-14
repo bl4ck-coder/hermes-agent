@@ -50,17 +50,81 @@ export function parseKanbanFrame(data: string | undefined): KanbanEvent | null {
   }
 }
 
-export function createKanbanStream({ bridge, board = null }: { bridge: OpsSseBridge | null; board?: string | null }) {
+/** P8: reconnect backoff after the stream ends or fails to open (ms); the last step repeats. */
+export const KANBAN_RECONNECT_MS = [2_000, 5_000, 15_000, 30_000] as const
+
+export function createKanbanStream({
+  bridge,
+  board = null,
+  reconnectMs = KANBAN_RECONNECT_MS
+}: {
+  bridge: OpsSseBridge | null
+  board?: string | null
+  reconnectMs?: readonly number[]
+}) {
   let state: KanbanStreamState = { mode: 'connecting', events: [], version: 0 }
   const listeners = new Set<() => void>()
   let sub: string | null = null
   let off: (() => void) | null = null
   let running = false
+  let attempt = 0
+  let retry: ReturnType<typeof setTimeout> | null = null
+  // Bounded dedupe: the ids that can still be replayed are the recent ones.
   const seen = new Set<number>()
+  const SEEN_CAP = 1000
 
   const set = (patch: Partial<KanbanStreamState>) => {
     state = { ...state, ...patch }
     listeners.forEach(l => l())
+  }
+
+  // P8: an ended or failed stream falls back to poll, then reconnects with backoff (was: poll forever).
+  const fallBack = () => {
+    sub = null
+    set({ mode: 'poll' })
+
+    if (!running || !reconnectMs.length) {
+      return
+    }
+
+    const wait = reconnectMs[Math.min(attempt, reconnectMs.length - 1)]
+    attempt += 1
+    retry = setTimeout(() => {
+      retry = null
+
+      if (running) {
+        open()
+      }
+    }, wait)
+  }
+
+  const open = () => {
+    if (!bridge) {
+      return
+    }
+
+    Promise.resolve()
+      .then(() => bridge.open({ path: KANBAN_STREAM_PATH, ...(board ? { board } : {}) } as { path: string }))
+      .then(r => {
+        if (!running) {
+          if (!r.ended) {
+            void bridge.close(r.subscriptionId)
+          }
+
+          return
+        }
+
+        if (r.ended) {
+          fallBack()
+
+          return
+        }
+
+        sub = r.subscriptionId
+        attempt = 0
+        set({ mode: 'stream' })
+      })
+      .catch(() => fallBack())
   }
 
   return {
@@ -89,8 +153,7 @@ export function createKanbanStream({ bridge, board = null }: { bridge: OpsSseBri
         }
 
         if (p.type === 'end') {
-          sub = null
-          set({ mode: 'poll' })
+          fallBack()
 
           return
         }
@@ -102,28 +165,24 @@ export function createKanbanStream({ bridge, board = null }: { bridge: OpsSseBri
         }
 
         seen.add(ev.id)
+
+        if (seen.size > SEEN_CAP) {
+          seen.delete(seen.values().next().value as number)
+        }
+
         set({ events: [ev, ...state.events].slice(0, KANBAN_EVENT_CAP), version: state.version + 1, mode: 'stream' })
       })
-      bridge
-        .open({ path: KANBAN_STREAM_PATH, ...(board ? { board } : {}) } as { path: string })
-        .then(r => {
-          if (!running || r.ended) {
-            if (!running && !r.ended) {
-              void bridge.close(r.subscriptionId)
-            }
-
-            set({ mode: 'poll' })
-
-            return
-          }
-
-          sub = r.subscriptionId
-          set({ mode: 'stream' })
-        })
-        .catch(() => set({ mode: 'poll' }))
+      open()
     },
     stop() {
       running = false
+
+      if (retry) {
+        clearTimeout(retry)
+        retry = null
+      }
+
+      attempt = 0
       off?.()
       off = null
 

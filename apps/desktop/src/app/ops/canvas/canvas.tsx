@@ -49,6 +49,13 @@ export const CANVAS_COLUMN: Record<(typeof CANVAS_NODES)[number], 'left' | 'cent
   delegation: 'right'
 }
 
+/** P8: the graph can never be panned fully out of sight (Fit still recentres). */
+export const PAN_LIMIT = 2000
+export const clampPan = (p: { x: number; y: number }) => ({
+  x: Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, p.x)),
+  y: Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, p.y))
+})
+
 const PAN_KEYS = { ArrowLeft: [-40, 0], ArrowRight: [40, 0], ArrowUp: [0, -40], ArrowDown: [0, 40] } as const
 
 /** G49: port colour by node state. */
@@ -280,9 +287,11 @@ export function CanvasView({
 
           if (e.shiftKey && step) {
             e.preventDefault()
-            setPan(p => ({ x: p.x + step[0], y: p.y + step[1] }))
+            setPan(p => clampPan({ x: p.x + step[0], y: p.y + step[1] }))
           }
         }}
+        onLostPointerCapture={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
         onPointerDown={e => {
           // G56: only the bare background pans; node controls are never intercepted.
           if (e.target !== e.currentTarget) {
@@ -290,12 +299,26 @@ export function CanvasView({
           }
 
           drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }
+
+          // P8: capture so a drag that leaves the viewport still ends on release.
+          try {
+            e.currentTarget.setPointerCapture?.(e.pointerId)
+          } catch {
+            // jsdom / synthetic pointer ids
+          }
         }}
         onPointerMove={e => {
           const d = drag.current
 
+          // P8: a move with no button held (release outside the window) ends the drag.
+          if (d && e.buttons === 0 && e.pointerType === 'mouse') {
+            drag.current = null
+
+            return
+          }
+
           if (d) {
-            setPan({ x: d.px + e.clientX - d.x, y: d.py + e.clientY - d.y })
+            setPan(clampPan({ x: d.px + e.clientX - d.x, y: d.py + e.clientY - d.y }))
           }
         }}
         onPointerUp={() => (drag.current = null)}

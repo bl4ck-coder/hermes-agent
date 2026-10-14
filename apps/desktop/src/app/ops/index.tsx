@@ -204,11 +204,15 @@ export function OpsShell({
   const newestEvent = kanban.events[0]?.id
 
   // O47: champagne dot = kanban events since the Board tab was last focused (never moves focus).
+  const [noted, setNoted] = useState<number | null>(null)
+
+  // P8: only a genuinely new event marks the Board; switching profile/connection does not re-dot it.
   useEffect(() => {
-    if (newestEvent != null) {
+    if (newestEvent != null && newestEvent !== noted) {
+      setNoted(newestEvent)
       noteBackgroundEvent(connectionId, profile, 'board', 'unread', newestEvent)
     }
-  }, [connectionId, profile, newestEvent])
+  }, [connectionId, profile, newestEvent, noted])
 
   if (hosted) {
     const previous = hostSync.current

@@ -15,7 +15,8 @@ import { listOrNull, useOpsResource } from '../office/office-container'
 import { activityRow } from '../office/office-toasts'
 
 const why = (e: unknown) => (e instanceof Error ? e.message : e ? String(e) : null)
-const iso = (s?: number | null) => (typeof s === 'number' ? new Date(s * 1000).toISOString() : 'unknown')
+/** P8: local time for the operator (was UTC ISO). */
+const iso = (s?: number | null) => (typeof s === 'number' && s > 0 ? new Date(s * 1000).toLocaleString() : 'unknown')
 
 function Unavailable({ what, error }: { what: string; error: unknown }) {
   return <p data-ops-unavailable="">{error ? `${what} unavailable: ${why(error)}` : `${what} loading (unknown).`}</p>
@@ -137,7 +138,13 @@ export function ProjectsLensView({
 
   const toggleFav = (id: string) => {
     const next = favs.includes(id) ? favs.filter(x => x !== id) : [...favs, id]
-    globalThis.localStorage?.setItem(FAV, JSON.stringify(next))
+
+    try {
+      globalThis.localStorage?.setItem(FAV, JSON.stringify(next))
+    } catch {
+      // P8: storage full or blocked; the favourite still applies for this session.
+    }
+
     setFavs(next)
   }
 
@@ -147,6 +154,7 @@ export function ProjectsLensView({
   return (
     <section aria-label="Projects" data-ops-lens="projects">
       <h2>Projects ({projects.length})</h2>
+      {projects.length === 0 ? <p data-ops-empty="projects">No projects yet. Create one from the Board.</p> : null}
       <ul>
         {sorted.map(p => (
           <li data-ops-fav={favs.includes(p.id) ? '' : undefined} data-ops-project={p.id} key={p.id}>
@@ -220,6 +228,7 @@ export function TemplatesLensView({
   return (
     <section aria-label="Templates" data-ops-lens="templates">
       <h2>Cron blueprints ({blueprints.length})</h2>
+      {blueprints.length === 0 ? <p data-ops-empty="templates">No cron blueprints are installed for this profile.</p> : null}
       <p data-ops-cut="workflow-templates">Kanban workflow templates: not offered (every board uses the default workflow; per-board templates are not in the backend).</p>
       <ul>
         {blueprints.map(b => (
@@ -241,11 +250,14 @@ export function TemplatesLensView({
 
 export function ActivityLensView({
   events,
+  connecting,
   resolved,
   error,
   onOpenTask
 }: {
   events: ReturnType<typeof useKanbanStream>['events'] | null
+  /** P8: while the stream is connecting, say so instead of "polling only". */
+  connecting?: boolean
   resolved: Record<string, unknown>[] | null
   error?: unknown
   onOpenTask?: (id: string) => void
@@ -263,7 +275,9 @@ export function ActivityLensView({
         </button>
       </div>
       {tab === 'events' ? (
-        events === null ? (
+        events === null && connecting ? (
+          <p data-ops-loading="">Connecting to live task events…</p>
+        ) : events === null ? (
           <p data-ops-unavailable="">Live task events need the kanban stream (polling only).</p>
         ) : events.length === 0 ? (
           <p>No task events since this lens opened.</p>
@@ -285,6 +299,8 @@ export function ActivityLensView({
         )
       ) : resolved === null ? (
         <Unavailable error={error} what="Resolved" />
+      ) : resolved.length === 0 ? (
+        <p data-ops-empty="resolved">Nothing resolved yet.</p>
       ) : (
         <ol aria-label="Resolved" data-ops-resolved="">
           {resolved.slice(0, 50).map((a, i) => {
@@ -335,6 +351,7 @@ export function ActivityLens({ actions: a, onOpenTask }: { actions?: OpsActions;
 
   return (
     <ActivityLensView
+      connecting={stream.mode === 'connecting'}
       error={r.error}
       events={stream.mode === 'stream' || stream.events.length ? stream.events : null}
       onOpenTask={onOpenTask}

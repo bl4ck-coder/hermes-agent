@@ -5,7 +5,7 @@
  * comment, assign, add subtask, unblock (with a note) and retry (→ ready). The server validates each.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { createOpsActions, type OpsActions, type TaskDetail, type TaskEvent, type TaskRun } from '../feed/ops-actions'
 
@@ -43,7 +43,17 @@ export function describeEvent(e: TaskEvent): { verb: string; target: string; han
   return { verb, target, handoff: e.kind === 'reassigned' || e.kind === 'assigned' || e.kind === 'linked' || /delegat/.test(e.kind) }
 }
 
-const hhmm = (s?: number | null) => (typeof s === 'number' ? new Date(s * 1000).toISOString().slice(11, 16) : '--:--')
+/** P8: local wall-clock (the operator's zone), not UTC. */
+const hhmm = (s?: number | null) => {
+  if (typeof s !== 'number') {
+    return '--:--'
+  }
+
+  const d = new Date(s * 1000)
+
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 const dur = (r: TaskRun) => (typeof r.started_at === 'number' && typeof r.ended_at === 'number' ? `${r.ended_at - r.started_at} s` : 'unknown')
 
 export function TaskTabView({
@@ -73,6 +83,7 @@ export function TaskTabView({
   const [confirmStop, setConfirmStop] = useState<number | null>(null)
   const [steer, setSteer] = useState('')
   const [log, setLog] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
   if (!detail) {
     return <p data-ops-unavailable="">{error ? `Task unavailable: ${error}` : 'Task is loading (unknown).'}</p>
@@ -82,14 +93,30 @@ export function TaskTabView({
   const runs = Array.isArray(detail.runs) ? detail.runs : []
   const events = Array.isArray(detail.events) ? detail.events : []
   const live = runs.find(r => r.status === 'running' && (r.ended_at === null || r.ended_at === undefined))
-  const failed = runs.find(r => r.outcome === 'failed' || r.status === 'failed' || r.error)
+  // P8: only the newest run's failure is actionable; an old failure followed by a clean run is history.
+  const newest = runs.reduce<TaskRun | undefined>((m, r) => (!m || r.id > m.id ? r : m), undefined)
+  const failed = newest && (newest.outcome === 'failed' || newest.status === 'failed' || newest.error) ? newest : undefined
 
-  const act = async (a: Parameters<typeof onAction>[0], done: string) => {
+  /** Resolves true on success. P8: inputs are only cleared on success; one action in flight at a time. */
+  const act = async (a: Parameters<typeof onAction>[0], done: string): Promise<boolean> => {
+    if (busy) {
+      return false
+    }
+
+    setBusy(true)
+
     try {
       await onAction(a)
       setMsg(done)
+
+      return true
     } catch (e) {
-      setMsg(`Refused: ${e instanceof Error ? e.message : 'request failed'}`)
+      const m = e instanceof Error ? e.message : 'request failed'
+      setMsg(a.kind === 'stop' && /409|already|ended/i.test(m) ? 'Run already ended.' : `Refused: ${m}`)
+
+      return false
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -125,7 +152,7 @@ export function TaskTabView({
           {confirmStop === live.id ? (
             <>
               <span>Stop run {live.id}? The worker is terminated.</span>
-              <button data-ops-stop-confirm="" onClick={() => (setConfirmStop(null), void act({ kind: 'stop', value: String(live.id) }, 'Stopped'))} type="button">
+              <button data-ops-stop-confirm="" disabled={busy} onClick={() => (setConfirmStop(null), void act({ kind: 'stop', value: String(live.id) }, 'Stopped'))} type="button">
                 Confirm stop
               </button>
               <button onClick={() => setConfirmStop(null)} type="button">
@@ -137,9 +164,9 @@ export function TaskTabView({
               Stop
             </button>
           )}
-          <form onSubmit={e => (e.preventDefault(), steer.trim() && void act({ kind: 'steer', value: steer.trim() }, 'Steer sent').then(() => setSteer('')))}>
+          <form onSubmit={e => (e.preventDefault(), steer.trim() && void act({ kind: 'steer', value: steer.trim() }, 'Steer sent').then(ok => ok && setSteer('')))}>
             <input aria-label="steer" onChange={e => setSteer(e.target.value)} placeholder="Steer the running worker" value={steer} />
-            <button disabled={!steer.trim()} type="submit">
+            <button disabled={busy || !steer.trim()} type="submit">
               Steer
             </button>
           </form>
@@ -152,7 +179,7 @@ export function TaskTabView({
           {!readOnly ? (
             <>
               <input aria-label="unblock note" onChange={e => setNote(e.target.value)} placeholder="Unblock note" value={note} />
-              <button disabled={!note.trim()} onClick={() => void act({ kind: 'unblock', value: note.trim() }, 'Unblocked')} type="button">
+              <button disabled={busy || !note.trim()} onClick={() => void act({ kind: 'unblock', value: note.trim() }, 'Unblocked').then(ok => ok && setNote(''))} type="button">
                 Unblock
               </button>
               <button onClick={() => void act({ kind: 'retry' }, 'Moved to ready')} type="button">
@@ -176,7 +203,7 @@ export function TaskTabView({
           ))}
         </ul>
         {!readOnly ? (
-          <form onSubmit={e => (e.preventDefault(), sub.trim() && void act({ kind: 'subtask', value: sub.trim() }, 'Subtask created').then(() => setSub('')))}>
+          <form onSubmit={e => (e.preventDefault(), sub.trim() && void act({ kind: 'subtask', value: sub.trim() }, 'Subtask created').then(ok => ok && setSub('')))}>
             <input aria-label="new subtask" onChange={e => setSub(e.target.value)} placeholder="Add subtask" value={sub} />
           </form>
         ) : null}
@@ -262,7 +289,7 @@ export function TaskTabView({
           ))}
         </ul>
         {!readOnly ? (
-          <form onSubmit={e => (e.preventDefault(), comment.trim() && void act({ kind: 'comment', value: comment.trim() }, 'Comment added').then(() => setComment('')))}>
+          <form onSubmit={e => (e.preventDefault(), comment.trim() && void act({ kind: 'comment', value: comment.trim() }, 'Comment added').then(ok => ok && setComment('')))}>
             <input aria-label="comment" onChange={e => setComment(e.target.value)} placeholder="Comment" value={comment} />
           </form>
         ) : null}
@@ -304,15 +331,32 @@ export function TaskTabContainer({
     )
   }, [actions, assignees])
 
+  // P8: a response for a previous id (or an older poll) never overwrites the current one.
+  const seq = useRef(0)
+
   const load = useCallback(async () => {
+    const mine = ++seq.current
+
     try {
       const d = await actions.taskDetail(id)
+
+      if (mine !== seq.current) {
+        return
+      }
+
       setDetail(d && d.task ? d : null)
       setError(d && d.task ? null : 'malformed task')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'request failed')
+      if (mine === seq.current) {
+        setError(e instanceof Error ? e.message : 'request failed')
+      }
     }
   }, [actions, id])
+
+  useEffect(() => {
+    setDetail(null)
+    setError(null)
+  }, [id])
 
   useEffect(() => {
     void load()
@@ -322,6 +366,15 @@ export function TaskTabContainer({
   }, [load, pollMs])
 
   const onAction = async (x: { kind: string; value?: string }) => {
+    // P8: reload even on refusal (e.g. Stop on a run that just ended) so the controls match the server.
+    try {
+      await run(x)
+    } finally {
+      await load()
+    }
+  }
+
+  const run = async (x: { kind: string; value?: string }) => {
     if (x.kind === 'comment') {
       await actions.comment(id, x.value ?? '')
     } else if (x.kind === 'assign') {
@@ -338,11 +391,9 @@ export function TaskTabContainer({
       // The live worker comment bridge delivers new comments to a running worker.
       await actions.comment(id, `Steer: ${x.value ?? ''}`)
     }
-
-    await load()
   }
 
   return (
-    <TaskTabView assignees={names} detail={detail} error={error} loadLog={() => actions.taskLog(id)} onAction={onAction} onOpenRoute={onOpenRoute} onOpenTask={onOpenTask} />
+    <TaskTabView assignees={names} detail={detail} error={error} key={id} loadLog={() => actions.taskLog(id)} onAction={onAction} onOpenRoute={onOpenRoute} onOpenTask={onOpenTask} />
   )
 }
