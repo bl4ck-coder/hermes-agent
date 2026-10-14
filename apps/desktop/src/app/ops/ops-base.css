@@ -636,7 +636,7 @@
 :where([data-ops-channels-body] li p, [data-ops-channels-body] article p) { -webkit-box-orient: vertical; -webkit-line-clamp: 3; display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; }
 
 /* -- Glass p8 (B32): display headline sizes live here so they beat the earlier ops-base sizes; lit board cards; folded settings groups. */
-:where([data-ops-greeting]) :where(h2) { font-size: 34px; font-weight: 500; }
+:where([data-ops-greeting]) h2 { font-size: 34px; font-weight: 500; } /* same (0,0,1) as the Gr8r rule above, so order wins */
 :where(section[data-ops-lens] > header > h2) { font-size: 26px; font-weight: 500; }
 :where([data-ops-card]) {
   background: linear-gradient(165deg, color-mix(in srgb, var(--ops-gold, #c9a227) 7%, var(--ops-surface-2)) 0%, var(--ops-surface-2) 55%);

@@ -761,7 +761,7 @@ function ArtifactTable({
 
 /** A profile backend that could not start in time because every local slot was busy (transient). */
 export function isSlotWaitTimeout(error: unknown): boolean {
-  return /SlotWaitTimeout|waiting for a free slot|was cancelled during start|BackgroundSlotRetryDeferred|backing off after slot saturation/i.test(
+  return /SlotWaitTimeout|waiting for a free slot|was cancelled during start|BackgroundSlotRetryDeferred|backing off after slot saturation|ECONNREFUSED 127\.0\.0\.1/i.test(
     String(error instanceof Error ? error.message : error)
   )
 }
