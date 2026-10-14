@@ -1878,7 +1878,7 @@ const opsFr: OpsCopy = {
     connect: "+ Connecter",
     settings: "Paramètres",
     fleet: "FLOTTE",
-    idleCount: value => `${value} inactifs`,
+    idleCount: value => (value === 1 ? '1 inactif' : `${value} inactifs`),
     online: value => `${value} en ligne`
   },
   chrome: {
@@ -2418,7 +2418,7 @@ const opsEs: OpsCopy = {
     connect: "+ Conectar",
     settings: "Ajustes",
     fleet: "FLOTA",
-    idleCount: value => `${value} inactivos`,
+    idleCount: value => (value === 1 ? '1 inactivo' : `${value} inactivos`),
     online: value => `${value} en línea`
   },
   chrome: {

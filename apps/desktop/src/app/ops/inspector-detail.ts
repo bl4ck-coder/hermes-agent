@@ -153,7 +153,7 @@ function push(rows: [string, string][], label: string, value: string | null | un
 export function taskInspectorDetail(t: BoardTask, timeZone?: string): InspectorDetail {
   const rows: [string, string][] = []
   push(rows, 'Assignee', t.assignee || 'Unassigned')
-  push(rows, 'Priority', typeof t.priority === 'number' ? `P${t.priority}` : null)
+  push(rows, 'Priority', typeof t.priority === 'number' && t.priority > 0 ? `P${t.priority}` : null)
   push(rows, 'Project', t.project_id)
   push(rows, 'Tenant', t.tenant)
   push(rows, 'Progress', t.progress && t.progress.total > 0 ? `${t.progress.done} of ${t.progress.total}` : null)
@@ -172,7 +172,7 @@ export function taskInspectorDetail(t: BoardTask, timeZone?: string): InspectorD
     title: t.title || t.id,
     badge: t.status,
     rows,
-    body: t.body ? t.body.slice(0, 600) : null,
+    body: t.body ? t.body.replace(/<!--[\s\S]*?-->/g, '').trim().slice(0, 600) || null : null,
     source: 'Kanban board',
     why: 'the card open in Board'
   }

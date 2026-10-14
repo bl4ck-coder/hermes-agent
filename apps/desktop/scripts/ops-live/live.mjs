@@ -100,7 +100,7 @@ const lens = async id => {
 }
 const want = s => STEPS.includes('all') || STEPS.includes(s)
 log.toastDismissed = await page.evaluate(() => {
-  const el = [...document.querySelectorAll('body *')].filter(n => /Another Hermes installation/.test(n.textContent || '')).sort((a, b) => (a.textContent || '').length - (b.textContent || '').length)[0]
+  const el = [...document.querySelectorAll('body *')].filter(n => n.getClientRects().length > 0 && /Another Hermes installation/.test(n.textContent || '')).sort((a, b) => (a.textContent || '').length - (b.textContent || '').length)[0]
   for (let p = el; p && p !== document.body; p = p.parentElement) { const b = p.querySelector('button'); if (b) { b.click(); return true } }
   return false
 }).catch(() => false)

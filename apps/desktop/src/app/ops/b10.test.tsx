@@ -157,3 +157,24 @@ describe('B10 UX rounds', () => {
     expect(read('rail.tsx')).toContain('{icons ? null : (')
   })
 })
+
+describe('B10 UX round 3', () => {
+  it('task body drops HTML comments; priority 0 is not shown', () => {
+    const d = taskInspectorDetail({ id: 't', title: 't', status: 'todo', priority: 0, body: '<!-- contrato: v1 -->\nHello' })
+
+    expect(d.body).toBe('Hello')
+    expect(d.rows.map(r => r[0])).not.toContain('Priority')
+  })
+
+  it('quick actions sit on the meta row and canvas nodes do not stretch', () => {
+    const css = read('ops-base.css')
+
+    expect(css).toContain(':where([data-ops-card]) > :where([data-ops-quick]) { bottom: 4px; top: auto; }')
+    expect(css).toContain(':where([data-ops-canvas-nodes]) > :where(*) { align-self: start; }')
+    expect(css).toContain(':where([data-ops-fleet-row]) :where(.ops-presence__label) { display: none; }')
+  })
+
+  it('Spanish idle count is singular for one', () => {
+    expect(read('locales.ts')).toContain("value === 1 ? '1 inactivo'")
+  })
+})
