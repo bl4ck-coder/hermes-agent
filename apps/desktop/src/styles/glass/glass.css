@@ -363,3 +363,8 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat]) {
 }
 html[data-hermes-theme^='gold-night'] :where([data-ops-stat]):hover { border-color: var(--glass-edge-strong); box-shadow: var(--glass-rim), var(--glass-glow); }
 html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='garnet']) { border-color: rgb(212 160 140 / 0.45); box-shadow: var(--glass-rim), 0 0 22px -8px rgb(180 83 60 / 0.6); }
+
+/* -- Glass p5: SOUL.md editor — one lit frame on focus instead of a cream box around the text; the whole frame is the click target. */
+:where([data-profile-soul-editor]) .cm-content { box-shadow: none; }
+:where([data-profile-soul-editor]) { border-radius: var(--glass-r-card, 14px); transition: box-shadow 160ms var(--glass-ease, ease); }
+:where([data-profile-soul-editor]:focus-within) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--glass-gold, #e8c77a) 45%, transparent), 0 0 24px -6px color-mix(in srgb, var(--glass-gold, #e8c77a) 35%, transparent); }

@@ -189,7 +189,9 @@ export function CodeEditor({
   onFormatJsonError,
   onSave
 }: CodeEditorProps) {
-  const { resolvedMode } = useTheme()
+  // Painted mode, not the switch: Gold Night stays dark under a light switch (renderedMode,
+  // as the terminal does), and the GitHub-light ink was near-invisible on it.
+  const { renderedMode: resolvedMode } = useTheme()
   const hostRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
   const languageConf = useRef(new Compartment())
