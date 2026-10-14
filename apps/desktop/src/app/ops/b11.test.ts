@@ -113,5 +113,6 @@ describe('B11 live round fixes', () => {
     const src = readFileSync(join(__dirname, 'inspector.tsx'), 'utf8')
     expect(src).toContain("const DETAIL_TAB: Record<string, string> = { task: 'board', node: 'canvas', settings: 'settings' }")
     expect(src).toMatch(/detail\.kind === want && ownsTab/)
+    expect(src).toContain('tab.id === `lens:${owner}`')
   })
 })
