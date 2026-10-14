@@ -408,3 +408,15 @@ Commits on ops/P8-polish (fork only, fast-forwarded into feat/ops-panel): a8d027
 | UI/UX sweep | Built | Static sweep: no raw HTML injection, no legacy routes, every icon-only button has an aria-label (fixed 2 in rail.tsx) |
 
 Gates: Ops vitest 43 files / 402 tests pass; tsc 0; eslint 0 errors. Ops pytest 131 pass + 1 env failure (test_ops_fleet_stream async test: pytest-asyncio is not installed in the venv; it fails on pre-B7 code too). Wider web-server pytest set: the same 112 failures with and without the B7 changes, so B7 adds no regression.
+
+## P8 B8 - final close (2026-10-14 ART)
+
+| Item | Status | Evidence |
+|---|---|---|
+| L2 write gate | Built | feed/write-gate.ts. The host's pinned /api/status read (chrome.tsx useOpsBackendSources) and the Diagnostics probe feed connectionView() into one gate. OpsShell disables every `[data-ops-write]` control (25 tagged: Canvas save/confirm/restore/save-all/test run; Board create/upload/save body/undo/bulk move/archive; Task stop/steer/unblock/retry; Needs-you approve/deny/review/request changes/unblock/comment/cron run; Office dispatch; Skills add-all). Each gets `disabled`, `aria-disabled` and a reason tooltip ("Writes are off: ..."). A MutationObserver covers controls mounted later, and a capture-phase guard drops clicks that get through. Board drag and bulk moves refuse in board-container. Only a definite answer closes writes (auth-failed, unreachable, incompatible); "connecting" leaves writes to the server guards; a scope change resets to unchecked. b8.test.tsx (states, apply/restore, live gate + late mount + click guard, static coverage per file and per handler) |
+| MF7 leftover | Built | PATCH /api/plugins/kanban/tasks/{id} takes an optional `expected_status`: on a mismatch it returns 409 `stale_status` with `current_status` and changes nothing; older clients that omit it behave as before. Capability token `kanban.tasks.expected_status`. Ops review approve sends `{status:'done', expected_status:'review'}`; a stale result shows "Changed; review again". test_kanban_expected_status.py (3), b8.test.tsx (2) |
+| pytest-asyncio | Done | Installed pytest-asyncio==1.3.0 in the venv (the repo's dev pin in pyproject.toml). test_ops_fleet_stream 2/2 pass |
+
+Gates: Ops vitest 44 files / 417 tests pass; tsc 0; eslint 0 errors. Pytest (kanban plugin + Ops): 244 pass, 0 fail.
+Commits: f2ecae28d3 (L2), f668a19415 (MF7 backend), c041302d3f (MF7 client), plus this evidence commit.
+Grades after B8: every section is 9; Diagnostics/lifecycle is 9 (was 8.5).
