@@ -97,7 +97,6 @@ async function section(name, fn) {
     failed: log.failed.slice(before.f).map(x => `${x.err} ${x.url}`),
     stray
   }
-  log.fps[name].long = await page.evaluate(() => window.__opsLong || []).catch(() => [])
   save()
 }
 
@@ -163,7 +162,6 @@ if (want('probe')) {
     }
     return out
   })
-  log.fps[name].long = await page.evaluate(() => window.__opsLong || []).catch(() => [])
   save()
 }
 if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) } return await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr') })
