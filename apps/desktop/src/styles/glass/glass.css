@@ -1,0 +1,211 @@
+/* Hermes glass layer: Carnave's liquid-glass language (carnave/web CartDrawer, CartDock, Nav)
+   re-cut in the Gold Night palette. Tokens live on :root so the primitives (GlassPanel, GlassPill,
+   GlassButton, Glow in components/ui/glass.tsx) work under any skin; the app-wide surface pass
+   below is scoped to Gold Night so other skins keep their own look.
+
+   Frame budget: backdrop-filter only on surfaces whose content and geometry are static while open
+   (dialogs, sheets, their overlays, toasts). At most two filtered layers stack (overlay + dialog).
+   Menus, popovers and tooltips animate their geometry, and sidebars and lists scroll, so they get
+   the glass fill, rim and highlight without blur. */
+
+:root {
+  --glass-ink: 14 13 11;
+  --glass-panel: 22 20 15;
+  --glass-raised: 31 27 20;
+  --glass-gold: 201 165 90;
+  --glass-gold-hi: 232 199 122;
+  --glass-ivory: 242 232 213;
+
+  --glass-fill: linear-gradient(170deg, rgb(var(--glass-raised) / 0.86), rgb(var(--glass-panel) / 0.76) 38%, rgb(var(--glass-panel) / 0.82));
+  --glass-fill-quiet: linear-gradient(180deg, rgb(var(--glass-raised) / 0.72), rgb(var(--glass-panel) / 0.64));
+  --glass-fill-solid: rgb(26 23 18);
+  --glass-sheen: linear-gradient(165deg, rgb(var(--glass-ivory) / 0.07), transparent 32%);
+  --glass-tint-gold: linear-gradient(180deg, rgb(var(--glass-gold-hi) / 0.16), rgb(var(--glass-gold) / 0.08));
+  --glass-scrim: linear-gradient(100deg, rgb(var(--glass-ink) / 0.35) 0%, rgb(var(--glass-ink) / 0.55) 50%, rgb(var(--glass-ink) / 0.7) 100%);
+
+  --glass-blur: blur(24px) saturate(1.6);
+  --glass-blur-soft: blur(14px) saturate(1.3);
+  --glass-blur-scrim: blur(6px) saturate(1.1);
+
+  --glass-edge: rgb(var(--glass-gold-hi) / 0.16);
+  --glass-edge-strong: rgb(var(--glass-gold-hi) / 0.32);
+  --glass-highlight: inset 0 1px 0 rgb(var(--glass-ivory) / 0.1);
+  --glass-lowlight: inset 0 -1px 0 rgb(0 0 0 / 0.35);
+  --glass-shadow: 0 32px 70px -24px rgb(0 0 0 / 0.62), 0 12px 28px -14px rgb(0 0 0 / 0.45);
+  --glass-shadow-soft: 0 4px 14px rgb(0 0 0 / 0.28), 0 1px 4px rgb(0 0 0 / 0.2);
+  --glass-glow: 0 0 0 1px rgb(var(--glass-gold-hi) / 0.24), 0 0 22px -6px rgb(var(--glass-gold) / 0.5);
+  --glass-focus: 0 0 0 3px rgb(var(--glass-gold-hi) / 0.28);
+
+  --glass-r-sm: 10px;
+  --glass-r-md: 14px;
+  --glass-r-lg: 18px;
+  --glass-r-xl: 24px;
+  --glass-r-pill: 999px;
+
+  --glass-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --glass-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --glass-spring: linear(0, 0.049, 0.163, 0.306, 0.454, 0.591, 0.709, 0.806, 0.881, 0.936, 0.975, 1, 1.015, 1.023, 1.025, 1.022, 1.015, 1.008, 1.003, 1);
+  --glass-dur-fast: 160ms;
+  --glass-dur-base: 250ms;
+}
+
+/* ---- Primitives ---- */
+[data-glass='panel'] {
+  background: var(--glass-sheen), var(--glass-fill);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--glass-r-lg);
+  box-shadow: var(--glass-highlight), var(--glass-lowlight), var(--glass-shadow-soft);
+  color: rgb(var(--glass-ivory));
+}
+[data-glass='panel'][data-glass-blur] { -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+[data-glass='panel'][data-glass-elevation='high'] { box-shadow: var(--glass-highlight), var(--glass-lowlight), var(--glass-shadow); }
+[data-glass='pill'] {
+  align-items: center;
+  background: var(--glass-fill-quiet);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--glass-r-pill);
+  box-shadow: var(--glass-highlight);
+  color: rgb(var(--glass-ivory) / 0.88);
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+  line-height: 1;
+  padding: 4px 10px;
+}
+[data-glass='pill'][data-glass-tone='gold'] { background: var(--glass-tint-gold); border-color: var(--glass-edge-strong); color: rgb(var(--glass-gold-hi)); }
+[data-glass='button'] {
+  background: var(--glass-fill-quiet);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--glass-r-md);
+  box-shadow: var(--glass-highlight), var(--glass-shadow-soft);
+  color: rgb(var(--glass-ivory));
+  cursor: pointer;
+  padding: 6px 14px;
+  transition: transform var(--glass-dur-base) var(--glass-spring), box-shadow var(--glass-dur-fast) var(--glass-ease), border-color var(--glass-dur-fast) var(--glass-ease);
+}
+[data-glass='button']:hover:not(:disabled) { border-color: var(--glass-edge-strong); box-shadow: var(--glass-highlight), var(--glass-glow); }
+[data-glass='button']:active:not(:disabled) { transform: scale(0.97); }
+[data-glass='button']:focus-visible { box-shadow: var(--glass-highlight), var(--glass-focus); outline: none; }
+[data-glass='button']:disabled { cursor: default; opacity: 0.5; }
+[data-glass='button'][data-glass-tone='gold'] { background: var(--glass-tint-gold); border-color: var(--glass-edge-strong); color: rgb(var(--glass-gold-hi)); }
+[data-glass='glow'] {
+  background: radial-gradient(closest-side, rgb(var(--glass-gold) / 0.35), transparent);
+  border-radius: 50%;
+  filter: blur(18px);
+  inset: auto;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* ---- App-wide surface pass (Gold Night only) ---- */
+html[data-hermes-theme^='gold-night'] :is([data-slot='dialog-content'], [data-slot='sheet-content']) {
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  background: var(--glass-sheen), var(--glass-fill);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-highlight), var(--glass-lowlight), var(--glass-shadow);
+}
+html[data-hermes-theme^='gold-night'] [data-slot='dialog-content'] { border-radius: var(--glass-r-xl); }
+html[data-hermes-theme^='gold-night'] :is([data-slot='dialog-overlay'], [data-slot='sheet-overlay']) {
+  -webkit-backdrop-filter: var(--glass-blur-scrim);
+  backdrop-filter: var(--glass-blur-scrim);
+  background: var(--glass-scrim);
+}
+html[data-hermes-theme^='gold-night'] :is([data-slot='popover-content'], [data-slot='dropdown-menu-content'], [data-slot='dropdown-menu-sub-content'], [data-slot='context-menu-content'], [data-slot='context-menu-sub-content'], [data-slot='select-content']) {
+  background: var(--glass-sheen), linear-gradient(170deg, rgb(var(--glass-raised) / 0.97), rgb(var(--glass-panel) / 0.97));
+  border-color: var(--glass-edge);
+  border-radius: var(--glass-r-md);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+html[data-hermes-theme^='gold-night'] :is([data-slot='dropdown-menu-item'], [data-slot='context-menu-item'], [data-slot='select-item'], [data-slot='command-item']) { border-radius: var(--glass-r-sm); }
+html[data-hermes-theme^='gold-night'] [data-slot='tooltip-content'] {
+  background: linear-gradient(180deg, rgb(var(--glass-raised)), rgb(var(--glass-panel)));
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--glass-r-sm);
+  box-shadow: var(--glass-highlight), var(--glass-shadow-soft);
+  color: rgb(var(--glass-ivory));
+}
+html[data-hermes-theme^='gold-night'] [data-slot='sidebar-inner'] {
+  background: linear-gradient(180deg, rgb(var(--glass-raised) / 0.55), rgb(var(--glass-panel) / 0.35) 40%, transparent), var(--sidebar, transparent);
+  box-shadow: inset -1px 0 0 rgb(var(--glass-gold-hi) / 0.08);
+}
+html[data-hermes-theme^='gold-night'] :is([data-slot='sidebar-menu-button'], [data-slot='sidebar-menu-sub-button']) {
+  border-radius: var(--glass-r-sm);
+  transition: background-color var(--glass-dur-fast) var(--glass-ease), box-shadow var(--glass-dur-fast) var(--glass-ease), color var(--glass-dur-fast) var(--glass-ease);
+}
+html[data-hermes-theme^='gold-night'] :is([data-slot='sidebar-menu-button'], [data-slot='sidebar-menu-sub-button'])[data-active='true'] {
+  background: var(--glass-tint-gold);
+  box-shadow: var(--glass-highlight), inset 0 0 0 1px rgb(var(--glass-gold-hi) / 0.2);
+  color: rgb(var(--glass-ivory));
+}
+html[data-hermes-theme^='gold-night'] [data-slot='sidebar-group-label'] { color: rgb(var(--glass-gold) / 0.9); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+html[data-hermes-theme^='gold-night'] [data-slot='tabs-list'] {
+  background: rgb(var(--glass-ink) / 0.45);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--glass-r-pill);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35);
+  padding: 3px;
+}
+html[data-hermes-theme^='gold-night'] [data-slot='tabs-trigger'] {
+  border-radius: var(--glass-r-pill);
+  transition: background-color var(--glass-dur-fast) var(--glass-ease), box-shadow var(--glass-dur-fast) var(--glass-ease), color var(--glass-dur-fast) var(--glass-ease);
+}
+html[data-hermes-theme^='gold-night'] [data-slot='tabs-trigger'][data-state='active'] {
+  background: var(--glass-tint-gold);
+  box-shadow: var(--glass-highlight), var(--glass-glow);
+  color: rgb(var(--glass-gold-hi));
+}
+html[data-hermes-theme^='gold-night'] [data-slot='badge'] { border-radius: var(--glass-r-pill); box-shadow: var(--glass-highlight); }
+html[data-hermes-theme^='gold-night'] :is([data-slot='input'], [data-slot='textarea'], [data-slot='select-trigger'], [data-slot='input-group']) {
+  background-color: rgb(var(--glass-ink) / 0.5);
+  border-color: var(--glass-edge);
+  border-radius: var(--glass-r-sm);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
+  transition: border-color var(--glass-dur-fast) var(--glass-ease), box-shadow var(--glass-dur-fast) var(--glass-ease);
+}
+html[data-hermes-theme^='gold-night'] :is([data-slot='input'], [data-slot='textarea'], [data-slot='select-trigger']):focus-visible { border-color: var(--glass-edge-strong); box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3), var(--glass-focus); }
+html[data-hermes-theme^='gold-night'] [data-slot='button'] {
+  transition: background-color var(--glass-dur-fast) var(--glass-ease), border-color var(--glass-dur-fast) var(--glass-ease), box-shadow var(--glass-dur-fast) var(--glass-ease), transform var(--glass-dur-base) var(--glass-spring);
+}
+html[data-hermes-theme^='gold-night'] [data-slot='button']:active:not(:disabled) { transform: scale(0.97); }
+html[data-hermes-theme^='gold-night'] :is([data-slot='connector-card'], [data-slot='card-stack-surface'], [data-slot='alert']) {
+  background-image: var(--glass-sheen);
+  border-color: var(--glass-edge);
+  border-radius: var(--glass-r-lg);
+  box-shadow: var(--glass-highlight), var(--glass-shadow-soft);
+}
+html[data-hermes-theme^='gold-night'] [data-slot='switch'][data-state='checked'] { box-shadow: var(--glass-glow); }
+
+/* Ops panel: same language, no blur (the Office animates; the board and tables scroll). */
+html[data-hermes-theme^='gold-night'] :where([data-ops-settings-group], [data-ops-strip], [data-ops-board-toolbar], [data-ops-teams] > li, [data-ops-channels-body] li) {
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-highlight), var(--glass-shadow-soft);
+}
+html[data-hermes-theme^='gold-night'] :where(.ops-toast) {
+  -webkit-backdrop-filter: var(--glass-blur-soft);
+  backdrop-filter: var(--glass-blur-soft);
+  background: var(--glass-sheen), var(--glass-fill);
+  border-color: var(--glass-edge);
+  border-radius: var(--glass-r-md);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+
+/* ---- Fallbacks ---- */
+/* Reduced transparency: blur is already dropped app-wide in styles.css; also make fills opaque so
+   nothing reads through. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-fill: var(--glass-fill-solid);
+    --glass-fill-quiet: var(--glass-fill-solid);
+    --glass-sheen: linear-gradient(transparent, transparent);
+    --glass-scrim: rgb(var(--glass-ink) / 0.82);
+  }
+}
+@media (prefers-contrast: more) {
+  :root { --glass-edge: rgb(var(--glass-gold-hi) / 0.5); --glass-edge-strong: rgb(var(--glass-gold-hi) / 0.8); }
+}
+/* Reduced motion: the blanket rule in styles.css zeroes durations; also drop the press scale. */
+@media (prefers-reduced-motion: reduce) {
+  [data-glass='button']:active:not(:disabled),
+  html[data-hermes-theme^='gold-night'] [data-slot='button']:active:not(:disabled) { transform: none; }
+}

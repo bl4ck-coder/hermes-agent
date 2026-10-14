@@ -50,7 +50,7 @@ export function CopyLink({ kind, id, label }: { kind: LinkKind; id: string; labe
           setState('failed')
         }
       }}
-      title={state === 'copied' ? 'Link copied' : state === 'failed' ? 'Copy failed' : 'Copy link'}
+      aria-description={state === 'copied' ? 'Link copied' : state === 'failed' ? 'Copy failed' : 'Copy link'}
       type="button"
     >
       {state === 'copied' ? '✓' : '⧉'}

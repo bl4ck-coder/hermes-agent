@@ -93,7 +93,7 @@ export function StatCards({ stats, profile, onFocus }: { stats: OfficeStats; pro
       data-ops-stat={key}
       key={key}
       onClick={() => onFocus(target)}
-      title={T(hint)}
+      aria-description={T(hint)}
       type="button"
     >
       <strong data-ops-stat-value="">{v(value)}</strong>

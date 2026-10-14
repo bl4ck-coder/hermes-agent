@@ -41,7 +41,7 @@ export function InlineTitle({ task, readOnly, onOpen, onRename }: { task: BoardT
         onClick={onOpen}
         onDoubleClick={() => !readOnly && onRename && (setDraft(task.title), (done.current = false), setEditing(true))}
         onKeyDown={e => e.key === 'F2' && !readOnly && onRename && (e.preventDefault(), setDraft(task.title), (done.current = false), setEditing(true))}
-        title={readOnly || !onRename ? undefined : 'Double-click or F2 to rename'}
+        aria-description={readOnly || !onRename ? undefined : 'Double-click or F2 to rename'}
         type="button"
       >
         {task.title}

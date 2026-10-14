@@ -273,7 +273,7 @@ function Orrery({
       key={o.profile}
       onClick={() => onOpenProfile?.(o.profile)}
       style={{ position: 'absolute', left: `calc(50% + ${o.x}px)`, top: `calc(50% + ${o.y}px)`, transform: 'translate(-50%, -50%)', whiteSpace: 'nowrap' }}
-      title={o.presence === 'unknown' ? `${o.profile}: ${UNKNOWN_WHY}` : undefined}
+      aria-description={o.presence === 'unknown' ? `${o.profile}: ${UNKNOWN_WHY}` : undefined}
       type="button"
     >
       <Sigil name={o.profile} size={o.ring === 0 ? 26 : 16} />
