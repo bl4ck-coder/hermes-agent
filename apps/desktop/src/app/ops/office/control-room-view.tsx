@@ -103,9 +103,9 @@ export function StatCards({ stats, profile, onFocus }: { stats: OfficeStats; pro
 
   return (
     <div aria-label="Office stats" data-ops-stats="" role="group">
-      {card('working', 'Working', stats.working, stats.stuck === null ? null : `${stats.stuck} stuck`, 'stuck', false, 'Running tasks on the board; stuck = blocked, stale heartbeat or failing')}
+      {card('working', 'Working agents', stats.working, stats.stuck === null ? null : `${stats.stuck} at risk`, 'stuck', false, 'Profiles working, waiting on you or blocked (fleet presence; running tasks when the fleet is unavailable); at risk = blocked, stale heartbeat, failing runs or failing cron')}
       {card('open', 'Open tasks', stats.open, profile && stats.openMine !== null ? `${stats.openMine} for ${profile}` : null, 'queue', false, 'Every task not done or archived')}
-      {card('done-week', 'Done this week', stats.doneWeek, null, 'delivered', false, 'Tasks completed in the last 7 days')}
+      {card('done-week', 'Done this week', stats.doneWeek, null, 'delivered', false, 'Tasks completed since Monday 00:00 in the Ops timezone (Settings › Timezone)')}
       {card('attention', 'Needs attention', stats.attention, null, 'needs-you', true, 'Decisions waiting on you plus stuck items, each counted once')}
     </div>
   )

@@ -18,6 +18,7 @@ import type {
 } from '../feed/ops-client'
 import { parseDispatch, shownPresence } from '../feed/ops-client'
 import { EASE, effectiveReduced, loadMotion, MOTION, systemPrefersReduced } from '../motion/motion'
+import { opsTimezone } from '../motion/tz'
 import { ToastQueue } from '../primitives/toast-queue'
 
 import {
@@ -39,6 +40,8 @@ export type OfficeLayout = 'orrery' | 'table'
 
 export interface OfficeViewProps {
   fleet: FleetResponse | null
+  /** SPEC v2.1 4a: Ops timezone; default = Settings › Timezone (else host). */
+  timezone?: string
   fleetError?: unknown
   nowS: number
   pending: ApprovalItem[] | null
@@ -432,7 +435,12 @@ export function OfficeView(props: OfficeViewProps) {
   const profile = props.profile ?? null
   const stored = useOfficeThresholds()
   const th = props.thresholds ?? stored
-  const stats = officeStats(tasks, props.cron, props.pending, profile, nowS, th)
+
+  const stats = officeStats(tasks, props.cron, props.pending, profile, nowS, th, {
+    tz: props.timezone ?? opsTimezone(),
+    presence: fleet ? fleet.profiles.map(p => ({ profile: p.profile, presence: String(p.presence) })) : null
+  })
+
   const stuck = stuckItems(tasks, props.cron, nowS, th)
   const delivered = deliveredToday(tasks, nowS)
   const projects = projectProgress(props.projects ?? null, tasks)

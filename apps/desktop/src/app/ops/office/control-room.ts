@@ -123,22 +123,64 @@ export interface OfficeStats {
   attention: number | null
 }
 
+/* ------------------------- Canonical sets (SPEC v2.1 4a) ------------------------ */
+
+/** Open tasks = exactly these statuses; archived and triage/scheduled are not "open" for the stat card. */
+export const OPEN_COUNT_STATUSES = new Set(['todo', 'ready', 'running', 'blocked', 'review'])
+/** Working agents = profiles whose A1 presence is one of these. */
+export const WORKING_PRESENCE = new Set(['working', 'needs_you', 'blocked'])
+
+/** Wall-clock offset of `tz` at instant `ms` (ms to add to UTC to get local wall time). */
+export function tzOffsetMs(ms: number, tz?: string): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(ms))
+    const get = (k: string) => Number(parts.find(p => p.type === k)?.value ?? 0)
+    const wall = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'))
+
+    return wall - Math.floor(ms / 1000) * 1000
+  } catch {
+    return -new Date(ms).getTimezoneOffset() * 60_000
+  }
+}
+
+/** Start (epoch seconds) of the current ISO week (Monday 00:00) in `tz`. */
+export function isoWeekStartS(nowS: number, tz?: string): number {
+  const ms = nowS * 1000
+  const wall = new Date(ms + tzOffsetMs(ms, tz))
+  const dow = (wall.getUTCDay() + 6) % 7
+  const startWall = Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate() - dow)
+  // Convert local midnight back to an instant using the offset in force at that midnight.
+  const guess = startWall - tzOffsetMs(startWall, tz)
+
+  return Math.floor((startWall - tzOffsetMs(guess, tz)) / 1000)
+}
+
+export interface OfficeStatsOptions {
+  /** Ops timezone (Settings › Timezone); undefined = host local. */
+  tz?: string
+  /** A1 presence per profile; when given, Working agents counts profiles, not running tasks. */
+  presence?: { profile: string; presence: string }[] | null
+}
+
 export function officeStats(
   tasks: BoardTask[] | null,
   cron: CronJobLite[] | null,
   pending: ApprovalItem[] | null,
   profile: string | null,
   nowS: number,
-  th: OfficeThresholds = DEFAULT_THRESHOLDS
+  th: OfficeThresholds = DEFAULT_THRESHOLDS,
+  opts: OfficeStatsOptions = {}
 ): OfficeStats {
   const stuck = stuckItems(tasks, cron, nowS, th)
+  const weekStart = isoWeekStartS(nowS, opts.tz)
+  const openCount = (t: BoardTask) => OPEN_COUNT_STATUSES.has(t.status)
 
   return {
-    working: tasks ? tasks.filter(t => t.status === 'running').length : null,
+    working: opts.presence ? opts.presence.filter(p => WORKING_PRESENCE.has(p.presence)).length : tasks ? tasks.filter(t => t.status === 'running').length : null,
     stuck: stuck ? stuck.length : null,
-    open: tasks ? tasks.filter(isOpen).length : null,
-    openMine: tasks && profile ? tasks.filter(t => isOpen(t) && t.assignee === profile).length : null,
-    doneWeek: tasks ? tasks.filter(t => t.status === 'done' && (n(t.completed_at) ?? -Infinity) >= nowS - WEEK_S).length : null,
+    open: tasks ? tasks.filter(openCount).length : null,
+    openMine: tasks && profile ? tasks.filter(t => openCount(t) && t.assignee === profile).length : null,
+    doneWeek: tasks ? tasks.filter(t => t.status === 'done' && (n(t.completed_at) ?? -Infinity) >= weekStart && (n(t.completed_at) ?? Infinity) <= nowS).length : null,
     // Needs attention = every decision waiting on a human + every stuck item, without double counting
     // kanban review/blocked rows that appear in both lists.
     attention:
@@ -183,13 +225,13 @@ export function myQueue(tasks: BoardTask[] | null, profile: string | null, nowS:
       overdue.push({ task: t, why: `heartbeat ${fmtAge(nowS - hb)} old` })
     } else if (t.status === 'review' && since !== null && nowS - since > th.reviewOverdueS) {
       overdue.push({ task: t, why: `in review for ${fmtAge(nowS - since)}` })
-    } else if (isOpen(t)) {
+    } else if (t.status === 'ready' || t.status === 'todo') {
       upcoming.push({ task: t })
     }
   }
 
-  // Upcoming: what will run next first (priority, then oldest); completed: newest first.
-  upcoming.sort((a, b) => (n(b.task.priority) ?? 0) - (n(a.task.priority) ?? 0) || (n(a.task.created_at) ?? 0) - (n(b.task.created_at) ?? 0))
+  // SPEC v2.1 4a: Upcoming = ready/todo, (priority desc, updated desc); no due dates exist (R78 Cut).
+  upcoming.sort((a, b) => (n(b.task.priority) ?? 0) - (n(a.task.priority) ?? 0) || (touchedAt(b.task) ?? 0) - (touchedAt(a.task) ?? 0))
   completed.sort((a, b) => (n(b.task.completed_at) ?? 0) - (n(a.task.completed_at) ?? 0))
 
   return { upcoming, overdue, completed }

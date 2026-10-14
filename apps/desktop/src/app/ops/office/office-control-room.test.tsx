@@ -39,7 +39,7 @@ describe('R63 stat cards', () => {
 
   it('renders cards, garnet only when attention > 0, and a click focuses its section', () => {
     render(<OfficeView {...base} />)
-    expect(document.querySelector('[data-ops-stat="working"]')?.textContent).toMatch(/3.*Working.*4 stuck/)
+    expect(document.querySelector('[data-ops-stat="working"]')?.textContent).toMatch(/3.*Working agents.*4 at risk/)
     expect(document.querySelector('[data-ops-stat="open"]')?.textContent).toMatch(/8.*6 for builder/)
     expect(document.querySelector('[data-ops-stat="attention"]')?.getAttribute('data-ops-alarm')).toBe('garnet')
     fireEvent.click(document.querySelector('[data-ops-stat="working"]')!)
@@ -83,12 +83,13 @@ describe('R64 my queue', () => {
       ['run-stale', 'heartbeat 20 min old'],
       ['rev-old', 'in review for 2 d']
     ])
-    expect(q.upcoming.map(r => r.task.id)).toEqual(['todo-hi', 'run-ok', 'fail', 'rev-new'])
+    // SPEC v2.1 4a: Upcoming = ready/todo only (running/review are elsewhere), priority desc then updated desc.
+    expect(q.upcoming.map(r => r.task.id)).toEqual(['todo-hi', 'fail'])
     expect(q.completed.map(r => r.task.id)).toEqual(['done-1h'])
     render(<OfficeView {...base} />)
     // opens on Overdue because there is overdue work
     expect(document.querySelector('[data-ops-queue-tab="overdue"]')?.getAttribute('aria-selected')).toBe('true')
-    expect(document.querySelector('[data-ops-queue-count="upcoming"]')?.textContent).toBe('4')
+    expect(document.querySelector('[data-ops-queue-count="upcoming"]')?.textContent).toBe('2')
     fireEvent.click(document.querySelector('[data-ops-queue-tab="completed"]')!)
     expect(document.querySelector('[data-ops-queue-row="done-1h"]')).toBeTruthy()
   })
