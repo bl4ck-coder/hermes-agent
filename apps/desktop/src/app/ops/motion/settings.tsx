@@ -1,11 +1,12 @@
 /**
  * W9 Settings tab and Motion readout (ops-panel P5-03); the shortcut sheet is the shell's OpsShortcutSheet. Settings only shows values it
- * has a source for; theme opens Desktop settings (D5); approval mode and secret presence say
- * "not available yet" until a backend reports them.
+ * has a source for; theme opens Desktop settings (D5); approval mode says
+ * "not available yet"; secret presence lists names and set/unset only until a backend reports them.
  */
 
 import { useMemo, useState } from 'react'
 
+import { createOpsActions, envPresenceList } from '../feed/ops-actions'
 import { createOpsClient, type PolicyView } from '../feed/ops-client'
 import { useOpsResource } from '../office/office-container'
 import { OpsShortcutSheet } from '../shortcut-sheet'
@@ -61,8 +62,11 @@ export function MotionReadout({ mode, onChange }: { mode: MotionMode; onChange: 
 export function SettingsView({
   policy,
   defaultModel,
-  onOpenRoute
+  onOpenRoute,
+  secrets = null
 }: {
+  /** O42: names and set/unset only, never values. null = unknown. */
+  secrets?: { name: string; set: boolean }[] | null
   policy: PolicyView | null
   defaultModel: { provider?: string | null; model?: string | null } | null
   onOpenRoute?: (r: string) => void
@@ -114,7 +118,19 @@ export function SettingsView({
         <dt>Approval mode per profile</dt>
         <dd data-ops-unavailable="">Not available yet</dd>
         <dt>Secret presence</dt>
-        <dd data-ops-unavailable="">Not available yet</dd>
+        <dd data-ops-field="secrets">
+          {secrets === null ? (
+            'unknown'
+          ) : (
+            <ul aria-label="secret presence">
+              {secrets.map(x => (
+                <li data-ops-secret={x.name} data-ops-set={x.set ? 'yes' : 'no'} key={x.name}>
+                  {x.name}: {x.set ? 'set' : 'not set'}
+                </li>
+              ))}
+            </ul>
+          )}
+        </dd>
         <dt>Shortcuts</dt>
         <dd>
           <button onClick={() => setSheet(true)} type="button">
@@ -131,6 +147,8 @@ export function SettingsContainer({ profile, onOpenRoute }: { profile: string; o
   const client = useMemo(() => createOpsClient(), [])
   const policy = useOpsResource(() => client.policy(profile), [client, profile], 30_000)
   const model = useOpsResource(() => client.modelNode(profile), [client, profile], 30_000)
+  const actions = useMemo(() => createOpsActions(), [])
+  const env = useOpsResource(() => actions.envPresence(profile), [actions, profile], 30_000)
 
-  return <SettingsView defaultModel={model.value} onOpenRoute={onOpenRoute} policy={policy.value} />
+  return <SettingsView defaultModel={model.value} onOpenRoute={onOpenRoute} policy={policy.value} secrets={envPresenceList(env.value)} />
 }
