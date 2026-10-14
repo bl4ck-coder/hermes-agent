@@ -14,6 +14,9 @@ import type { KanbanTask } from '../feed/ops-client'
 import { listOrNull, useOpsResource } from '../office/office-container'
 import { activityRow } from '../office/office-toasts'
 
+import { createB4Client } from './b4-lenses'
+import { type AppCard, appCards, appGlyph, appsInTags } from './b4-model'
+
 const why = (e: unknown) => (e instanceof Error ? e.message : e ? String(e) : null)
 /** P8: local time for the operator (was UTC ISO). */
 const iso = (s?: number | null) => (typeof s === 'number' && s > 0 ? new Date(s * 1000).toLocaleString() : 'unknown')
@@ -215,11 +218,14 @@ export interface BlueprintRow {
 export function TemplatesLensView({
   blueprints,
   error,
-  onOpenRoute
+  onOpenRoute,
+  apps
 }: {
   blueprints: BlueprintRow[] | null
   error?: unknown
   onOpenRoute?: (r: string) => void
+  /** G67 (P8 b4): known apps; a blueprint tag naming one shows its icon. */
+  apps?: Pick<AppCard, 'id' | 'name' | 'kind'>[] | null
 }) {
   if (!blueprints) {
     return <Unavailable error={error} what="Templates" />
@@ -234,6 +240,11 @@ export function TemplatesLensView({
         {blueprints.map(b => (
           <li data-ops-blueprint={b.key} key={b.key}>
             <strong>{b.title}</strong> <span data-ops-tag="">{b.category}</span>
+            {appsInTags(b.tags, apps ?? []).map(a => (
+              <span aria-label={a.name} data-ops-bp-app={a.id} key={a.id} title={a.name}>
+                {appGlyph(a.name)}
+              </span>
+            ))}
             {b.source === 'plugin' ? <span> (plugin)</span> : null}
             <p>{b.description}</p>
             <button disabled={!onOpenRoute} onClick={() => onOpenRoute?.(`/cron?blueprint=${encodeURIComponent(b.key)}`)} type="button">
@@ -340,8 +351,9 @@ export function ProjectsLens({ actions: a, onOpenBoard }: { actions?: OpsActions
 export function TemplatesLens({ profile, actions: a, onOpenRoute }: { profile: string; actions?: OpsActions; onOpenRoute?: (r: string) => void }) {
   const actions = useActions(a)
   const r = useOpsResource(() => actions.blueprints(profile), [actions, profile], 60_000)
+  const apps = useOpsResource(() => (a ? Promise.resolve(null) : createB4Client().channels(profile).then(appCards)), [a, profile], 300_000)
 
-  return <TemplatesLensView blueprints={listOrNull(r.value?.blueprints)} error={r.error} onOpenRoute={onOpenRoute} />
+  return <TemplatesLensView apps={apps.value} blueprints={listOrNull(r.value?.blueprints)} error={r.error} onOpenRoute={onOpenRoute} />
 }
 
 export function ActivityLens({ actions: a, onOpenTask }: { actions?: OpsActions; onOpenTask?: (id: string) => void }) {

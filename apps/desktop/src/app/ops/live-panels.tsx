@@ -5,6 +5,7 @@ import { BoardContainer } from './board/board-container'
 import { CanvasContainer } from './canvas/canvas-container'
 import { AgentCardContainer, RunDetailContainer } from './detail/details'
 import { TaskTabContainer } from './detail/task-tab'
+import { AgentsLens, ChannelsLens, SkillsLens } from './lenses/b4-lenses'
 import { ActivityLens, ProjectsLens, RunsLens, TemplatesLens } from './lenses/lenses'
 import { SettingsContainer } from './motion/settings'
 import { hostIdentityFromTab, type OpsTab } from './navigation-store'
@@ -59,6 +60,15 @@ export function opsLivePanel(
 
       case 'lens:templates':
         return <TemplatesLens onOpenRoute={onOpenRoute} profile={profile} />
+
+      case 'lens:agents':
+        return <AgentsLens onOpenRoute={onOpenRoute} />
+
+      case 'lens:skills':
+        return <SkillsLens onOpenRoute={onOpenRoute} profile={profile} />
+
+      case 'lens:channels':
+        return <ChannelsLens onOpenRoute={onOpenRoute} profile={profile} />
 
       case 'lens:activity':
         return <ActivityLens onOpenTask={openTask} />
