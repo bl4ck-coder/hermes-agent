@@ -264,7 +264,7 @@ function AgentLinks({ agents, onOpen }: { agents: string[]; onOpen?: (p: string)
   return (
     <span data-ops-skill-agents="">
       {head.map(a => (
-        <button disabled={!onOpen} key={a} onClick={() => onOpen?.(a)} type="button">
+        <button data-ops-skill-agent={a} disabled={!onOpen} key={a} onClick={() => onOpen?.(a)} type="button">
           {a}
         </button>
       ))}

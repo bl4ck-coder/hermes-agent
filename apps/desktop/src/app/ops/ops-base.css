@@ -593,3 +593,17 @@
 :where(.ops-toast-queue [data-needs-you]:hover) { text-decoration: underline; }
 :where([data-ops-settings-group] > dl) { align-items: start; }
 :where([data-ops-settings-group] > dl > dt) { min-height: 34px; padding: 9px 0 6px; }
+
+/* ---- B29: Skills table chips, first-column names, Office thresholds as a tidy control row ---- */
+:where([data-ops-skill-agents]) { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+:where([data-ops-skill-agents]) :where(button) { background: transparent; border-color: var(--ops-line); border-radius: 999px; color: var(--ops-muted); font-size: 11px; gap: 4px; padding: 0 7px 0 3px; }
+:where([data-ops-skill-agents]) :where(button:hover:not(:disabled)) { border-color: var(--ops-line-strong); color: var(--ops-fg); }
+:where([data-ops-skill-agents]) :where([data-ops-agents-more]) { padding: 0 7px; }
+:where(.ops-data-table td:first-child > button) { background: transparent; border-color: transparent; font-weight: 600; padding: 1px 4px; }
+:where(.ops-data-table td:first-child > button:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; color: var(--ops-gold); }
+:where(.ops-data-table td) :where(button:not(:first-child)) { font-size: 11px; padding: 0 6px; }
+:where([data-ops-thresholds]) { align-items: end; display: flex; flex-wrap: wrap; gap: 10px 20px; }
+:where([data-ops-thresholds] > legend) { flex-basis: 100%; }
+:where([data-ops-thresholds] > label) { color: var(--ops-muted); display: inline-flex; flex-direction: column; font-size: 12px; gap: 4px; }
+:where([data-ops-thresholds] > label > input) { color: var(--ops-fg); font-variant-numeric: tabular-nums; width: 90px; }
+:where([data-ops-thresholds] > button) { background: transparent; color: var(--ops-muted); }
