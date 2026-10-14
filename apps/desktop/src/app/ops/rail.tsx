@@ -547,10 +547,10 @@ export function Rail({
       <FleetList compact={icons} feed={fleet} filter={filter} />
       {icons ? null : (
         <>
-          <button data-ops-connect="" onClick={onConnect} style={fit} type="button">
+          <button aria-label={copy.rail.connect} data-ops-connect="" onClick={onConnect} style={fit} type="button">
             {icons ? '+' : copy.rail.connect}
           </button>
-          <button aria-keyshortcuts="Control+," data-ops-settings="" onClick={onOpenSettings} style={fit} type="button">
+          <button aria-keyshortcuts="Control+," aria-label={copy.rail.settings} data-ops-settings="" onClick={onOpenSettings} style={fit} type="button">
             {icons ? '⚙' : copy.rail.settings}
             {icons ? null : <kbd>Ctrl+,</kbd>}
           </button>
@@ -559,10 +559,10 @@ export function Rail({
       </div>
       {icons ? (
         <div data-ops-rail-footer="" style={{ flex: '0 0 auto' }}>
-          <button data-ops-connect="" onClick={onConnect} style={fit} type="button">
+          <button aria-label={copy.rail.connect} data-ops-connect="" onClick={onConnect} style={fit} type="button">
             +
           </button>
-          <button aria-keyshortcuts="Control+," data-ops-settings="" onClick={onOpenSettings} style={fit} type="button">
+          <button aria-keyshortcuts="Control+," aria-label={copy.rail.settings} data-ops-settings="" onClick={onOpenSettings} style={fit} type="button">
             ⚙
           </button>
         </div>
