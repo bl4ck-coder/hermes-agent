@@ -11,6 +11,7 @@ import { NodeEditor } from '../canvas/node-editor-view'
 import { approvalMode, createOpsActions, envPresenceList } from '../feed/ops-actions'
 import { createOpsClient, type PolicyView } from '../feed/ops-client'
 import { useOpsResource } from '../office/office-container'
+import { ThresholdSettings } from '../office/thresholds'
 import { OpsShortcutSheet } from '../shortcut-sheet'
 
 import { cycleMotion, loadMotion, type MotionMode, saveMotion } from './motion'
@@ -93,6 +94,7 @@ export function SettingsView({
 
   return (
     <section aria-label="Ops settings" data-ops-settings="">
+      <ThresholdSettings />
       <dl>
         <dt>Theme</dt>
         <dd>

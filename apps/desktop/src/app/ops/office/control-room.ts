@@ -6,6 +6,8 @@
 
 import type { ApprovalItem, CronJobLite, KanbanTask } from '../feed/ops-client'
 
+import { DEFAULT_THRESHOLDS, type OfficeThresholds } from './thresholds'
+
 /** Board rows carry more than the Ops client type names (plugin_api._task_dict). */
 export type BoardTask = KanbanTask & {
   priority?: number | null
@@ -21,8 +23,9 @@ export type BoardTask = KanbanTask & {
   progress?: { done: number; total: number } | null
 }
 
-export const STALE_HEARTBEAT_S = 600
-export const REVIEW_OVERDUE_S = 86_400
+/** Named defaults (operator overrides live in Ops settings → Office thresholds). */
+export const STALE_HEARTBEAT_S = DEFAULT_THRESHOLDS.staleHeartbeatS
+export const REVIEW_OVERDUE_S = DEFAULT_THRESHOLDS.reviewOverdueS
 export const DAY_S = 86_400
 export const WEEK_S = 7 * DAY_S
 
@@ -57,7 +60,7 @@ export interface StuckItem {
   severity: number
 }
 
-export function stuckItems(tasks: BoardTask[] | null, cron: CronJobLite[] | null, nowS: number): StuckItem[] | null {
+export function stuckItems(tasks: BoardTask[] | null, cron: CronJobLite[] | null, nowS: number, th: OfficeThresholds = DEFAULT_THRESHOLDS): StuckItem[] | null {
   if (!tasks && !cron) {
     return null
   }
@@ -71,7 +74,7 @@ export function stuckItems(tasks: BoardTask[] | null, cron: CronJobLite[] | null
 
     if (fails > 0 && t.status !== 'done') {
       out.push({ ...base, key: `task:${t.id}`, reason: 'failing', detail: `${fails} failed run(s)${t.last_failure_error ? `: ${t.last_failure_error}` : ''}`, ageS: ageOf(touchedAt(t), nowS), severity: 3 })
-    } else if (t.status === 'running' && hb !== null && nowS - hb > STALE_HEARTBEAT_S) {
+    } else if (t.status === 'running' && hb !== null && nowS - hb > th.staleHeartbeatS) {
       out.push({ ...base, key: `task:${t.id}`, reason: 'stale_heartbeat', detail: `no heartbeat for ${fmtAge(nowS - hb)}`, ageS: nowS - hb, severity: 2 })
     } else if (t.status === 'blocked') {
       out.push({ ...base, key: `task:${t.id}`, reason: 'blocked', detail: t.block_kind ? `blocked (${t.block_kind})` : 'blocked', ageS: ageOf(touchedAt(t), nowS), severity: 1 })
@@ -125,9 +128,10 @@ export function officeStats(
   cron: CronJobLite[] | null,
   pending: ApprovalItem[] | null,
   profile: string | null,
-  nowS: number
+  nowS: number,
+  th: OfficeThresholds = DEFAULT_THRESHOLDS
 ): OfficeStats {
-  const stuck = stuckItems(tasks, cron, nowS)
+  const stuck = stuckItems(tasks, cron, nowS, th)
 
   return {
     working: tasks ? tasks.filter(t => t.status === 'running').length : null,
@@ -157,7 +161,7 @@ export interface QueueRow {
   why?: string
 }
 
-export function myQueue(tasks: BoardTask[] | null, profile: string | null, nowS: number): Record<QueueTab, QueueRow[]> | null {
+export function myQueue(tasks: BoardTask[] | null, profile: string | null, nowS: number, th: OfficeThresholds = DEFAULT_THRESHOLDS): Record<QueueTab, QueueRow[]> | null {
   if (!tasks || !profile) {
     return null
   }
@@ -175,9 +179,9 @@ export function myQueue(tasks: BoardTask[] | null, profile: string | null, nowS:
       if ((n(t.completed_at) ?? -Infinity) >= nowS - WEEK_S) {
         completed.push({ task: t })
       }
-    } else if (t.status === 'running' && hb !== null && nowS - hb > STALE_HEARTBEAT_S) {
+    } else if (t.status === 'running' && hb !== null && nowS - hb > th.staleHeartbeatS) {
       overdue.push({ task: t, why: `heartbeat ${fmtAge(nowS - hb)} old` })
-    } else if (t.status === 'review' && since !== null && nowS - since > REVIEW_OVERDUE_S) {
+    } else if (t.status === 'review' && since !== null && nowS - since > th.reviewOverdueS) {
       overdue.push({ task: t, why: `in review for ${fmtAge(nowS - since)}` })
     } else if (isOpen(t)) {
       upcoming.push({ task: t })

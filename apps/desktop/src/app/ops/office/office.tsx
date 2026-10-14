@@ -31,6 +31,7 @@ import { DeliveredList, MyQueue, ProjectTable, SectionFrame, type SectionId, Sta
 import { type KanbanAction, NeedsYouQueue, type PolicyNeed } from './needs-you'
 import { activityRow, focusNeedsYouRow, toastsFromPending } from './office-toasts'
 import { layoutOrrery, ORRERY_CAP } from './orrery'
+import { DEFAULT_THRESHOLDS, type OfficeThresholds, useOfficeThresholds } from './thresholds'
 
 export type OfficeLayout = 'orrery' | 'table'
 
@@ -75,6 +76,8 @@ export interface OfficeViewProps {
   onOpenRun?: (runId: string) => void
   onOpenAttachment?: (taskId: string, a: AttachmentLite) => void
   onNewProfile?: () => void
+  /** Stuck / Overdue thresholds; default = Ops settings (useOfficeThresholds). */
+  thresholds?: OfficeThresholds
 }
 
 const unknown = 'unknown'
@@ -122,7 +125,7 @@ function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; erro
 }
 
 /** R1: cron runs in the next 24 h and overdue work (a running task whose heartbeat is stale). */
-export function todayCounts(cron: CronJobLite[] | null, inFlight: KanbanTask[] | null, nowS: number) {
+export function todayCounts(cron: CronJobLite[] | null, inFlight: KanbanTask[] | null, nowS: number, th: OfficeThresholds = DEFAULT_THRESHOLDS) {
   const next24 = cron
     ? cron.filter(j => {
         if (j.enabled === false) {
@@ -139,15 +142,15 @@ export function todayCounts(cron: CronJobLite[] | null, inFlight: KanbanTask[] |
     ? inFlight.filter(t => {
         const hb = (t as KanbanTask & { last_heartbeat_at?: number | null }).last_heartbeat_at
 
-        return typeof hb === 'number' && nowS - hb > 600
+        return typeof hb === 'number' && nowS - hb > th.staleHeartbeatS
       }).length
     : null
 
   return { next24, overdue, running: inFlight ? inFlight.length : null }
 }
 
-function TodayStrip({ cron, inFlight, nowS }: { cron: CronJobLite[] | null; inFlight: KanbanTask[] | null; nowS: number }) {
-  const c = todayCounts(cron, inFlight, nowS)
+function TodayStrip({ cron, inFlight, nowS, th }: { cron: CronJobLite[] | null; inFlight: KanbanTask[] | null; nowS: number; th: OfficeThresholds }) {
+  const c = todayCounts(cron, inFlight, nowS, th)
   const n = (v: number | null) => (v === null ? unknown : String(v))
 
   return (
@@ -361,8 +364,10 @@ export function OfficeView(props: OfficeViewProps) {
   const errors = props.errors ?? {}
   const tasks = props.tasks === undefined ? null : props.tasks
   const profile = props.profile ?? null
-  const stats = officeStats(tasks, props.cron, props.pending, profile, nowS)
-  const stuck = stuckItems(tasks, props.cron, nowS)
+  const stored = useOfficeThresholds()
+  const th = props.thresholds ?? stored
+  const stats = officeStats(tasks, props.cron, props.pending, profile, nowS, th)
+  const stuck = stuckItems(tasks, props.cron, nowS, th)
   const delivered = deliveredToday(tasks, nowS)
   const projects = projectProgress(props.projects ?? null, tasks)
   const openCron = props.onOpenRoute ? (id: string) => props.onOpenRoute?.(`/cron?job=${encodeURIComponent(id)}`) : undefined
@@ -395,7 +400,7 @@ export function OfficeView(props: OfficeViewProps) {
         )}
       </header>
       <StatCards onFocus={focus} profile={profile} stats={stats} />
-      <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} />
+      <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} th={th} />
       <HealthStrip error={props.fleetError} fleet={fleet} nowS={nowS} />
       <CronStrip cron={props.cron} onOpenCron={openCron} />
       <div aria-label="Fleet layout" role="tablist">
@@ -444,7 +449,7 @@ export function OfficeView(props: OfficeViewProps) {
       </SectionFrame>
       {profile ? (
         <SectionFrame error={errors.board} focused={focused === 'queue'} id="queue" loading={boardLoading} title={`My queue · ${profile}`}>
-          {tasks ? <MyQueue nowS={nowS} onOpenTask={props.onOpenTask} profile={profile} tasks={tasks} /> : null}
+          {tasks ? <MyQueue nowS={nowS} onOpenTask={props.onOpenTask} profile={profile} tasks={tasks} th={th} /> : null}
         </SectionFrame>
       ) : null}
       <SectionFrame error={errors.board} focused={focused === 'in-flight'} id="in-flight" loading={props.inFlight === null} title="In flight">

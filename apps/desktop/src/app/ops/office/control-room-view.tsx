@@ -19,6 +19,7 @@ import {
   sigil,
   type StuckItem
 } from './control-room'
+import type { OfficeThresholds } from './thresholds'
 
 export type SectionId = 'stats' | 'needs-you' | 'stuck' | 'queue' | 'projects' | 'in-flight' | 'delivered' | 'activity' | 'cost' | 'fleet'
 
@@ -141,8 +142,8 @@ export function StuckList({ items, onOpenTask, onOpenCron }: { items: StuckItem[
 
 /* ------------------------------------ R64 my queue ----------------------------------- */
 
-export function MyQueue({ tasks, profile, nowS, onOpenTask }: { tasks: BoardTask[]; profile: string; nowS: number; onOpenTask?: (id: string) => void }) {
-  const q = myQueue(tasks, profile, nowS)!
+export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: BoardTask[]; profile: string; nowS: number; th?: OfficeThresholds; onOpenTask?: (id: string) => void }) {
+  const q = myQueue(tasks, profile, nowS, th)!
   // Open where the work is: overdue first when there is any.
   const [tab, setTab] = useState<QueueTab>(() => (q.overdue.length ? 'overdue' : 'upcoming'))
   const rows = q[tab]
