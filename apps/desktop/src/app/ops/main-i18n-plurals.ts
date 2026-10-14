@@ -10,6 +10,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failing": {"one": "{n} con fallos", "other": "{n} con fallos"},
     "{n} skills": {"one": "{n} habilidad", "other": "{n} habilidades"},
     "{n} installed": {"one": "{n} instalada", "other": "{n} instaladas"},
+    "{n} approvals are waiting.": {"one": "{n} aprobación pendiente", "other": "{n} aprobaciones pendientes"},
   },
   "fr": {
     "{n} cards": {"one": "{n} carte", "other": "{n} cartes"},
@@ -20,6 +21,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failing": {"one": "{n} en échec", "other": "{n} en échec"},
     "{n} skills": {"one": "{n} compétence", "other": "{n} compétences"},
     "{n} installed": {"one": "{n} installée", "other": "{n} installées"},
+    "{n} approvals are waiting.": {"one": "{n} approbation en attente", "other": "{n} approbations en attente"},
   },
   "de": {
     "{n} cards": {"one": "{n} Karte", "other": "{n} Karten"},
@@ -30,6 +32,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failing": {"one": "{n} fehlerhaft", "other": "{n} fehlerhaft"},
     "{n} skills": {"one": "{n} Skill", "other": "{n} Skills"},
     "{n} installed": {"one": "{n} installiert", "other": "{n} installiert"},
+    "{n} approvals are waiting.": {"one": "{n} Freigabe ausstehend", "other": "{n} Freigaben ausstehend"},
   },
   "ru": {
     "{n} cards": {"one": "{n} карточка", "few": "{n} карточки", "many": "{n} карточек", "other": "{n} карточки"},
@@ -40,6 +43,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failing": {"one": "{n} сбой", "few": "{n} сбоя", "many": "{n} сбоев", "other": "{n} сбоя"},
     "{n} skills": {"one": "{n} навык", "few": "{n} навыка", "many": "{n} навыков", "other": "{n} навыка"},
     "{n} installed": {"one": "{n} установлен", "few": "{n} установлено", "many": "{n} установлено", "other": "{n} установлено"},
+    "{n} approvals are waiting.": {"one": "{n} одобрение ждёт", "few": "{n} одобрения ждут", "many": "{n} одобрений ждут", "other": "{n} одобрения ждут"},
   },
   "ja": {
     "{n} cards": {"other": "{n} 枚のカード"},
@@ -50,6 +54,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failing": {"other": "{n} 件失敗中"},
     "{n} skills": {"other": "{n} スキル"},
     "{n} installed": {"other": "{n} 個インストール済み"},
+    "{n} approvals are waiting.": {"other": "{n} 件の承認待ち"},
   },
   "zh": {
     "{n} cards": {"other": "{n} 张卡片"},
@@ -60,6 +65,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failing": {"other": "{n} 个失败"},
     "{n} skills": {"other": "{n} 个技能"},
     "{n} installed": {"other": "已安装 {n} 个"},
+    "{n} approvals are waiting.": {"other": "{n} 项审批待处理"},
   },
   "zh-hant": {
     "{n} cards": {"other": "{n} 張卡片"},
@@ -70,6 +76,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failing": {"other": "{n} 個失敗"},
     "{n} skills": {"other": "{n} 個技能"},
     "{n} installed": {"other": "已安裝 {n} 個"},
+    "{n} approvals are waiting.": {"other": "{n} 項審批待處理"},
   },
   "ar": {
     "{n} cards": {"zero": "لا بطاقات", "one": "بطاقة واحدة", "two": "بطاقتان", "few": "{n} بطاقات", "many": "{n} بطاقة", "other": "{n} بطاقة"},
@@ -80,6 +87,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failing": {"zero": "لا إخفاقات", "one": "إخفاق واحد", "two": "إخفاقان", "few": "{n} إخفاقات", "many": "{n} إخفاقًا", "other": "{n} إخفاق"},
     "{n} skills": {"zero": "لا مهارات", "one": "مهارة واحدة", "two": "مهارتان", "few": "{n} مهارات", "many": "{n} مهارة", "other": "{n} مهارة"},
     "{n} installed": {"zero": "لا شيء مثبت", "one": "واحدة مثبتة", "two": "اثنتان مثبتتان", "few": "{n} مثبتة", "many": "{n} مثبتة", "other": "{n} مثبتة"},
+    "{n} approvals are waiting.": {"zero": "لا موافقات معلّقة", "one": "موافقة واحدة معلّقة", "two": "موافقتان معلّقتان", "few": "{n} موافقات معلّقة", "many": "{n} موافقة معلّقة", "other": "{n} موافقة معلّقة"},
   },
 }
 

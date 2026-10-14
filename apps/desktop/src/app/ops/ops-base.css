@@ -343,3 +343,32 @@
 
 /* B16: screen-reader-only live region. */
 :where([data-ops-sr]) { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+
+/* ---- B17 design layer: press states, quieter chips, stat hierarchy, a living orbit stage ---- */
+/* Press: every control answers the pointer (1px sink + inner shade); hover already lifts the surface. */
+:where([data-ops-root]) :where(button) { transition: background var(--dur-micro, 140ms) var(--ease, ease), border-color var(--dur-micro, 140ms) var(--ease, ease), color var(--dur-micro, 140ms) var(--ease, ease), transform 90ms var(--ease, ease), box-shadow var(--dur-micro, 140ms) var(--ease, ease); }
+:where([data-ops-root]) :where(button:active:not(:disabled)) { box-shadow: inset 0 1px 2px rgb(0 0 0 / 35%); transform: translateY(1px); }
+:where([data-ops-root]) :where([data-ops-primary]) { background: color-mix(in srgb, var(--ops-gold) 14%, transparent); }
+:where([data-ops-root]) :where([data-ops-primary]:hover:not(:disabled)) { background: color-mix(in srgb, var(--ops-gold) 22%, transparent); border-color: var(--ops-gold); }
+/* Tabs: the selected tab owns a gold baseline instead of another bordered box. */
+:where([data-ops-root]) :where([role='tab'][aria-selected='true']) { box-shadow: inset 0 -2px 0 var(--ops-gold); }
+/* Filter chips are secondary: no frame until hover, muted ink, tighter pitch. */
+:where([data-ops-chips]) :where(button) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 12px; padding: 2px 8px; }
+:where([data-ops-chips]) :where(button:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: var(--ops-line); color: var(--ops-fg); }
+:where([data-ops-chips]) :where(button[aria-pressed='true']) { background: color-mix(in srgb, var(--ops-gold) 12%, transparent); border-color: color-mix(in srgb, var(--ops-gold) 45%, transparent); color: var(--ops-gold); }
+/* Stat cards: the number leads, the label supports, the sub whispers; hover hints they open something. */
+:where([data-ops-stat-value]) { font-size: 26px; letter-spacing: -0.01em; }
+:where([data-ops-stats]) :where([data-ops-stat]) { gap: 4px; padding: 12px 14px; }
+:where([data-ops-stats]) :where([data-ops-stat]:hover:not(:disabled)) { border-color: color-mix(in srgb, var(--ops-gold) 45%, transparent); }
+/* Orbit stage: two faint orbital rings and a slow centre glow so the Office reads as a place, not a list. */
+:where([data-ops-orrery]) { isolation: isolate; overflow: hidden; }
+:where([data-ops-orrery])::before, :where([data-ops-orrery])::after { border: 1px dashed color-mix(in srgb, var(--ops-fg) 9%, transparent); border-radius: 50%; content: ''; left: 50%; pointer-events: none; position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: -1; }
+:where([data-ops-orrery])::before { height: 46%; width: 34%; }
+:where([data-ops-orrery])::after { height: 86%; width: 70%; }
+:where([data-ops-orrery-centre])::before { animation: ops-glow 5s ease-in-out infinite; background: radial-gradient(circle, color-mix(in srgb, var(--ops-gold) 22%, transparent), transparent 70%); border-radius: 50%; content: ''; height: 140px; left: 50%; pointer-events: none; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 140px; z-index: -1; }
+@keyframes ops-glow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+:where([data-ops-orrery] [data-ops-orb]) { box-shadow: 0 1px 3px rgb(0 0 0 / 40%); }
+:where([data-ops-orrery] [data-ops-orb]:hover) { border-color: color-mix(in srgb, var(--ops-gold) 70%, transparent); z-index: 2; }
+:where([data-ops-orrery] [data-ops-orrery-overflow]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 11px; left: 8px; position: absolute; top: 8px; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-orrery-centre])::before { animation: none; } :where([data-ops-root]) :where(button:active:not(:disabled)) { transform: none; } }
+:where([data-ops-motion='reduced'] [data-ops-orrery-centre])::before { animation: none; }

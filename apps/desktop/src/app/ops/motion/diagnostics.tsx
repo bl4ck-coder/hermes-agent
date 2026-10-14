@@ -24,10 +24,24 @@ import { T } from '../main-i18n'
 
 
 /** B16: the connection line is localized at render; the copied diagnostics report stays English. */
-function connCopy(s: string): string {
-  const m = /^Connected to Hermes (.+)\.$/.exec(s)
+/** B17: every connection-state line (diag.ts copy) localizes at render; the copied report stays English. */
+const CONN_PATTERNS: [RegExp, string, string[]][] = [
+  [/^Connected to Hermes (.+)\.$/, 'Connected to Hermes {v}.', ['v']],
+  [/^Hermes is unreachable: (.+)\. Showing the last data, labelled stale\.$/, 'Hermes is unreachable: {msg}. Showing the last data, labelled stale.', ['msg']],
+  [/^Hermes (.+) is outside this Ops window \((.+) to below (.+)\)\. Ops is read-only until Desktop or Hermes is updated\.$/, 'Hermes {v} is outside this Ops window ({min} to below {max}). Ops is read-only until Desktop or Hermes is updated.', ['v', 'min', 'max']],
+  [/^Hermes (.+) lacks (.+)\. Ops is read-only for those features\.$/, 'Hermes {v} lacks {list}. Ops is read-only for those features.', ['v', 'list']],
+  [/^Hermes (.+) is newer than tested \((.+)\); unknown fields are ignored\.$/, 'Hermes {v} is newer than tested ({t}); unknown fields are ignored.', ['v', 't']],
+  [/^Hermes (.+) does not publish capability tokens; the route probe decides each section\.$/, 'Hermes {v} does not publish capability tokens; the route probe decides each section.', ['v']]
+]
 
-  return m ? T('Connected to Hermes {v}.').replace('{v}', m[1]) : T(s)
+export function connCopy(s: string): string {
+  for (const [re, key, names] of CONN_PATTERNS) {
+    const m = re.exec(s)
+
+    if (m) return names.reduce((out, name, i) => out.replace(`{${name}}`, m[i + 1]), T(key))
+  }
+
+  return T(s)
 }
 
 export function DiagnosticsPanel({
