@@ -8,7 +8,7 @@ import { connectionScoped, hermesApi } from '@/api/client'
 
 import type { KanbanAction } from '../office/needs-you'
 
-import type { OpsApi } from './ops-client'
+import type { KanbanTask, OpsApi } from './ops-client'
 
 const K = '/api/plugins/kanban'
 const enc = encodeURIComponent
@@ -95,6 +95,18 @@ export function createOpsActions(api: OpsApi = hermesApi) {
     /** O35: worker stdout/stderr tail. */
     taskLog: (taskId: string, tail = 64_000) =>
       call<{ exists: boolean; content: string; truncated: boolean; size_bytes: number; path: string }>('GET', `${K}/tasks/${enc(taskId)}/log?tail=${tail}`),
+    projects: () => call<{ projects: { id: string; slug: string; name: string; primary_path?: string }[] }>('GET', `${K}/projects`),
+    /** Flat task list from the board (for project overviews); malformed → null. */
+    boardTasks: () =>
+      call<{ columns?: { name: string; tasks?: unknown[] }[] }>('GET', `${K}/board`).then(b =>
+        Array.isArray(b?.columns) ? (b.columns.flatMap(c => (Array.isArray(c.tasks) ? c.tasks : [])) as KanbanTask[]) : null
+      ),
+    blueprints: (profile: string) =>
+      call<{ blueprints: { key: string; title: string; description: string; category: string; tags?: string[]; source?: string }[] }>(
+        'GET',
+        `/api/cron/blueprints?profile=${enc(profile)}`
+      ),
+    resolved: (limit = 50) => call<{ items: Record<string, unknown>[] }>('GET', `/api/approvals/resolved?limit=${limit}`),
     activeWorkers: () => call<{ workers: ActiveWorker[]; count: number; checked_at: number }>('GET', `${K}/workers/active`),
     taskDetail: (taskId: string) => call<TaskDetail>('GET', `${K}/tasks/${enc(taskId)}`),
     /** The route answers {run: {...}}; unwrap so callers get the row (a bare row is accepted too). */
