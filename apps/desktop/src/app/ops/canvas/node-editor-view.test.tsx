@@ -38,7 +38,7 @@ describe('writable node editors (P5-02)', () => {
     fireEvent.click(screen.getByText('Review & save'))
     expect(document.querySelector('[data-ops-diff]')?.textContent).toBe('- line b\n+ line c')
     await act(async () => fireEvent.click(document.querySelector('[data-ops-confirm-save]')!))
-    expect(c.save).toHaveBeenCalledWith('p', 'prompt', 'h1', { content: 'line a\nline c' }, undefined)
+    expect(c.save).toHaveBeenCalledWith('p', 'prompt', 'h1', { content: 'line a\nline c' }, undefined, expect.stringMatching(/^op-/))
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('tx4'))
   })
 
@@ -81,7 +81,7 @@ describe('writable node editors (P5-02)', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/backup unavailable/))
     fireEvent.click(screen.getByText('Review & save'))
     await act(async () => fireEvent.click(document.querySelector('[data-ops-confirm-save]')!))
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/ECONNREFUSED/))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/Outcome unknown/))
     expect((screen.getByLabelText('prompt content') as HTMLTextAreaElement).value).toBe('x')
   })
 

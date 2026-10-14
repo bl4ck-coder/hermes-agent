@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PolicyView } from '../feed/ops-client'
 
 import { registerCanvasSaver, setCanvasDirty } from './dirty-store'
+import { clearDraft, loadDraft, saveDraft } from './drafts'
 import {
   createNodeClient,
   diffLines,
@@ -21,6 +22,7 @@ import {
   type NodeClient,
   type NodeState,
   rebaseMine,
+  reconcile,
   reloadTheirs,
   repairSuggestions,
   restore,
@@ -36,15 +38,19 @@ export function NodeEditor({
   node,
   client,
   policy,
-  readOnly
+  readOnly,
+  connection = 'local'
 }: {
   profile: string
   node: WritableNode
   client: NodeClient
   policy: PolicyView | null
   readOnly?: boolean
+  /** L8: drafts are kept per connection. */
+  connection?: string
 }) {
   const [s, setS] = useState<NodeState | null>(null)
+  const [stored, setStored] = useState(() => loadDraft(connection, profile, node))
   const [preview, setPreview] = useState(false)
   const [history, setHistory] = useState<HistoryItem[] | null>(null)
   const [note, setNote] = useState('')
@@ -64,6 +70,19 @@ export function NodeEditor({
 
   const ro = Boolean(readOnly) || s?.status === 'read_only'
   const dirtyNow = s ? isDirty(s) : false
+
+  // L8: keep the latest unsaved draft (Prompt/Model only) so a profile switch, delete or disconnect never loses it.
+  useEffect(() => {
+    if (!s) {
+      return
+    }
+
+    if (dirtyNow) {
+      saveDraft(connection, profile, node, s.draft)
+    } else if (s.status === 'saved') {
+      clearDraft(connection, profile, node)
+    }
+  }, [s, dirtyNow, connection, profile, node])
 
   // O47: publish the unsaved draft so the Canvas tab shows the gold dot; cleared on save/discard/unmount.
   useEffect(() => {
@@ -114,6 +133,17 @@ export function NodeEditor({
         {LABEL[node]} {isDirty(s) ? <span data-ops-dirty="">● unsaved</span> : null}
       </h3>
       {ro ? <span data-ops-badge="read-only">read-only</span> : null}
+      {stored && !dirtyNow && !ro && (stored.draft.content !== s.base.content || stored.draft.provider !== s.base.provider || stored.draft.model !== s.base.model) ? (
+        <p data-ops-draft-restore="">
+          An unsaved draft from {new Date(stored.at).toLocaleString()} was kept.
+          <button onClick={() => (setS(edit(s, stored.draft)), setStored(null))} type="button">
+            Restore draft
+          </button>
+          <button onClick={() => (clearDraft(connection, profile, node), setStored(null))} type="button">
+            Dismiss
+          </button>
+        </p>
+      ) : null}
 
       {node === 'model' ? (
         <div>
@@ -151,7 +181,7 @@ export function NodeEditor({
           <button disabled={!isDirty(s) || s.status === 'saving'} onClick={() => setPreview(true)} type="button">
             Review & save
           </button>
-          <button disabled={!isDirty(s)} onClick={() => (setS(discard(s)), setPreview(false))} type="button">
+          <button disabled={!isDirty(s)} onClick={() => ((clearDraft(connection, profile, node), setS(discard(s))), setPreview(false))} type="button">
             Discard
           </button>
           <button onClick={() => void openHistory()} type="button">
@@ -195,6 +225,17 @@ export function NodeEditor({
         <p data-ops-node-message={s.status} role={s.status === 'saved' ? 'status' : 'alert'}>
           {s.message}
         </p>
+      ) : null}
+
+      {s.status === 'unknown' ? (
+        <div data-ops-outcome-unknown={s.pendingOp ?? ''}>
+          <button onClick={async () => setS(await reconcile(s, profile, client))} type="button">
+            Check again
+          </button>
+          <button onClick={() => setS({ ...discard(s), pendingOp: null })} type="button">
+            Discard draft
+          </button>
+        </div>
       ) : null}
 
       {s.status === 'conflict' ? (
