@@ -24,6 +24,10 @@ describe('ops live panels (P3 wiring)', () => {
     expect(opsLivePanel(tab('office'), 'default')).not.toBeNull()
     expect(opsLivePanel(tab('canvas'), 'sandhi')).not.toBeNull()
     expect(opsLivePanel(tab('board'), 'default')).toBeNull()
+    expect(opsLivePanel({ ...tab('task'), id: 'task:t1' }, 'default')).not.toBeNull()
+    expect(opsLivePanel({ ...tab('run'), id: 'run:42' }, 'default')).not.toBeNull()
+    expect(opsLivePanel({ ...tab('profile'), id: 'profile:sandhi' }, 'default')).not.toBeNull()
+    expect(opsLivePanel(tab('lens'), 'default')).toBeNull()
   })
 
   it('treats malformed lists as unknown, never as empty', () => {

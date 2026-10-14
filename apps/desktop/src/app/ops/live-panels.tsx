@@ -1,8 +1,9 @@
-/** P3: live Office/Canvas panels the host injects into OpsShell (the shell itself stays data-free). */
+/** P3: live Ops panels the host injects into OpsShell (the shell itself stays data-free). */
 import type { ReactNode } from 'react'
 
 import { CanvasContainer } from './canvas/canvas-container'
-import type { OpsTab } from './navigation-store'
+import { AgentCardContainer, RunDetailContainer, TaskDetailContainer } from './detail/details'
+import { hostIdentityFromTab, type OpsTab } from './navigation-store'
 import { OfficeContainer } from './office/office-container'
 
 /** Live panels need the Desktop preload bridge; without it the shell keeps its honest placeholder. */
@@ -12,7 +13,7 @@ export function hasOpsBridge(): boolean {
   return Boolean(w?.hermesDesktop?.api)
 }
 
-export function opsLivePanel(tab: OpsTab, profile: string): ReactNode {
+export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route: string) => void): ReactNode {
   if (!hasOpsBridge()) {
     return null
   }
@@ -26,5 +27,24 @@ export function opsLivePanel(tab: OpsTab, profile: string): ReactNode {
     return <CanvasContainer profile={profile} />
   }
 
+  const id = hostIdentityFromTab(tab).id
+
+  if (!id) {
+    return null
+  }
+
+  if (tab.kind === 'profile') {
+    return <AgentCardContainer name={id} />
+  }
+
+  if (tab.kind === 'task') {
+    return <TaskDetailContainer id={id} onOpenRoute={onOpenRoute} />
+  }
+
+  if (tab.kind === 'run') {
+    return <RunDetailContainer id={id} />
+  }
+
+  // Lenses (W12) and Board keep their existing route buttons / placeholder.
   return null
 }
