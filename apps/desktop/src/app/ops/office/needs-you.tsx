@@ -81,7 +81,17 @@ const KIND: Record<string, string> = {
 }
 
 const age = (s: number | null | undefined) =>
-  typeof s !== 'number' ? 'unknown' : s < 60 ? `${Math.round(s)} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`
+  typeof s !== 'number'
+    ? 'unknown'
+    : s < 60
+      ? `${Math.round(s)} s`
+      : s < 3600
+        ? `${Math.round(s / 60)} min`
+        : s < 48 * 3600
+          ? `${Math.round(s / 3600)} h`
+          : `${Math.round(s / 86400)} d`
+
+const MISSING_WHY = new Set(['', 'reason not recorded', 'motivo no registrado'])
 
 type State = 'sending' | 'done' | 'failed'
 
@@ -141,8 +151,16 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                 <td>{item.profile ?? 'unknown'}</td>
                 <td>{KIND[item.origin] ?? item.origin}</td>
                 <td data-ops-waiting-on="">{cmd || item.what_for || item.id}</td>
-                <td>{age(item.age_s)}</td>
-                <td>{item.why}</td>
+                <td data-ops-age="">{age(item.age_s)}</td>
+                <td data-ops-why="">
+                  {MISSING_WHY.has((item.why ?? '').trim()) ? (
+                    <span aria-label="reason not recorded" data-ops-why-missing="" title="reason not recorded">
+                      —
+                    </span>
+                  ) : (
+                    item.why
+                  )}
+                </td>
                 <td>
                   {p.readOnly ? (
                     <span data-ops-review={key}>Review</span>

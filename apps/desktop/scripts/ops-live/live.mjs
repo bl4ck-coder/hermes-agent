@@ -99,6 +99,12 @@ const lens = async id => {
   await sleep(2500)
 }
 const want = s => STEPS.includes('all') || STEPS.includes(s)
+log.toastDismissed = await page.evaluate(() => {
+  const el = [...document.querySelectorAll('body *')].find(n => n.childElementCount === 0 && /Another Hermes installation/.test(n.textContent || ''))
+  for (let p = el; p && p !== document.body; p = p.parentElement) { const b = p.querySelector('button'); if (b) { b.click(); return true } }
+  return false
+}).catch(() => false)
+await sleep(400)
 
 // Boot: wait for the shell, past the boot overlay.
 await page.waitForLoadState('domcontentloaded')
@@ -170,6 +176,37 @@ if (want('fps')) await sampleFps('canvas-pan-zoom', async end => {
     else await page.mouse.wheel(i % 2 ? 80 : -80, i % 3 ? 60 : -60)
     await sleep(30)
   }
+})
+if (want('card')) await section('02b-board-card', async () => {
+  // Read-only: one single click opens the card drawer (double-click would rename, so never double-click).
+  await go('/ops/board')
+  await page.locator('[data-ops-open-task]').first().click({ timeout: 8000 })
+  await sleep(1200)
+  return `inspector=${await page.locator('[data-ops-inspector-detail]').getAttribute('data-ops-inspector-detail').catch(() => 'none')}`
+})
+if (want('node')) await section('03c-canvas-node', async () => {
+  await go('/ops/canvas')
+  const t = page.locator('[data-ops-node-title]').nth(1)
+  await t.click({ timeout: 8000 })
+  await sleep(1000)
+  return `inspector=${await page.locator('[data-ops-inspector-detail]').getAttribute('data-ops-inspector-detail').catch(() => 'none')}`
+})
+if (want('focus')) await section('10-focus', async () => {
+  await go('/ops/office')
+  await page.locator('[data-ops-root]').first().click({ position: { x: 5, y: 5 } }).catch(() => {})
+  const seen = []
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('Tab')
+    await sleep(120)
+    seen.push(await page.evaluate(() => { const e = document.activeElement; if (!e) return 'none'; const cs = getComputedStyle(e); return `${e.tagName.toLowerCase()}:${(e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 18)}|ring=${cs.outlineStyle !== 'none' && cs.outlineWidth !== '0px' ? cs.outlineWidth : cs.boxShadow !== 'none' ? 'shadow' : 'NONE'}` }))
+  }
+  return seen.join(' ; ')
+})
+if (want('settings-inspector')) await section('08b-settings-inspector', async () => {
+  await page.locator('[data-ops-rail-list] [data-ops-more]').first().click({ timeout: 3000 }).catch(() => {})
+  await page.locator('[data-ops-rail-list] button[data-ops-lens=settings]').first().click({ timeout: 8000 })
+  await sleep(1500)
+  return `inspector=${await page.locator('[data-ops-inspector-detail]').getAttribute('data-ops-inspector-detail').catch(() => 'none')}`
 })
 if (want('draft')) await section('03b-canvas-draft', async () => {
   // One reversible draft edit: open the prompt editor, type, then Discard. Never Review & save.

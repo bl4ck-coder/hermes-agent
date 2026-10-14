@@ -221,7 +221,7 @@ export function BoardView(props: BoardViewProps) {
       onContextMenu={e => (e.preventDefault(), setMenu(t.id))}
       onKeyDown={keyFor(t)}
       role="listitem"
-      style={{ height: ROW_H }}
+      style={{ height: ROW_H - 6 }}
       tabIndex={0}
     >
       <input aria-label={`select ${t.id}`} checked={selected.has(t.id)} onChange={() => setSelected(s => toggle(s, t.id))} type="checkbox" />

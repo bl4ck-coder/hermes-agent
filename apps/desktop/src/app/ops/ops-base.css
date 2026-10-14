@@ -204,3 +204,48 @@
 :where([data-ops-rail-list][data-ops-rail='icons']) { align-items: stretch; overflow-x: hidden; }
 :where([data-ops-rail-list][data-ops-rail='icons']) :where(*) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :where([data-ops-rail-list][data-ops-rail='icons']) :where(button) { justify-content: center; padding: 3px 2px; }
+
+/* B10 round 1 */
+/* Inspector rows are their own one-column grid (the base dl is two-column). */
+:where([data-ops-inspector-rows]) { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+
+/* Board cards: fixed-height rows (windowed), so content is laid out to fit and never spills. */
+:where([data-ops-card]) {
+  align-content: start; box-sizing: border-box; column-gap: 6px; display: grid; grid-template-areas: 'chk title' 'chk meta';
+  grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr; margin: 0 0 6px; overflow: visible; padding: 7px 9px; position: relative; row-gap: 3px;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+:where([data-ops-card]:hover, [data-ops-card]:focus-within) { border-color: var(--ops-line-strong); }
+:where([data-ops-card]) > :where(input[type='checkbox']) { grid-area: chk; margin: 2px 0 0; }
+:where([data-ops-card]) > :where([data-ops-open-task]) {
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2; display: -webkit-box; font-size: 12.5px; font-weight: 500; grid-area: title; line-height: 1.35; overflow: hidden;
+}
+:where([data-ops-card]) > :where([data-ops-assignee]) { color: var(--ops-muted); font-size: 11px; grid-area: meta; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; align-self: end; max-width: 55%; }
+:where([data-ops-card]) > :where([data-ops-card-signals]) { align-self: end; display: flex; font-size: 11px; gap: 6px; grid-area: meta; justify-self: end; overflow: hidden; white-space: nowrap; color: var(--ops-muted); }
+:where([data-ops-card]) > :where([data-ops-quick]) {
+  align-items: center; background: var(--ops-surface-2); border-radius: 6px; display: flex; gap: 4px; opacity: 0; padding: 2px; pointer-events: none; position: absolute; right: 4px; top: 4px;
+  transition: opacity 120ms ease; z-index: 2;
+}
+:where([data-ops-card]:hover, [data-ops-card]:focus-within) > :where([data-ops-quick]) { opacity: 1; pointer-events: auto; }
+:where([data-ops-card]) :where([data-ops-quick]) :where(button, select) { font-size: 11px; padding: 1px 6px; }
+:where([data-ops-card]) > :where([data-ops-card-menu]) { position: absolute; right: 4px; top: calc(100% - 4px); z-index: 5; }
+
+/* Checkbox labels sit on one line with breathing room. */
+:where([data-ops-root] label:has(> input[type='checkbox'])) { align-items: center; display: inline-flex; gap: 6px; margin-right: 18px; }
+
+/* Secrets: summary, set list, folded unset list. */
+:where([data-ops-secret-summary]) { color: var(--ops-muted); margin: 0 0 4px; }
+:where([data-ops-secret-list]) { columns: 2 220px; margin: 0; padding-left: 0; }
+:where([data-ops-secret-list]) :where(li) { break-inside: avoid; font-size: 12px; padding: 1px 0; }
+:where([data-ops-secret-unset]) :where(summary) { color: var(--ops-muted); cursor: pointer; font-size: 12px; margin: 4px 0; }
+
+/* Needs-you: ages never wrap; a missing reason is a quiet dash. */
+:where([data-ops-age]) { font-variant-numeric: tabular-nums; white-space: nowrap; }
+:where([data-ops-why-missing]) { color: var(--ops-muted); }
+
+/* Icon rail: glyphs only. Section labels, the empty-pins line and the fleet text live in the full rail / Inspector. */
+:where([data-ops-rail-list][data-ops-rail='icons']) :where([data-ops-section], [data-ops-pins-empty], [data-ops-fleet], [data-ops-pin-toggle]) { display: none; }
+
+/* Tab close: a quiet glyph attached to its tab, not a separate boxed button. */
+:where([data-ops-tab-close]) { background: transparent; border-color: transparent; color: var(--ops-muted); line-height: 1; margin-left: -4px; padding: 2px 5px; }
+:where([data-ops-tab-close]:hover, [data-ops-tab-close]:focus-visible) { background: var(--ops-surface-2); color: inherit; }

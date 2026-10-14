@@ -279,13 +279,34 @@ export function SettingsView({
             {secrets === null ? (
               'unknown'
             ) : (
-              <ul aria-label="secret presence">
-                {secrets.map(x => (
-                  <li data-ops-secret={x.name} data-ops-set={x.set ? 'yes' : 'no'} key={x.name}>
-                    {x.name}: {x.set ? 'set' : 'not set'}
-                  </li>
-                ))}
-              </ul>
+              <div data-ops-secrets="">
+                <p data-ops-secret-summary="">
+                  {secrets.filter(x => x.set).length} set · {secrets.filter(x => !x.set).length} not set
+                </p>
+                <ul aria-label="secret presence" data-ops-secret-list="set">
+                  {secrets
+                    .filter(x => x.set)
+                    .map(x => (
+                      <li data-ops-secret={x.name} data-ops-set="yes" key={x.name}>
+                        {x.name}: set
+                      </li>
+                    ))}
+                </ul>
+                {secrets.some(x => !x.set) ? (
+                  <details data-ops-secret-unset="">
+                    <summary>Show {secrets.filter(x => !x.set).length} not set</summary>
+                    <ul aria-label="secrets not set" data-ops-secret-list="unset">
+                      {secrets
+                        .filter(x => !x.set)
+                        .map(x => (
+                          <li data-ops-secret={x.name} data-ops-set="no" key={x.name}>
+                            {x.name}: not set
+                          </li>
+                        ))}
+                    </ul>
+                  </details>
+                ) : null}
+              </div>
             )}
           </dd>
         </dl>

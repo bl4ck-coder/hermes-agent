@@ -4,7 +4,7 @@
  * value the view does not know is left out instead of shown as 0 or "unset".
  */
 
-import { useEffect, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 
 import type { BoardData, BoardTask } from './board/board-model'
 
@@ -29,10 +29,12 @@ export interface InspectorDetail {
 }
 
 let current: InspectorDetail | null = null
+let owner: object | null = null
 const listeners = new Set<() => void>()
 
-export function publishInspectorDetail(detail: InspectorDetail | null): void {
+export function publishInspectorDetail(detail: InspectorDetail | null, by: object | null = null): void {
   current = detail
+  owner = detail ? by : null
   listeners.forEach(listener => listener())
 }
 
@@ -55,17 +57,22 @@ export function useInspectorDetail(): InspectorDetail | null {
 /** Publish while mounted; clear on unmount (only if this view still owns the slot). */
 export function usePublishInspectorDetail(detail: InspectorDetail | null): void {
   const key = detail ? JSON.stringify(detail) : ''
+  const me = useRef<object>({})
 
   useEffect(() => {
-    publishInspectorDetail(detail)
+    publishInspectorDetail(detail, me.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  useEffect(() => {
+    const token = me.current
 
     return () => {
-      if (current && detail && current.kind === detail.kind && current.id === detail.id) {
+      if (owner === token) {
         publishInspectorDetail(null)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
+  }, [])
 }
 
 /** Which detail kind an Inspector slot shows. */
