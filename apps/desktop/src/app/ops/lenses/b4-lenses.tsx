@@ -152,7 +152,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         <>
           <Search label={T("search agents")} onChange={setQ} placeholder={T("Search by name, model, lane, role")} value={q} />
           {tasks.error ? <p data-ops-partial="">{T("Task counts unavailable:")}{' '}{why(tasks.error)}</p> : null}
-          <DataTable
+          <DataTable viewToggleId="fleet"
             caption={`Fleet (${rows.length})`}
             columns={[
               {
@@ -417,7 +417,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         {!rows ? (
           <State error={skills.error} what="Skills" />
         ) : (
-          <DataTable
+          <DataTable viewToggleId="skills"
             caption="Skills"
             columns={[
               {
