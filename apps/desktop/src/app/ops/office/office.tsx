@@ -15,8 +15,10 @@ import type {
   UsageToday
 } from '../feed/ops-client'
 import { shownPresence } from '../feed/ops-client'
+import { ToastQueue } from '../primitives/toast-queue'
 
 import { type KanbanAction, NeedsYouQueue } from './needs-you'
+import { activityRow, toastsFromPending } from './office-toasts'
 import { layoutOrrery, ORRERY_CAP } from './orrery'
 
 export type OfficeLayout = 'orrery' | 'table'
@@ -241,6 +243,18 @@ export function OfficeView(props: OfficeViewProps) {
         )
       ) : null}
       <Dispatch onDispatch={props.onDispatch} readOnly={props.readOnly} />
+      {props.readOnly ? null : (
+        <ToastQueue
+          items={toastsFromPending(props.pending, nowS * 1000, {
+            onApprove: props.onApprove,
+            onOpenTask: props.onOpenTask,
+            onReview: () => document.querySelector('[data-ops-needs-you-anchor]')?.scrollIntoView?.({ block: 'nearest' })
+          })}
+          now={nowS * 1000}
+          onNeedsYou={() => document.querySelector('[data-ops-needs-you-anchor]')?.scrollIntoView?.({ block: 'nearest' })}
+        />
+      )}
+      <span data-ops-needs-you-anchor="" />
       <NeedsYouQueue
         cron={props.cron}
         items={props.pending}
@@ -277,9 +291,15 @@ export function OfficeView(props: OfficeViewProps) {
           <span>{unknown}</span>
         ) : (
           <ul>
-            {props.activity.slice(0, 20).map((a, i) => (
-              <li key={i}>{String(a.outcome ?? a.choice ?? 'resolved')} {String(a.profile ?? '')}</li>
-            ))}
+            {props.activity.slice(0, 20).map((a, i) => {
+              const r = activityRow(a)
+
+              return (
+                <li data-ops-activity-row="" key={i}>
+                  <span data-ops-field="who">{r.who}</span> {r.what} <time>{r.when}</time>
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
