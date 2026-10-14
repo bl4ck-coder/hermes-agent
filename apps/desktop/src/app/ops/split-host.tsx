@@ -28,6 +28,7 @@ import { $connectionsRegistry } from '@/store/connection-registry-state'
 import { $profiles } from '@/store/profile'
 
 import { useOpsBackendSources } from './chrome'
+import { fleetFeedFrom, useOpsFeed } from './feed/ops-feed'
 import {
   $opsChatSessionId,
   $opsFullscreen,
@@ -857,6 +858,8 @@ export function OpsPane(): ReactNode {
   const scope = useStore($opsScope)
   const open = useStore($opsOpen)
   const observations = useOpsBackendSources(scope.connectionId, scope.profile, open)
+  // Live pass B9: the rail and inspector need the A1 fleet feed; without it they always read 'unavailable'.
+  const fleetState = useOpsFeed(null)
   const view = useStore($opsView)
   const viewId = useStore($opsViewId)
   const paneWidth = useStore($opsWidthPx)
@@ -898,6 +901,7 @@ export function OpsPane(): ReactNode {
     <OpsShell
       active={open}
       connections={connections && connections.length > 0 ? connections : undefined}
+      fleet={fleetFeedFrom(fleetState)}
       fullscreen={fullscreen}
       livePanel={opsLivePanel}
       modelLabel={observations?.modelLabel}

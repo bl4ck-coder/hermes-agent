@@ -7,7 +7,9 @@
 
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
 
-import { createOpsClient, type FleetResponse, type OpsClient } from './ops-client'
+import type { FleetFeed } from '../navigation-store'
+
+import { createOpsClient, type FleetResponse, type OpsClient, shownPresence } from './ops-client'
 
 export const OPS_POLL_MS = 5_000
 
@@ -192,4 +194,22 @@ export function useOpsFeed(profile: string | null = null, client?: Pick<OpsClien
   }, [feed])
 
   return useSyncExternalStore(feed.subscribe, feed.getState, feed.getState)
+}
+
+/** Live pass B9: the shell's rail and inspector take a FleetFeed; the host built none, so both said
+ *  "Fleet · unavailable" even with A1 live. A1 and the Needs-you count both ride the fleet response. */
+export function fleetFeedFrom(state: Pick<FeedState, 'fleet'>, nowS = Date.now() / 1000): FleetFeed {
+  if (!state.fleet) {
+    return { a1: 'missing', a3: 'missing', rows: [] }
+  }
+
+  return {
+    a1: 'ready',
+    a3: 'ready',
+    rows: state.fleet.profiles.map(p => {
+      const presence = shownPresence(p, nowS)
+
+      return { id: p.profile, label: p.profile, presence, fresh: p.observed_at != null && presence !== 'stale' }
+    })
+  }
 }

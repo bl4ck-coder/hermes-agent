@@ -5,6 +5,8 @@
  * the Ops pane, not the window.
  */
 
+import './ops-base.css'
+
 import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 
 import { useI18n } from '@/i18n'
