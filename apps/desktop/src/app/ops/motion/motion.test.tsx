@@ -56,7 +56,8 @@ describe('W9 settings (P5-03)', () => {
     const routes: string[] = []
     render(<SettingsView defaultModel={null} onOpenRoute={r => routes.push(r)} policy={null} />)
     expect(document.querySelector('[data-ops-field="default-model"]')?.textContent).toBe('unknown')
-    expect(screen.getAllByText('Not available yet').length).toBe(1)
+    expect(screen.queryAllByText('Not available yet').length).toBe(0)
+    expect(document.querySelector('[data-ops-field="approval-mode"]')?.textContent).toBe('unknown')
     expect(document.querySelector('[data-ops-field="secrets"]')?.textContent).toBe('unknown')
     fireEvent.change(screen.getByLabelText('default tab'), { target: { value: 'board' } })
     expect(loadPrefs().defaultTab).toBe('board')

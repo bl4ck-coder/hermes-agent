@@ -35,14 +35,14 @@ describe('agent card + run history (P6 F4)', () => {
     expect(n?.job.id).toBe('b')
   })
 
-  it('card shows sigil, skills, next cron and an honest role gap', async () => {
+  it('card shows sigil, skills, next cron and role unknown until the roster loads', async () => {
     const actions = { profiles: vi.fn().mockResolvedValue({ profiles: [{ name: 'builder', model: 'm', provider: 'p', skill_count: 7, display_name: 'Builder' }] }) } as unknown as OpsActions
     render(<AgentCardContainer actions={actions} client={client()} name="builder" />)
     await waitFor(() => expect(document.querySelector('[data-ops-field="skills"]')?.textContent).toBe('7'))
     await waitFor(() => expect(document.querySelector('[data-ops-field="next-cron"]')?.textContent).toContain('nightly'))
     expect(document.querySelector('.ops-sigil')).toBeTruthy()
     expect(screen.getByText('Builder')).toBeTruthy()
-    expect(document.querySelector('[data-ops-field="role"]')?.textContent).toMatch(/Not available/)
+    expect(document.querySelector('[data-ops-field="role"]')?.textContent).toBe('unknown')
   })
 
   it('unknown stays unknown on the card', () => {

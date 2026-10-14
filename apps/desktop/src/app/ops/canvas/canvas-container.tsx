@@ -23,12 +23,18 @@ export function CanvasContainer({ profile, readOnly, client: clientProp }: { pro
   const delegation = useOpsResource(() => client.delegation(profile), [client, profile], slow)
   const actions = useMemo(() => createOpsActions(), [])
   const rows = useOpsResource(() => actions.profiles(), [actions], slow)
+  const roster = useOpsResource(() => actions.kanbanProfiles(), [actions], slow)
+  const mem = useOpsResource(() => actions.memory(profile), [actions, profile], slow)
+  const kp = Array.isArray(roster.value?.profiles) ? roster.value.profiles.find(r => r.name === profile) : undefined
   const row = Array.isArray(rows.value?.profiles) ? rows.value.profiles.find(r => r.name === profile) : undefined
 
   return (
     <>
     <CanvasView
-      data={{ model: model.value, policy: policy.value, prompt: prompt.value, cron: cron.value, delegation: delegation.value, skills: typeof row?.skill_count === 'number' ? row.skill_count : null }}
+      data={{ model: model.value, policy: policy.value, prompt: prompt.value, cron: cron.value, delegation: delegation.value, skills: typeof row?.skill_count === 'number' ? row.skill_count : null,
+        identity: kp ? { name: kp.name, description: kp.description ?? '' } : roster.value ? { name: profile, description: '' } : null,
+        memory: mem.value && typeof mem.value === 'object' ? mem.value : null
+      }}
       profile={profile}
       readOnly={readOnly}
       runs={runsBridge() as never}

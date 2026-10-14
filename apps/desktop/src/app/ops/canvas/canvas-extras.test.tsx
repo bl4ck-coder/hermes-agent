@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { type CanvasData, CanvasView, stepZoom } from './canvas'
+import { CANVAS_NODES, type CanvasData, CanvasView, stepZoom } from './canvas'
 
 afterEach(() => cleanup())
 
@@ -32,7 +32,7 @@ describe('canvas extras (P6 F6)', () => {
     expect(document.querySelector('[data-ops-node="model"]')?.hasAttribute('data-ops-collapsed')).toBe(true)
     expect(document.querySelector('[data-ops-node="model"] [data-ops-node-body]')).toBeNull()
     fireEvent.click(screen.getByLabelText('Collapse all'))
-    expect(document.querySelectorAll('[data-ops-collapsed]').length).toBe(9)
+    expect(document.querySelectorAll('[data-ops-collapsed]').length).toBe(CANVAS_NODES.length)
     fireEvent.click(screen.getByLabelText('Zoom in'))
     expect(document.querySelector('[data-ops-canvas-zoom]')?.getAttribute('data-ops-canvas-zoom')).toBe('1.25')
     fireEvent.click(screen.getByLabelText('Fit'))

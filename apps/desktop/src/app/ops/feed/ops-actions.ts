@@ -95,6 +95,15 @@ export function createOpsActions(api: OpsApi = hermesApi) {
     /** O35: worker stdout/stderr tail. */
     taskLog: (taskId: string, tail = 64_000) =>
       call<{ exists: boolean; content: string; truncated: boolean; size_bytes: number; path: string }>('GET', `${K}/tasks/${enc(taskId)}/log?tail=${tail}`),
+    /** Kanban profile roster: carries the profile description (O76 role, G31 identity). */
+    kanbanProfiles: () =>
+      call<{ profiles: { name: string; description?: string; description_auto?: boolean; skill_count?: number; model?: string; provider?: string }[] }>(
+        'GET',
+        `${K}/profiles`
+      ),
+    memory: (profile: string) => call<{ active: string; builtin_files?: Record<string, number> }>('GET', `/api/memory?profile=${enc(profile)}`),
+    /** O41: approvals.mode from the profile's config. */
+    config: (profile: string) => call<Record<string, unknown>>('GET', `/api/config?profile=${enc(profile)}`),
     projects: () => call<{ projects: { id: string; slug: string; name: string; primary_path?: string }[] }>('GET', `${K}/projects`),
     /** Flat task list from the board (for project overviews); malformed → null. */
     boardTasks: () =>
@@ -157,4 +166,23 @@ export function envPresenceList(rows: EnvRows | null | undefined): { name: strin
     .filter(([, v]) => v && typeof v === 'object')
     .map(([name, v]) => ({ name, set: Boolean(v.is_set) }))
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** O76: role = first clause of the profile description (up to the first . ; : , or dash break). */
+export function roleFromDescription(d: string | null | undefined): string | null {
+  const t = (d ?? '').trim()
+
+  if (!t) {
+    return null
+  }
+
+  return t.split(/(?<=[.;:])\s|,\s|\s[—–-]\s/)[0].replace(/[.;:,]$/, '').trim() || null
+}
+
+/** O41: approvals.mode from /api/config; unknown when the key is absent. */
+export function approvalMode(cfg: Record<string, unknown> | null | undefined): string | null {
+  const a = cfg && typeof cfg === 'object' ? (cfg as { approvals?: unknown }).approvals : null
+  const m = a && typeof a === 'object' ? (a as { mode?: unknown }).mode : null
+
+  return typeof m === 'string' && m ? m : typeof m === 'boolean' ? String(m) : null
 }

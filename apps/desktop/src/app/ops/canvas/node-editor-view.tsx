@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PolicyView } from '../feed/ops-client'
 
+import { setCanvasDirty } from './dirty-store'
 import {
   createNodeClient,
   diffLines,
@@ -62,6 +63,14 @@ export function NodeEditor({
   }, [client, profile, node])
 
   const ro = Boolean(readOnly) || s?.status === 'read_only'
+  const dirtyNow = s ? isDirty(s) : false
+
+  // O47: publish the unsaved draft so the Canvas tab shows the gold dot; cleared on save/discard/unmount.
+  useEffect(() => {
+    setCanvasDirty(profile, node, dirtyNow)
+
+    return () => setCanvasDirty(profile, node, false)
+  }, [profile, node, dirtyNow])
 
   const openHistory = useCallback(async () => {
     try {

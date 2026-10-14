@@ -6,7 +6,7 @@
 
 import { useMemo } from 'react'
 
-import { createOpsActions, type OpsActions, type ProfileRow, type TaskRun } from '../feed/ops-actions'
+import { createOpsActions, type OpsActions, type ProfileRow, roleFromDescription, type TaskRun } from '../feed/ops-actions'
 import {
   type ApprovalItem,
   createOpsClient,
@@ -91,8 +91,11 @@ export function AgentCardView({
   policy,
   pending,
   row,
-  cron
+  cron,
+  role
 }: {
+  /** O76: first clause of the kanban profile description; undefined = not loaded, null = none. */
+  role?: string | null
   name: string
   row?: ProfileRow | null
   cron?: CronJobLite[] | null
@@ -125,7 +128,7 @@ export function AgentCardView({
           })()}
         </dd>
         <dt>Role</dt>
-        <dd data-ops-field="role" data-ops-unavailable="">Not available yet: profiles carry no description</dd>
+        <dd data-ops-field="role">{role === undefined ? 'unknown' : role === null ? 'no description' : role}</dd>
         <dt>Policy</dt>
         <dd data-ops-field="policy">
           {violations === null ? 'unknown' : violations.length === 0 ? 'inside policy' : `${violations.length} violation(s)`}
@@ -269,6 +272,8 @@ export function AgentCardContainer({ name, client: c, actions: a }: { name: stri
   const rows = useOpsResource(() => actions.profiles(), [actions], 30_000)
   const cron = useOpsResource(() => Promise.resolve().then(() => client.cronJobs(name)), [client, name], 30_000)
   const list = listOrNull(rows.value?.profiles)
+  const roster = useOpsResource(() => Promise.resolve().then(() => actions.kanbanProfiles()), [actions], 30_000)
+  const kp = listOrNull(roster.value?.profiles)
   const feed = useOpsFeed(null, client)
   const model = useOpsResource(() => client.modelNode(name), [client, name])
   const policy = useOpsResource(() => client.policy(name), [client, name])
@@ -283,6 +288,7 @@ export function AgentCardContainer({ name, client: c, actions: a }: { name: stri
       name={name}
       pending={listOrNull(pending.value?.items)}
       policy={policy.value}
+      role={kp ? roleFromDescription(kp.find(r => r.name === name)?.description) : undefined}
       row={list ? (list.find(r => r.name === name) ?? null) : undefined}
     />
   )
