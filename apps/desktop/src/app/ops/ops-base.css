@@ -401,3 +401,35 @@
 :where([data-ops-strip]) :where([data-ops-count][data-ops-alarm]) { color: #d77b7f; }
 /* Empty states: centred, calm, with the next action visible rather than a bare italic line. */
 :where([data-ops-empty], [data-ops-inspector-empty]) { border: 1px dashed var(--ops-line); border-radius: var(--ops-radius); color: var(--ops-muted); padding: 14px; text-align: center; }
+
+/* ---- B20 Canvas (Outglow agent-builder): glyph tiles, status dots, ports, selected glow, flowing lit edges ---- */
+:where([data-ops-canvas-nodes] [data-ops-node]) { align-items: center; padding: 10px 12px; transition: border-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease; }
+:where([data-ops-canvas-nodes] [data-ops-node]:hover) { border-color: var(--ops-line-strong); box-shadow: 0 6px 18px rgb(0 0 0 / 35%); }
+:where([data-ops-node]) :where([data-ops-node-title]) { align-items: center; display: inline-flex; font-size: 13px; gap: 8px; order: 1; text-transform: none; }
+:where([data-ops-node-icon]) { align-items: center; background: color-mix(in srgb, var(--ops-gold) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ops-gold) 30%, transparent); border-radius: 6px; color: var(--ops-gold); display: inline-flex; font-size: 12px; height: 22px; justify-content: center; width: 22px; }
+:where([data-ops-node][data-ops-port-colour='amber'] [data-ops-node-icon]) { background: color-mix(in srgb, #d08a2e 14%, transparent); border-color: color-mix(in srgb, #d08a2e 35%, transparent); color: #e0a24e; }
+:where([data-ops-node][data-ops-port-colour='garnet'] [data-ops-node-icon]) { background: color-mix(in srgb, #b4434b 16%, transparent); border-color: color-mix(in srgb, #b4434b 40%, transparent); color: #d77b7f; }
+:where([data-ops-node][data-ops-port-colour='muted'] [data-ops-node-icon]) { background: var(--ops-surface-2); border-color: var(--ops-line); color: var(--ops-muted); }
+:where([data-ops-node]) :where([data-ops-node-collapse]) { background: transparent; border-color: transparent; color: var(--ops-muted); margin-left: auto; order: 2; padding: 0 6px; }
+:where([data-ops-node]) :where([data-ops-node-collapse]:hover) { color: var(--ops-fg); }
+:where([data-ops-node]) :where([data-ops-node-body]) { order: 3; padding-left: 30px; }
+:where([data-ops-node]) :where([data-ops-identity-cta]) { margin-left: 30px; order: 4; }
+:where([data-ops-node]) :where([data-ops-node-detail]) { order: 5; }
+/* Unavailable nodes recede; they are real but have nothing to say yet. */
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-port='unknown']) { opacity: 0.6; }
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-port='unknown']:hover, [data-ops-canvas-nodes] [data-ops-node][data-ops-port='unknown'][data-ops-selected]) { opacity: 1; }
+:where([data-ops-node][data-ops-port='unknown'] [data-ops-node-body]) { font-style: italic; }
+/* Ports: a dot where the wire meets the node (left column emits right, right column receives left, centre both). */
+:where([data-ops-canvas-nodes] [data-ops-node])::before, :where([data-ops-canvas-nodes] [data-ops-node])::after { background: var(--ops-gold); border: 2px solid var(--color-background, #14110d); border-radius: 50%; content: ''; height: 6px; position: absolute; top: 50%; translate: 0 -50%; width: 6px; }
+:where([data-ops-canvas-nodes] [data-ops-node])::before { left: -5px; }
+:where([data-ops-canvas-nodes] [data-ops-node])::after { right: -5px; }
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-column='left'])::before, :where([data-ops-canvas-nodes] [data-ops-node][data-ops-column='right'])::after { display: none; }
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-port-colour='muted'])::before, :where([data-ops-canvas-nodes] [data-ops-node][data-ops-port-colour='muted'])::after { background: var(--ops-muted); }
+/* Selected node: a gold ring, and its detail floats above the graph. */
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-selected]) { border-color: color-mix(in srgb, var(--ops-gold) 75%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ops-gold) 18%, transparent), 0 8px 24px rgb(0 0 0 / 40%); opacity: 1; z-index: 3; }
+:where([data-ops-node-detail]) { box-shadow: 0 14px 36px rgb(0 0 0 / 50%); z-index: 4; }
+/* A lit run wire flows; idle wires stay still. */
+@keyframes ops-flow { to { stroke-dashoffset: -12; } }
+:where([data-ops-edge-layer] [data-ops-edge-lit]) { animation: ops-flow 700ms linear infinite; stroke-dasharray: 6 6; stroke-width: 2; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-edge-layer] [data-ops-edge-lit]) { animation: none; stroke-dasharray: none; } }
+:where([data-ops-motion='reduced'] [data-ops-edge-layer] [data-ops-edge-lit]) { animation: none; stroke-dasharray: none; }

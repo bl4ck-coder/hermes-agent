@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
 import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
-import { P, T } from '../main-i18n'
+import { opsMainLocale, P, T } from '../main-i18n'
 
 import { ComposePanel } from './compose-view'
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
@@ -194,6 +194,13 @@ export const clampPan = (p: { x: number; y: number }) => ({
 const PAN_KEYS = { ArrowLeft: [-40, 0], ArrowRight: [40, 0], ArrowUp: [0, -40], ArrowDown: [0, 40] } as const
 
 /** G49: port colour by node state. */
+/** B20 (Outglow): every node type has a glyph tile and a localized title. */
+export const NODE_GLYPH: Record<string, string> = { schedule: '◷', identity: '◉', prompt: '¶', tools: '⚒', policy: '⛨', skills: '✦', channels: '⇄', model: '◈', memory: '▤', delegation: '⤳' }
+export const nodeTitle = (id: string): string => T(id.charAt(0).toUpperCase() + id.slice(1))
+
+/** Accessible names keep the stable lowercase id in English (tests, screen-reader muscle memory); other locales get the title. */
+const nodeAria = (id: string): string => (opsMainLocale() === 'en' ? id : nodeTitle(id))
+
 export const PORT_COLOUR = { ok: 'champagne', unset: 'amber', policy: 'garnet', unknown: 'muted' } as const
 export type CanvasNodeId = (typeof CANVAS_NODES)[number]
 
@@ -598,15 +605,17 @@ export function CanvasView({
               data-ops-node={id}
               data-ops-port={b.state}
               data-ops-port-colour={PORT_COLOUR[b.state]}
+              data-ops-selected={detail === id ? '' : undefined}
               key={id}
               role="listitem"
               style={{ gridColumn: { left: 1, centre: 2, right: 3 }[CANVAS_COLUMN[id]], gridRow: CANVAS_NODES.filter(n => CANVAS_COLUMN[n] === CANVAS_COLUMN[id]).indexOf(id) + 1 }}
             >
-              <button aria-expanded={!closed} aria-label={`${closed ? 'Expand' : 'Collapse'} ${id}`} onClick={() => toggle(id)} type="button">
+              <button aria-expanded={!closed} aria-label={T(closed ? 'Expand {id}' : 'Collapse {id}').replace('{id}', nodeAria(id))} data-ops-node-collapse="" onClick={() => toggle(id)} type="button">
                 {closed ? '+' : '−'}
               </button>
               <button aria-expanded={detail === id} aria-haspopup="dialog" data-ops-node-title="" onClick={() => setDetail(d => (d === id ? null : id))} type="button">
-                {id}
+                <span aria-hidden data-ops-node-icon="">{NODE_GLYPH[id] ?? '•'}</span>
+                {nodeTitle(id)}
               </button>
               {closed ? null : <span data-ops-node-body="">{T(b.text)}</span>}
               {id === 'identity' && b.state === 'unset' ? (
@@ -614,7 +623,7 @@ export function CanvasView({
                   {T("Set identity")}</button>
               ) : null}
               {detail === id ? (
-                <div aria-label={`${id} details`} data-ops-node-detail={id} onKeyDown={e => e.key === 'Escape' && setDetail(null)} role="dialog">
+                <div aria-label={T('{id} details').replace('{id}', nodeAria(id))} data-ops-node-detail={id} onKeyDown={e => e.key === 'Escape' && setDetail(null)} role="dialog">
                   <dl>
                     {nodeDetail(id, data).map(([k, v], i) => (
                       <div key={`${k}-${i}`}>
