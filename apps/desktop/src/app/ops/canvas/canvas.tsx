@@ -7,6 +7,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
+import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
 
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
 import { elapsedMs, initialRun, reduceRun, type RunView } from './run-stream'
@@ -356,6 +357,21 @@ export function CanvasView({
     return () => ro.disconnect()
   }, [collapsed, data])
   const [detail, setDetail] = useState<CanvasNodeId | null>(null)
+  usePublishInspectorDetail(
+    canvasInspectorDetail(
+      profile,
+      detail,
+      detail ? nodeDetail(detail, data) : [],
+      [
+        ['Model', data.model ? `${data.model.provider || 'unset'} / ${data.model.model || 'unset'}` : 'unknown'],
+        ['Prompt', data.prompt ? (data.prompt.exists ? 'present' : 'missing') : 'unknown'],
+        ['Skills', typeof data.skills === 'number' ? String(data.skills) : 'unknown'],
+        ['Policy', data.policy?.source ?? 'unknown'],
+        ['Scheduled jobs', data.cron ? String(data.cron.length) : 'unknown']
+      ],
+      data.promptNote ? [data.promptNote] : []
+    )
+  )
   const dirtyCount = useCanvasDirtyCount(profile)
   const [saveNote, setSaveNote] = useState<string | null>(null)
 

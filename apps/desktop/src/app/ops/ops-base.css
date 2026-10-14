@@ -187,7 +187,17 @@
 :where([data-ops-fleet-row]) { align-items: center; border-bottom: 1px solid var(--ops-line); display: flex; gap: 8px; padding: 4px 0; }
 
 /* Inspector */
-:where([data-ops-inspector-body]) { margin-left: 12px; overflow: auto; }
+:where([data-ops-inspector-body]) { display: flex; flex-direction: column; gap: 10px; margin: 0 12px; overflow: auto; padding: 4px 0 12px; }
+:where([data-ops-inspector-head]) { align-items: baseline; display: flex; gap: 8px; justify-content: space-between; min-width: 0; }
+:where([data-ops-inspector-title]) { font-size: 14px; font-weight: 600; line-height: 1.3; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-inspector-badge]) { border: 1px solid var(--ops-line-strong); border-radius: 999px; color: var(--ops-muted); flex: none; font-size: 11px; padding: 1px 8px; }
+:where([data-ops-inspector-rows]) { display: grid; gap: 0; margin: 0; }
+:where([data-ops-inspector-row]) { border-bottom: 1px solid var(--ops-line); display: grid; gap: 8px; grid-template-columns: minmax(84px, 40%) 1fr; padding: 6px 0; }
+:where([data-ops-inspector-row]) :where(dt) { color: var(--ops-muted); font-size: 12px; }
+:where([data-ops-inspector-row]) :where(dd) { font-size: 12px; font-variant-numeric: tabular-nums; margin: 0; overflow-wrap: anywhere; }
+:where([data-ops-inspector-text]) { color: var(--ops-muted); font-size: 12px; line-height: 1.5; margin: 0; white-space: pre-wrap; }
+:where([data-ops-inspector-hint], [data-ops-inspector-empty]) { color: var(--ops-muted); font-size: 12px; font-style: italic; margin: 0; }
+:where([data-ops-inspector-history]) { display: grid; font-size: 12px; gap: 6px; margin: 0; padding-left: 18px; }
 :where([data-ops-rail-list] [data-ops-section]) { color: var(--ops-muted); font-size: 10px; letter-spacing: 0.08em; margin: 10px 0 2px; text-transform: uppercase; }
 
 /* Icon rail: one glyph per row; long labels clip instead of wrapping into the next row. */

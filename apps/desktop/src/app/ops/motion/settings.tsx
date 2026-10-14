@@ -11,6 +11,7 @@ import { createNodeClient } from '../canvas/node-editor'
 import { NodeEditor } from '../canvas/node-editor-view'
 import { approvalMode, createOpsActions, envPresenceList } from '../feed/ops-actions'
 import { createOpsClient, type PolicyView } from '../feed/ops-client'
+import { usePublishInspectorDetail } from '../inspector-detail'
 import { useOpsResource } from '../office/office-container'
 import { ThresholdSettings } from '../office/thresholds'
 import { OpsShortcutSheet } from '../shortcut-sheet'
@@ -137,6 +138,23 @@ export function SettingsView({
   const [prefs, setPrefs] = useState<OpsPrefs>(() => loadPrefs())
   const [sheet, setSheet] = useState(false)
   const [draftNote, setDraftNote] = useState<string | null>(null)
+  usePublishInspectorDetail({
+    kind: 'settings',
+    id: `settings:${profile ?? 'default'}`,
+    title: 'Settings',
+    badge: profile ?? 'default',
+    rows: [
+      ['Time zone', opsTimezone(prefs)],
+      ['Motion', String(motion)],
+      ['Policy', policy ? (policy.fail_closed ? `${policy.source} (invalid, writes blocked)` : policy.source) : 'loading'],
+      ['Default model', defaultModel ? `${defaultModel.provider || 'unset'} / ${defaultModel.model || 'unset'}` : 'loading'],
+      ['Approvals', approval === undefined ? 'loading' : (approval ?? 'not set')],
+      ['Secrets set', secrets ? `${secrets.filter(s => s.set).length} of ${secrets.length}` : 'unknown'],
+      ['Legacy write routes', 'active (retire flag off)']
+    ],
+    source: 'Ops settings',
+    why: 'this profile’s Ops settings'
+  })
 
   const set = (p: Partial<OpsPrefs>) => {
     const next = { ...prefs, ...p }

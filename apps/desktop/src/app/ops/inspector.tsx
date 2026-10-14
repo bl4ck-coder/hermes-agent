@@ -7,6 +7,7 @@
 
 import { useI18n } from '@/i18n'
 
+import { detailKindForSlot, type InspectorDetail, useInspectorDetail } from './inspector-detail'
 import { useOpsEscapeLayer } from './keymap'
 import { opsNavLabel } from './locales'
 import {
@@ -103,9 +104,15 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
 
 function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: FleetFeed; tab: OpsTab | null }) {
   const copy = useI18n().t.ops
+  const detail = useInspectorDetail()
+  const want = detailKindForSlot(active)
 
   if (active === 'fleet') {
     return <FleetList feed={fleet} filter="" />
+  }
+
+  if (detail && want && detail.kind === want) {
+    return <InspectorDetailView detail={detail} history={active === 'history'} />
   }
 
   if (active === 'context' || active === 'history' || active === 'row' || active === 'node' || active === 'task') {
@@ -114,7 +121,6 @@ function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: F
         <p data-ops-unavailable="">
           {copy.inspector.detailUnavailable(tab ? opsNavLabel(copy, tab.id, tab.label) : copy.inspector.selection)}
         </p>
-        <WhyFooter observedAt={null} purpose={null} source={null} why={null} />
       </section>
     )
   }
@@ -122,6 +128,46 @@ function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: F
   return (
     <section data-ops-inspector-body="events">
       <p data-ops-unavailable="">{copy.inspector.runEventsEmpty}</p>
+    </section>
+  )
+}
+
+function InspectorDetailView({ detail, history }: { detail: InspectorDetail; history: boolean }) {
+  return (
+    <section data-ops-inspector-body={history ? 'history' : detail.kind} data-ops-inspector-detail={detail.kind}>
+      <header data-ops-inspector-head="">
+        <h3 data-ops-inspector-title="" title={detail.title}>
+          {detail.title}
+        </h3>
+        {detail.badge ? <span data-ops-inspector-badge="">{detail.badge}</span> : null}
+      </header>
+      {history ? (
+        detail.history && detail.history.length > 0 ? (
+          <ol data-ops-inspector-history="">
+            {detail.history.map((h, i) => (
+              <li key={i}>{h}</li>
+            ))}
+          </ol>
+        ) : (
+          <p data-ops-inspector-empty="">{detail.historyEmpty ?? ''}</p>
+        )
+      ) : (
+        <>
+          {detail.rows.length > 0 ? (
+            <dl data-ops-inspector-rows="">
+              {detail.rows.map(([k, v]) => (
+                <div data-ops-inspector-row="" key={k}>
+                  <dt>{k}</dt>
+                  <dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+          {detail.body ? <p data-ops-inspector-text="">{detail.body}</p> : null}
+        </>
+      )}
+      {detail.hint ? <p data-ops-inspector-hint="">{detail.hint}</p> : null}
+      <WhyFooter observedAt={null} purpose={null} source={detail.source} why={detail.why} />
     </section>
   )
 }

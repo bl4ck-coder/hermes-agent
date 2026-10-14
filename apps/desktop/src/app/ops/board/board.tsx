@@ -10,6 +10,8 @@ import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
+import { boardInspectorSummary, taskInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
+
 import {
   allTasks,
   type BoardData,
@@ -146,6 +148,9 @@ export function BoardView(props: BoardViewProps) {
 
     return layout === 'review' ? { ...f, columns: f.columns.filter(c => c.name === 'review') } : f
   }, [board, filter, layout, props.me])
+
+  const openTask = drawer && board ? (allTasks(board).find(t => t.id === drawer.id) ?? null) : null
+  usePublishInspectorDetail(openTask ? taskInspectorDetail(openTask) : boardInspectorSummary(board ?? null))
 
   if (!board || !shown) {
     return <p data-ops-unavailable="">{props.error ? `Board unavailable: ${props.error}` : 'Board is loading (unknown).'}</p>

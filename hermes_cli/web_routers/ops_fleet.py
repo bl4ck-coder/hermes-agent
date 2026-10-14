@@ -77,8 +77,50 @@ async def _read_gateway(profile: str) -> Optional[Observation]:
         _log.debug("ops fleet: gateway read failed for %s", profile, exc_info=True)
         return None  # missing: a failed read never stamps observed_at
     running = bool(gw.get("gateway_running"))
-    return Observation(observed_at=_clock(), event_at=_to_epoch(gw.get("gateway_updated_at")),
-                       up=running, platforms_unreachable=(not running and bool(gw.get("gateway_platforms"))))
+    observed = _clock()
+    up = Observation(observed_at=observed, event_at=_to_epoch(gw.get("gateway_updated_at")),
+                     up=running, platforms_unreachable=(not running and bool(gw.get("gateway_platforms"))))
+    runs = gateway_runs_observation(gw, profile, observed)
+    if runs is not None:
+        up.detail["gateway_runs"] = runs
+    return up
+
+
+def _same_home(a: Any, profile: str) -> bool:
+    import os
+    from hermes_cli.profiles import get_profile_dir
+    try:
+        norm = lambda v: os.path.normcase(os.path.realpath(str(v))).rstrip("\\/")
+        return bool(a) and norm(a) == norm(get_profile_dir(profile))
+    except Exception:
+        return False
+
+
+def gateway_runs_observation(gw: Dict[str, Any], profile: str, observed_at: float) -> Optional[Observation]:
+    """B10: the gateway-runs presence input (read-contracts 5.1), read from the gateway's own runtime
+    heartbeat (``runtime.active_agents``, the counter NAS ``derive_gateway_busy`` gates on).
+
+    Zero active agents on a live, non-stale gateway is an authoritative empty for every profile it
+    serves. A positive count is not partitioned by profile, so it reports work only for the profile
+    whose home the gateway runs under; any other profile stays missing (unknown) instead of guessed.
+    A stopped or stale gateway, or a runtime without the counter, is missing - never an empty."""
+    if not gw.get("gateway_running") or gw.get("gateway_heartbeat_stale_s"):
+        return None
+    runtime = gw.get("runtime") or {}
+    if not isinstance(runtime, dict) or "active_agents" not in runtime:
+        return None
+    try:
+        from gateway.status import parse_active_agents
+        count = parse_active_agents(runtime.get("active_agents"))
+    except Exception:
+        return None
+    event_at = _to_epoch(gw.get("gateway_updated_at"))
+    if count == 0:
+        return Observation(observed_at=observed_at, event_at=event_at, reports_work=False)
+    if _same_home(runtime.get("hermes_home"), profile):
+        return Observation(observed_at=observed_at, event_at=event_at, reports_work=True,
+                           detail={"active_agents": count})
+    return None
 
 
 def _read_cron(profile: str) -> Optional[Dict[str, Any]]:
@@ -132,6 +174,8 @@ async def build_fleet(board: Optional[str] = None) -> Dict[str, Any]:
                                                   reports_work=kanban["blocked"].get(name, 0) > 0)
         if gw is not None:
             inputs["gateway_up"] = gw
+            if isinstance(gw.detail.get("gateway_runs"), Observation):
+                inputs["gateway_runs"] = gw.detail["gateway_runs"]
         if cron is not None:
             inputs["cron"] = Observation(observed_at=cron["observed_at"])
         for key, per_profile in extras.items():

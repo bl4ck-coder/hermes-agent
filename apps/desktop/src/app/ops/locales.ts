@@ -352,7 +352,7 @@ const opsEn: OpsCopy = {
       row: "Row"
     },
     selection: "Selection",
-    detailUnavailable: value => `${value} detail is not built in this shell. No Office, Canvas, or Board business view.`,
+    detailUnavailable: value => `Nothing selected in ${value} yet. Select an item to see its detail here.`,
     runEventsEmpty: "Run events stay empty until a focused run supplies them."
   },
   dock: {
@@ -2512,7 +2512,7 @@ const opsEs: OpsCopy = {
       row: "Fila"
     },
     selection: "Selección",
-    detailUnavailable: value => `El detalle de ${value} no está construido en este shell. No hay vista de negocio de Oficina, Lienzo ni Tablero.`,
+    detailUnavailable: value => `Todavía no hay nada seleccionado en ${value}. Elegí un elemento para ver su detalle acá.`,
     runEventsEmpty: "Los eventos de ejecución siguen vacíos hasta que una ejecución enfocada los proporcione."
   },
   dock: {
