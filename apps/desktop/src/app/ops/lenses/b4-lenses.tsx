@@ -298,8 +298,18 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
   const [confirm, setConfirm] = useState<StarterPack | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [onFilter, setOnFilter] = useState<'all' | 'on' | 'off'>('all')
+  const [type, setType] = useState('')
   const rows = skills.value ? skillRows(skills.value as Record<string, SkillLite[] | null>, profile) : null
-  const shown = rows ? searchRows(rows, q, r => [r.name, r.category, r.description]) : []
+  const types = rows ? [...new Set(rows.map(r => r.category || 'general'))].sort() : []
+
+  const shown = rows
+    ? searchRows(rows, q, r => [r.name, r.category, r.description]).filter(r => (onFilter === 'all' || (onFilter === 'on') === Boolean(r.enabled)) && (!type || (r.category || 'general') === type))
+    : []
+
+  const filtered = Boolean(q || type || onFilter !== 'all')
+  const scanCapped = (profiles.value?.length ?? 0) > SKILL_PROFILE_SCAN_MAX
   const packs = official.value ? starterPacks(official.value) : null
   const openSkill = (n: string) => onOpenRoute?.(`/capabilities?tab=skills&skill=${encodeURIComponent(n)}`)
   const openAgent = (p: string) => onOpenRoute?.(`/profiles?profile=${encodeURIComponent(p)}`)
@@ -308,15 +318,19 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
     setBusy(true)
     const failed: string[] = []
 
-    for (const s of pack.missing) {
+    setProgress({ done: 0, total: pack.missing.length })
+
+    for (const [i, s] of pack.missing.entries()) {
       try {
         await client.install(s.identifier, profile)
+        setProgress({ done: i + 1, total: pack.missing.length })
       } catch (e) {
         failed.push(`${s.name} (${why(e)})`)
       }
     }
 
     setBusy(false)
+    setProgress(null)
     setConfirm(null)
     setNote(failed.length ? `Installed ${pack.missing.length - failed.length} of ${pack.missing.length}; failed: ${failed.join(', ')}` : `Installing ${pack.missing.length} skills into ${profile}.`)
     official.reload()
@@ -334,6 +348,11 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
           Browse library
         </button>
       </header>
+      {progress ? (
+        <p aria-live="polite" data-ops-install-progress={`${progress.done}/${progress.total}`} role="status">
+          Installing {progress.done} of {progress.total}…
+        </p>
+      ) : null}
       {note ? <p role="status">{note}</p> : null}
       <section aria-label="Starter packs" data-ops-packs="">
         <h3>Starter packs</h3>
@@ -358,7 +377,33 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         <h3>
           Individual skills <span data-ops-skill-count="">{rows ? shown.length : '…'}</span>
         </h3>
-        <Search label="search skills" onChange={setQ} placeholder="Search by name, type, etc." value={q} />
+        <div aria-label="Skill filters" data-ops-skill-filters="" role="group">
+          <Search label="search skills" onChange={setQ} placeholder="Search by name, type, etc." value={q} />
+          <select aria-label="skill state" data-ops-skill-state={onFilter} onChange={e => setOnFilter(e.target.value as 'all' | 'on' | 'off')} value={onFilter}>
+            <option value="all">All states</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select>
+          <select aria-label="skill type" data-ops-skill-type={type} onChange={e => setType(e.target.value)} value={type}>
+            <option value="">All types</option>
+            {types.map(t => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          {filtered ? (
+            <button data-ops-skill-clear="" onClick={() => (setQ(''), setType(''), setOnFilter('all'))} type="button">
+              Clear filters
+            </button>
+          ) : null}
+        </div>
+        {rows ? (
+          <p data-ops-skill-shown="">
+            Showing {shown.length} of {rows.length}
+            {scanCapped ? ` · Agents column covers the first ${SKILL_PROFILE_SCAN_MAX} profiles` : ''}
+          </p>
+        ) : null}
         {!rows ? (
           <State error={skills.error} what="Skills" />
         ) : (
@@ -383,7 +428,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
               { id: 'usage', header: 'Uses', sortable: true, tabular: true, sortValue: r => r.usage ?? -1, cell: r => (typeof r.usage === 'number' ? String(r.usage) : '—') },
               { id: 'enabled', header: 'On', sortable: true, sortValue: r => (r.enabled ? 1 : 0), cell: r => (r.enabled ? 'on' : 'off') }
             ]}
-            emptyLabel={q ? 'No skill matches.' : 'This profile has no skills.'}
+            emptyLabel={filtered ? 'No skill matches these filters.' : 'This profile has no skills yet. Use Create skill or Browse library.'}
             getRowId={r => r.name}
             onSortChange={setSort}
             rows={shown}
