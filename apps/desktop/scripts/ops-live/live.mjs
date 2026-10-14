@@ -302,6 +302,12 @@ for (const [n, id, tab] of [['04-fleet', 'agents', 'fleet'], ['05-teams', 'agent
   if (!want(n.slice(3))) continue
   await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); return page.url() })
 }
+// B33: roster views. Switch to Cards, capture, switch back so the stored choice is unchanged.
+for (const [n, id, tab] of [['04b-fleet-cards', 'agents', 'fleet'], ['06b-skills-cards', 'skills']]) {
+  if (!want(n.slice(4)) && !want(n.slice(4, -6))) continue
+  await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); await page.locator('[data-ops-view-toggle] button').nth(1).click({ timeout: 8000 }); await sleep(600); return await page.evaluate(() => document.querySelectorAll('[data-ops-roster] > li').length + ' cards') })
+  await page.locator('[data-ops-view-toggle] button').first().click({ timeout: 4000 }).catch(() => {})
+}
 if (want('settings')) await section('08c-settings-top', async () => {
   await page.evaluate(() => document.querySelector('[data-ops-settings-group]')?.scrollIntoView({ block: 'start' }))
   await sleep(400)
