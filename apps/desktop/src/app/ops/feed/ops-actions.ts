@@ -14,6 +14,13 @@ import type { KanbanTask, OpsApi } from './ops-client'
 const K = '/api/plugins/kanban'
 const enc = encodeURIComponent
 
+/** MF7: a 409 stale_status from PATCH /tasks/{id} (expected_status guard), in any error shape opsCall produces. */
+export function isStaleStatus(e: unknown): boolean {
+  const o = e as { message?: unknown; detail?: { code?: unknown }; body?: { detail?: { code?: unknown } } } | null
+
+  return o?.detail?.code === 'stale_status' || o?.body?.detail?.code === 'stale_status' || /stale_status/.test(String(o?.message ?? e))
+}
+
 export interface TaskEvent {
   id: number
   task_id: string
@@ -137,7 +144,16 @@ export function createOpsActions(api: OpsApi = hermesApi) {
     /** Needs-you kanban actions: a note is always a comment first, then the server-validated transition. */
     kanban: async (a: KanbanAction) => {
       if (a.kind === 'approve_review') {
-        return setStatus(a.taskId, 'done')
+        // MF7: approve only what was reviewed. The server refuses (409 stale_status) if the task left review.
+        try {
+          return await call<unknown>('PATCH', `${K}/tasks/${enc(a.taskId)}`, { status: 'done', expected_status: 'review' })
+        } catch (e) {
+          if (isStaleStatus(e)) {
+            return { outcome: 'stale_revision' }
+          }
+
+          throw e
+        }
       }
 
       if (a.kind === 'comment') {

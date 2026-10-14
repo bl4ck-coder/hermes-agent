@@ -7,7 +7,9 @@ import { useRef, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { connectionView } from './feed/diag'
+import { createOpsActions, isStaleStatus } from './feed/ops-actions'
 import { applyWriteGate, gateFrom, opsWriteGate, setOpsConnection, useWriteGateOn } from './feed/write-gate'
+import { outcomeCopy } from './office/needs-you'
 
 const caps = { tokens: ['ops.fleet', 'ops.policy', 'ops.tx.nodes.prompt'] }
 
@@ -123,5 +125,30 @@ describe('B8 L2 coverage (static)', () => {
     expect(read('index.tsx')).toContain('useWriteGateOn(root)')
     expect(read('chrome.tsx')).toContain('setOpsConnection(results[0].status')
     expect(read('board/board-container.tsx').match(/opsWriteGate\(\)\.enabled/g)?.length).toBe(2)
+  })
+})
+
+describe('B8 MF7 review approve carries expected_status', () => {
+  it('sends status done guarded by expected_status review', async () => {
+    const api = vi.fn(async () => ({ task: { id: 't1', status: 'done' } }))
+    await createOpsActions(api as never).kanban({ kind: 'approve_review', taskId: 't1' })
+    expect(api).toHaveBeenCalledWith(expect.objectContaining({ method: 'PATCH', body: { status: 'done', expected_status: 'review' } }))
+  })
+
+  it('maps a 409 stale_status to "Changed; review again" and rethrows other errors', async () => {
+    const stale = vi.fn(async () => {
+      throw new Error('409: {"detail":{"code":"stale_status","current_status":"running"}}')
+    })
+
+    const r = await createOpsActions(stale as never).kanban({ kind: 'approve_review', taskId: 't1' })
+    expect(r).toEqual({ outcome: 'stale_revision' })
+    expect(outcomeCopy(r, 'Approved')).toBe('Changed; review again')
+    expect(isStaleStatus({ detail: { code: 'stale_status' } })).toBe(true)
+
+    const boom = vi.fn(async () => {
+      throw new Error('500: boom')
+    })
+
+    await expect(createOpsActions(boom as never).kanban({ kind: 'approve_review', taskId: 't1' })).rejects.toThrow('boom')
   })
 })
