@@ -1,4 +1,4 @@
-/** Canvas container (ops-panel P3-03): read-only data for one profile + the runs bridge. */
+/** Canvas container (ops-panel P3-03, P5-02): profile data, the runs bridge and the writable node editors. */
 
 import { useMemo } from 'react'
 
@@ -6,6 +6,7 @@ import { createOpsClient, type OpsClient } from '../feed/ops-client'
 import { useOpsResource } from '../office/office-container'
 
 import { CanvasView } from './canvas'
+import { NodeEditors } from './node-editor-view'
 
 function runsBridge() {
   return (globalThis as { window?: { hermesDesktop?: { runs?: unknown } } }).window?.hermesDesktop?.runs ?? null
@@ -21,11 +22,15 @@ export function CanvasContainer({ profile, readOnly, client: clientProp }: { pro
   const delegation = useOpsResource(() => client.delegation(profile), [client, profile], slow)
 
   return (
+    <>
     <CanvasView
       data={{ model: model.value, policy: policy.value, prompt: prompt.value, cron: cron.value, delegation: delegation.value }}
       profile={profile}
       readOnly={readOnly}
       runs={runsBridge() as never}
     />
+    {/* P5: writable nodes; a remote connection is refused server-side (D11) and renders read-only. */}
+    <NodeEditors policy={policy.value} profile={profile} readOnly={readOnly} />
+    </>
   )
 }

@@ -161,7 +161,10 @@ export function repairSuggestions(policy: PolicyView | null, provider?: string):
 
 export function createNodeClient(api: OpsApi = hermesApi) {
   const base = (profile: string, node: string) => `/api/ops/profiles/${encodeURIComponent(profile)}/nodes/${node}`
-  const call = <T>(method: string, path: string, body?: unknown) => api<T>({ ...connectionScoped(), path, method, body })
+
+  // A missing bridge throws synchronously; keep every failure on the promise so the editor degrades.
+  const call = <T>(method: string, path: string, body?: unknown) =>
+    Promise.resolve().then(() => api<T>({ ...connectionScoped(), path, method, body }))
 
   return {
     read: (profile: string, node: WritableNode) => call<NodeRead>('GET', base(profile, node)),
