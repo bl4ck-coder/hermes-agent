@@ -1122,7 +1122,8 @@ function CronJobRuns({
               </span>
             </div>
           )}
-          {(runs ?? []).map(run =>
+          {groupIdenticalRuns(runs ?? [], cronRunTextOf).map(group => {
+            const renderRun = (run: (typeof group)[number]) =>
             isSyntheticCronOutputRun(run) ? (
               // Output-doc rows have no backing session to open; show the
               // recorded output preview without a chat-navigation affordance.
@@ -1151,7 +1152,27 @@ function CronJobRuns({
                 </span>
               </button>
             )
-          )}
+
+            const [head, ...rest] = group
+
+            if (rest.length === 0) {
+              return renderRun(head)
+            }
+
+            // B33: consecutive runs with the same outcome fold into one row with a count;
+            // every run stays one click away inside the fold.
+            return (
+              <div data-cron-run-group="" key={`group-${head.id}`}>
+                {renderRun(head)}
+                <details data-cron-run-group-more="">
+                  <summary className="cursor-pointer px-2 py-0.5 text-[0.62rem] text-muted-foreground">
+                    {`×${group.length} · ${c.runHistory}`}
+                  </summary>
+                  <div className="flex flex-col gap-px">{rest.map(renderRun)}</div>
+                </details>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -1642,6 +1663,26 @@ interface ScheduleOption {
 
 /** IA: script-run previews arrive as one markdown line ("COMPLETED · # Cron Job: x **Job ID:** … **Status:** silent").
  *  The row already sits under its job, so show the outcome, not the boilerplate. Plain titles pass through. */
+const cronRunTextOf = (run: { id: string; preview?: string | null; title?: string | null }) =>
+  cronRunLabel(run.title?.trim() || run.preview?.trim() || run.id)
+
+/** B33: fold consecutive runs whose visible label is identical (newest first stays first). */
+export function groupIdenticalRuns<R>(runs: R[], textOf: (run: R) => string): R[][] {
+  const groups: R[][] = []
+
+  for (const run of runs) {
+    const last = groups[groups.length - 1]
+
+    if (last && textOf(last[0]) === textOf(run)) {
+      last.push(run)
+    } else {
+      groups.push([run])
+    }
+  }
+
+  return groups
+}
+
 export function cronRunLabel(text: string): string {
   if (!text.includes('**')) return text
   const status = /\*\*Status:\*\*\s*([^*]+)/.exec(text)?.[1]?.trim()
