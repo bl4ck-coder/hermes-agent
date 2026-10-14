@@ -5,6 +5,8 @@
  * profile ids) pass through unchanged.
  */
 
+import { opsMainLocale, P, T as mainT } from './main-i18n'
+
 export const INSPECTOR_KEYS = [
   'Assignee', 'Priority', 'Project', 'Tenant', 'Progress', 'Parents / children', 'Comments', 'Failures in a row', 'Skills',
   'Created', 'Started', 'Last heartbeat', 'Completed', 'Model', 'Prompt', 'Policy', 'Scheduled jobs', 'Time zone', 'Motion',
@@ -188,6 +190,12 @@ export function localizeInspector(s: string | null | undefined, dict: Record<str
     return dict[s]
   }
 
+  const cards = /^(\d+) cards$/.exec(s)
+
+  if (cards && opsMainLocale() !== 'en') {
+    return P(Number(cards[1]), '{n} cards', '{n} card')
+  }
+
   for (const [re, key] of TEMPLATES) {
     const m = re.exec(s)
 
@@ -205,5 +213,6 @@ export function localizeInspector(s: string | null | undefined, dict: Record<str
     return s.split(' / ').map(p => dict[p] ?? p).join(' / ')
   }
 
-  return s
+  // B14: column ids and other main-content keys (todo, ready…) fall back to the main table.
+  return mainT(s)
 }

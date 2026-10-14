@@ -5,7 +5,7 @@
 
 import { type DragEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 
-import { T } from '../main-i18n'
+import { P, T } from '../main-i18n'
 import { fmtAge, fmtBytes } from '../office/control-room'
 
 import type { BoardTask } from './board-model'
@@ -184,7 +184,7 @@ export function CardSignals({ task, nowS }: { task: BoardTask; nowS: number }) {
         </span>
       ) : null}
       {comments ? (
-        <span aria-label={`${comments} comments`} data-ops-comments={comments}>
+        <span aria-label={P(comments, '{n} comments', '{n} comment')} data-ops-comments={comments}>
           💬 {comments}
         </span>
       ) : null}

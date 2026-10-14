@@ -20,7 +20,7 @@ import {
   type PolicyView
 } from '../feed/ops-client'
 import { useOpsFeed } from '../feed/ops-feed'
-import { T } from '../main-i18n'
+import { P, T } from '../main-i18n'
 import { listOrNull, useOpsResource } from '../office/office-container'
 import { Sigil } from '../primitives/sigil'
 
@@ -132,7 +132,7 @@ export function AgentCardView({
         <dd data-ops-field="role">{role === undefined ? 'unknown' : role === null ? 'no description' : role}</dd>
         <dt>{T("Policy")}</dt>
         <dd data-ops-field="policy">
-          {violations === null ? 'unknown' : violations.length === 0 ? 'inside policy' : `${violations.length} violation(s)`}
+          {violations === null ? 'unknown' : violations.length === 0 ? T('inside policy') : P(violations.length, '{n} violations', '{n} violation')}
         </dd>
         <dt>{T("Active runs")}</dt>
         <dd data-ops-field="runs">{fleet && Array.isArray(fleet.active_runs) ? fleet.active_runs.length : T('unknown')}</dd>

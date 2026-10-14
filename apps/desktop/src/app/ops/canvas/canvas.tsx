@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
 import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
-import { T } from '../main-i18n'
+import { P, T } from '../main-i18n'
 
 import { ComposePanel } from './compose-view'
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
@@ -280,7 +280,7 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
     }
 
     case 'skills':
-      return typeof d.skills === 'number' ? { text: `${d.skills} skills installed`, state: d.skills ? 'ok' : 'unset' } : { text: 'unknown', state: 'unknown' }
+      return typeof d.skills === 'number' ? { text: P(d.skills, '{n} skills installed', '{n} skill installed'), state: d.skills ? 'ok' : 'unset' } : { text: 'unknown', state: 'unknown' }
 
     case 'delegation':
       return d.delegation

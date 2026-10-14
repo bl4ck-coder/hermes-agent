@@ -14,7 +14,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 import { opsCall } from '../feed/diag'
 import { type ActiveWorker, createOpsActions } from '../feed/ops-actions'
-import { T } from '../main-i18n'
+import { P, T } from '../main-i18n'
 import type { BoardTask } from '../office/control-room'
 import { fmtAge } from '../office/control-room'
 import { useOpsResource } from '../office/office-container'
@@ -137,7 +137,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         <div role="tablist">
           {(['fleet', 'teams', 'roles'] as const).map(t => (
             <button aria-selected={tab === t} data-ops-agents-tab={t} key={t} onClick={() => setTab(t)} role="tab" type="button">
-              {t === 'fleet' ? 'Fleet' : t === 'teams' ? 'Teams' : 'Roles'}
+              {t === 'fleet' ? T('Fleet') : t === 'teams' ? T('Teams') : T('Roles')}
             </button>
           ))}
         </div>
@@ -182,8 +182,8 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                   </span>
                 )
               },
-              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : 'never') },
-              { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{r.status}</span> }
+              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('never')) },
+              { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{T(r.status)}</span> }
             ]}
             emptyLabel={q ? 'No agent matches.' : 'No profiles.'}
             getRowId={r => r.name}
@@ -362,9 +362,9 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
           <ul>
             {packs.map(p => (
               <li data-ops-pack={p.id} key={p.id}>
-                <strong>{p.title}</strong> <span data-ops-pack-meta="">{p.skills.length} {T("skills")}{p.missing.length < p.skills.length ? ` · ${p.skills.length - p.missing.length} installed` : ''}</span>
+                <strong>{p.title}</strong> <span data-ops-pack-meta="">{P(p.skills.length, '{n} skills', '{n} skill')}{p.missing.length < p.skills.length ? ` · ${P(p.skills.length - p.missing.length, '{n} installed')}` : ''}</span>
                 <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
-                  {p.missing.length === 0 ? 'All added' : 'Add all'}
+                  {p.missing.length === 0 ? T('All added') : T('Add all')}
                 </button>
               </li>
             ))}
@@ -397,8 +397,8 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         </div>
         {rows ? (
           <p data-ops-skill-shown="">
-            {T("Showing")}{' '}{shown.length} of {rows.length}
-            {scanCapped ? ` · Agents column covers the first ${SKILL_PROFILE_SCAN_MAX} profiles` : ''}
+            {T('Showing')}{' '}{shown.length} {T('of')} {rows.length}
+            {scanCapped ? ` · ${T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}` : ''}
           </p>
         ) : null}
         {!rows ? (
@@ -423,7 +423,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
               { id: 'agents', header: 'Agents', sortable: true, tabular: true, sortValue: r => r.agents.length, cell: r => <AgentLinks agents={r.agents} onOpen={onOpenRoute ? openAgent : undefined} /> },
               { id: 'source', header: 'Source', sortable: true, sortValue: r => r.provenance ?? '', cell: r => r.provenance ?? T('unknown') },
               { id: 'usage', header: 'Uses', sortable: true, tabular: true, sortValue: r => r.usage ?? -1, cell: r => (typeof r.usage === 'number' ? String(r.usage) : '—') },
-              { id: 'enabled', header: 'On', sortable: true, sortValue: r => (r.enabled ? 1 : 0), cell: r => (r.enabled ? 'on' : 'off') }
+              { id: 'enabled', header: 'On', sortable: true, sortValue: r => (r.enabled ? 1 : 0), cell: r => (r.enabled ? T('on') : T('off')) }
             ]}
             emptyLabel={filtered ? 'No skill matches these filters.' : 'This profile has no skills yet. Use Create skill or Browse library.'}
             getRowId={r => r.name}
@@ -447,7 +447,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
           }
         }}
         open={!!confirm}
-        title={confirm ? `Add all of ${confirm.title}?` : ''}
+        title={confirm ? T('Add all of {title}?').replace('{title}', confirm.title) : ''}
       />
     </section>
   )

@@ -11,7 +11,7 @@ import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 import { boardInspectorSummary, taskInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
-import { T } from '../main-i18n'
+import { layoutLabel, T } from '../main-i18n'
 import { Sigil } from '../primitives/sigil'
 
 import {
@@ -313,7 +313,7 @@ export function BoardView(props: BoardViewProps) {
       <div role="toolbar">
         {LAYOUTS.map(l => (
           <button aria-pressed={l === layout} data-ops-layout={l} key={l} onClick={() => setLayout(l)} type="button">
-            {l}
+            {layoutLabel(l)}
           </button>
         ))}
         {!readOnly && props.createFull ? (

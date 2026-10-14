@@ -327,3 +327,8 @@
 :where([data-ops-card][draggable='true']) { cursor: grab; }
 :where([data-ops-card][draggable='true']:active) { cursor: grabbing; }
 :where([data-ops-card][data-ops-dragging]) { opacity: 0.55; }
+/* B14: fleet status reads at a glance (Gr8r status chips): failing garnet, running gold, idle muted. */
+:where([data-ops-fleet-status]) { border-radius: 999px; font-size: 11.5px; padding: 1px 8px; }
+:where([data-ops-fleet-status='failing']) { background: color-mix(in srgb, #b4474b 18%, transparent); color: #e08a8d; }
+:where([data-ops-fleet-status='running']) { background: color-mix(in srgb, var(--ops-gold, #c9a227) 16%, transparent); color: var(--ops-gold, #c9a227); }
+:where([data-ops-fleet-status='idle'], [data-ops-fleet-status='unknown']) { color: var(--ops-muted); }
