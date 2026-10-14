@@ -5,7 +5,7 @@ import type { OpsToastItem } from '../primitives/toast-queue'
 export function toastsFromPending(
   items: ApprovalItem[] | null,
   nowMs: number,
-  h: { onApprove?: (i: ApprovalItem) => unknown; onReview?: () => void; onOpenTask?: (id: string) => void }
+  h: { onApprove?: (i: ApprovalItem) => unknown; onReview?: (rowKey: string) => void; onOpenTask?: (id: string) => void }
 ): OpsToastItem[] {
   if (!items) {
     return []
@@ -25,7 +25,7 @@ export function toastsFromPending(
         command: i.exact_request.command,
         createdAt,
         onApprove: h.onApprove ? () => void h.onApprove?.(i) : undefined,
-        onReview: h.onReview
+        onReview: h.onReview ? () => h.onReview?.(`${i.origin}:${i.id}`) : undefined
       })
     } else if (i.origin === 'kanban_blocked') {
       out.push({
@@ -33,12 +33,19 @@ export function toastsFromPending(
         kind: 'blocked',
         message: `${who}: ${i.what_for || i.why || i.id} is blocked`,
         createdAt,
-        onOpen: h.onOpenTask ? () => h.onOpenTask?.(i.id) : h.onReview
+        onOpen: h.onOpenTask ? () => h.onOpenTask?.(i.id) : h.onReview ? () => h.onReview?.(`${i.origin}:${i.id}`) : undefined
       })
     }
   }
 
   return out
+}
+
+/** O8: [Review] is a user click, so it may move focus to that item's Needs-you row (toasts themselves never do). */
+export function focusNeedsYouRow(rowKey: string, root: ParentNode = document) {
+  const row = root.querySelector<HTMLElement>(`[data-ops-approval="${CSS.escape(rowKey)}"]`)
+  row?.scrollIntoView?.({ block: 'nearest' })
+  row?.focus()
 }
 
 /** Activity rows from /api/approvals/resolved: unknown fields stay "unknown". */

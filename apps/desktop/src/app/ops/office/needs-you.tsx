@@ -88,7 +88,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
             const note = notes[key] ?? ''
 
             return (
-              <tr data-ops-approval={key} data-ops-origin={item.origin} key={key}>
+              <tr data-ops-approval={key} data-ops-origin={item.origin} key={key} tabIndex={-1}>
                 <td>{item.profile ?? 'unknown'}</td>
                 <td>{KIND[item.origin] ?? item.origin}</td>
                 <td data-ops-waiting-on="">{cmd || item.what_for || item.id}</td>

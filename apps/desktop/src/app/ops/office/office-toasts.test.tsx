@@ -1,4 +1,4 @@
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { ApprovalItem } from '../feed/ops-client'
@@ -40,7 +40,7 @@ describe('office toasts + activity (P6 F7)', () => {
     const props = {
       fleet: null,
       nowS: 100,
-      pending: [item({ exact_request: { command: 'ls', pattern_keys: [] } })],
+      pending: [item({ exact_request: { command: `echo ${'x'.repeat(90)}`, pattern_keys: [] } })],
       usage: null,
       cron: null,
       inFlight: null,
@@ -50,6 +50,8 @@ describe('office toasts + activity (P6 F7)', () => {
     const { rerender } = render(<OfficeView {...props} />)
     expect(document.querySelector('.ops-toast[data-kind="approval"]')).toBeTruthy()
     expect(document.querySelector('[data-ops-activity-row] [data-ops-field="who"]')?.textContent).toBe('pixel')
+    fireEvent.click(within(document.querySelector('.ops-toast') as HTMLElement).getByText('Review'))
+    expect(document.activeElement?.getAttribute('data-ops-approval')).toBe('jsonrpc:a1')
     rerender(<OfficeView {...props} readOnly />)
     expect(document.querySelector('.ops-toast')).toBeNull()
   })

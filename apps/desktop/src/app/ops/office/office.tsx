@@ -18,7 +18,7 @@ import { shownPresence } from '../feed/ops-client'
 import { ToastQueue } from '../primitives/toast-queue'
 
 import { type KanbanAction, NeedsYouQueue } from './needs-you'
-import { activityRow, toastsFromPending } from './office-toasts'
+import { activityRow, focusNeedsYouRow, toastsFromPending } from './office-toasts'
 import { layoutOrrery, ORRERY_CAP } from './orrery'
 
 export type OfficeLayout = 'orrery' | 'table'
@@ -248,7 +248,7 @@ export function OfficeView(props: OfficeViewProps) {
           items={toastsFromPending(props.pending, nowS * 1000, {
             onApprove: props.onApprove,
             onOpenTask: props.onOpenTask,
-            onReview: () => document.querySelector('[data-ops-needs-you-anchor]')?.scrollIntoView?.({ block: 'nearest' })
+            onReview: focusNeedsYouRow
           })}
           now={nowS * 1000}
           onNeedsYou={() => document.querySelector('[data-ops-needs-you-anchor]')?.scrollIntoView?.({ block: 'nearest' })}
