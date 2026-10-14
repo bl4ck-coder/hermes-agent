@@ -38,6 +38,38 @@ export interface PolicyNeed {
 
 /** D3: one click only when the full command fits unabridged in the row. */
 export const FULL_ARGS_MAX = 160
+/** SPEC v2.1 4c: and at most 3 lines. */
+export const FULL_ARGS_LINES = 3
+
+/** One-click Approve guard (SPEC v2.1 4c): full command visible, still a published action, id-bound request. */
+export function oneClickApprove(item: ApprovalItem): boolean {
+  const cmd = item.exact_request?.command ?? ''
+
+  return Boolean(cmd) && cmd.length <= FULL_ARGS_MAX && cmd.split('\n').length <= FULL_ARGS_LINES && item.actions.includes('approve') && Boolean(item.id)
+}
+
+/** Distinct copy per server outcome; never a silent success. */
+export function outcomeCopy(result: unknown, done: string): string {
+  const o = (result as { outcome?: unknown } | null)?.outcome
+
+  if (o === 'resolved_elsewhere' || o === 'already_resolved') {
+    return 'Already resolved elsewhere'
+  }
+
+  if (o === 'expired') {
+    return 'Expired'
+  }
+
+  if (o === 'stale_revision') {
+    return 'Changed; review again'
+  }
+
+  if (o === 'duplicate') {
+    return 'Already sent'
+  }
+
+  return done
+}
 
 const KIND: Record<string, string> = {
   jsonrpc: 'Command approval',
@@ -57,6 +89,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
   const [busy, setBusy] = useState<Record<string, State>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [results, setResults] = useState<Record<string, unknown>>({})
 
   if (!p.items) {
     return <section data-ops-needs-you="">Needs you unknown</section>
@@ -68,7 +101,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
     setBusy(b => ({ ...b, [key]: 'sending' }))
 
     try {
-      await fn()
+      const r = await fn()
+      setResults(x => ({ ...x, [key]: r }))
       setBusy(b => ({ ...b, [key]: 'done' }))
     } catch (e) {
       setBusy(b => ({ ...b, [key]: 'failed' }))
@@ -76,7 +110,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
     }
   }
 
-  const label = (key: string, idle: string, done: string) => (busy[key] === 'done' ? done : busy[key] === 'failed' ? `Retry ${idle.toLowerCase()}` : idle)
+  const label = (key: string, idle: string, done: string) => (busy[key] === 'done' ? outcomeCopy(results[key], done) : busy[key] === 'failed' ? `Retry ${idle.toLowerCase()}` : idle)
   const policy = Array.isArray(p.policy) ? p.policy : []
   const total = p.items.length + failing.length + policy.length
 
@@ -99,7 +133,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
             const key = `${item.origin}:${item.id}`
             const sending = busy[key] === 'sending' || busy[key] === 'done'
             const cmd = item.exact_request?.command ?? ''
-            const fullFits = Boolean(cmd) && cmd.length <= FULL_ARGS_MAX
+            const fullFits = oneClickApprove(item)
             const note = notes[key] ?? ''
 
             return (
@@ -114,7 +148,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                     <span data-ops-review={key}>Review</span>
                   ) : item.origin === 'jsonrpc' ? (
                     <>
-                      {item.actions.includes('approve') && fullFits ? (
+                      {fullFits ? (
                         <button data-ops-approve={key} disabled={sending} onClick={() => void run(key, () => p.onApprove?.(item))} type="button">
                           {label(key, 'Approve', 'Approved')}
                         </button>
