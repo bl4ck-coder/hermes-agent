@@ -676,7 +676,7 @@ export function CanvasView({
         <button data-ops-test-run="" data-ops-write="" disabled={!runs || active} onClick={() => void start()} type="button">
           {T("Test run")}</button>
         {!runs ? <span>{T("Runs bridge unavailable")}</span> : null}
-        <div data-ops-run-status={run.status}>{run.status}</div>
+        <div data-ops-run-status={run.status}>{T(run.status)}</div>
         <div data-ops-run-elapsed="">{ms === null ? '' : `${(ms / 1000).toFixed(1)} s`}</div>
         <div data-ops-run-tokens="">{run.tokens} {T("streamed tokens")}</div>
         <pre data-ops-run-text="">{run.text}</pre>

@@ -543,3 +543,24 @@
 :where(.ops-toast[data-kind*='block'], .ops-toast[data-kind*='fail'], .ops-toast[data-kind='error']) { border-left-color: #b4434b; }
 /* Skills kits: names wrap to two lines instead of truncating. */
 :where([data-ops-packs] li[data-ops-pack] > strong) { -webkit-box-orient: vertical; -webkit-line-clamp: 2; display: -webkit-box; white-space: normal; }
+
+/* ---- B25: Office frame budget, Canvas run panel, Board toolbar on one line ---- */
+/* Orbs that drift are composited, not repainted: no shadow while moving, transform hinted. */
+:where([data-ops-orrery][data-ops-drift] [data-ops-orb]) { box-shadow: none; will-change: translate; }
+:where([data-ops-orrery-centre])::before { will-change: opacity; }
+/* Run panel: input, then one status line (state pill, elapsed, tokens), then the stream. */
+:where([data-ops-run-panel]) { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+:where([data-ops-run-panel] > textarea) { flex-basis: 100%; min-height: 64px; resize: vertical; }
+:where([data-ops-run-panel] > pre) { flex-basis: 100%; }
+:where([data-ops-run-status]) { align-items: center; background: var(--ops-surface-2); border-radius: 999px; display: inline-flex; font-size: 11px; gap: 6px; padding: 1px 10px 1px 8px; text-transform: capitalize; }
+:where([data-ops-run-status])::before { background: var(--ops-muted); border-radius: 50%; content: ''; height: 6px; width: 6px; }
+:where([data-ops-run-status='running'], [data-ops-run-status='streaming'])::before { animation: ops-glow 1.2s ease-in-out infinite; background: var(--ops-gold); }
+:where([data-ops-run-status='done'], [data-ops-run-status='completed'])::before { background: #6fbf73; }
+:where([data-ops-run-status='error'], [data-ops-run-status='failed'])::before { background: #b4434b; }
+:where([data-ops-run-elapsed], [data-ops-run-tokens]) { color: var(--ops-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+:where([data-ops-run-text]:empty) { display: none; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-run-status])::before { animation: none; } }
+:where([data-ops-motion='reduced'] [data-ops-run-status])::before { animation: none; }
+/* Board toolbar keeps the view switcher on one line and scrolls sideways if it must. */
+:where([role='toolbar']:has(> [data-ops-layout])) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+:where([role='toolbar']:has(> [data-ops-layout])) > :where(*) { flex: none; }

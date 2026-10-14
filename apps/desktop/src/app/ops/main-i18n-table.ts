@@ -585,6 +585,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No role (the profile has no description).": "Sin rol (el perfil no tiene descripción).",
     "Worker runs started in the last 7 days": "Ejecuciones de workers iniciadas en los últimos 7 días",
     "Task starts (this Hermes has no run stats)": "Inicios de tareas (este Hermes no tiene estadísticas de ejecución)",
+    "streaming": "transmitiendo",
+    "error": "error",
+    "cancelled": "cancelada",
   },
   "fr": {
     "\"Today\" and \"this week\" in Office use this zone.": "« Aujourd’hui » et « cette semaine » dans Bureau utilisent ce fuseau.",
@@ -1170,6 +1173,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No role (the profile has no description).": "Pas de rôle (le profil n'a pas de description).",
     "Worker runs started in the last 7 days": "Exécutions de workers lancées ces 7 derniers jours",
     "Task starts (this Hermes has no run stats)": "Démarrages de tâches (ce Hermes n'a pas de statistiques d'exécution)",
+    "streaming": "en flux",
+    "error": "erreur",
+    "cancelled": "annulée",
   },
   "de": {
     "\"Today\" and \"this week\" in Office use this zone.": "„Heute“ und „diese Woche“ im Büro nutzen diese Zone.",
@@ -1755,6 +1761,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No role (the profile has no description).": "Keine Rolle (das Profil hat keine Beschreibung).",
     "Worker runs started in the last 7 days": "In den letzten 7 Tagen gestartete Worker-Läufe",
     "Task starts (this Hermes has no run stats)": "Aufgabenstarts (dieses Hermes hat keine Laufstatistik)",
+    "streaming": "streamt",
+    "error": "Fehler",
+    "cancelled": "abgebrochen",
   },
   "ru": {
     "\"Today\" and \"this week\" in Office use this zone.": "«Сегодня» и «эта неделя» в Офисе используют этот пояс.",
@@ -2340,6 +2349,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No role (the profile has no description).": "Нет роли (у профиля нет описания).",
     "Worker runs started in the last 7 days": "Запуски воркеров за последние 7 дней",
     "Task starts (this Hermes has no run stats)": "Старты задач (у этого Hermes нет статистики запусков)",
+    "streaming": "поток",
+    "error": "ошибка",
+    "cancelled": "отменено",
   },
   "ja": {
     "\"Today\" and \"this week\" in Office use this zone.": "オフィスの「今日」と「今週」はこのタイムゾーンを使います。",
@@ -2925,6 +2937,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No role (the profile has no description).": "役割なし（プロファイルに説明がありません）。",
     "Worker runs started in the last 7 days": "過去 7 日間に開始されたワーカー実行",
     "Task starts (this Hermes has no run stats)": "タスク開始数（この Hermes には実行統計がありません）",
+    "streaming": "ストリーミング中",
+    "error": "エラー",
+    "cancelled": "キャンセル",
   },
   "zh": {
     "\"Today\" and \"this week\" in Office use this zone.": "办公室中的“今天”和“本周”使用此时区。",
@@ -3510,6 +3525,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No role (the profile has no description).": "无角色（该配置没有描述）。",
     "Worker runs started in the last 7 days": "过去 7 天启动的工作者运行",
     "Task starts (this Hermes has no run stats)": "任务启动次数（此 Hermes 没有运行统计）",
+    "streaming": "流式传输中",
+    "error": "错误",
+    "cancelled": "已取消",
   },
   "zh-hant": {
     "\"Today\" and \"this week\" in Office use this zone.": "辦公室中的“今天”和“本週”使用此時區。",
@@ -4095,6 +4113,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No role (the profile has no description).": "無角色（該配置沒有描述）。",
     "Worker runs started in the last 7 days": "過去 7 天啟動的工作者執行",
     "Task starts (this Hermes has no run stats)": "任務啟動次數（此 Hermes 沒有執行統計）",
+    "streaming": "流式傳輸中",
+    "error": "錯誤",
+    "cancelled": "已取消",
   },
   "ar": {
     "\"Today\" and \"this week\" in Office use this zone.": "يستخدم «اليوم» و«هذا الأسبوع» في المكتب هذه المنطقة الزمنية.",
@@ -4680,5 +4701,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No role (the profile has no description).": "بلا دور (ملف التعريف بلا وصف).",
     "Worker runs started in the last 7 days": "تشغيلات العمال التي بدأت في آخر 7 أيام",
     "Task starts (this Hermes has no run stats)": "بدايات المهام (لا يملك Hermes هذا إحصاءات تشغيل)",
+    "streaming": "يبث",
+    "error": "خطأ",
+    "cancelled": "أُلغي",
   },
 };
