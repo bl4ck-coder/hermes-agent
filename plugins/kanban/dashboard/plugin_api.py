@@ -928,6 +928,50 @@ def list_active_workers(board: Optional[str] = _BOARD_Q):
         return {"workers": workers, "count": len(workers), "checked_at": int(time.time())}
 
 
+@router.get("/runs/stats")
+def run_stats(since: int = Query(0, ge=0), board: Optional[str] = _BOARD_Q):
+    """Ops Fleet (R72): ``task_runs`` rows started at or after ``since`` (epoch s), per profile.
+
+    Read-only aggregate: ``{since, profiles: {name: {runs, failed, last_started_at}}, total}``.
+    ``failed`` counts ended runs whose outcome is not ``completed``.
+    """
+    with _board_conn(board) as (board, conn):
+        rows = conn.execute(
+            "SELECT COALESCE(r.profile, t.assignee) AS profile, COUNT(*) AS runs, "
+            "SUM(CASE WHEN r.ended_at IS NOT NULL AND COALESCE(r.outcome, '') != 'completed' THEN 1 ELSE 0 END) AS failed, "
+            "MAX(r.started_at) AS last_started_at "
+            "FROM task_runs r LEFT JOIN tasks t ON t.id = r.task_id "
+            "WHERE r.started_at >= ? GROUP BY COALESCE(r.profile, t.assignee)", (since,)).fetchall()
+        profiles = {
+            (row["profile"] or ""): {"runs": int(row["runs"]), "failed": int(row["failed"] or 0), "last_started_at": row["last_started_at"]}
+            for row in rows}
+        return {"since": since, "profiles": profiles, "total": sum(p["runs"] for p in profiles.values())}
+
+
+@router.get("/attachments")
+def list_recent_attachments(
+    limit: int = Query(50, ge=1, le=200),
+    before_id: Optional[int] = Query(None, ge=1),
+    board: Optional[str] = _BOARD_Q,
+):
+    """Ops Files (R70): every attachment on the board, newest first, keyset-paged by id.
+
+    ``{attachments: [... + task_title], next_before_id}``; ``next_before_id`` is null on the last page.
+    """
+    with _board_conn(board) as (board, conn):
+        sql = ("SELECT a.*, t.title AS task_title FROM task_attachments a LEFT JOIN tasks t ON t.id = a.task_id "
+               + ("WHERE a.id < ? " if before_id else "") + "ORDER BY a.id DESC LIMIT ?")
+        params = ((before_id,) if before_id else ()) + (limit + 1,)
+        rows = conn.execute(sql, params).fetchall()
+        page = rows[:limit]
+        out = []
+        for row in page:
+            d = _attachment_dict(kanban_db.Attachment.from_row(row))
+            d["task_title"] = row["task_title"]
+            out.append(d)
+        return {"attachments": out, "next_before_id": page[-1]["id"] if len(rows) > limit and page else None}
+
+
 @router.get("/runs/{run_id}")
 def get_run_endpoint(run_id: int, board: Optional[str] = _BOARD_Q):
     """``{run: {...}}`` with the same serialisation as ``GET /tasks/{id}``; 404 if unknown."""
