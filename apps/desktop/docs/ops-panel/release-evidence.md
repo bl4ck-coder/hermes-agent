@@ -370,3 +370,41 @@ SPEC v2.1 from the 02:41 Sol review: not in the vault at pull time, so nothing w
 | Skills / Settings polish, L2/L5/L8/L9/S5, full UI sweep | Not done in B6 | Carried to B7 |
 
 Gates: tsc 0 errors; Ops suite 42 files / 381 tests pass; eslint 0 errors (warnings only).
+## P8 B7 - SPEC v2.1 must-folds + polish (2026-10-14 ART)
+
+Vault: SPEC-v2.1.md and SPEC-v2-sol-review.md pulled (vault HEAD 6b0d458e). `git ls-remote origin HEAD` = 6b0d458e5267, the same as local HEAD, so the B6 vault push reached origin.
+
+Commits on ops/P8-polish (fork only, fast-forwarded into feat/ops-panel): a8d027cd27, d22f2c458f, a9a0914acf (backend); 9c6cb3d645, 6af069dd83, 4a5d1e3c14, 812ba87dd0, 443f404d12, 0dc44d8c8a, d4f105615c, bc3422cf17, 631ec2e378, b0f3619a50 (desktop); plus the restore-drill commit.
+
+### Must-folds (Sol review, SPEC v2.1)
+
+| MF | SPEC | Status | Evidence |
+|---|---|---|---|
+| MF1 matrix | §9b | Closed | The P8 tables plus this one are the row matrix; every Built row names a test, every Cut row has a reason. No coverage percentage is used in place of critical rows |
+| MF2 layers | §9a/§9c | Closed | Rows are tagged backend (pytest), client (vitest) or host. Host-only rows (R55) say so |
+| MF3 A5 contracts | §2b | Closed | op_id on every save and restore; duplicate op_id is 409 duplicate_op; GET .../ops/{op_id} gives applied, rejected, indeterminate or not_found; the client goes to "outcome unknown" when the response is lost and reconciles. Save all stays independent and sequential. test_ops_v21_folds, node-editor.test, b7.test |
+| MF4 policy | §1.6 | Closed | An invalid override fails closed: source "invalid", fail_closed true, 423 policy_invalid on PUT and restore. Overrides are restrict-only (cannot enable, add a provider or widen a model glob). Settings shows the alert. test_ops_v21_folds, test_ops_policy, b7.test |
+| MF5 Origin/auth/secrets | §5b/§5c | Closed | Middleware refuses POST/PUT/PATCH/DELETE on /api/ops, /api/approvals and /api/plugins/kanban from a foreign Origin with 403 origin_not_allowed. Allowed: app://, file://, loopback, and accepted hosts. raw_yaml is never kept in drafts; secrets in backups are sealed (DPAPI/AES-GCM). test_ops_v21_folds, restore drill |
+| MF6 live protocol | §0b | Closed | Stream generation counter; stop() invalidates in-flight opens and clears timers; resources() accounting. 20 start/stop cycles leave 0 timers, and a late open after stop is dropped. b7.test |
+| MF7 Needs-you | §4c | Closed (approvals); residual noted | Approvals resolve bound to request_id. One-click only for short commands (160 chars or fewer, 3 lines or fewer) that carry an approve action; distinct copy for resolved_elsewhere, expired, stale_revision and duplicate. Residual: the kanban review "approve" carries no revision token (backend has none); it is a status move, not an approval, so Sol's §4c guard does not apply to it |
+| MF8 Office counts | §4a-§4d | Closed | Open = todo/ready/running/blocked/review; done-this-week = ISO week from Monday 00:00 in the Ops timezone; working = fleet presence; upcoming = ready/todo sorted by priority then updated. Pinned to America/Buenos_Aires in b7.test |
+| MF9 Board | §7 | Closed | View scope = connection + project + tenant + profile; Manual sort Cut (no backend order field; falls back to priority); "parent/child relations", never "dependencies"; undo validated and expires after 8 s; uploads need a target task. No invented due dates. b7.test |
+| MF10 Compose/choice | §6 | Cut | G91 Compose and G92 inline choices are Cut: no typed backend contract exists for either, and SPEC v2.1 allows Cut over untyped. Revisit when Hermes ships typed compose and choice events |
+| MF11 compat, drafts, restore drill | §3/§3b | Closed | OPS_COMPAT window: min 0.21.0, tested 0.21.5, exclusive max 0.23.0, plus required capability tokens from /api/status ops_capabilities. Connection states: connecting / connected / version-skew / incompatible / auth-failed / unreachable. Prompt and model drafts are kept; raw_yaml is not. Restore drill: byte-exact, corrupt blob (409 backup_corrupt), wrong key and tampered envelope (envelope_invalid), wrong node. test_ops_capabilities, test_ops_restore_drill, b7.test |
+| MF12 live/perf evidence | §8 | Closed (proxies labelled) | Every perf and live claim here is a test proxy (jsdom or pytest TestClient), labelled as such. No live-host perf numbers are claimed. Per Sol, no screenshot mandate |
+
+### B7 list decisions
+
+| Item | Decision | Reason / evidence |
+|---|---|---|
+| L2 connection matrix | Built (classify + show); write gating Partial | connectionView() classifies the states and exposes writesEnabled; Diagnostics shows them. Server-side guards (423/403/409) already refuse unsafe writes; global client-side disabling is not wired |
+| L5 skew glyph / unknown enums | Built | presenceOf() maps unknown presence values to "unknown"; the version-skew state shows in Diagnostics. b7.test |
+| L8 profile lifecycle | Adapt | Canvas drafts built. New profile hands off to Desktop /profiles; A6-governed create/clone/delete is Cut until an ops.profiles.create capability exists |
+| L9 teardown counts | Built | See MF6 |
+| S5 legacy write paths | Deferred (Nacho) | Documented in Settings > Security (data-ops-legacy-routes="deferred"). A static test asserts that Ops source calls no legacy write route. The legacy routes are not removed (Sol REJECT) |
+| Manual board sort | Cut | No order field in the backend |
+| Skills | Built | State and type filters, Clear, "Showing n of m", scan-cap note, "Installing k of n", empty copy. b7.test |
+| Settings | Built | Ops timezone, Reset to defaults, policy-invalid alert, policy source and error in Diagnostics, security boundary, Forget drafts. b7.test, motion.test |
+| UI/UX sweep | Built | Static sweep: no raw HTML injection, no legacy routes, every icon-only button has an aria-label (fixed 2 in rail.tsx) |
+
+Gates: Ops vitest 43 files / 402 tests pass; tsc 0; eslint 0 errors. Ops pytest 131 pass + 1 env failure (test_ops_fleet_stream async test: pytest-asyncio is not installed in the venv; it fails on pre-B7 code too). Wider web-server pytest set: the same 112 failures with and without the B7 changes, so B7 adds no regression.
