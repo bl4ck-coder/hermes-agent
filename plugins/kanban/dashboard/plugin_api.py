@@ -544,6 +544,9 @@ class UpdateTaskBody(BaseModel):
     clear_model_override: bool = False
     reasoning_effort: Optional[str] = None
     clear_reasoning_effort: bool = False
+    # Ops MF7: optional optimistic guard. When sent, the patch applies only if the task is still in this
+    # status; otherwise 409 stale_status and nothing changes. Older clients omit it (unchanged behaviour).
+    expected_status: Optional[str] = None
 
 
 class BulkTaskBody(BaseModel):
@@ -687,7 +690,12 @@ def _patch_title_body(conn, task_id: str, payload: UpdateTaskBody, board: Option
 @router.patch("/tasks/{task_id}")
 def update_task(task_id: str, payload: UpdateTaskBody, board: Optional[str] = Query(None)):
     with _board_conn(board) as (board, conn):
-        _require_task(conn, task_id)
+        current = _require_task(conn, task_id)
+        if payload.expected_status is not None and current.status != payload.expected_status:
+            raise HTTPException(status_code=409, detail={
+                "code": "stale_status", "expected_status": payload.expected_status,
+                "current_status": current.status,
+                "message": f"task is {current.status}, not {payload.expected_status}; review again"})
         # For a combined assignee+review patch, request_review must capture the
         # current implementer before the task is routed to the reviewer.
         review_assignee_deferred = payload.status == "review" and payload.assignee is not None

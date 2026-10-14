@@ -22,6 +22,7 @@ OPS_CAPABILITIES: List[str] = [
     "ops.policy.fail_closed",
     "ops.origin_guard",
     "kanban.events",
+    "kanban.tasks.expected_status",
     "kanban.runs.stats",
     "kanban.attachments.page",
 ]
