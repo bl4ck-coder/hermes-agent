@@ -97,8 +97,10 @@ def test_builtin_when_absent_and_override_when_valid(tmp_path):
     load = P.load_policy(tmp_path)
     assert load.source == "file" and load.error is None
     assert P.evaluate(load.policy, cfg("anthropic", "claude-opus-5-5"))[0].reason == "provider_not_allowed"
+    # SPEC v2.1 1.6 restrict-only: disabling enforcement would enlarge the allowlist -> invalid, fail closed.
     write_policy(tmp_path, dict(custom, enabled=False))
-    assert P.evaluate(P.load_policy(tmp_path).policy, cfg("nous", "x")) == []
+    load = P.load_policy(tmp_path)
+    assert load.source == "invalid" and load.fail_closed and P.evaluate(load.policy, cfg("nous", "x"))
 
 
 @pytest.mark.parametrize(
@@ -117,7 +119,7 @@ def test_builtin_when_absent_and_override_when_valid(tmp_path):
 def test_invalid_override_fails_closed_to_builtin(tmp_path, bad):
     write_policy(tmp_path, bad)
     load = P.load_policy(tmp_path)
-    assert load.source == "builtin" and load.error and load.policy["enabled"] is True
+    assert load.source == "invalid" and load.error and load.fail_closed and load.policy["enabled"] is True
     assert P.evaluate(load.policy, cfg("nous", "x"))
 
 

@@ -38,11 +38,21 @@ class NodeSave(BaseModel):
     provider: Optional[str] = None
     model: Optional[str] = None
     note: Optional[str] = None
+    op_id: Optional[str] = None
 
 
 class NodeRestore(BaseModel):
     backup: str
     expected_hash: str
+    op_id: Optional[str] = None
+
+
+def _require_valid_policy() -> None:
+    """SPEC v2.1 1.6: present-but-invalid ops-policy.yaml fails closed for every governed write."""
+    load = ops_policy.load_policy()
+    if load.fail_closed:
+        raise ops_tx.TxError(423, "policy_invalid", "ops-policy.yaml is invalid; governed writes are blocked until it is fixed",
+                             policy_error=load.error)
 
 
 def _resolve(name: str, node: str):
@@ -162,10 +172,11 @@ async def save_node(name: str, node: str, body: NodeSave, request: Request):
 
     def _run():
         try:
+            _require_valid_policy()
             return _result(ops_tx.transact(
                 home=home, profile=canon, node=node, write_set=WRITE_SETS[node], expected_hash=body.expected_hash,
                 compute=compute, validate=_policy_validate, endpoint=f"PUT /api/ops/profiles/{{name}}/nodes/{node}",
-                actor=actor, protector=protector, note=body.note))
+                actor=actor, protector=protector, note=body.note, op_id=body.op_id))
         except ops_tx.TxError as exc:
             _raise(exc)
 
@@ -178,6 +189,13 @@ async def node_history(name: str, node: str):
     return {"items": await run_in_threadpool(ops_tx.history, home, node)}
 
 
+@router.get("/api/ops/profiles/{name}/nodes/{node}/ops/{op_id}")
+async def node_op_status(name: str, node: str, op_id: str):
+    """Outcome-unknown reconcile (SPEC v2.1 2b): applied | rejected | not_found | indeterminate."""
+    _canon, home = _resolve(name, node)
+    return await run_in_threadpool(ops_tx.op_status, home, node, op_id)
+
+
 @router.post("/api/ops/profiles/{name}/nodes/{node}/restore")
 async def restore_node(name: str, node: str, body: NodeRestore, request: Request):
     canon, home = _resolve(name, node)
@@ -187,6 +205,7 @@ async def restore_node(name: str, node: str, body: NodeRestore, request: Request
         try:
             if actor.get("connection_kind") != "local" or not actor.get("connection_id"):
                 raise ops_tx.TxError(403, "remote_read_only", "Ops writes are local-only (D11)")
+            _require_valid_policy()
             pre_image = ops_tx.pre_image_of(home, canon, node, body.backup, protector)
             if node == "model":
                 old = _cfg(pre_image["config.yaml"]).get("model")
@@ -203,7 +222,8 @@ async def restore_node(name: str, node: str, body: NodeRestore, request: Request
             return _result(ops_tx.transact(
                 home=home, profile=canon, node=node, write_set=WRITE_SETS[node], expected_hash=body.expected_hash,
                 compute=compute, validate=_policy_validate,
-                endpoint=f"POST /api/ops/profiles/{{name}}/nodes/{node}/restore", actor=actor, protector=protector))
+                endpoint=f"POST /api/ops/profiles/{{name}}/nodes/{node}/restore", actor=actor, protector=protector,
+                op_id=body.op_id))
         except ops_tx.TxError as exc:
             _raise(exc)
 

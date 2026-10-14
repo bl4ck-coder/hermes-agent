@@ -468,7 +468,7 @@ Validate = Callable[[Dict[str, Image], Dict[str, Image]], List[Dict[str, Any]]]
 
 def transact(*, home: Path, profile: str, node: str, write_set: List[str], expected_hash: str,
              compute: Compute, validate: Validate, endpoint: str, actor: Dict[str, Any],
-             protector: Protector, note: Optional[str] = None) -> TxResult:
+             protector: Protector, note: Optional[str] = None, op_id: Optional[str] = None) -> TxResult:
     if node not in NODES:
         raise TxError(400, "unknown_node", node)
     # Gate (step 1): kind comes from the Desktop main process; missing = remote (D11).
@@ -477,12 +477,14 @@ def transact(*, home: Path, profile: str, node: str, write_set: List[str], expec
     write_set = sorted({_check_rel(r) for r in write_set})
     secret = {rel: PurePosixPath(rel).name in SECRET_BEARING for rel in write_set}
     with txn_lock(home, protector, profile), _config_locks(write_set):
+        if op_id and op_status(home, node, op_id)["state"] != "not_found":
+            raise TxError(409, "duplicate_op", "this op_id was already submitted", op_id=op_id)
         return _transact_locked(home, profile, node, write_set, secret, expected_hash, compute, validate,
-                                endpoint, actor, protector, note)
+                                endpoint, actor, protector, note, op_id)
 
 
 def _transact_locked(home, profile, node, write_set, secret, expected_hash, compute, validate,
-                     endpoint, actor, protector, note) -> TxResult:
+                     endpoint, actor, protector, note, op_id=None) -> TxResult:
     # Step 2: CAS.
     pre = {rel: read_image(home, rel) for rel in write_set}
     before_composite = composite_hash(home, write_set, pre)
@@ -504,7 +506,7 @@ def _transact_locked(home, profile, node, write_set, secret, expected_hash, comp
         "actor": {k: actor.get(k) for k in ("connection_id", "connection_kind", "profile")} | {"surface": "ops-canvas"},
         "expected_hash": expected_hash, "before_composite": before_composite, "staged_composite": None,
         "readback_composite": None, "document_hash": None, "outcome": None, "files": files,
-        "note": note if node == "prompt" else None, "sequence": seq,
+        "note": note if node == "prompt" else None, "sequence": seq, "op_id": op_id,
     }
     # Step 4: backup of the pre-image.
     try:
@@ -622,7 +624,43 @@ def _clear_marker(marker: Path) -> None:
 # History + restore inputs (sections 8, 15)
 
 _HISTORY_FIELDS = ("node", "profile", "endpoint", "outcome", "sequence", "note", "before_composite",
-                   "staged_composite", "readback_composite")
+                   "staged_composite", "readback_composite", "op_id")
+
+
+def op_status(home: Path, node: str, op_id: str) -> Dict[str, Any]:
+    """SPEC v2.1 2b outcome-unknown reconcile by operation identity, never by the current hash.
+
+    applied: committed journal + committed manifest. rejected: the txn aborted (validation, readback
+    mismatch, recovered pre-image). indeterminate: a journal is still publishing/rolling back or is
+    unreadable. not_found: no txn carries this op_id (a CAS conflict is rejected before any manifest,
+    so not_found means nothing was written and a retry with a new op_id is safe)."""
+    root = backup_root(home)
+    if not op_id or not root.exists():
+        return {"op_id": op_id, "state": "not_found"}
+    for tx_dir in root.iterdir():
+        mpath, jpath = tx_dir / "manifest.json", tx_dir / "journal.json"
+        if not mpath.exists():
+            continue
+        try:
+            manifest = json.loads(mpath.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if manifest.get("node") != node or manifest.get("op_id") != op_id:
+            continue
+        try:
+            state = json.loads(jpath.read_text(encoding="utf-8")).get("state") if jpath.exists() else None
+        except (OSError, ValueError):
+            state = None
+        outcome = manifest.get("outcome")
+        if state == "committed" and outcome == "committed":
+            verdict = "applied"
+        elif outcome in ("aborted_validation", "readback_mismatch", "recovered_preimage") or state == "recovered_preimage":
+            verdict = "rejected"
+        else:
+            verdict = "indeterminate"
+        return {"op_id": op_id, "state": verdict, "outcome": outcome, "backup": tx_dir.name,
+                "sequence": manifest.get("sequence"), "readback_composite": manifest.get("readback_composite")}
+    return {"op_id": op_id, "state": "not_found"}
 
 
 def history(home: Path, node: str) -> List[Dict[str, Any]]:

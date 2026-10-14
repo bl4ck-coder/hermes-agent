@@ -55,6 +55,7 @@ async def get_policy(profile: Optional[str] = None):
         out = {
             "source": load.source,
             "error": load.error,
+            "fail_closed": load.fail_closed,
             "enabled": load.policy["enabled"],
             "deny_default": load.policy["deny_default"],
             "allow": ops_policy.allowed_pairs(load.policy),

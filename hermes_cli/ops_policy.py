@@ -81,9 +81,14 @@ class Violation:
 @dataclass
 class PolicyLoad:
     policy: Dict[str, Any]
-    source: str  # builtin | file
+    source: str  # builtin | file | invalid
     path: str
     error: Optional[str] = None
+
+    @property
+    def fail_closed(self) -> bool:
+        """SPEC v2.1 1.6: a present-but-invalid override blocks every governed write (no silent fallback)."""
+        return self.error is not None
 
 
 def _as_list(value: Any) -> List[str]:
@@ -124,8 +129,19 @@ def validate_policy(raw: Any) -> Dict[str, Any]:
         raise PolicyFileError("on_select_disallowed must be block (D13)")
     if enforcement.get("on_existing_violation") not in ("warn", "block"):
         raise PolicyFileError("on_existing_violation must be warn or block")
+    # SPEC v2.1 1.6: an override may only restrict the builtin allowlist, never enlarge it.
+    if raw["enabled"] is not True:
+        raise PolicyFileError("enabled must be true (an override may only restrict the builtin policy)")
+    for rule in rules:
+        for prov in rule["provider"]:
+            covering = [b for b in BUILTIN_POLICY["allow"] if prov in b["provider"]]
+            if not covering:
+                raise PolicyFileError(f"provider {prov!r} is not in the builtin allowlist (restrict-only)")
+            for mdl in rule["models"]:
+                if not any(fnmatch.fnmatchcase(mdl, pat) for b in covering for pat in b["models"]):
+                    raise PolicyFileError(f"model {mdl!r} for {prov!r} widens the builtin allowlist (restrict-only)")
     out = copy.deepcopy(BUILTIN_POLICY)
-    out.update({"enabled": raw["enabled"], "allow": rules, "enforcement": enforcement})
+    out.update({"enabled": True, "allow": rules, "enforcement": enforcement})
     return out
 
 
@@ -157,7 +173,7 @@ def load_policy(home: Optional[os.PathLike] = None) -> PolicyLoad:
         raw = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
         return PolicyLoad(validate_policy(raw), "file", str(path))
     except (OSError, yaml.YAMLError, PolicyFileError) as exc:
-        return PolicyLoad(builtin, "builtin", str(path), error=f"{type(exc).__name__}: {exc}")
+        return PolicyLoad(builtin, "invalid", str(path), error=f"{type(exc).__name__}: {exc}")
 
 
 def _norm(value: Any) -> str:
