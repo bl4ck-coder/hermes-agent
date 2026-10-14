@@ -1,4 +1,4 @@
-# Ops panel release evidence (P5 task 3, updated P6, P7, P8 batch 1)
+# Ops panel release evidence (P5 task 3, updated P6, P7, P8 batches 1-2)
 
 Generated 2026-10-13 ART from SPEC §12.8 (230 rows). Screenshots: live GUI/screenshot checks waived by Nacho; real-data screenshots are therefore NOT attached. Evidence = jsdom/integration tests named per row.
 
@@ -249,3 +249,23 @@ No status flips (totals unchanged). Rows re-verified with new behavioural assert
 - O12/O16/R26 lenses: empty states for Projects, Templates, Resolved; Activity shows 'Connecting' while the stream opens; favourites survive blocked localStorage.
 - G39/G56 canvas pan: pointer capture + cancel/lost-capture end the drag; pan clamped to +/-2000 px.
 - O47 board dot: switching profile or connection no longer re-marks the Board tab unread.
+
+## P8 batch 2 (2026-10-14 ART): Office control room + SPEC-v2 delta rows
+
+SPEC-v2 delta rows (from SPEC-v2-release-delta.md) now tracked here. Tests: src/app/ops/office/office-control-room.test.tsx (18), src/app/ops/feed/kanban-stream-faults.test.ts (5).
+
+| ID | Disposition | Status | Acceptance line | Evidence |
+|---|---|---|---|---|
+| R63 | Adapt | Built | Stat cards working (n stuck), open (n for focused profile), done this week, needs attention (garnet >0, deduped); click focuses its section; values asserted against a fixture board | office-control-room.test.tsx "R63 stat cards" |
+| R64 | Adapt | Built | My queue Upcoming/Overdue/Completed with counts; overdue = heartbeat >10 min or review >24 h with the reason; opens on Overdue when non-empty; "You're all caught up." | office-control-room.test.tsx "R64 my queue" |
+| R65 | Adapt | Built | Project progress: derived status, done/total %, meter, team sigils (+N), updated age; row opens the Board filtered to the project | office-control-room.test.tsx "R65 project progress" |
+| R66 | Adapt | Built | Header New task (primary, focuses the composer) + New profile (Desktop /profiles); no Invite; local date | office-control-room.test.tsx "R66 header actions" |
+| X1 | Keep | Built | Every Office section has its own state: loading / unavailable (server reason) / stale (last answer + warning) / ok; a synchronously throwing request only breaks its own section | office-control-room.test.tsx "X1", "F5 container hardening" |
+| X2 | Adapt | Built | Stuck = failing (consecutive_failures>0) > stale heartbeat > blocked (block_kind) > failing cron, with reason and age; count equals the board | office-control-room.test.tsx "X2 stuck" |
+| X3 | Keep | Built | Needs-you covers approval, review, unblock, policy (Fix on Canvas) and cron (Run now); empty copy | office-control-room.test.tsx "X3" |
+| X4 | Adapt | Built | Delivered row: one click saves/opens the newest attachment through Desktop's gateway file download; file name + size + "+N more"; per-row loading/unavailable | office-control-room.test.tsx "X4 / X8" |
+| X5 | Adapt | Built | Tasks (in flight, stuck, queue, delivered), cron jobs (strip + stuck to /cron?job=) and live runs (fleet table to the run's task) each open in one click; live Office routes tasks via the host when no task opener is passed | office-control-room.test.tsx "X5", "F5" |
+| X8 | Adapt | Built | Delivered today = done in last 24 h, newest first, latest summary + outputs | office-control-room.test.tsx "X4 / X8" |
+
+F1 stream faults (Built, kanban-stream-faults.test.ts): mid-stream drop then reconnect with Last-Event-ID replay deduped and dead-subscription frames ignored; 401/403 wait the longest backoff step and record "auth refused"; 500 retries on the short step; an open with no answer in 10 s falls back to poll and the late answer is closed unused; stop during a slow open closes it.
+F5 Office review fixes: header date and activity times local (were UTC); dispatch keeps text + shows the server reason, one in flight; sections no longer render stale answers from a previous profile/client; synchronous request errors contained; live Office tasks were unclickable (no onOpenTask passed), now routed via the host.
