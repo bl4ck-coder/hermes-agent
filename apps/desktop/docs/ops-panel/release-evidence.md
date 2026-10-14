@@ -587,3 +587,9 @@ Scores (after B22 → after B26): Fleet 6→8, Diagnostics 6→8, Settings 6→7
 - B25 (f86e28e6c9): Canvas run panel status pill (localized, state light, reduced-motion safe); drifting orbs drop shadows.
 - B26 (8dee375052): removed an unscoped `:where(:has(> [data-ops-count]))` and a toolbar `:has()`; Office p99 26.5 → 13.5 ms.
 - Tests: 61 files / 510 pass; tsc clean. Live b23r1–b26r1: pageErrors 0, board unchanged. b26r1 max frames: one 66.8 ms Office frame, one 40 ms drag frame (p99 13.5 / 26.6 ms). Evidence: /workspace/ops-live/b23/–b26/.
+## B27–B29 — verified in live screenshots before scoring
+Scores (after B26 → after B29): Board 8→9, Canvas 8→9, Office 8→9, Settings 7→8, Skills 8→8, Fleet 8, Diagnostics 8, Channels 8, Teams 8.
+- B27 (2e18598466): board toolbar was block flow, so the B24/B26 nowrap never applied; it is now a flex row with shrinking filters (verified: Mías and Archivadas on the same line). Canvas node detail expands the node in place (verified: Modelo no longer covered). Settings groups are a label/control grid. Driver: new 08c-settings-top shot.
+- B28 (85fb70d768 test only, df37559e3c edits; the first edit script aborted on a CRLF mismatch and was re-applied): Office dispatch input fills the row with a primary submit, routing hint below, "+N más → Te necesita" as a link, larger orbit badges; settings rows top-aligned; node editor heading/badge, dispatch status localized. Driver scroll fixed (verified: Settings top visible).
+- B29 (e064d53912): skills agent chips as pills; thresholds as labelled inputs; first-column name rule did NOT take (names still framed), noted for the next batch.
+- Tests: 64 files / 521 pass; tsc clean. Live b27r1, b28r2, b29r1: pageErrors 0, board unchanged. b29r1: Office max 26.7 ms (0 over 33), drag max 53.4 ms (2 frames), scroll max 40 ms (1). Evidence: /workspace/ops-live/b27/–b29/.
