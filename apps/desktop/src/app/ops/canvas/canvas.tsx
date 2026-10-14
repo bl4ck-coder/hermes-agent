@@ -4,7 +4,7 @@
  * no token cap; tokens and elapsed time stream live.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
 
@@ -54,6 +54,56 @@ export function edgePath(a: CanvasNodeId, b: CanvasNodeId): string {
   const mx = (x1 + x2) / 2
 
   return `M ${x1} ${p.y} C ${mx} ${p.y}, ${mx} ${q.y}, ${x2} ${q.y}`
+}
+
+/** Live pass B9: node box in the nodes layer's own (untransformed) coordinates. */
+export interface NodeRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+const r1 = (n: number) => Math.round(n * 10) / 10
+
+/** Edge between two measured node boxes: stacked nodes join bottom to top, side-by-side nodes join facing edges.
+ *  The fixed-slot edgePath() drew lines through the middle of the real grid, because the grid's row heights
+ *  follow the content and the column widths follow the pane, not EDGE_ROW_H / EDGE_COL_W. */
+export function edgePathFromRects(p: NodeRect, q: NodeRect): string {
+  const pc = p.x + p.w / 2
+  const qc = q.x + q.w / 2
+
+  if (Math.abs(pc - qc) < 1) {
+    const down = q.y >= p.y
+    const y1 = down ? p.y + p.h : p.y
+    const y2 = down ? q.y : q.y + q.h
+    const my = (y1 + y2) / 2
+
+    return `M ${r1(pc)} ${r1(y1)} C ${r1(pc)} ${r1(my)}, ${r1(qc)} ${r1(my)}, ${r1(qc)} ${r1(y2)}`
+  }
+
+  const right = qc > pc
+  const x1 = right ? p.x + p.w : p.x
+  const x2 = right ? q.x : q.x + q.w
+  const y1 = p.y + p.h / 2
+  const y2 = q.y + q.h / 2
+  const mx = (x1 + x2) / 2
+
+  return `M ${r1(x1)} ${r1(y1)} C ${r1(mx)} ${r1(y1)}, ${r1(mx)} ${r1(y2)}, ${r1(x2)} ${r1(y2)}`
+}
+
+/** Measured boxes of every [data-ops-node] under layer, or null when layout is not real (jsdom, hidden pane). */
+export function measureNodes(layer: HTMLElement): Partial<Record<CanvasNodeId, NodeRect>> | null {
+  const out: Partial<Record<CanvasNodeId, NodeRect>> = {}
+  let real = false
+
+  layer.querySelectorAll<HTMLElement>('[data-ops-node]').forEach(el => {
+    const id = el.getAttribute('data-ops-node') as CanvasNodeId
+    out[id] = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }
+    real ||= el.offsetWidth > 0
+  })
+
+  return real ? out : null
 }
 
 /** Ctrl/Cmd + wheel zooms by one step; a plain wheel pans vertically (Shift = horizontally). */
@@ -276,6 +326,35 @@ export function CanvasView({
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
   const [collapsed, setCollapsed] = useState<Set<CanvasNodeId>>(() => new Set())
+  const nodesLayer = useRef<HTMLDivElement>(null)
+  const [rects, setRects] = useState<Partial<Record<CanvasNodeId, NodeRect>> | null>(null)
+  const [layerSize, setLayerSize] = useState({ w: 0, h: 0 })
+
+  // B9: edges follow the real node boxes. offset* ignore the pan/zoom transform, so this runs on layout changes only.
+  useLayoutEffect(() => {
+    const layer = nodesLayer.current
+
+    if (!layer) {
+      return
+    }
+
+    const measure = () => {
+      setRects(measureNodes(layer))
+      setLayerSize({ w: layer.offsetWidth, h: layer.offsetHeight })
+    }
+
+    measure()
+
+    if (typeof ResizeObserver === 'undefined') {
+      return
+    }
+
+    const ro = new ResizeObserver(measure)
+    ro.observe(layer)
+    layer.querySelectorAll('[data-ops-node]').forEach(el => ro.observe(el))
+
+    return () => ro.disconnect()
+  }, [collapsed, data])
   const [detail, setDetail] = useState<CanvasNodeId | null>(null)
   const dirtyCount = useCanvasDirtyCount(profile)
   const [saveNote, setSaveNote] = useState<string | null>(null)
@@ -447,6 +526,7 @@ export function CanvasView({
       <div
         data-ops-canvas-nodes=""
         data-ops-pan={`${pan.x},${pan.y}`}
+        ref={nodesLayer}
         role="list"
         style={{
           display: 'grid',
@@ -459,14 +539,14 @@ export function CanvasView({
         <svg
           aria-hidden
           data-ops-edge-layer=""
-          height={EDGE_ROW_H * 4}
+          height={rects ? layerSize.h : EDGE_ROW_H * 4}
           style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
-          viewBox={`0 0 ${EDGE_COL_W * 3} ${EDGE_ROW_H * 4}`}
-          width="100%"
+          viewBox={rects ? `0 0 ${layerSize.w} ${layerSize.h}` : `0 0 ${EDGE_COL_W * 3} ${EDGE_ROW_H * 4}`}
+          width={rects ? layerSize.w : '100%'}
         >
           {CANVAS_EDGES.map(([a, b]) => (
             <path
-              d={edgePath(a, b)}
+              d={rects?.[a] && rects[b] ? edgePathFromRects(rects[a]!, rects[b]!) : edgePath(a, b)}
               data-ops-edge-lit={run.lit.has(a) && run.lit.has(b) ? '' : undefined}
               data-ops-edge-path={`${a}->${b}`}
               fill="none"

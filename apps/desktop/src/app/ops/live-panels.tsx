@@ -29,7 +29,8 @@ export function opsLivePanel(
   }
 
   if (tab.kind === 'office') {
-    return <OfficeContainer onOpenRoute={onOpenRoute} profile={profile} />
+    // B9: Office showed "unknown connection" because the host never passed the connection it scopes.
+    return <OfficeContainer connectionLabel={connectionId} onOpenRoute={onOpenRoute} profile={profile} />
   }
 
   // P3 Canvas has no write paths at all (readOnly is the remote badge); the writable Canvas is P5.

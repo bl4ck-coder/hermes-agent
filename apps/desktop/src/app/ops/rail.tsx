@@ -130,7 +130,7 @@ export function FleetList({
       <div data-ops-fleet-count="">
         {copy.rail.fleet} · {arranged.onlineLabel === 'unavailable' ? copy.unavailable : copy.rail.online(arranged.onlineLabel)}
       </div>
-      <div data-ops-needs-you-count="">{arranged.needsYouLabel === 'unavailable' ? copy.unavailable : arranged.needsYouLabel}</div>
+      <div data-ops-needs-you-count="">{arranged.needsYouLabel === 'unavailable' ? copy.unavailable : copy.chrome.needsYou(arranged.needsYouLabel)}</div>
       <div
         data-ops-fleet-window=""
         data-rendered={String(windowed.slice.length)}

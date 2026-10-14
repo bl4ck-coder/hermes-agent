@@ -189,3 +189,8 @@
 /* Inspector */
 :where([data-ops-inspector-body]) { margin-left: 12px; overflow: auto; }
 :where([data-ops-rail-list] [data-ops-section]) { color: var(--ops-muted); font-size: 10px; letter-spacing: 0.08em; margin: 10px 0 2px; text-transform: uppercase; }
+
+/* Icon rail: one glyph per row; long labels clip instead of wrapping into the next row. */
+:where([data-ops-rail-list][data-ops-rail='icons']) { align-items: stretch; overflow-x: hidden; }
+:where([data-ops-rail-list][data-ops-rail='icons']) :where(*) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-rail-list][data-ops-rail='icons']) :where(button) { justify-content: center; padding: 3px 2px; }

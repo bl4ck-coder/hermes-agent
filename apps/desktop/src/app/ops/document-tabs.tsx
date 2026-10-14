@@ -220,8 +220,13 @@ function TabPanel({
           renderPanel(tab)
         )}
       </div>
-      <div data-ops-selection={snapshot.selectionId ?? ''}>{snapshot.selectionId ?? ''}</div>
-      <div data-ops-restored-scroll="">{snapshot.scrollTop}</div>
+      {/* B9: snapshot markers for restore tests; they rendered as a stray "0" under every panel. */}
+      <div data-ops-selection={snapshot.selectionId ?? ''} hidden>
+        {snapshot.selectionId ?? ''}
+      </div>
+      <div data-ops-restored-scroll="" hidden>
+        {snapshot.scrollTop}
+      </div>
     </div>
   )
 }
