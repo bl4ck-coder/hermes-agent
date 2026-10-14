@@ -18,12 +18,12 @@ describe('ops live panels (P3 wiring)', () => {
     expect(opsLivePanel(tab('office'), 'default')).toBeNull()
   })
 
-  it('mounts Office and read-only Canvas (not Board) when the bridge exists', () => {
+  it('mounts Office and read-only Canvas and Board when the bridge exists', () => {
     ;(window as unknown as { hermesDesktop: unknown }).hermesDesktop = { api: () => Promise.resolve(null) }
     expect(hasOpsBridge()).toBe(true)
     expect(opsLivePanel(tab('office'), 'default')).not.toBeNull()
     expect(opsLivePanel(tab('canvas'), 'sandhi')).not.toBeNull()
-    expect(opsLivePanel(tab('board'), 'default')).toBeNull()
+    expect(opsLivePanel(tab('board'), 'default')).not.toBeNull()
     expect(opsLivePanel({ ...tab('task'), id: 'task:t1' }, 'default')).not.toBeNull()
     expect(opsLivePanel({ ...tab('run'), id: 'run:42' }, 'default')).not.toBeNull()
     expect(opsLivePanel({ ...tab('profile'), id: 'profile:sandhi' }, 'default')).not.toBeNull()

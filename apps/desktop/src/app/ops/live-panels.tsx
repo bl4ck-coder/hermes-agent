@@ -1,6 +1,7 @@
 /** P3: live Ops panels the host injects into OpsShell (the shell itself stays data-free). */
 import type { ReactNode } from 'react'
 
+import { BoardContainer } from './board/board-container'
 import { CanvasContainer } from './canvas/canvas-container'
 import { AgentCardContainer, RunDetailContainer, TaskDetailContainer } from './detail/details'
 import { hostIdentityFromTab, type OpsTab } from './navigation-store'
@@ -27,6 +28,11 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
     return <CanvasContainer profile={profile} />
   }
 
+  // P4 Board: Mine = the scoped profile.
+  if (tab.kind === 'board') {
+    return <BoardContainer me={profile} />
+  }
+
   const id = hostIdentityFromTab(tab).id
 
   if (!id) {
@@ -45,6 +51,6 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
     return <RunDetailContainer id={id} />
   }
 
-  // Lenses (W12) and Board keep their existing route buttons / placeholder.
+  // Lenses (W12) keep their existing route buttons.
   return null
 }
