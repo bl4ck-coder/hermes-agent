@@ -22,6 +22,14 @@ import { useKanbanStream } from '../feed/kanban-stream'
 import { setOpsConnection } from '../feed/write-gate'
 import { T } from '../main-i18n'
 
+
+/** B16: the connection line is localized at render; the copied diagnostics report stays English. */
+function connCopy(s: string): string {
+  const m = /^Connected to Hermes (.+)\.$/.exec(s)
+
+  return m ? T('Connected to Hermes {v}.').replace('{v}', m[1]) : T(s)
+}
+
 export function DiagnosticsPanel({
   policySource,
   get,
@@ -69,7 +77,7 @@ export function DiagnosticsPanel({
         </dd>
         <dt>{T("Connection")}</dt>
         <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
-          {conn ? conn.copy : T('Run the probe to check the Hermes version and capabilities.')}
+          {conn ? connCopy(conn.copy) : T('Run the probe to check the Hermes version and capabilities.')}
         </dd>
         <dt>{T("Stream generation")}</dt>
         <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
@@ -83,7 +91,7 @@ export function DiagnosticsPanel({
         <ul aria-label={T("Capability probe")} data-ops-probe-results="">
           {results.map(r => (
             <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
-              {r.id} {r.label}: {r.state === 'ok' ? 'available' : r.detail}
+              {r.id} {T(r.label)}: {r.state === 'ok' ? T('available') : r.detail}
             </li>
           ))}
         </ul>

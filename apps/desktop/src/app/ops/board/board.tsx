@@ -129,6 +129,7 @@ export function BoardView(props: BoardViewProps) {
   const [sortBy, setSortBy] = useState<SortBy>('priority')
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropCol, setDropCol] = useState<string | null>(null)
+  const [announce, setAnnounce] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<BoardTask | null>(null)
   const [modal, setModal] = useState<string | null>(null)
@@ -226,13 +227,14 @@ export function BoardView(props: BoardViewProps) {
       draggable={!readOnly}
       key={t.id}
       onContextMenu={e => (e.preventDefault(), setMenu(t.id))}
-      onDragEnd={() => setDragging(null)}
+      onDragEnd={() => (setDragging(null), setAnnounce(''))}
       onDragStart={e => {
         if (readOnly) {
           return
         }
 
         setDragging(t.id)
+        setAnnounce(T('Dragging {id}. Drop it on a column, or press Escape to cancel.').replace('{id}', t.title || t.id))
         e.dataTransfer.setData('text/ops-card', t.id)
         e.dataTransfer.effectAllowed = 'move'
       }}
@@ -452,6 +454,9 @@ export function BoardView(props: BoardViewProps) {
 
       {layout === 'board' || layout === 'review' ? (
         <div data-ops-columns="">
+          <span aria-live="polite" data-ops-sr="" role="status">
+            {announce}
+          </span>
           {shown.columns.map(col => (
             <section
               aria-label={col.name}
@@ -482,6 +487,9 @@ export function BoardView(props: BoardViewProps) {
 
                   if (from && from !== col.name) {
                     props.move(id, col.name)
+                    setAnnounce(T('Moved to {col}.').replace('{col}', T(col.name)))
+                  } else {
+                    setAnnounce(T('Same column: nothing moved.'))
                   }
                 }
 

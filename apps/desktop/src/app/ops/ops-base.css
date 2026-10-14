@@ -340,3 +340,6 @@
 :where([data-ops-proposal]) { border: 1px dashed color-mix(in srgb, var(--ops-gold, #c9a227) 55%, transparent); border-radius: 8px; margin-top: 6px; padding: 8px 10px; }
 :where([data-ops-proposal] pre) { color: #8fc79a; margin: 4px 0; white-space: pre-wrap; }
 :where([data-ops-empty-reset]) { margin-left: 6px; }
+
+/* B16: screen-reader-only live region. */
+:where([data-ops-sr]) { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
