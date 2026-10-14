@@ -295,6 +295,11 @@ for (const [n, id, tab] of [['04-fleet', 'agents', 'fleet'], ['05-teams', 'agent
   if (!want(n.slice(3))) continue
   await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); return page.url() })
 }
+if (want('settings')) await section('08c-settings-top', async () => {
+  await page.evaluate(() => { const p = document.querySelector('[data-ops-settings]')?.closest('[data-ops-panel]'); if (p) p.scrollTop = 0 })
+  await sleep(400)
+  return 'scrolled to top'
+})
 if (want('diagnostics')) await section('09-diagnostics', async () => {
   const d = page.locator('[data-ops-diagnostics]').first(); await d.scrollIntoViewIfNeeded({ timeout: 8000 })
   await page.locator('[data-ops-probe]').first().click({ timeout: 8000 }); await sleep(4000); await d.scrollIntoViewIfNeeded()

@@ -563,3 +563,20 @@
 /* Board toolbar keeps the view switcher on one line and scrolls sideways if it must. B26: an attribute, not :has(), so Office updates never re-match it. */
 :where([data-ops-board-toolbar]) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
 :where([data-ops-board-toolbar]) > :where(*) { flex: none; }
+
+/* ---- B27: Board toolbar is a real flex row, Canvas detail expands in place, Settings as a label/control grid ---- */
+/* Board: the toolbar was block flow, so B24/B26 nowrap never applied. Views + New task stay fixed; filters shrink. */
+:where([data-ops-board-toolbar]) { align-items: center; display: flex; gap: 4px; }
+:where([data-ops-board-toolbar]) > :where(input:not([type='checkbox']), select) { flex: 1 1 110px; max-width: 200px; min-width: 80px; }
+:where([data-ops-board-toolbar]) > :where(input:not([type='checkbox'])):first-of-type { margin-left: 8px; }
+:where([data-ops-board-toolbar]) > :where(label) { align-items: center; display: inline-flex; gap: 4px; white-space: nowrap; }
+/* Canvas: the node detail expands the node in place (rows grow, wires re-measure), so it never covers a neighbour. */
+:where([data-ops-canvas-nodes] [data-ops-node-detail]) { flex-basis: 100%; margin-top: 8px; min-width: 0; position: static; top: auto; width: auto; }
+/* Settings: every group is a label column and a control column with hairline rows. */
+:where([data-ops-settings-group] > dl) { align-items: center; display: grid; gap: 0 16px; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); margin: 0 0 10px; }
+:where([data-ops-settings-group] > dl > dt) { border-bottom: 1px solid var(--ops-line); color: var(--ops-muted); font-size: 12px; padding: 8px 0; }
+:where([data-ops-settings-group] > dl > dd) { align-items: center; border-bottom: 1px solid var(--ops-line); display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 0; min-height: 34px; padding: 6px 0; }
+:where([data-ops-settings-group] > dl > dd + dd) { grid-column: 2; }
+:where([data-ops-settings-group] > dl > dd) :where(small) { flex-basis: 100%; }
+:where([data-ops-settings]) :where(select, input:not([type='checkbox'], [type='radio'], [type='range'])) { min-height: 26px; }
+:where([data-ops-prefs-reset]) { background: transparent; color: var(--ops-muted); }
