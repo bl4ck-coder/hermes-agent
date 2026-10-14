@@ -350,3 +350,23 @@ Tests: src/app/ops/motion/b5.test.tsx (16). Commit 20b8910f1c.
 - Re-read every P8 table above against the code on ops/P8-polish. Rows marked Built have a named test that asserts the acceptance line; Partial and Cut rows say what is missing.
 - Open after P8: R55 (host startup hook), X10 per-profile split (backend), X7/X9/X11/X12 (Office motion + deep links), G70 (skills author/mtime, backend), O67 in Desktop chat, and the P9 lifecycle rows.
 - Ops suite 40 files / 371 tests green; typecheck clean; lint 0 errors.
+
+## P8 B6 - push to 9 (2026-10-14)
+
+Commits (fork only): 61ecc74657 (backend: GET /runs/stats, GET /attachments keyset paging, S6 Host-header test, 9 pytest), cb57cff625 (desktop).
+SPEC v2.1 from the 02:41 Sol review: not in the vault at pull time, so nothing was folded in.
+
+| Row | Status | Evidence |
+|---|---|---|
+| R55 startup hook | Done | motion/launch.ts applyOpsLaunchRoute() called in main.tsx before mount. It only replaces a cold-start hash, so deep links and session resume still win. Route is /ops/<tab>. Tested in b6.test.tsx |
+| O67 chat task-id links | Done | lib/ops-task-links.ts remark plugin plus a MarkdownLink branch (data-ops-task-link) linking to #/ops/task/<id>. Skips code and existing links. 3 tests; assistant-ui suite 729/729 |
+| X7 Office motion | Done | Handoff arcs (10 s window, 320 ms), drift/halo only while a run is live, honours reduced motion |
+| X9 evidence flow | Done | Task tab is evidence first: timeline, runs, worker log, diff (run metadata diff/diffstat), outputs. Then actions (assignee, live controls, unblock). DOM-order test |
+| X10 per-profile usage | Done | /api/ops/usage/today?profile=, capped at 12 profiles |
+| X12 copy link | Done | CopyLink on stuck/queue/project/delivered/fleet/run/in-flight/event rows; copied/failed state tested |
+| Files 40-task limit | Done | Board-wide /attachments keyset paging with Load more; falls back to the 40-task scan on older Hermes |
+| Fleet Runs 7d | Done | Real task_runs counts plus failed7d (data-ops-runs-source=runs); falls back to task-starts |
+| Timeline drag-to-reschedule | Cut | Kanban has no due or scheduled-date field to write. Rescheduling would need a schema change, which is out of scope for a safe small change |
+| Skills / Settings polish, L2/L5/L8/L9/S5, full UI sweep | Not done in B6 | Carried to B7 |
+
+Gates: tsc 0 errors; Ops suite 42 files / 381 tests pass; eslint 0 errors (warnings only).
