@@ -10,6 +10,7 @@
 import { useState } from 'react'
 
 import type { ApprovalItem, CronJobLite } from '../feed/ops-client'
+import { T } from '../main-i18n'
 
 export type KanbanAction = { kind: 'approve_review' | 'request_changes' | 'unblock' | 'comment'; taskId: string; note?: string }
 
@@ -102,7 +103,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
   const [results, setResults] = useState<Record<string, unknown>>({})
 
   if (!p.items) {
-    return <section data-ops-needs-you="">Needs you unknown</section>
+    return <section data-ops-needs-you="">{T("Needs you unknown")}</section>
   }
 
   const failing = (Array.isArray(p.cron) ? p.cron : []).filter(j => (j.failure_streak ?? 0) > 0)
@@ -125,17 +126,17 @@ export function NeedsYouQueue(p: NeedsYouProps) {
   const total = p.items.length + failing.length + policy.length
 
   return (
-    <section aria-label="Needs you" data-ops-needs-you="">
-      <h3>Needs you ({total})</h3>
+    <section aria-label={T("Needs you")} data-ops-needs-you="">
+      <h3>{T("Needs you (")}{total})</h3>
       <table>
         <thead>
           <tr>
-            <th>Agent</th>
-            <th>Kind</th>
-            <th>Waiting on</th>
-            <th>Age</th>
-            <th>Why</th>
-            <th>Actions</th>
+            <th>{T("Agent")}</th>
+            <th>{T("Kind")}</th>
+            <th>{T("Waiting on")}</th>
+            <th>{T("Age")}</th>
+            <th>{T("Why")}</th>
+            <th>{T("Actions")}</th>
           </tr>
         </thead>
         <tbody>
@@ -154,7 +155,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                 <td data-ops-age="">{age(item.age_s)}</td>
                 <td data-ops-why="">
                   {MISSING_WHY.has((item.why ?? '').trim()) ? (
-                    <span aria-label="reason not recorded" data-ops-why-missing="" title="reason not recorded">
+                    <span aria-label={T("reason not recorded")} data-ops-why-missing="" title={T("reason not recorded")}>
                       —
                     </span>
                   ) : (
@@ -163,7 +164,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                 </td>
                 <td>
                   {p.readOnly ? (
-                    <span data-ops-review={key}>Review</span>
+                    <span data-ops-review={key}>{T("Review")}</span>
                   ) : item.origin === 'jsonrpc' ? (
                     <>
                       {fullFits ? (
@@ -171,7 +172,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                           {label(key, 'Approve', 'Approved')}
                         </button>
                       ) : (
-                        <span data-ops-review={key}>Review</span>
+                        <span data-ops-review={key}>{T("Review")}</span>
                       )}
                       {p.onDeny && item.actions.includes('deny') ? (
                         <button data-ops-deny={key} data-ops-write="" disabled={sending || busy[`d:${key}`] === 'sending' || busy[`d:${key}`] === 'done'} onClick={() => void run(`d:${key}`, () => p.onDeny?.(item))} type="button">
@@ -184,21 +185,19 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                       <button data-ops-approve={key} data-ops-write="" disabled={sending} onClick={() => void run(key, () => p.onKanban?.({ kind: 'approve_review', taskId: item.id }))} type="button">
                         {label(key, 'Approve', 'Approved')}
                       </button>
-                      <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder="What to change" value={note} />
+                      <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("What to change")} value={note} />
                       <button data-ops-write=""
                         disabled={sending || !note.trim()}
                         onClick={() => void run(key, () => p.onKanban?.({ kind: 'request_changes', taskId: item.id, note: note.trim() }))}
                         type="button"
                       >
-                        Request changes
-                      </button>
+                        {T("Request changes")}</button>
                     </>
                   ) : item.origin === 'kanban_blocked' ? (
                     <>
                       <button onClick={() => p.onOpenTask?.(item.id)} type="button">
-                        Open
-                      </button>
-                      <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder="Unblock note" value={note} />
+                        {T("Open")}</button>
+                      <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("Unblock note")} value={note} />
                       <button data-ops-unblock={key}
                         data-ops-write=""
                         disabled={sending || !note.trim()}
@@ -209,14 +208,14 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                       </button>
                     </>
                   ) : (
-                    <span data-ops-review={key}>Not routable from this connection</span>
+                    <span data-ops-review={key}>{T("Not routable from this connection")}</span>
                   )}
                   {!p.readOnly && (item.origin === 'kanban_review' || item.origin === 'kanban_blocked') ? (
                     <>
                       <input
                         aria-label={`comment for ${item.id}`}
                         onChange={e => setNotes(n => ({ ...n, [`c:${key}`]: e.target.value }))}
-                        placeholder="Comment"
+                        placeholder={T("Comment")}
                         value={notes[`c:${key}`] ?? ''}
                       />
                       <button data-ops-comment={key}
@@ -229,8 +228,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                         }
                         type="button"
                       >
-                        Comment
-                      </button>
+                        {T("Comment")}</button>
                     </>
                   ) : null}
                   {errors[key] && busy[key] === 'failed' ? <span role="alert">{errors[key]}</span> : null}
@@ -250,12 +248,11 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                 <td>
                   {v.field}: {v.provider}/{v.model}
                 </td>
-                <td>unknown</td>
+                <td>{T("unknown")}</td>
                 <td>{v.reason}</td>
                 <td>
                   <button data-ops-policy-fix={v.profile} disabled={!p.onOpenProfile} onClick={() => p.onOpenProfile?.(v.profile)} type="button">
-                    Fix on Canvas
-                  </button>
+                    {T("Fix on Canvas")}</button>
                 </td>
               </tr>
             )
@@ -268,9 +265,9 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                 <td>{j.profile ?? 'unknown'}</td>
                 <td>{KIND.cron_failure}</td>
                 <td>{j.name ?? j.id}</td>
-                <td>unknown</td>
+                <td>{T("unknown")}</td>
                 <td>
-                  {j.failure_streak} failure(s) in a row{j.last_status ? `, last: ${j.last_status}` : ''}
+                  {j.failure_streak} {T("failure(s) in a row")}{j.last_status ? `, last: ${j.last_status}` : ''}
                 </td>
                 <td>
                   {p.readOnly ? null : (
@@ -285,7 +282,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
           })}
         </tbody>
       </table>
-      {total === 0 ? <p data-ops-empty="needs-you">Nothing needs you right now.</p> : null}
+      {total === 0 ? <p data-ops-empty="needs-you">{T("Nothing needs you right now.")}</p> : null}
     </section>
   )
 }

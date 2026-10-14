@@ -21,6 +21,7 @@ import {
 } from './control-room'
 import { CopyLink } from './copy-link'
 import type { OfficeThresholds } from './thresholds'
+import { T } from '../main-i18n'
 
 export type SectionId = 'stats' | 'needs-you' | 'stuck' | 'queue' | 'projects' | 'in-flight' | 'delivered' | 'activity' | 'cost' | 'fleet'
 
@@ -61,7 +62,7 @@ export function SectionFrame({
       </h3>
       ) : null}
       {state === 'loading' ? (
-        <p data-ops-loading="">Loading…</p>
+        <p data-ops-loading="">{T("Loading…")}</p>
       ) : state === 'unavailable' ? (
         <p data-ops-unavailable="" role="status">
           {title} unavailable: {why(error)}
@@ -70,8 +71,7 @@ export function SectionFrame({
         <>
           {state === 'stale' ? (
             <p data-ops-warn="" role="status">
-              Refresh failed ({why(error)}); showing the last answer.
-            </p>
+              {T("Refresh failed (")}{why(error)}{T("); showing the last answer.")}</p>
           ) : null}
           {children}
         </>
@@ -102,7 +102,7 @@ export function StatCards({ stats, profile, onFocus }: { stats: OfficeStats; pro
   )
 
   return (
-    <div aria-label="Office stats" data-ops-stats="" role="group">
+    <div aria-label={T("Office stats")} data-ops-stats="" role="group">
       {card('working', 'Working agents', stats.working, stats.stuck === null ? null : `${stats.stuck} at risk`, 'stuck', false, 'Profiles working, waiting on you or blocked (fleet presence; running tasks when the fleet is unavailable); at risk = blocked, stale heartbeat, failing runs or failing cron')}
       {card('open', 'Open tasks', stats.open, profile && stats.openMine !== null ? `${stats.openMine} for ${profile}` : null, 'queue', false, 'Every task not done or archived')}
       {card('done-week', 'Done this week', stats.doneWeek, null, 'delivered', false, 'Tasks completed since Monday 00:00 in the Ops timezone (Settings › Timezone)')}
@@ -122,7 +122,7 @@ const REASON: Record<StuckItem['reason'], string> = {
 
 export function StuckList({ items, onOpenTask, onOpenCron }: { items: StuckItem[]; onOpenTask?: (id: string) => void; onOpenCron?: (id: string) => void }) {
   if (!items.length) {
-    return <p data-ops-empty="stuck">Nothing is stuck.</p>
+    return <p data-ops-empty="stuck">{T("Nothing is stuck.")}</p>
   }
 
   return (
@@ -153,7 +153,7 @@ export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: Board
 
   return (
     <div data-ops-queue={profile}>
-      <div aria-label="Queue" role="tablist">
+      <div aria-label={T("Queue")} role="tablist">
         {(['upcoming', 'overdue', 'completed'] as const).map(t => (
           <button aria-selected={tab === t} data-ops-queue-tab={t} key={t} onClick={() => setTab(t)} role="tab" type="button">
             {LABEL[t]} <span data-ops-queue-count={t}>{q[t].length}</span>
@@ -161,9 +161,9 @@ export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: Board
         ))}
       </div>
       {q.upcoming.length + q.overdue.length === 0 && tab !== 'completed' ? (
-        <p data-ops-empty="queue">You're all caught up.</p>
+        <p data-ops-empty="queue">{T("You're all caught up.")}</p>
       ) : rows.length === 0 ? (
-        <p data-ops-empty={`queue-${tab}`}>Nothing {LABEL[tab].toLowerCase()}.</p>
+        <p data-ops-empty={`queue-${tab}`}>{T("Nothing")}{' '}{LABEL[tab].toLowerCase()}.</p>
       ) : (
         <ul role="tabpanel">
           {rows.map(r => (
@@ -186,20 +186,20 @@ export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: Board
 
 export function ProjectTable({ rows, nowS, onOpenProject }: { rows: ProjectProgress[]; nowS: number; onOpenProject?: (id: string) => void }) {
   if (!rows.length) {
-    return <p data-ops-empty="projects">No projects yet. Group tasks into a project from the Board.</p>
+    return <p data-ops-empty="projects">{T("No projects yet. Group tasks into a project from the Board.")}</p>
   }
 
   return (
     <table data-ops-project-table="">
       <thead>
         <tr>
-          <th scope="col">Project</th>
-          <th scope="col">Status</th>
-          <th scope="col">Progress</th>
-          <th scope="col">Team</th>
-          <th scope="col">Updated</th>
+          <th scope="col">{T("Project")}</th>
+          <th scope="col">{T("Status")}</th>
+          <th scope="col">{T("Progress")}</th>
+          <th scope="col">{T("Team")}</th>
+          <th scope="col">{T("Updated")}</th>
           <th scope="col">
-            <span className="sr-only">Link</span>
+            <span className="sr-only">{T("Link")}</span>
           </th>
         </tr>
       </thead>
@@ -254,7 +254,7 @@ export function DeliveredList({
   onOpenAttachment?: (taskId: string, a: AttachmentLite) => void
 }) {
   if (!tasks.length) {
-    return <p data-ops-empty="delivered">Nothing delivered in the last 24 h.</p>
+    return <p data-ops-empty="delivered">{T("Nothing delivered in the last 24 h.")}</p>
   }
 
   return (
@@ -273,14 +273,14 @@ export function DeliveredList({
             {t.latest_summary ? <p data-ops-field="summary">{t.latest_summary}</p> : null}
             {top ? (
               <button data-ops-open-output={top.id} disabled={!onOpenAttachment} onClick={() => onOpenAttachment?.(t.id, top)} type="button">
-                Open {top.filename} ({fmtBytes(top.size)}){files && files.length > 1 ? ` +${files.length - 1} more` : ''}
+                {T("Open")}{' '}{top.filename} ({fmtBytes(top.size)}){files && files.length > 1 ? ` +${files.length - 1} more` : ''}
               </button>
             ) : files === undefined ? (
-              <span data-ops-loading="">outputs loading</span>
+              <span data-ops-loading="">{T("outputs loading")}</span>
             ) : files === null ? (
-              <span data-ops-unavailable="">outputs unavailable</span>
+              <span data-ops-unavailable="">{T("outputs unavailable")}</span>
             ) : (
-              <span data-ops-field="no-output">no files attached</span>
+              <span data-ops-field="no-output">{T("no files attached")}</span>
             )}
           <CopyLink id={t.id} kind="task" label={t.title} />
 </li>

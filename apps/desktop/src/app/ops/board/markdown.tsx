@@ -5,6 +5,7 @@
  */
 
 import type { ReactNode } from 'react'
+import { T } from '../main-i18n'
 
 const SAFE_URL = /^(https?:\/\/|mailto:)/i
 
@@ -61,7 +62,7 @@ export function Markdown({ text }: { text: string | null | undefined }) {
   const src = (text ?? '').replace(/\r\n/g, '\n')
 
   if (!src.trim()) {
-    return <p data-ops-empty="body">No description.</p>
+    return <p data-ops-empty="body">{T("No description.")}</p>
   }
 
   const lines = src.split('\n')

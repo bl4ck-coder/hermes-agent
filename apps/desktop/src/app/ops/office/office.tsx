@@ -146,7 +146,7 @@ function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; erro
 
   return (
     <div data-ops-strip="health" role="status">
-      <span data-ops-count="profiles">{fleet.profiles.length} profiles</span>
+      <span data-ops-count="profiles">{fleet.profiles.length} {T("profiles")}</span>
       {(Object.keys(PRESENCE_LABEL) as Presence[])
         .filter(k => counts.get(k))
         .map(k => (
@@ -154,7 +154,7 @@ function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; erro
             {PRESENCE_LABEL[k]} {counts.get(k)}
           </span>
         ))}
-      {error ? <span data-ops-warn="">refresh failed, showing last snapshot</span> : null}
+      {error ? <span data-ops-warn="">{T("refresh failed, showing last snapshot")}</span> : null}
     </div>
   )
 }
@@ -189,17 +189,17 @@ function TodayStrip({ cron, inFlight, nowS, th }: { cron: CronJobLite[] | null; 
   const n = (v: number | null) => (v === null ? unknown : String(v))
 
   return (
-    <div aria-label="Today strip" data-ops-strip="today">
-      <span data-ops-count="cron-24h">Cron next 24 h {n(c.next24)}</span>
-      <span data-ops-count="running">Running {n(c.running)}</span>
-      <span data-ops-count="overdue">Overdue {n(c.overdue)}</span>
+    <div aria-label={T("Today strip")} data-ops-strip="today">
+      <span data-ops-count="cron-24h">{T("Cron next 24 h")}{' '}{n(c.next24)}</span>
+      <span data-ops-count="running">{T("Running")}{' '}{n(c.running)}</span>
+      <span data-ops-count="overdue">{T("Overdue")}{' '}{n(c.overdue)}</span>
     </div>
   )
 }
 
 function CronStrip({ cron, onOpenCron }: { cron: CronJobLite[] | null; onOpenCron?: (id: string) => void }) {
   if (!cron) {
-    return <div data-ops-strip="cron">Cron {unknown}</div>
+    return <div data-ops-strip="cron">{T("Cron")}{' '}{unknown}</div>
   }
 
   const failing = cron.filter(j => (j.failure_streak ?? 0) > 0)
@@ -207,8 +207,8 @@ function CronStrip({ cron, onOpenCron }: { cron: CronJobLite[] | null; onOpenCro
 
   return (
     <div data-ops-strip="cron">
-      <span data-ops-count="cron-enabled">{enabled.length} cron jobs</span>
-      <span data-ops-count="cron-failing">{failing.length} failing</span>
+      <span data-ops-count="cron-enabled">{enabled.length} {T("cron jobs")}</span>
+      <span data-ops-count="cron-failing">{failing.length} {T("failing")}</span>
       {failing.slice(0, 3).map(j => (
         <button data-ops-cron-failure={j.id} disabled={!onOpenCron} key={j.id} onClick={() => onOpenCron?.(j.id)} type="button">
           {j.name || j.id} ({j.failure_streak})
@@ -282,7 +282,7 @@ function Orrery({
   )
 
   return (
-    <div aria-label="Orrery" data-ops-drift={moving ? '' : undefined} data-ops-orrery="" data-ops-reduced={reduced ? '' : undefined} role="group" style={{ position: 'relative', minHeight: 240 }}>
+    <div aria-label={T("Orrery")} data-ops-drift={moving ? '' : undefined} data-ops-orrery="" data-ops-reduced={reduced ? '' : undefined} role="group" style={{ position: 'relative', minHeight: 240 }}>
       {arcs.length ? (
         <svg aria-hidden data-ops-handoff-arcs="" style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }} viewBox="-200 -120 400 240">
           {arcs.map(a => {
@@ -309,7 +309,7 @@ function Orrery({
       {orbs.map(orb)}
       {overflow.length ? (
         <button data-ops-orrery-overflow={overflow.length} onClick={() => onLayout?.('table')} type="button">
-          +{overflow.length} more (cap {ORRERY_CAP})
+          +{overflow.length} {T("more (cap")}{' '}{ORRERY_CAP})
         </button>
       ) : null}
     </div>
@@ -321,12 +321,12 @@ function FleetTable({ fleet, nowS, onOpenProfile, onOpenRun }: { fleet: FleetRes
     <table data-ops-fleet-table="">
       <thead>
         <tr>
-          <th scope="col">Profile</th>
-          <th scope="col">Presence</th>
-          <th scope="col">Observed</th>
-          <th scope="col">Runs</th>
+          <th scope="col">{T("Profile")}</th>
+          <th scope="col">{T("Presence")}</th>
+          <th scope="col">{T("Observed")}</th>
+          <th scope="col">{T("Runs")}</th>
           <th scope="col">
-            <span className="sr-only">Link</span>
+            <span className="sr-only">{T("Link")}</span>
           </th>
         </tr>
       </thead>
@@ -396,7 +396,7 @@ function Dispatch({
 
   return (
     <form
-      aria-label="Dispatch"
+      aria-label={T("Dispatch")}
       data-ops-dispatch=""
       onSubmit={async e => {
         e.preventDefault()
@@ -420,19 +420,18 @@ function Dispatch({
       }}
     >
       <input
-        aria-label="Dispatch a task (@assignee title)"
+        aria-label={T("Dispatch a task (@assignee title)")}
         onChange={e => setText(e.target.value)}
-        placeholder="@builder describe the task"
+        placeholder={T("@builder describe the task")}
         ref={inputRef}
         value={text}
       />
       <button data-ops-write="" disabled={sending || !text.trim()} type="submit">
-        Dispatch
-      </button>
-      <kbd>Enter</kbd>
+        {T("Dispatch")}</button>
+      <kbd>{T("Enter")}</kbd>
       <span data-ops-routing="">{routingLine(text)}</span>
       {blueprints && blueprints.length ? (
-        <div aria-label="Blueprints" data-ops-chips="">
+        <div aria-label={T("Blueprints")} data-ops-chips="">
           {blueprints.slice(0, 4).map(b => (
             <button data-ops-chip={b.key} disabled={!onOpenRoute} key={b.key} onClick={() => onOpenRoute?.(`/cron?blueprint=${encodeURIComponent(b.key)}`)} type="button">
               {b.title}
@@ -497,11 +496,9 @@ export function OfficeView(props: OfficeViewProps) {
         {props.readOnly ? null : (
           <span data-ops-header-actions="">
             <button data-ops-new-task="" data-ops-primary="" onClick={() => dispatchInput.current?.focus()} type="button">
-              New task
-            </button>
+              {T("New task")}</button>
             <button data-ops-new-profile="" disabled={!props.onNewProfile} onClick={() => props.onNewProfile?.()} type="button">
-              New profile
-            </button>
+              {T("New profile")}</button>
           </span>
         )}
       </header>
@@ -510,7 +507,7 @@ export function OfficeView(props: OfficeViewProps) {
       <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} th={th} />
       <HealthStrip error={props.fleetError} fleet={fleet} nowS={nowS} />
       <CronStrip cron={props.cron} onOpenCron={openCron} />
-      <div aria-label="Fleet layout" role="tablist">
+      <div aria-label={T("Fleet layout")} role="tablist">
         {(['orrery', 'table'] as const).map(l => (
           <button aria-selected={layout === l} data-ops-layout={l} key={l} onClick={() => setLayout(l)} role="tab" type="button">
             {l === 'orrery' ? 'Orrery' : 'Table'}
@@ -537,7 +534,7 @@ export function OfficeView(props: OfficeViewProps) {
         />
       )}
       <span data-ops-needs-you-anchor="" />
-      <SectionFrame error={errors.pending} focused={focused === 'needs-you'} heading={false} id="needs-you" loading={props.pending === null} title="Needs you">
+      <SectionFrame error={errors.pending} focused={focused === 'needs-you'} heading={false} id="needs-you" loading={props.pending === null} title={T("Needs you")}>
         <NeedsYouQueue
           cron={props.cron}
           items={props.pending}
@@ -551,7 +548,7 @@ export function OfficeView(props: OfficeViewProps) {
           readOnly={props.readOnly}
         />
       </SectionFrame>
-      <SectionFrame count={stuck?.length} error={errors.board ?? errors.cron} focused={focused === 'stuck'} id="stuck" loading={stuck === null} title="Stuck">
+      <SectionFrame count={stuck?.length} error={errors.board ?? errors.cron} focused={focused === 'stuck'} id="stuck" loading={stuck === null} title={T("Stuck")}>
         {stuck ? <StuckList items={stuck} onOpenCron={openCron} onOpenTask={props.onOpenTask} /> : null}
       </SectionFrame>
       {profile ? (
@@ -559,9 +556,9 @@ export function OfficeView(props: OfficeViewProps) {
           {tasks ? <MyQueue nowS={nowS} onOpenTask={props.onOpenTask} profile={profile} tasks={tasks} th={th} /> : null}
         </SectionFrame>
       ) : null}
-      <SectionFrame error={errors.board} focused={focused === 'in-flight'} id="in-flight" loading={props.inFlight === null} title="In flight">
+      <SectionFrame error={errors.board} focused={focused === 'in-flight'} id="in-flight" loading={props.inFlight === null} title={T("In flight")}>
         {props.inFlight && props.inFlight.length === 0 ? (
-          <p data-ops-empty="in-flight">Nothing running.</p>
+          <p data-ops-empty="in-flight">{T("Nothing running.")}</p>
         ) : (
           <ul>
             {(props.inFlight ?? []).map(t => (
@@ -576,26 +573,26 @@ export function OfficeView(props: OfficeViewProps) {
           </ul>
         )}
       </SectionFrame>
-      <SectionFrame count={delivered?.length} error={errors.board} focused={focused === 'delivered'} id="delivered" loading={delivered === null} title="Delivered today">
+      <SectionFrame count={delivered?.length} error={errors.board} focused={focused === 'delivered'} id="delivered" loading={delivered === null} title={T("Delivered today")}>
         {delivered ? (
           <DeliveredList attachments={props.attachments ?? {}} nowS={nowS} onOpenAttachment={props.onOpenAttachment} onOpenTask={props.onOpenTask} tasks={delivered} />
         ) : null}
       </SectionFrame>
       {props.projects !== undefined ? (
-        <SectionFrame error={errors.projects ?? errors.board} focused={focused === 'projects'} id="projects" loading={projects === null} title="Project progress">
+        <SectionFrame error={errors.projects ?? errors.board} focused={focused === 'projects'} id="projects" loading={projects === null} title={T("Project progress")}>
           {projects ? <ProjectTable nowS={nowS} onOpenProject={props.onOpenRoute ? id => props.onOpenRoute?.(`/kanban?project=${encodeURIComponent(id)}`) : undefined} rows={projects} /> : null}
         </SectionFrame>
       ) : null}
-      <SectionFrame error={errors.usage} id="cost" loading={props.usage === null} title="Today">
-        <span data-ops-tokens="input">Input tokens {num(props.usage?.input_tokens)}</span>
-        <span data-ops-tokens="output">Output tokens {num(props.usage?.output_tokens)}</span>
+      <SectionFrame error={errors.usage} id="cost" loading={props.usage === null} title={T("Today")}>
+        <span data-ops-tokens="input">{T("Input tokens")}{' '}{num(props.usage?.input_tokens)}</span>
+        <span data-ops-tokens="output">{T("Output tokens")}{' '}{num(props.usage?.output_tokens)}</span>
         {props.usageByProfile && Object.keys(props.usageByProfile).length ? (
-          <table aria-label="Tokens today per profile" data-ops-usage-profiles="">
+          <table aria-label={T("Tokens today per profile")} data-ops-usage-profiles="">
             <thead>
               <tr>
-                <th scope="col">Profile</th>
-                <th scope="col">Input</th>
-                <th scope="col">Output</th>
+                <th scope="col">{T("Profile")}</th>
+                <th scope="col">{T("Input")}</th>
+                <th scope="col">{T("Output")}</th>
               </tr>
             </thead>
             <tbody>
@@ -612,11 +609,11 @@ export function OfficeView(props: OfficeViewProps) {
           </table>
         ) : null}
         {/* X10: provenance always shown; no money figure (no price is configured in Hermes). */}
-        <small data-ops-usage-provenance="">source: {props.usage?.provenance ?? '/api/ops/usage/today'} · no $ (no price configured)</small>
+        <small data-ops-usage-provenance="">source: {props.usage?.provenance ?? '/api/ops/usage/today'} {T("· no $ (no price configured)")}</small>
       </SectionFrame>
-      <SectionFrame error={errors.activity} id="activity" loading={props.activity === null && !props.taskEvents?.length} title="Activity">
+      <SectionFrame error={errors.activity} id="activity" loading={props.activity === null && !props.taskEvents?.length} title={T("Activity")}>
         {props.taskEvents && props.taskEvents.length ? (
-          <ul aria-label="Task events" data-ops-task-events="">
+          <ul aria-label={T("Task events")} data-ops-task-events="">
             {props.taskEvents.slice(0, 20).map(e => {
               const d = describeEvent(e)
 
@@ -633,7 +630,7 @@ export function OfficeView(props: OfficeViewProps) {
           </ul>
         ) : null}
         {props.activity === null ? null : props.activity.length === 0 && !props.taskEvents?.length ? (
-          <p data-ops-empty="activity">No activity yet today.</p>
+          <p data-ops-empty="activity">{T("No activity yet today.")}</p>
         ) : (
           <ul>
             {props.activity.slice(0, 20).map((a, i) => {

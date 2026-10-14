@@ -11,6 +11,7 @@ import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-d
 
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
 import { elapsedMs, initialRun, reduceRun, type RunView } from './run-stream'
+import { T } from '../main-i18n'
 
 export interface CanvasData {
   model: ModelNode | null
@@ -462,8 +463,8 @@ export function CanvasView({
   return (
     <div data-ops-canvas={profile} data-ops-readonly={readOnly ? '' : undefined}>
       <header>
-        <strong>Canvas · {profile}</strong>
-        {readOnly ? <span data-ops-badge="remote">remote: read-only</span> : null}
+        <strong>{T("Canvas ·")}{' '}{profile}</strong>
+        {readOnly ? <span data-ops-badge="remote">{T("remote: read-only")}</span> : null}
         {/* G57: one header save for every dirty node; disabled at 0. */}
         {readOnly ? null : (
         <button data-ops-save-all={dirtyCount}
@@ -475,13 +476,13 @@ export function CanvasView({
           }}
           type="button"
         >
-          Save all ({dirtyCount})
+          {T("Save all (")}{dirtyCount})
         </button>
         )}
         {saveNote ? <span role="status">{saveNote}</span> : null}
       </header>
       <div
-        aria-label="Canvas viewport (drag the background or Shift+arrows to pan)"
+        aria-label={T("Canvas viewport (drag the background or Shift+arrows to pan)")}
         data-ops-canvas-viewport=""
         onKeyDown={e => {
           const step = (PAN_KEYS as Record<string, readonly [number, number] | undefined>)[e.key]
@@ -598,8 +599,7 @@ export function CanvasView({
               {closed ? null : <span data-ops-node-body="">{b.text}</span>}
               {id === 'identity' && b.state === 'unset' ? (
                 <button data-ops-identity-cta="" data-ops-port-colour="amber" disabled={readOnly || !onOpenRoute} onClick={() => onOpenRoute?.(`/profiles?profile=${encodeURIComponent(profile)}&edit=identity`)} type="button">
-                  Set identity
-                </button>
+                  {T("Set identity")}</button>
               ) : null}
               {detail === id ? (
                 <div aria-label={`${id} details`} data-ops-node-detail={id} onKeyDown={e => e.key === 'Escape' && setDetail(null)} role="dialog">
@@ -612,8 +612,7 @@ export function CanvasView({
                     ))}
                   </dl>
                   <button onClick={() => setDetail(null)} type="button">
-                    Close
-                  </button>
+                    {T("Close")}</button>
                 </div>
               ) : null}
             </div>
@@ -622,27 +621,26 @@ export function CanvasView({
       </div>
       </div>
       <div
-        aria-label="Canvas zoom"
+        aria-label={T("Canvas zoom")}
         data-ops-canvas-zoom={String(zoom)}
         data-ops-zoom-position="bottom-centre"
         role="toolbar"
         style={{ position: 'sticky', bottom: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 1, width: 'max-content' }}
       >
-        <button aria-label="Zoom out" disabled={zoom <= ZOOM_STEPS[0]} onClick={() => setZoom(z => stepZoom(z, -1))} type="button">
+        <button aria-label={T("Zoom out")} disabled={zoom <= ZOOM_STEPS[0]} onClick={() => setZoom(z => stepZoom(z, -1))} type="button">
           −
         </button>
         <span>{Math.round(zoom * 100)}%</span>
-        <button aria-label="Zoom in" disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]} onClick={() => setZoom(z => stepZoom(z, 1))} type="button">
+        <button aria-label={T("Zoom in")} disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]} onClick={() => setZoom(z => stepZoom(z, 1))} type="button">
           +
         </button>
-        <button aria-label="Fit" onClick={() => (setZoom(1), setPan({ x: 0, y: 0 }))} type="button">
-          Fit
-        </button>
-        <button aria-label="Collapse all" onClick={() => setCollapsed(c => (c.size === CANVAS_NODES.length ? new Set() : new Set(CANVAS_NODES)))} type="button">
+        <button aria-label={T("Fit")} onClick={() => (setZoom(1), setPan({ x: 0, y: 0 }))} type="button">
+          {T("Fit")}</button>
+        <button aria-label={T("Collapse all")} onClick={() => setCollapsed(c => (c.size === CANVAS_NODES.length ? new Set() : new Set(CANVAS_NODES)))} type="button">
           {collapsed.size === CANVAS_NODES.length ? 'Expand all' : 'Collapse all'}
         </button>
       </div>
-      <ul aria-label="Canvas edges" data-ops-canvas-edges="">
+      <ul aria-label={T("Canvas edges")} data-ops-canvas-edges="">
         {CANVAS_EDGES.map(([a, b]) => (
           <li data-ops-edge={`${a}->${b}`} key={`${a}-${b}`}>
             {a} → {b}
@@ -652,15 +650,14 @@ export function CanvasView({
       <button aria-expanded={runOpen} data-ops-run-toggle="" onClick={() => setRunOpen(o => !o)} type="button">
         {runOpen ? 'Hide run panel' : 'Show run panel'}
       </button>
-      <section aria-label="Test run" data-ops-run-panel="" hidden={!runOpen}>
-        <textarea aria-label="Test run input" onChange={e => setInput(e.target.value)} value={input} />
+      <section aria-label={T("Test run")} data-ops-run-panel="" hidden={!runOpen}>
+        <textarea aria-label={T("Test run input")} onChange={e => setInput(e.target.value)} value={input} />
         <button data-ops-test-run="" data-ops-write="" disabled={!runs || active} onClick={() => void start()} type="button">
-          Test run
-        </button>
-        {!runs ? <span>Runs bridge unavailable</span> : null}
+          {T("Test run")}</button>
+        {!runs ? <span>{T("Runs bridge unavailable")}</span> : null}
         <div data-ops-run-status={run.status}>{run.status}</div>
         <div data-ops-run-elapsed="">{ms === null ? '' : `${(ms / 1000).toFixed(1)} s`}</div>
-        <div data-ops-run-tokens="">{run.tokens} streamed tokens</div>
+        <div data-ops-run-tokens="">{run.tokens} {T("streamed tokens")}</div>
         <pre data-ops-run-text="">{run.text}</pre>
         {run.error ? <div role="alert">{run.error}</div> : null}
         {run.tools.map(t => (
@@ -674,7 +671,7 @@ export function CanvasView({
         {run.subagents.map(s => (
           <details data-ops-run-subagent={s.id} key={s.id}>
             <summary>
-              Sub-agent {s.id} ({s.status})
+              {T("Sub-agent")}{' '}{s.id} ({s.status})
             </summary>
             <p>{s.goal ?? ''}</p>
           </details>

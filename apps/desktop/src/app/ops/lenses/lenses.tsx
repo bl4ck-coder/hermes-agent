@@ -16,6 +16,7 @@ import { activityRow } from '../office/office-toasts'
 
 import { createB4Client } from './b4-lenses'
 import { type AppCard, appCards, appGlyph, appsInTags } from './b4-model'
+import { T } from '../main-i18n'
 
 const why = (e: unknown) => (e instanceof Error ? e.message : e ? String(e) : null)
 /** P8: local time for the operator (was UTC ISO). */
@@ -45,19 +46,19 @@ export function RunsLensView({
   }
 
   return (
-    <section aria-label="Runs" data-ops-lens="runs">
-      <h2>Runs ({workers.length} live)</h2>
+    <section aria-label={T("Runs")} data-ops-lens="runs">
+      <h2>{T("Runs (")}{workers.length} {T("live)")}</h2>
       {workers.length === 0 ? (
-        <p>No worker is running.</p>
+        <p>{T("No worker is running.")}</p>
       ) : (
         <table>
           <thead>
             <tr>
-              <th scope="col">Run</th>
-              <th scope="col">Task</th>
-              <th scope="col">Profile</th>
-              <th scope="col">Elapsed</th>
-              <th scope="col">Heartbeat</th>
+              <th scope="col">{T("Run")}</th>
+              <th scope="col">{T("Task")}</th>
+              <th scope="col">{T("Profile")}</th>
+              <th scope="col">{T("Elapsed")}</th>
+              <th scope="col">{T("Heartbeat")}</th>
             </tr>
           </thead>
           <tbody>
@@ -155,9 +156,9 @@ export function ProjectsLensView({
   const ov = open && tasks ? projectOverview(tasks, open) : null
 
   return (
-    <section aria-label="Projects" data-ops-lens="projects">
-      <h2>Projects ({projects.length})</h2>
-      {projects.length === 0 ? <p data-ops-empty="projects">No projects yet. Create one from the Board.</p> : null}
+    <section aria-label={T("Projects")} data-ops-lens="projects">
+      <h2>{T("Projects (")}{projects.length})</h2>
+      {projects.length === 0 ? <p data-ops-empty="projects">{T("No projects yet. Create one from the Board.")}</p> : null}
       <ul>
         {sorted.map(p => (
           <li data-ops-fav={favs.includes(p.id) ? '' : undefined} data-ops-project={p.id} key={p.id}>
@@ -172,11 +173,11 @@ export function ProjectsLensView({
         ))}
       </ul>
       {open ? (
-        <div aria-label="Project overview" data-ops-project-overview={open}>
+        <div aria-label={T("Project overview")} data-ops-project-overview={open}>
           {ov ? (
             <>
-              <p data-ops-field="total">{ov.total} tasks</p>
-              <p data-ops-field="throughput">{ov.done} done</p>
+              <p data-ops-field="total">{ov.total} {T("tasks")}</p>
+              <p data-ops-field="throughput">{ov.done} {T("done")}</p>
               <ul>
                 {Object.entries(ov.byStatus).map(([k, v]) => (
                   <li data-ops-count={k} key={k}>
@@ -193,11 +194,10 @@ export function ProjectsLensView({
               </ul>
             </>
           ) : (
-            <p>Board unknown.</p>
+            <p>{T("Board unknown.")}</p>
           )}
           <button disabled={!onOpenBoard} onClick={() => onOpenBoard?.(open)} type="button">
-            Open Board filtered to this project
-          </button>
+            {T("Open Board filtered to this project")}</button>
         </div>
       ) : null}
     </section>
@@ -232,10 +232,10 @@ export function TemplatesLensView({
   }
 
   return (
-    <section aria-label="Templates" data-ops-lens="templates">
-      <h2>Cron blueprints ({blueprints.length})</h2>
-      {blueprints.length === 0 ? <p data-ops-empty="templates">No cron blueprints are installed for this profile.</p> : null}
-      <p data-ops-cut="workflow-templates">Kanban workflow templates: not offered (every board uses the default workflow; per-board templates are not in the backend).</p>
+    <section aria-label={T("Templates")} data-ops-lens="templates">
+      <h2>{T("Cron blueprints (")}{blueprints.length})</h2>
+      {blueprints.length === 0 ? <p data-ops-empty="templates">{T("No cron blueprints are installed for this profile.")}</p> : null}
+      <p data-ops-cut="workflow-templates">{T("Kanban workflow templates: not offered (every board uses the default workflow; per-board templates are not in the backend).")}</p>
       <ul>
         {blueprints.map(b => (
           <li data-ops-blueprint={b.key} key={b.key}>
@@ -245,11 +245,10 @@ export function TemplatesLensView({
                 {appGlyph(a.name)}
               </span>
             ))}
-            {b.source === 'plugin' ? <span> (plugin)</span> : null}
+            {b.source === 'plugin' ? <span> {T("(plugin)")}</span> : null}
             <p>{b.description}</p>
             <button disabled={!onOpenRoute} onClick={() => onOpenRoute?.(`/cron?blueprint=${encodeURIComponent(b.key)}`)} type="button">
-              Use in Schedule
-            </button>
+              {T("Use in Schedule")}</button>
           </li>
         ))}
       </ul>
@@ -276,22 +275,20 @@ export function ActivityLensView({
   const [tab, setTab] = useState<'events' | 'resolved'>('events')
 
   return (
-    <section aria-label="Activity" data-ops-lens="activity">
+    <section aria-label={T("Activity")} data-ops-lens="activity">
       <div role="tablist">
         <button aria-selected={tab === 'events'} onClick={() => setTab('events')} role="tab" type="button">
-          Task events
-        </button>
+          {T("Task events")}</button>
         <button aria-selected={tab === 'resolved'} onClick={() => setTab('resolved')} role="tab" type="button">
-          Resolved
-        </button>
+          {T("Resolved")}</button>
       </div>
       {tab === 'events' ? (
         events === null && connecting ? (
-          <p data-ops-loading="">Connecting to live task events…</p>
+          <p data-ops-loading="">{T("Connecting to live task events…")}</p>
         ) : events === null ? (
-          <p data-ops-unavailable="">Live task events need the kanban stream (polling only).</p>
+          <p data-ops-unavailable="">{T("Live task events need the kanban stream (polling only).")}</p>
         ) : events.length === 0 ? (
-          <p>No task events since this lens opened.</p>
+          <p>{T("No task events since this lens opened.")}</p>
         ) : (
           <ol>
             {events.map(e => {
@@ -311,9 +308,9 @@ export function ActivityLensView({
       ) : resolved === null ? (
         <Unavailable error={error} what="Resolved" />
       ) : resolved.length === 0 ? (
-        <p data-ops-empty="resolved">Nothing resolved yet.</p>
+        <p data-ops-empty="resolved">{T("Nothing resolved yet.")}</p>
       ) : (
-        <ol aria-label="Resolved" data-ops-resolved="">
+        <ol aria-label={T("Resolved")} data-ops-resolved="">
           {resolved.slice(0, 50).map((a, i) => {
             const r = activityRow(a)
 

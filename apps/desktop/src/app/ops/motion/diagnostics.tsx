@@ -20,6 +20,7 @@ import {
 } from '../feed/diag'
 import { useKanbanStream } from '../feed/kanban-stream'
 import { setOpsConnection } from '../feed/write-gate'
+import { T } from '../main-i18n'
 
 export function DiagnosticsPanel({
   policySource,
@@ -61,25 +62,25 @@ export function DiagnosticsPanel({
   return (
     <div data-ops-diagnostics="">
       <dl>
-        <dt>Stream</dt>
+        <dt>{T("Stream")}</dt>
         <dd data-ops-diag-stream={stream.mode}>
           {stream.mode}
           {stream.reason ? ` (${stream.reason})` : ''}
         </dd>
-        <dt>Connection</dt>
+        <dt>{T("Connection")}</dt>
         <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
           {conn ? conn.copy : 'Run the probe to check the Hermes version and capabilities.'}
         </dd>
-        <dt>Stream generation</dt>
+        <dt>{T("Stream generation")}</dt>
         <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
-        <dt>Policy source</dt>
+        <dt>{T("Policy source")}</dt>
         <dd data-ops-diag-policy="">{policySource ?? 'unknown'}</dd>
       </dl>
       <button data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
         {probing ? 'Probing…' : 'Run capability probe'}
       </button>
       {results ? (
-        <ul aria-label="Capability probe" data-ops-probe-results="">
+        <ul aria-label={T("Capability probe")} data-ops-probe-results="">
           {results.map(r => (
             <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
               {r.id} {r.label}: {r.state === 'ok' ? 'available' : r.detail}
@@ -88,10 +89,10 @@ export function DiagnosticsPanel({
         </ul>
       ) : null}
       <h4>
-        Recent errors <span data-ops-error-count="">{errors.length}</span>
+        {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
       </h4>
       {errors.length === 0 ? (
-        <p data-ops-empty="errors">No Ops request has failed this session.</p>
+        <p data-ops-empty="errors">{T("No Ops request has failed this session.")}</p>
       ) : (
         <ol data-ops-errors="">
           {errors.map((e, i) => (
@@ -113,19 +114,16 @@ export function DiagnosticsPanel({
         }}
         type="button"
       >
-        Copy diagnostics
-      </button>
+        {T("Copy diagnostics")}</button>
       <button disabled={errors.length === 0} onClick={clearOpsErrors} type="button">
-        Clear errors
-      </button>
+        {T("Clear errors")}</button>
       {note ? <p role="status">{note}</p> : null}
       {simAllowed() ? (
         <label data-ops-simulate="">
-          Simulate (dev only)
-          <select aria-label="simulate" onChange={e => setSimMode(e.target.value as SimMode)} value={sim}>
-            <option value="off">Off</option>
-            <option value="offline">Offline</option>
-            <option value="slow">Slow (&gt; 10 s)</option>
+          {T("Simulate (dev only)")}<select aria-label={T("simulate")} onChange={e => setSimMode(e.target.value as SimMode)} value={sim}>
+            <option value="off">{T("Off")}</option>
+            <option value="offline">{T("Offline")}</option>
+            <option value="slow">{T("Slow (> 10 s)")}</option>
             <option value="auth">401</option>
           </select>
         </label>

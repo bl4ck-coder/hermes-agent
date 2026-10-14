@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createOpsActions, type OpsActions, type TaskDetail, type TaskEvent, type TaskRun } from '../feed/ops-actions'
 
 import { LinkedText } from './entity-links'
+import { T } from '../main-i18n'
 
 const VERB: Record<string, string> = {
   created: 'created',
@@ -150,22 +151,19 @@ export function TaskTabView({
       <header>
         <h2>{t.title}</h2>
         <span data-ops-field="status">{t.status}</span>
-        {t.current_step_key ? <span data-ops-field="step">step {t.current_step_key}</span> : null}
+        {t.current_step_key ? <span data-ops-field="step">{T("step")}{' '}{t.current_step_key}</span> : null}
         {t.branch_name ? <span data-ops-field="branch">{t.branch_name}</span> : null}
         <button onClick={() => onOpenRoute?.(`/kanban?task=${encodeURIComponent(t.id)}`)} type="button">
-          Open in Board
-        </button>
+          {T("Open in Board")}</button>
       </header>
       {/* X9 (P8 b6): evidence first (timeline, runs, log, diff, outputs), then every action. */}
       <div data-ops-evidence="">
-      <section aria-label="Timeline" data-ops-timeline="">
-        <h3>Timeline</h3>
+      <section aria-label={T("Timeline")} data-ops-timeline="">
+        <h3>{T("Timeline")}</h3>
         <button onClick={() => setOpen(new Set(events.map(e => e.id)))} type="button">
-          Expand all
-        </button>
+          {T("Expand all")}</button>
         <button onClick={() => setOpen(new Set())} type="button">
-          Collapse all
-        </button>
+          {T("Collapse all")}</button>
         <ol>
           {events.map(e => {
             const d = describeEvent(e)
@@ -183,8 +181,8 @@ export function TaskTabView({
         </ol>
       </section>
 
-      <section aria-label="Runs" data-ops-runs="">
-        <h3>Runs ({runs.length})</h3>
+      <section aria-label={T("Runs")} data-ops-runs="">
+        <h3>{T("Runs (")}{runs.length})</h3>
         <table>
           <tbody>
             {runs.map(r => (
@@ -202,8 +200,8 @@ export function TaskTabView({
       </section>
 
       {loadLog ? (
-        <section aria-label="Worker log" data-ops-worker-log="">
-          <h3>Worker log</h3>
+        <section aria-label={T("Worker log")} data-ops-worker-log="">
+          <h3>{T("Worker log")}</h3>
           <button
             onClick={() =>
               void loadLog().then(
@@ -219,17 +217,17 @@ export function TaskTabView({
         </section>
       ) : null}
 
-      <section aria-label="Diff" data-ops-diff="">
-        <h3>Diff</h3>
+      <section aria-label={T("Diff")} data-ops-diff="">
+        <h3>{T("Diff")}</h3>
         {(() => {
           const d = latestDiff(runs)
 
-          return d ? <pre data-ops-diff-body="">{d}</pre> : <p data-ops-empty="diff">No diff reported by the latest run.</p>
+          return d ? <pre data-ops-diff-body="">{d}</pre> : <p data-ops-empty="diff">{T("No diff reported by the latest run.")}</p>
         })()}
       </section>
 
-      <section aria-label="Attachments" data-ops-attachments="">
-        <h3>Outputs ({detail.attachments?.length ?? 0})</h3>
+      <section aria-label={T("Attachments")} data-ops-attachments="">
+        <h3>{T("Outputs (")}{detail.attachments?.length ?? 0})</h3>
         <ul>
           {(detail.attachments ?? []).map(a => (
             <li key={a.id}>{a.filename}</li>
@@ -238,11 +236,10 @@ export function TaskTabView({
       </section>
 
       </div>
-      <div aria-label="Task actions" data-ops-task-actions="">
+      <div aria-label={T("Task actions")} data-ops-task-actions="">
         <label>
-          Assignee
-          <select aria-label="assignee" disabled={readOnly} onChange={e => void act({ kind: 'assign', value: e.target.value }, 'Reassigned')} value={t.assignee ?? ''}>
-            <option value="">unassigned</option>
+          {T("Assignee")}<select aria-label={T("assignee")} disabled={readOnly} onChange={e => void act({ kind: 'assign', value: e.target.value }, 'Reassigned')} value={t.assignee ?? ''}>
+            <option value="">{T("unassigned")}</option>
             {[...new Set([...(assignees ?? []), ...(t.assignee ? [t.assignee] : [])])].map(a => (
               <option key={a}>{a}</option>
             ))}
@@ -252,55 +249,49 @@ export function TaskTabView({
       {msg ? <p role="status">{msg}</p> : null}
       {t.workspace_path ? (
         <p data-ops-field="workspace">
-          Workspace <code>{t.workspace_path}</code>
+          {T("Workspace")}{' '}<code>{t.workspace_path}</code>
         </p>
       ) : null}
 
       {live && !readOnly ? (
-        <div aria-label="Live run controls" data-ops-live-run={live.id}>
+        <div aria-label={T("Live run controls")} data-ops-live-run={live.id}>
           {confirmStop === live.id ? (
             <>
-              <span>Stop run {live.id}? The worker is terminated.</span>
+              <span>{T("Stop run")}{' '}{live.id}{T("? The worker is terminated.")}</span>
               <button data-ops-stop-confirm="" data-ops-write="" disabled={busy} onClick={() => (setConfirmStop(null), void act({ kind: 'stop', value: String(live.id) }, 'Stopped'))} type="button">
-                Confirm stop
-              </button>
+                {T("Confirm stop")}</button>
               <button onClick={() => setConfirmStop(null)} type="button">
-                Cancel
-              </button>
+                {T("Cancel")}</button>
             </>
           ) : (
             <button data-ops-stop="" data-ops-write="" onClick={() => setConfirmStop(live.id)} type="button">
-              Stop
-            </button>
+              {T("Stop")}</button>
           )}
           <form onSubmit={e => (e.preventDefault(), steer.trim() && void act({ kind: 'steer', value: steer.trim() }, 'Steer sent').then(ok => ok && setSteer('')))}>
-            <input aria-label="steer" onChange={e => setSteer(e.target.value)} placeholder="Steer the running worker" value={steer} />
+            <input aria-label={T("steer")} onChange={e => setSteer(e.target.value)} placeholder={T("Steer the running worker")} value={steer} />
             <button data-ops-write="" disabled={busy || !steer.trim()} type="submit">
-              Steer
-            </button>
+              {T("Steer")}</button>
           </form>
         </div>
       ) : null}
 
       {failed ? (
         <div data-ops-run-failure="" role="alert">
-          <strong>Run {failed.id} failed</strong> {failed.error ?? failed.outcome ?? ''}
+          <strong>{T("Run")}{' '}{failed.id} {T("failed")}</strong> {failed.error ?? failed.outcome ?? ''}
           {!readOnly ? (
             <>
-              <input aria-label="unblock note" onChange={e => setNote(e.target.value)} placeholder="Unblock note" value={note} />
+              <input aria-label={T("unblock note")} onChange={e => setNote(e.target.value)} placeholder={T("Unblock note")} value={note} />
               <button data-ops-write="" disabled={busy || !note.trim()} onClick={() => void act({ kind: 'unblock', value: note.trim() }, 'Unblocked').then(ok => ok && setNote(''))} type="button">
-                Unblock
-              </button>
+                {T("Unblock")}</button>
               <button data-ops-write="" onClick={() => void act({ kind: 'retry' }, 'Moved to ready')} type="button">
-                Retry → ready
-              </button>
+                {T("Retry → ready")}</button>
             </>
           ) : null}
         </div>
       ) : null}
 
-      <section aria-label="Subtasks" data-ops-subtasks="">
-        <h3>Subtasks ({detail.child_results?.length ?? 0})</h3>
+      <section aria-label={T("Subtasks")} data-ops-subtasks="">
+        <h3>{T("Subtasks (")}{detail.child_results?.length ?? 0})</h3>
         <ul>
           {(detail.child_results ?? []).map(c => (
             <li data-ops-subtask={c.id} key={c.id}>
@@ -313,13 +304,13 @@ export function TaskTabView({
         </ul>
         {!readOnly ? (
           <form onSubmit={e => (e.preventDefault(), sub.trim() && void act({ kind: 'subtask', value: sub.trim() }, 'Subtask created').then(ok => ok && setSub('')))}>
-            <input aria-label="new subtask" onChange={e => setSub(e.target.value)} placeholder="Add subtask" value={sub} />
+            <input aria-label={T("new subtask")} onChange={e => setSub(e.target.value)} placeholder={T("Add subtask")} value={sub} />
           </form>
         ) : null}
       </section>
 
-      <section aria-label="Comments" data-ops-comments="">
-        <h3>Comments ({detail.comments?.length ?? 0})</h3>
+      <section aria-label={T("Comments")} data-ops-comments="">
+        <h3>{T("Comments (")}{detail.comments?.length ?? 0})</h3>
         <ul>
           {(detail.comments ?? []).map((c, i) => (
             <li key={c.id ?? i}>
@@ -329,7 +320,7 @@ export function TaskTabView({
         </ul>
         {!readOnly ? (
           <form onSubmit={e => (e.preventDefault(), comment.trim() && void act({ kind: 'comment', value: comment.trim() }, 'Comment added').then(ok => ok && setComment('')))}>
-            <input aria-label="comment" onChange={e => setComment(e.target.value)} placeholder="Comment" value={comment} />
+            <input aria-label={T("comment")} onChange={e => setComment(e.target.value)} placeholder={T("Comment")} value={comment} />
           </form>
         ) : null}
       </section>

@@ -22,6 +22,7 @@ import {
 import { useOpsFeed } from '../feed/ops-feed'
 import { listOrNull, useOpsResource } from '../office/office-container'
 import { Sigil } from '../primitives/sigil'
+import { T } from '../main-i18n'
 
 /** O78: earliest upcoming next_run_at among enabled jobs of this profile; null when none, undefined when unknown. */
 export function nextCronRun(jobs: CronJobLite[] | null | undefined, name: string): { job: CronJobLite; at: number } | null | undefined {
@@ -113,13 +114,13 @@ export function AgentCardView({
       </h2>
       {row?.bot_title ? <p data-ops-field="title">{row.bot_title}</p> : null}
       <dl>
-        <dt>Presence</dt>
+        <dt>{T("Presence")}</dt>
         <dd data-ops-field="presence">{fleet === undefined ? 'unknown' : fleet ? show(fleet.presence) : 'not in fleet'}</dd>
-        <dt>Model</dt>
+        <dt>{T("Model")}</dt>
         <dd data-ops-field="model">{model ? `${show(model.provider)} / ${show(model.model)}` : 'unknown'}</dd>
-        <dt>Skills</dt>
+        <dt>{T("Skills")}</dt>
         <dd data-ops-field="skills">{row && typeof row.skill_count === 'number' ? row.skill_count : 'unknown'}</dd>
-        <dt>Next cron run</dt>
+        <dt>{T("Next cron run")}</dt>
         <dd data-ops-field="next-cron">
           {(() => {
             const n = nextCronRun(cron, name)
@@ -127,15 +128,15 @@ export function AgentCardView({
             return n === undefined ? 'unknown' : n === null ? 'none scheduled' : `${new Date(n.at).toISOString()} (${n.job.name || n.job.id})`
           })()}
         </dd>
-        <dt>Role</dt>
+        <dt>{T("Role")}</dt>
         <dd data-ops-field="role">{role === undefined ? 'unknown' : role === null ? 'no description' : role}</dd>
-        <dt>Policy</dt>
+        <dt>{T("Policy")}</dt>
         <dd data-ops-field="policy">
           {violations === null ? 'unknown' : violations.length === 0 ? 'inside policy' : `${violations.length} violation(s)`}
         </dd>
-        <dt>Active runs</dt>
+        <dt>{T("Active runs")}</dt>
         <dd data-ops-field="runs">{fleet && Array.isArray(fleet.active_runs) ? fleet.active_runs.length : 'unknown'}</dd>
-        <dt>Needs you</dt>
+        <dt>{T("Needs you")}</dt>
         <dd data-ops-field="pending">{pending ? pending.filter(p => p.profile === name).length : 'unknown'}</dd>
       </dl>
     </section>
@@ -148,24 +149,23 @@ export function TaskDetailView({ id, task, onOpenRoute }: { id: string; task: Ka
   return (
     <section aria-label={`Task ${id}`} data-ops-task={id}>
       {task === undefined ? (
-        <p data-ops-unavailable="">Task data unknown (board not loaded).</p>
+        <p data-ops-unavailable="">{T("Task data unknown (board not loaded).")}</p>
       ) : task === null ? (
-        <p data-ops-unavailable="">Task {id} is not on the current board.</p>
+        <p data-ops-unavailable="">{T("Task")}{' '}{id} {T("is not on the current board.")}</p>
       ) : (
         <dl>
-          <dt>Title</dt>
+          <dt>{T("Title")}</dt>
           <dd>{task.title}</dd>
-          <dt>Status</dt>
+          <dt>{T("Status")}</dt>
           <dd data-ops-field="status">{show(task.status)}</dd>
-          <dt>Assignee</dt>
+          <dt>{T("Assignee")}</dt>
           <dd data-ops-field="assignee">{show(task.assignee)}</dd>
-          <dt>Tenant</dt>
+          <dt>{T("Tenant")}</dt>
           <dd>{show(task.tenant)}</dd>
         </dl>
       )}
       <button data-ops-open-route={route} onClick={() => onOpenRoute?.(route)} type="button">
-        Open in Kanban
-      </button>
+        {T("Open in Kanban")}</button>
     </section>
   )
 }
@@ -174,44 +174,44 @@ const secs = (a?: number | null, b?: number | null) => (typeof a === 'number' &&
 
 export function RunHistoryView({ id, run, error, onOpenRoute }: { id: string; run: TaskRun | null | undefined; error?: string | null; onOpenRoute?: (r: string) => void }) {
   if (error) {
-    return <p data-ops-unavailable="">Run {id} history unavailable: {error}</p>
+    return <p data-ops-unavailable="">{T("Run")}{' '}{id} {T("history unavailable:")}{' '}{error}</p>
   }
 
   if (run === undefined) {
-    return <p data-ops-loading="">Loading run history…</p>
+    return <p data-ops-loading="">{T("Loading run history…")}</p>
   }
 
   if (!run) {
-    return <p data-ops-unavailable="">Run {id} not found.</p>
+    return <p data-ops-unavailable="">{T("Run")}{' '}{id} {T("not found.")}</p>
   }
 
   return (
     <dl data-ops-run-history={id}>
-      <dt>Profile</dt>
+      <dt>{T("Profile")}</dt>
       <dd data-ops-field="profile">{show(run.profile)}</dd>
-      <dt>Status</dt>
+      <dt>{T("Status")}</dt>
       <dd data-ops-field="status">{show(run.status)}</dd>
-      <dt>Outcome</dt>
+      <dt>{T("Outcome")}</dt>
       <dd data-ops-field="outcome">{show(run.outcome)}</dd>
-      <dt>Step</dt>
+      <dt>{T("Step")}</dt>
       <dd>{show(run.step_key)}</dd>
-      <dt>Started</dt>
+      <dt>{T("Started")}</dt>
       <dd>{typeof run.started_at === 'number' ? new Date(run.started_at * 1000).toISOString() : 'unknown'}</dd>
-      <dt>Duration</dt>
+      <dt>{T("Duration")}</dt>
       <dd data-ops-field="duration">{secs(run.started_at, run.ended_at)}</dd>
       {run.summary ? (
         <>
-          <dt>Summary</dt>
+          <dt>{T("Summary")}</dt>
           <dd>{run.summary}</dd>
         </>
       ) : null}
       {run.error ? (
         <>
-          <dt>Error</dt>
+          <dt>{T("Error")}</dt>
           <dd role="alert">{run.error}</dd>
         </>
       ) : null}
-      <dt>Task</dt>
+      <dt>{T("Task")}</dt>
       <dd>
         <button data-ops-open-route={`/kanban?task=${encodeURIComponent(run.task_id)}`} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(`/kanban?task=${encodeURIComponent(run.task_id)}`)} type="button">
           {run.task_id}
@@ -225,18 +225,18 @@ export function RunDetailView({ id, found }: { id: string; found: { profile: str
   return (
     <section aria-label={`Run ${id}`} data-ops-run={id}>
       {found === undefined ? (
-        <p data-ops-unavailable="">Run data unknown (fleet not loaded).</p>
+        <p data-ops-unavailable="">{T("Run data unknown (fleet not loaded).")}</p>
       ) : found === null ? (
-        <p data-ops-unavailable="">Run {id} is not active. Live replay is not available; history below.</p>
+        <p data-ops-unavailable="">{T("Run")}{' '}{id} {T("is not active. Live replay is not available; history below.")}</p>
       ) : (
         <dl>
-          <dt>Profile</dt>
+          <dt>{T("Profile")}</dt>
           <dd data-ops-field="profile">{found.profile}</dd>
-          <dt>Source</dt>
+          <dt>{T("Source")}</dt>
           <dd>{show(found.run.source)}</dd>
-          <dt>Task</dt>
+          <dt>{T("Task")}</dt>
           <dd>{show(found.run.task_id)}</dd>
-          <dt>Started</dt>
+          <dt>{T("Started")}</dt>
           <dd>{found.run.started_at ? new Date(found.run.started_at * 1000).toISOString() : 'unknown'}</dd>
         </dl>
       )}
@@ -246,15 +246,15 @@ export function RunDetailView({ id, found }: { id: string; found: { profile: str
 
 export function NeedsYouListView({ items }: { items: ApprovalItem[] | null }) {
   if (items === null) {
-    return <p data-ops-unavailable="">Needs-you is unknown.</p>
+    return <p data-ops-unavailable="">{T("Needs-you is unknown.")}</p>
   }
 
   if (items.length === 0) {
-    return <p data-ops-needs-you-empty="">Nothing needs you.</p>
+    return <p data-ops-needs-you-empty="">{T("Nothing needs you.")}</p>
   }
 
   return (
-    <ul aria-label="Needs you" data-ops-needs-you-list="">
+    <ul aria-label={T("Needs you")} data-ops-needs-you-list="">
       {items.map(i => (
         <li data-ops-origin={i.origin} key={`${i.origin}:${i.id}`}>
           {show(i.profile)}: {i.what_for || i.why || i.id}

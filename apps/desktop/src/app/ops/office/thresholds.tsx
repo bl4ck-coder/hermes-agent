@@ -4,6 +4,7 @@
  */
 
 import { useSyncExternalStore } from 'react'
+import { T } from '../main-i18n'
 
 export interface OfficeThresholds {
   /** A running task whose last heartbeat is older than this is "stale" (Stuck, Overdue, Today strip). */
@@ -93,12 +94,11 @@ export function ThresholdSettings() {
   const min = (s: number) => Math.round(s / 60)
 
   return (
-    <fieldset aria-label="Office thresholds" data-ops-thresholds="">
-      <legend>Office thresholds</legend>
+    <fieldset aria-label={T("Office thresholds")} data-ops-thresholds="">
+      <legend>{T("Office thresholds")}</legend>
       <label>
-        Stale heartbeat after (minutes)
-        <input
-          aria-label="stale heartbeat minutes"
+        {T("Stale heartbeat after (minutes)")}<input
+          aria-label={T("stale heartbeat minutes")}
           max={THRESHOLD_LIMITS.staleHeartbeatS[1] / 60}
           min={THRESHOLD_LIMITS.staleHeartbeatS[0] / 60}
           onChange={e => saveThresholds({ staleHeartbeatS: Number(e.target.value) * 60 })}
@@ -107,9 +107,8 @@ export function ThresholdSettings() {
         />
       </label>
       <label>
-        Review overdue after (hours)
-        <input
-          aria-label="review overdue hours"
+        {T("Review overdue after (hours)")}<input
+          aria-label={T("review overdue hours")}
           max={THRESHOLD_LIMITS.reviewOverdueS[1] / 3600}
           min={THRESHOLD_LIMITS.reviewOverdueS[0] / 3600}
           onChange={e => saveThresholds({ reviewOverdueS: Number(e.target.value) * 3600 })}
@@ -118,7 +117,7 @@ export function ThresholdSettings() {
         />
       </label>
       <button onClick={resetThresholds} type="button">
-        Reset to defaults ({min(DEFAULT_THRESHOLDS.staleHeartbeatS)} min / {DEFAULT_THRESHOLDS.reviewOverdueS / 3600} h)
+        {T("Reset to defaults (")}{min(DEFAULT_THRESHOLDS.staleHeartbeatS)} {T("min /")}{' '}{DEFAULT_THRESHOLDS.reviewOverdueS / 3600} h)
       </button>
     </fieldset>
   )

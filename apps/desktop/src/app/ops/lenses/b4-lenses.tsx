@@ -39,6 +39,7 @@ import {
   teams,
   WEEK_S
 } from './b4-model'
+import { T } from '../main-i18n'
 
 const why = (e: unknown) => (e instanceof Error ? e.message : e ? String(e) : null)
 
@@ -130,9 +131,9 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
   const open = (name: string) => onOpenRoute?.(`/profiles?profile=${encodeURIComponent(name)}`)
 
   return (
-    <section aria-label="Agents" data-ops-lens="agents">
+    <section aria-label={T("Agents")} data-ops-lens="agents">
       <header>
-        <h2>Agents</h2>
+        <h2>{T("Agents")}</h2>
         <div role="tablist">
           {(['fleet', 'teams', 'roles'] as const).map(t => (
             <button aria-selected={tab === t} data-ops-agents-tab={t} key={t} onClick={() => setTab(t)} role="tab" type="button">
@@ -142,15 +143,14 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         </div>
         {/* O14: a new agent is a new profile, created in Desktop's profile flow (clone-from lives there). */}
         <button data-ops-new-agent="" disabled={!onOpenRoute} onClick={() => onOpenRoute?.('/profiles?new=1')} type="button">
-          New agent
-        </button>
+          {T("New agent")}</button>
       </header>
       {!rows ? (
         <State error={profiles.error} what="Agents" />
       ) : tab === 'fleet' ? (
         <>
-          <Search label="search agents" onChange={setQ} placeholder="Search by name, model, lane, role" value={q} />
-          {tasks.error ? <p data-ops-partial="">Task counts unavailable: {why(tasks.error)}</p> : null}
+          <Search label={T("search agents")} onChange={setQ} placeholder={T("Search by name, model, lane, role")} value={q} />
+          {tasks.error ? <p data-ops-partial="">{T("Task counts unavailable:")}{' '}{why(tasks.error)}</p> : null}
           <DataTable
             caption={`Fleet (${rows.length})`}
             columns={[
@@ -178,7 +178,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                 cell: r => (
                   <span data-ops-runs-source={r.runsSource} title={r.runsSource === 'runs' ? 'Worker runs started in the last 7 days' : 'Task starts (this Hermes has no run stats)'}>
                     {r.runs7d}
-                    {r.failed7d ? <small data-ops-runs-failed=""> · {r.failed7d} failed</small> : null}
+                    {r.failed7d ? <small data-ops-runs-failed=""> · {r.failed7d} {T("failed")}</small> : null}
                   </span>
                 )
               },
@@ -201,7 +201,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
               <strong>{r.name}</strong> — {r.role ?? 'No role (the profile has no description).'}
             </li>
           ))}
-          <li data-ops-roles-note="">Roles are read-only here; edit a profile's description in Profiles.</li>
+          <li data-ops-roles-note="">{T("Roles are read-only here; edit a profile's description in Profiles.")}</li>
         </ul>
       )}
     </section>
@@ -216,7 +216,7 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
   const list = teams(tasks)
 
   if (list.length === 0) {
-    return <p data-ops-empty="teams">No tasks yet, so no lanes.</p>
+    return <p data-ops-empty="teams">{T("No tasks yet, so no lanes.")}</p>
   }
 
   return (
@@ -224,9 +224,9 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
       {list.map(t => (
         <li data-ops-team={t.lane} key={t.lane}>
           <h3>{t.lane}</h3>
-          <span data-ops-team-open="">{t.open} open</span>
+          <span data-ops-team-open="">{t.open} {T("open")}</span>
           <p>
-            Projects:{' '}
+            {T("Projects:")}{' '}
             {t.projects.length
               ? t.projects.map(p => (
                   <button data-ops-team-project={p} disabled={!onOpenRoute} key={p} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(p)}`)} type="button">
@@ -235,7 +235,7 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
                 ))
               : 'none'}
           </p>
-          <p data-ops-team-members="">Members: {t.members.join(', ') || 'none'}</p>
+          <p data-ops-team-members="">{T("Members:")}{' '}{t.members.join(', ') || 'none'}</p>
         </li>
       ))}
     </ul>
@@ -338,33 +338,31 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
   }
 
   return (
-    <section aria-label="Skills" data-ops-lens="skills">
+    <section aria-label={T("Skills")} data-ops-lens="skills">
       <header>
-        <h2>Skills · {profile}</h2>
+        <h2>{T("Skills ·")}{' '}{profile}</h2>
         <button data-ops-skill-create="" disabled={!onOpenRoute} onClick={() => onOpenRoute?.('/capabilities?tab=skills&new=1')} type="button">
-          Create skill
-        </button>
+          {T("Create skill")}</button>
         <button data-ops-browse-library="" disabled={!onOpenRoute} onClick={() => onOpenRoute?.('/capabilities?tab=skills&hub=1')} type="button">
-          Browse library
-        </button>
+          {T("Browse library")}</button>
       </header>
       {progress ? (
         <p aria-live="polite" data-ops-install-progress={`${progress.done}/${progress.total}`} role="status">
-          Installing {progress.done} of {progress.total}…
+          {T("Installing")}{' '}{progress.done} of {progress.total}…
         </p>
       ) : null}
       {note ? <p role="status">{note}</p> : null}
-      <section aria-label="Starter packs" data-ops-packs="">
-        <h3>Starter packs</h3>
+      <section aria-label={T("Starter packs")} data-ops-packs="">
+        <h3>{T("Starter packs")}</h3>
         {!packs ? (
           <State error={official.error} what="Starter packs" />
         ) : packs.length === 0 ? (
-          <p data-ops-empty="packs">The hub offers no category with two or more skills.</p>
+          <p data-ops-empty="packs">{T("The hub offers no category with two or more skills.")}</p>
         ) : (
           <ul>
             {packs.map(p => (
               <li data-ops-pack={p.id} key={p.id}>
-                <strong>{p.title}</strong> <span data-ops-pack-meta="">{p.skills.length} skills{p.missing.length < p.skills.length ? ` · ${p.skills.length - p.missing.length} installed` : ''}</span>
+                <strong>{p.title}</strong> <span data-ops-pack-meta="">{p.skills.length} {T("skills")}{p.missing.length < p.skills.length ? ` · ${p.skills.length - p.missing.length} installed` : ''}</span>
                 <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
                   {p.missing.length === 0 ? 'All added' : 'Add all'}
                 </button>
@@ -373,19 +371,19 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
           </ul>
         )}
       </section>
-      <section aria-label="Individual skills" data-ops-skills="">
+      <section aria-label={T("Individual skills")} data-ops-skills="">
         <h3>
-          Individual skills <span data-ops-skill-count="">{rows ? shown.length : '…'}</span>
+          {T("Individual skills")}{' '}<span data-ops-skill-count="">{rows ? shown.length : '…'}</span>
         </h3>
-        <div aria-label="Skill filters" data-ops-skill-filters="" role="group">
-          <Search label="search skills" onChange={setQ} placeholder="Search by name, type, etc." value={q} />
-          <select aria-label="skill state" data-ops-skill-state={onFilter} onChange={e => setOnFilter(e.target.value as 'all' | 'on' | 'off')} value={onFilter}>
-            <option value="all">All states</option>
-            <option value="on">On</option>
-            <option value="off">Off</option>
+        <div aria-label={T("Skill filters")} data-ops-skill-filters="" role="group">
+          <Search label={T("search skills")} onChange={setQ} placeholder={T("Search by name, type, etc.")} value={q} />
+          <select aria-label={T("skill state")} data-ops-skill-state={onFilter} onChange={e => setOnFilter(e.target.value as 'all' | 'on' | 'off')} value={onFilter}>
+            <option value="all">{T("All states")}</option>
+            <option value="on">{T("On")}</option>
+            <option value="off">{T("Off")}</option>
           </select>
-          <select aria-label="skill type" data-ops-skill-type={type} onChange={e => setType(e.target.value)} value={type}>
-            <option value="">All types</option>
+          <select aria-label={T("skill type")} data-ops-skill-type={type} onChange={e => setType(e.target.value)} value={type}>
+            <option value="">{T("All types")}</option>
             {types.map(t => (
               <option key={t} value={t}>
                 {t}
@@ -394,13 +392,12 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
           </select>
           {filtered ? (
             <button data-ops-skill-clear="" onClick={() => (setQ(''), setType(''), setOnFilter('all'))} type="button">
-              Clear filters
-            </button>
+              {T("Clear filters")}</button>
           ) : null}
         </div>
         {rows ? (
           <p data-ops-skill-shown="">
-            Showing {shown.length} of {rows.length}
+            {T("Showing")}{' '}{shown.length} of {rows.length}
             {scanCapped ? ` · Agents column covers the first ${SKILL_PROFILE_SCAN_MAX} profiles` : ''}
           </p>
         ) : null}
@@ -469,7 +466,7 @@ function AppTile({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: strin
       <strong>{card.name}</strong>
       <p>{card.description}</p>
       {card.warning ? <small data-ops-app-warning="">{card.warning}</small> : null}
-      {card.connected ? <span data-ops-app-state="connected">✓ Connected</span> : null}
+      {card.connected ? <span data-ops-app-state="connected">{T("✓ Connected")}</span> : null}
       <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
         {card.connected ? 'Manage' : 'Connect'}
       </button>
@@ -484,10 +481,10 @@ export function QuickConnect({ cards, onOpenRoute, onClose }: { cards: AppCard[]
   const hits = searchRows(cards, q, c => [c.name, c.description, c.category]).filter(c => kind === 'all' || c.kind === kind)
 
   return (
-    <div aria-label="Connect an app" data-ops-quick-connect="" onKeyDown={e => e.key === 'Escape' && onClose()} role="dialog">
-      <Search label="search apps" onChange={setQ} placeholder="Search apps" value={q} />
-      <select aria-label="app kind" onChange={e => setKind(e.target.value as typeof kind)} value={kind}>
-        <option value="all">All kinds</option>
+    <div aria-label={T("Connect an app")} data-ops-quick-connect="" onKeyDown={e => e.key === 'Escape' && onClose()} role="dialog">
+      <Search label={T("search apps")} onChange={setQ} placeholder={T("Search apps")} value={q} />
+      <select aria-label={T("app kind")} onChange={e => setKind(e.target.value as typeof kind)} value={kind}>
+        <option value="all">{T("All kinds")}</option>
         {(Object.keys(APP_CATEGORIES) as AppCard['kind'][]).map(k => (
           <option key={k} value={k}>
             {APP_CATEGORIES[k]}
@@ -508,7 +505,7 @@ export function QuickConnect({ cards, onOpenRoute, onClose }: { cards: AppCard[]
           </section>
         ) : null
       })}
-      {hits.length === 0 ? <p>No app matches.</p> : null}
+      {hits.length === 0 ? <p>{T("No app matches.")}</p> : null}
     </div>
   )
 }
@@ -532,9 +529,9 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
   const cats = Object.values(APP_CATEGORIES)
 
   return (
-    <section aria-label="Channels & MCP" data-ops-lens="channels">
+    <section aria-label={T("Channels & MCP")} data-ops-lens="channels">
       <header>
-        <h2>Channels &amp; MCP</h2>
+        <h2>{T("Channels & MCP")}</h2>
         <div role="tablist">
           {(['all', 'connected'] as const).map(f => (
             <button aria-selected={filter === f} data-ops-app-filter={f} key={f} onClick={() => setFilter(f)} role="tab" type="button">
@@ -542,18 +539,17 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
             </button>
           ))}
         </div>
-        <Search label="search integrations" onChange={setQ} placeholder="Search" value={q} />
-        <button aria-expanded={quick} aria-label="quick connect" data-ops-quick-open="" onClick={() => setQuick(v => !v)} type="button">
+        <Search label={T("search integrations")} onChange={setQ} placeholder={T("Search")} value={q} />
+        <button aria-expanded={quick} aria-label={T("quick connect")} data-ops-quick-open="" onClick={() => setQuick(v => !v)} type="button">
           +
         </button>
       </header>
-      {missing.length ? <p data-ops-partial="">Not answering: {missing.join(', ')}.</p> : null}
+      {missing.length ? <p data-ops-partial="">{T("Not answering:")}{' '}{missing.join(', ')}.</p> : null}
       {quick ? <QuickConnect cards={cards} onClose={() => setQuick(false)} onOpenRoute={onOpenRoute} /> : null}
       <div data-ops-channels-body="">
-        <nav aria-label="Categories" data-ops-app-rail="">
+        <nav aria-label={T("Categories")} data-ops-app-rail="">
           <button aria-pressed={cat === null} data-ops-app-cat="all" onClick={() => setCat(null)} type="button">
-            All
-          </button>
+            {T("All")}</button>
           {cats.map(x => (
             <button aria-pressed={cat === x} data-ops-app-cat={x} key={x} onClick={() => setCat(x)} type="button">
               {x} <span>{base.filter(c => c.category === x).length}</span>
@@ -561,8 +557,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
           ))}
           {/* G15: the rail's footer is the library entry. */}
           <button data-ops-connect-more="" onClick={() => setQuick(true)} type="button">
-            Connect more apps
-          </button>
+            {T("Connect more apps")}</button>
         </nav>
         <div>
           {cats

@@ -30,6 +30,7 @@ import {
   WRITABLE_NODES,
   type WritableNode
 } from './node-editor'
+import { T } from '../main-i18n'
 
 const LABEL: Record<WritableNode, string> = { prompt: 'Prompt (SOUL.md)', raw_yaml: 'Raw config.yaml', model: 'Model' }
 
@@ -122,7 +123,7 @@ export function NodeEditor({
   const picks = useMemo(() => repairSuggestions(policy), [policy])
 
   if (!s) {
-    return <p data-ops-node-editor={node}>Loading {LABEL[node]}…</p>
+    return <p data-ops-node-editor={node}>{T("Loading")}{' '}{LABEL[node]}…</p>
   }
 
   const diff = node === 'model' ? null : diffLines(s.base.content ?? '', s.draft.content ?? '')
@@ -130,28 +131,25 @@ export function NodeEditor({
   return (
     <section aria-label={LABEL[node]} data-ops-node-editor={node} data-ops-node-status={s.status}>
       <h3>
-        {LABEL[node]} {isDirty(s) ? <span data-ops-dirty="">● unsaved</span> : null}
+        {LABEL[node]} {isDirty(s) ? <span data-ops-dirty="">{T("● unsaved")}</span> : null}
       </h3>
       {ro ? <span data-ops-badge="read-only">read-only</span> : null}
       {stored && !dirtyNow && !ro && (stored.draft.content !== s.base.content || stored.draft.provider !== s.base.provider || stored.draft.model !== s.base.model) ? (
         <p data-ops-draft-restore="">
-          An unsaved draft from {new Date(stored.at).toLocaleString()} was kept.
-          <button onClick={() => (setS(edit(s, stored.draft)), setStored(null))} type="button">
-            Restore draft
-          </button>
+          {T("An unsaved draft from")}{' '}{new Date(stored.at).toLocaleString()} {T("was kept.")}<button onClick={() => (setS(edit(s, stored.draft)), setStored(null))} type="button">
+            {T("Restore draft")}</button>
           <button onClick={() => (clearDraft(connection, profile, node), setStored(null))} type="button">
-            Dismiss
-          </button>
+            {T("Dismiss")}</button>
         </p>
       ) : null}
 
       {node === 'model' ? (
         <div>
-          <input aria-label="provider" disabled={ro} onChange={e => setS(edit(s, { provider: e.target.value }))} value={s.draft.provider ?? ''} />
-          <input aria-label="model" disabled={ro} onChange={e => setS(edit(s, { model: e.target.value }))} value={s.draft.model ?? ''} />
+          <input aria-label={T("provider")} disabled={ro} onChange={e => setS(edit(s, { provider: e.target.value }))} value={s.draft.provider ?? ''} />
+          <input aria-label={T("model")} disabled={ro} onChange={e => setS(edit(s, { model: e.target.value }))} value={s.draft.model ?? ''} />
           {picks.length > 0 ? (
             <select
-              aria-label="allowed models"
+              aria-label={T("allowed models")}
               disabled={ro}
               onChange={e => {
                 const [provider, model] = e.target.value.split('\u0000')
@@ -162,7 +160,7 @@ export function NodeEditor({
               }}
               value=""
             >
-              <option value="">Allowed by policy…</option>
+              <option value="">{T("Allowed by policy…")}</option>
               {picks.map(p => (
                 <option key={`${p.provider}/${p.model}`} value={`${p.provider}\u0000${p.model}`}>
                   {p.provider} / {p.model}
@@ -177,16 +175,13 @@ export function NodeEditor({
 
       {!ro ? (
         <div role="toolbar">
-          <input aria-label="note" onChange={e => setNote(e.target.value)} placeholder="note (optional)" value={note} />
+          <input aria-label={T("note")} onChange={e => setNote(e.target.value)} placeholder={T("note (optional)")} value={note} />
           <button data-ops-write="" disabled={!isDirty(s) || s.status === 'saving'} onClick={() => setPreview(true)} type="button">
-            Review & save
-          </button>
+            {T("Review & save")}</button>
           <button disabled={!isDirty(s)} onClick={() => ((clearDraft(connection, profile, node), setS(discard(s))), setPreview(false))} type="button">
-            Discard
-          </button>
+            {T("Discard")}</button>
           <button onClick={() => void openHistory()} type="button">
-            History
-          </button>
+            {T("History")}</button>
         </div>
       ) : null}
 
@@ -201,8 +196,7 @@ export function NodeEditor({
             </pre>
           ) : (
             <p data-ops-diff="">
-              {s.base.provider}/{s.base.model} → {s.draft.provider}/{s.draft.model} (config.yaml is re-written; comments are not kept)
-            </p>
+              {s.base.provider}/{s.base.model} → {s.draft.provider}/{s.draft.model} {T("(config.yaml is re-written; comments are not kept)")}</p>
           )}
           <button data-ops-confirm-save=""
             data-ops-write=""
@@ -213,11 +207,9 @@ export function NodeEditor({
             }}
             type="button"
           >
-            Save
-          </button>
+            {T("Save")}</button>
           <button onClick={() => setPreview(false)} type="button">
-            Cancel
-          </button>
+            {T("Cancel")}</button>
         </div>
       ) : null}
 
@@ -230,22 +222,18 @@ export function NodeEditor({
       {s.status === 'unknown' ? (
         <div data-ops-outcome-unknown={s.pendingOp ?? ''}>
           <button onClick={async () => setS(await reconcile(s, profile, client))} type="button">
-            Check again
-          </button>
+            {T("Check again")}</button>
           <button onClick={() => setS({ ...discard(s), pendingOp: null })} type="button">
-            Discard draft
-          </button>
+            {T("Discard draft")}</button>
         </div>
       ) : null}
 
       {s.status === 'conflict' ? (
         <div data-ops-conflict="">
           <button onClick={async () => setS(await reloadTheirs(s, profile, client))} type="button">
-            Reload theirs
-          </button>
+            {T("Reload theirs")}</button>
           <button onClick={async () => setS(await rebaseMine(s, profile, client))} type="button">
-            Keep mine (rebase)
-          </button>
+            {T("Keep mine (rebase)")}</button>
         </div>
       ) : null}
 
@@ -259,38 +247,35 @@ export function NodeEditor({
             ))}
           </ul>
           {suggestions.length ? (
-            <div aria-label="repair suggestions">
-              Suggestions (manual):
-              {suggestions.map(p => (
+            <div aria-label={T("repair suggestions")}>
+              {T("Suggestions (manual):")}{suggestions.map(p => (
                 <button data-ops-repair={`${p.provider}/${p.model}`} key={`${p.provider}/${p.model}`} onClick={() => setS(edit(s, { provider: p.provider, model: p.model }))} type="button">
                   {p.provider} / {p.model}
                 </button>
               ))}
             </div>
           ) : (
-            <p>No allowed alternative is known. Ask for a policy change.</p>
+            <p>{T("No allowed alternative is known. Ask for a policy change.")}</p>
           )}
         </div>
       ) : null}
 
       {history ? (
-        <aside aria-label="History" data-ops-history="">
-          {history.length === 0 ? <p>No committed backups yet.</p> : null}
+        <aside aria-label={T("History")} data-ops-history="">
+          {history.length === 0 ? <p>{T("No committed backups yet.")}</p> : null}
           <ol>
             {history.map(h => (
               <li data-ops-history-item={h.backup} key={h.backup}>
                 #{h.sequence} {h.note ?? ''}{' '}
                 {!ro ? (
                   <button data-ops-write="" onClick={async () => (setS(await restore(s, profile, h.backup, client)), void openHistory())} type="button">
-                    Restore
-                  </button>
+                    {T("Restore")}</button>
                 ) : null}
               </li>
             ))}
           </ol>
           <button onClick={() => setHistory(null)} type="button">
-            Close history
-          </button>
+            {T("Close history")}</button>
         </aside>
       ) : null}
     </section>
@@ -302,7 +287,7 @@ export function NodeEditors({ profile, policy, readOnly, client: c }: { profile:
   const [node, setNode] = useState<WritableNode>('prompt')
 
   return (
-    <section aria-label="Edit nodes" data-ops-node-editors="">
+    <section aria-label={T("Edit nodes")} data-ops-node-editors="">
       <div role="tablist">
         {WRITABLE_NODES.map(n => (
           <button aria-selected={n === node} key={n} onClick={() => setNode(n)} role="tab" type="button">

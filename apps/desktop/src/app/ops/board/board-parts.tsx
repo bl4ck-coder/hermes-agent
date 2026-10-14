@@ -25,6 +25,7 @@ import {
   touched
 } from './board-plus'
 import { Markdown } from './markdown'
+import { T } from '../main-i18n'
 
 /* ------------------------------ R47 inline title ------------------------------ */
 
@@ -133,15 +134,15 @@ export function CardMenu({ task, assignees, actions, onClose }: { task: BoardTas
       {item('Archive', actions.archive && (() => actions.archive?.(task.id)))}
       {actions.reassign ? (
         <select aria-label={`reassign ${task.id}`} onChange={e => (actions.reassign?.(task.id, e.target.value || null), onClose())} value={task.assignee ?? ''}>
-          <option value="">Reassign: unassigned</option>
+          <option value="">{T("Reassign: unassigned")}</option>
           {[...new Set([...assignees, ...(task.assignee ? [task.assignee] : [])])].map(a => (
             <option key={a} value={a}>
-              Reassign: {a}
+              {T("Reassign:")}{' '}{a}
             </option>
           ))}
         </select>
       ) : null}
-      <span data-ops-cut="delete">Delete is not offered (archive instead).</span>
+      <span data-ops-cut="delete">{T("Delete is not offered (archive instead).")}</span>
     </div>
   )
 }
@@ -244,11 +245,11 @@ export function GroupedTasks({
                 <thead>
                   <tr>
                     <th>id</th>
-                    <th>title</th>
-                    <th>status</th>
-                    <th>assignee</th>
-                    <th>priority</th>
-                    <th>updated</th>
+                    <th>{T("title")}</th>
+                    <th>{T("status")}</th>
+                    <th>{T("assignee")}</th>
+                    <th>{T("priority")}</th>
+                    <th>{T("updated")}</th>
                   </tr>
                 </thead>
                 <tbody>{g.tasks.map(render)}</tbody>
@@ -288,7 +289,7 @@ export function TimelineView({
   const m = timelineModel(tasks, links ?? [], nowS, scale, group)
 
   return (
-    <section aria-label="Timeline" data-ops-scale={scale} data-ops-timeline="">
+    <section aria-label={T("Timeline")} data-ops-scale={scale} data-ops-timeline="">
       <div role="toolbar">
         {(['weeks', 'months'] as const).map(s => (
           <button aria-pressed={scale === s} data-ops-scale-btn={s} key={s} onClick={() => setScale(s)} type="button">
@@ -296,16 +297,15 @@ export function TimelineView({
           </button>
         ))}
         <label>
-          Group
-          <select aria-label="timeline group" onChange={e => setGroup(e.target.value as 'project' | 'profile')} value={group}>
-            <option value="profile">Profile</option>
-            <option value="project">Project</option>
+          {T("Group")}<select aria-label={T("timeline group")} onChange={e => setGroup(e.target.value as 'project' | 'profile')} value={group}>
+            <option value="profile">{T("Profile")}</option>
+            <option value="project">{T("Project")}</option>
           </select>
         </label>
-        {links === null ? <span data-ops-loading="">relations loading</span> : <span data-ops-field="links">{m.curves.length} parent/child relations</span>}
+        {links === null ? <span data-ops-loading="">{T("relations loading")}</span> : <span data-ops-field="links">{m.curves.length} {T("parent/child relations")}</span>}
       </div>
       {tasks.length === 0 ? (
-        <p data-ops-empty="timeline">No tasks match.</p>
+        <p data-ops-empty="timeline">{T("No tasks match.")}</p>
       ) : (
         <div style={{ overflowX: 'auto', position: 'relative' }}>
           <svg aria-hidden="true" data-ops-timeline-svg="" height={m.height} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} width={m.width}>
@@ -416,7 +416,7 @@ export function FilesView({
 
   return (
     <section
-      aria-label="Files"
+      aria-label={T("Files")}
       data-ops-drop-over={over ? '' : undefined}
       data-ops-files={mode}
       onDragLeave={() => setOver(false)}
@@ -443,7 +443,7 @@ export function FilesView({
         ))}
         {!readOnly && onUpload ? (
           <>
-            <select aria-label="attach to task" onChange={e => setTarget(e.target.value)} value={target}>
+            <select aria-label={T("attach to task")} onChange={e => setTarget(e.target.value)} value={target}>
               {tasks.map(t => (
                 <option key={t.id} value={t.id}>
                   {t.title}
@@ -451,19 +451,18 @@ export function FilesView({
               ))}
             </select>
             <button data-ops-upload="" data-ops-write="" disabled={!target} onClick={() => input.current?.click()} type="button">
-              Upload
-            </button>
-            <input aria-label="upload file" hidden multiple onChange={e => void send(e.target.files)} ref={input} type="file" />
-            <span data-ops-drop-zone="">or drop files here</span>
+              {T("Upload")}</button>
+            <input aria-label={T("upload file")} hidden multiple onChange={e => void send(e.target.files)} ref={input} type="file" />
+            <span data-ops-drop-zone="">{T("or drop files here")}</span>
           </>
         ) : null}
       </div>
       {msg ? <p role="status">{msg}</p> : null}
       {typeof scanned === 'number' ? (
-        <p data-ops-field="scope">Files from the {scanned} most recently active tasks (this Hermes has no board-wide file list).</p>
+        <p data-ops-field="scope">{T("Files from the")}{' '}{scanned} {T("most recently active tasks (this Hermes has no board-wide file list).")}</p>
       ) : sorted ? (
         <p data-ops-field="scope">
-          {sorted.length} file{sorted.length === 1 ? '' : 's'} on this board{hasMore ? ' so far' : ''}.
+          {sorted.length} {T("file")}{sorted.length === 1 ? '' : 's'} {T("on this board")}{hasMore ? ' so far' : ''}.
           {hasMore ? (
             <button data-ops-files-more="" disabled={loadingMore || !onLoadMore} onClick={() => onLoadMore?.()} type="button">
               {loadingMore ? 'Loading…' : 'Load more'}
@@ -472,19 +471,19 @@ export function FilesView({
         </p>
       ) : null}
       {sorted === null ? (
-        <p data-ops-loading="">Files loading…</p>
+        <p data-ops-loading="">{T("Files loading…")}</p>
       ) : sorted.length === 0 ? (
-        <p data-ops-empty="files">No files attached yet.</p>
+        <p data-ops-empty="files">{T("No files attached yet.")}</p>
       ) : mode === 'list' ? (
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Size</th>
-              <th>Uploader</th>
-              <th>Age</th>
-              <th>Task</th>
+              <th>{T("Name")}</th>
+              <th>{T("Type")}</th>
+              <th>{T("Size")}</th>
+              <th>{T("Uploader")}</th>
+              <th>{T("Age")}</th>
+              <th>{T("Task")}</th>
             </tr>
           </thead>
           <tbody>
@@ -534,11 +533,11 @@ export function FavoritesView({ tasks, onOpen }: { tasks: BoardTask[]; onOpen: (
   const list = favStore.use()
 
   if (!list.length) {
-    return <p data-ops-empty="favorites">Star a project or task to pin it here.</p>
+    return <p data-ops-empty="favorites">{T("Star a project or task to pin it here.")}</p>
   }
 
   return (
-    <section aria-label="Favorites" data-ops-favorites="">
+    <section aria-label={T("Favorites")} data-ops-favorites="">
       {(['task', 'profile', 'project', 'run'] as const).map(kind => {
         const xs = list.filter(f => f.kind === kind)
 
@@ -629,7 +628,7 @@ export function NewTaskModal({
 
   return (
     <div
-      aria-label="New task"
+      aria-label={T("New task")}
       aria-modal="true"
       data-ops-new-task-modal=""
       onKeyDown={(e: KeyboardEvent) => {
@@ -645,28 +644,24 @@ export function NewTaskModal({
       }}
       role="dialog"
     >
-      <h3>New task</h3>
-      <input aria-label="new task title" onChange={e => setTitle(e.target.value)} placeholder="Title (start with @profile to assign)" ref={first} value={title} />
+      <h3>{T("New task")}</h3>
+      <input aria-label={T("new task title")} onChange={e => setTitle(e.target.value)} placeholder={T("Title (start with @profile to assign)")} ref={first} value={title} />
       <div role="toolbar">
         <button aria-pressed={!preview} onClick={() => setPreview(false)} type="button">
-          Write
-        </button>
+          {T("Write")}</button>
         <button aria-pressed={preview} onClick={() => setPreview(true)} type="button">
-          Preview
-        </button>
+          {T("Preview")}</button>
       </div>
-      {preview ? <Markdown text={body} /> : <textarea aria-label="new task description" onChange={e => setBody(e.target.value)} placeholder="Description (Markdown)" value={body} />}
+      {preview ? <Markdown text={body} /> : <textarea aria-label={T("new task description")} onChange={e => setBody(e.target.value)} placeholder={T("Description (Markdown)")} value={body} />}
       <label>
-        Column
-        <select aria-label="new task column" onChange={e => setColumn(e.target.value)} value={column}>
+        {T("Column")}<select aria-label={T("new task column")} onChange={e => setColumn(e.target.value)} value={column}>
           {columns.map(c => (
             <option key={c}>{c}</option>
           ))}
         </select>
       </label>
       <label>
-        Assignee
-        <select aria-label="new task assignee" onChange={e => setAssignee(e.target.value)} value={who}>
+        {T("Assignee")}<select aria-label={T("new task assignee")} onChange={e => setAssignee(e.target.value)} value={who}>
           <option value="">{column === 'triage' ? 'triage decides' : 'unassigned'}</option>
           {assignees.map(a => (
             <option key={a}>{a}</option>
@@ -674,16 +669,14 @@ export function NewTaskModal({
         </select>
       </label>
       <label>
-        Priority
-        <input aria-label="new task priority" max={10} min={0} onChange={e => setPriority(Math.max(0, Math.min(10, Number(e.target.value) || 0)))} type="number" value={priority} />
+        {T("Priority")}<input aria-label={T("new task priority")} max={10} min={0} onChange={e => setPriority(Math.max(0, Math.min(10, Number(e.target.value) || 0)))} type="number" value={priority} />
       </label>
-      {err ? <p role="alert">Not created: {err}</p> : null}
+      {err ? <p role="alert">{T("Not created:")}{' '}{err}</p> : null}
       <button data-ops-create="" data-ops-write="" disabled={!cleanTitle || busy} onClick={() => void submit()} type="button">
-        {busy ? 'Creating…' : 'Create'} <kbd>Ctrl+Enter</kbd>
+        {busy ? 'Creating…' : 'Create'} <kbd>{T("Ctrl+Enter")}</kbd>
       </button>
       <button onClick={onClose} type="button">
-        Cancel
-      </button>
+        {T("Cancel")}</button>
     </div>
   )
 }
@@ -702,8 +695,7 @@ export function BodyEditor({ body, readOnly, onSave }: { body: string | null | u
         <Markdown text={body} />
         {!readOnly && onSave ? (
           <button data-ops-edit-body="" onClick={() => (setDraft(body ?? ''), setErr(null), setEditing(true))} type="button">
-            Edit description
-          </button>
+            {T("Edit description")}</button>
         ) : null}
       </div>
     )
@@ -713,25 +705,21 @@ export function BodyEditor({ body, readOnly, onSave }: { body: string | null | u
 
   return (
     <div data-ops-body-editor="" onKeyDown={e => e.key === 'Escape' && (e.stopPropagation(), setEditing(false))}>
-      <div aria-label="Formatting" role="toolbar">
+      <div aria-label={T("Formatting")} role="toolbar">
         <button onClick={() => wrap('**')} type="button">
-          Bold
-        </button>
+          {T("Bold")}</button>
         <button onClick={() => setDraft(d => `${d}${d ? '\n' : ''}- item`)} type="button">
-          List
-        </button>
+          {T("List")}</button>
         <button onClick={() => setDraft(d => `${d}${d ? '\n' : ''}## Heading`)} type="button">
-          Heading
-        </button>
+          {T("Heading")}</button>
         <button onClick={() => wrap('[', '](https://)')} type="button">
-          Link
-        </button>
+          {T("Link")}</button>
       </div>
-      <textarea aria-label="description" onChange={e => setDraft(e.target.value)} value={draft} />
+      <textarea aria-label={T("description")} onChange={e => setDraft(e.target.value)} value={draft} />
       <div data-ops-body-preview="">
         <Markdown text={draft} />
       </div>
-      {err ? <p role="alert">Not saved: {err}</p> : null}
+      {err ? <p role="alert">{T("Not saved:")}{' '}{err}</p> : null}
       <button data-ops-save-body=""
         data-ops-write=""
         disabled={busy || draft === (body ?? '')}
@@ -749,11 +737,9 @@ export function BodyEditor({ body, readOnly, onSave }: { body: string | null | u
         }}
         type="button"
       >
-        Save
-      </button>
+        {T("Save")}</button>
       <button onClick={() => setEditing(false)} type="button">
-        Cancel
-      </button>
+        {T("Cancel")}</button>
     </div>
   )
 }

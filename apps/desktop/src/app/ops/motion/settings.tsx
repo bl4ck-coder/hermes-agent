@@ -19,6 +19,7 @@ import { OpsShortcutSheet } from '../shortcut-sheet'
 import { DiagnosticsPanel } from './diagnostics'
 import { cycleMotion, loadMotion, type MotionMode, saveMotion } from './motion'
 import { hostTimezone, opsTimezone as tzOf, validTimezone } from './tz'
+import { T } from '../main-i18n'
 
 const PREF = 'hermes.ops.prefs'
 
@@ -99,7 +100,7 @@ const LABEL: Record<MotionMode, string> = { full: 'Full', reduced: 'Reduced', sy
 export function MotionReadout({ mode, onChange }: { mode: MotionMode; onChange: (m: MotionMode) => void }) {
   return (
     <button aria-label={`Motion: ${LABEL[mode]}`} data-ops-motion={mode} onClick={() => onChange(cycleMotion(mode))} type="button">
-      Motion: {LABEL[mode]}
+      {T("Motion:")}{' '}{LABEL[mode]}
     </button>
   )
 }
@@ -163,89 +164,86 @@ export function SettingsView({
   }
 
   return (
-    <section aria-label="Ops settings" data-ops-settings="" data-ops-theme={prefs.theme}>
-      <Group id="general" title="General">
+    <section aria-label={T("Ops settings")} data-ops-settings="" data-ops-theme={prefs.theme}>
+      <Group id="general" title={T("General")}>
         <dl>
-          <dt>Theme</dt>
+          <dt>{T("Theme")}</dt>
           <dd>
-            <select aria-label="theme" onChange={e => set({ theme: e.target.value as OpsTheme })} value={prefs.theme}>
-              <option value="gold-night">Gold Night (default)</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
+            <select aria-label={T("theme")} onChange={e => set({ theme: e.target.value as OpsTheme })} value={prefs.theme}>
+              <option value="gold-night">{T("Gold Night (default)")}</option>
+              <option value="light">{T("Light")}</option>
+              <option value="dark">{T("Dark")}</option>
+              <option value="system">{T("System")}</option>
             </select>
             <button data-ops-open-route="/settings" onClick={() => onOpenRoute?.('/settings')} type="button">
-              Desktop appearance
-            </button>
+              {T("Desktop appearance")}</button>
           </dd>
-          <dt>Motion</dt>
+          <dt>{T("Motion")}</dt>
           <dd>
             <MotionReadout mode={motion} onChange={setMotion} />
           </dd>
-          <dt>Default tab</dt>
+          <dt>{T("Default tab")}</dt>
           <dd>
-            <select aria-label="default tab" onChange={e => set({ defaultTab: e.target.value as OpsPrefs['defaultTab'] })} value={prefs.defaultTab}>
-              <option value="office">Office</option>
-              <option value="canvas">Canvas</option>
-              <option value="board">Board</option>
+            <select aria-label={T("default tab")} onChange={e => set({ defaultTab: e.target.value as OpsPrefs['defaultTab'] })} value={prefs.defaultTab}>
+              <option value="office">{T("Office")}</option>
+              <option value="canvas">{T("Canvas")}</option>
+              <option value="board">{T("Board")}</option>
             </select>
           </dd>
-          <dt>Open Ops on launch</dt>
+          <dt>{T("Open Ops on launch")}</dt>
           <dd>
-            <input aria-label="open ops on launch" checked={prefs.openOnLaunch} onChange={e => set({ openOnLaunch: e.target.checked })} type="checkbox" />
+            <input aria-label={T("open ops on launch")} checked={prefs.openOnLaunch} onChange={e => set({ openOnLaunch: e.target.checked })} type="checkbox" />
             <small data-ops-launch-route="">{opsLaunchRoute(prefs) ?? 'Desktop opens its own start page.'}</small>
           </dd>
-          <dt>Timezone</dt>
+          <dt>{T("Timezone")}</dt>
           <dd>
-            <select aria-label="timezone" data-ops-timezone={opsTimezone(prefs)} onChange={e => set({ timezone: validTimezone(e.target.value) })} value={prefs.timezone}>
-              <option value="">Host local ({hostTimezone()})</option>
+            <select aria-label={T("timezone")} data-ops-timezone={opsTimezone(prefs)} onChange={e => set({ timezone: validTimezone(e.target.value) })} value={prefs.timezone}>
+              <option value="">{T("Host local (")}{hostTimezone()})</option>
               {[...new Set([...TZ_CHOICES, ...(prefs.timezone ? [prefs.timezone] : [])])].map(z => (
                 <option key={z} value={z}>
                   {z}
                 </option>
               ))}
             </select>
-            <small>"Today" and "this week" in Office use this zone.</small>
+            <small>{T("\"Today\" and \"this week\" in Office use this zone.")}</small>
           </dd>
-          <dt>Date format</dt>
+          <dt>{T("Date format")}</dt>
           <dd>
-            <select aria-label="date format" onChange={e => set({ dateFormat: e.target.value as OpsPrefs['dateFormat'] })} value={prefs.dateFormat}>
-              <option value="relative">Relative</option>
+            <select aria-label={T("date format")} onChange={e => set({ dateFormat: e.target.value as OpsPrefs['dateFormat'] })} value={prefs.dateFormat}>
+              <option value="relative">{T("Relative")}</option>
               <option value="iso">ISO</option>
-              <option value="local">Local</option>
+              <option value="local">{T("Local")}</option>
             </select>
           </dd>
         </dl>
         <button data-ops-prefs-reset="" disabled={JSON.stringify(prefs) === JSON.stringify(DEFAULT_PREFS)} onClick={() => set({ ...DEFAULT_PREFS })} type="button">
-          Reset to defaults
-        </button>
+          {T("Reset to defaults")}</button>
       </Group>
-      <Group id="ops" title="Ops">
+      <Group id="ops" title={T("Ops")}>
         {policy?.fail_closed ? (
           <p data-ops-policy-invalid="" role="alert">
-            ops-policy.yaml is invalid, so every governed save is blocked until it is fixed: {policy.error ?? 'reason not recorded'}
+            {T("ops-policy.yaml is invalid, so every governed save is blocked until it is fixed:")}{' '}{policy.error ?? 'reason not recorded'}
           </p>
         ) : null}
         <ThresholdSettings />
         <dl>
-          <dt>Default model (P2)</dt>
+          <dt>{T("Default model (P2)")}</dt>
           <dd data-ops-field="default-model">
             {defaultModel ? `${defaultModel.provider ?? 'unknown'} / ${defaultModel.model ?? 'unknown'}` : 'unknown'}
-            {policy ? <span data-ops-field="policy-source"> (policy: {policy.source}{policy.error ? `, error: ${policy.error}` : ''})</span> : null}
+            {policy ? <span data-ops-field="policy-source"> {T("(policy:")}{' '}{policy.source}{policy.error ? `, error: ${policy.error}` : ''})</span> : null}
           </dd>
-          <dt>Approval mode{profile ? ` (${profile})` : ''}</dt>
+          <dt>{T("Approval mode")}{profile ? ` (${profile})` : ''}</dt>
           <dd data-ops-field="approval-mode">
             {approval === undefined ? 'unknown' : approval === null ? 'default (approvals.mode not set)' : approval}
           </dd>
           <dd>
             {/* O41: the mode is written by Desktop's own config editor; Ops reads it per profile. */}
             <button data-ops-approval-edit="" disabled={!onOpenRoute} onClick={() => onOpenRoute?.(`/settings?section=approvals${profile ? `&profile=${encodeURIComponent(profile)}` : ''}`)} type="button">
-              Change
-            </button>
+              {T("Change")}</button>
           </dd>
           {editModel && profile ? (
             <>
-              <dt>Change default model</dt>
+              <dt>{T("Change default model")}</dt>
               <dd data-ops-field="model-editor">
                 <ModelEditor policy={policy} profile={profile} />
               </dd>
@@ -253,55 +251,49 @@ export function SettingsView({
           ) : null}
         </dl>
       </Group>
-      <Group id="notifications" title="Notifications">
+      <Group id="notifications" title={T("Notifications")}>
         <label>
-          <input aria-label="notify approvals" checked={prefs.notifyApprovals} onChange={e => (set({ notifyApprovals: e.target.checked }), e.target.checked && requestNotify())} type="checkbox" />
-          New approval waiting
-        </label>
+          <input aria-label={T("notify approvals")} checked={prefs.notifyApprovals} onChange={e => (set({ notifyApprovals: e.target.checked }), e.target.checked && requestNotify())} type="checkbox" />
+          {T("New approval waiting")}</label>
         <label>
-          <input aria-label="notify blocked" checked={prefs.notifyBlocked} onChange={e => (set({ notifyBlocked: e.target.checked }), e.target.checked && requestNotify())} type="checkbox" />
-          A task becomes blocked
-        </label>
-        <p>Silent OS notifications; Desktop never takes focus.</p>
+          <input aria-label={T("notify blocked")} checked={prefs.notifyBlocked} onChange={e => (set({ notifyBlocked: e.target.checked }), e.target.checked && requestNotify())} type="checkbox" />
+          {T("A task becomes blocked")}</label>
+        <p>{T("Silent OS notifications; Desktop never takes focus.")}</p>
       </Group>
-      <Group id="shortcuts" title="Shortcuts">
+      <Group id="shortcuts" title={T("Shortcuts")}>
         <button onClick={() => setSheet(true)} type="button">
-          Shortcut sheet
-        </button>
+          {T("Shortcut sheet")}</button>
       </Group>
-      <Group id="diagnostics" title="Diagnostics">
+      <Group id="diagnostics" title={T("Diagnostics")}>
         <DiagnosticsPanel policySource={policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null} />
       </Group>
-      <Group id="security" title="Security">
+      <Group id="security" title={T("Security")}>
         <dl>
-          <dt>Secret presence</dt>
+          <dt>{T("Secret presence")}</dt>
           <dd data-ops-field="secrets">
             {secrets === null ? (
               'unknown'
             ) : (
               <div data-ops-secrets="">
                 <p data-ops-secret-summary="">
-                  {secrets.filter(x => x.set).length} set · {secrets.filter(x => !x.set).length} not set
-                </p>
-                <ul aria-label="secret presence" data-ops-secret-list="set">
+                  {secrets.filter(x => x.set).length} {T("set ·")}{' '}{secrets.filter(x => !x.set).length} {T("not set")}</p>
+                <ul aria-label={T("secret presence")} data-ops-secret-list="set">
                   {secrets
                     .filter(x => x.set)
                     .map(x => (
                       <li data-ops-secret={x.name} data-ops-set="yes" key={x.name}>
-                        {x.name}: set
-                      </li>
+                        {x.name}{T(": set")}</li>
                     ))}
                 </ul>
                 {secrets.some(x => !x.set) ? (
                   <details data-ops-secret-unset="">
-                    <summary>Show {secrets.filter(x => !x.set).length} not set</summary>
-                    <ul aria-label="secrets not set" data-ops-secret-list="unset">
+                    <summary>{T("Show")}{' '}{secrets.filter(x => !x.set).length} {T("not set")}</summary>
+                    <ul aria-label={T("secrets not set")} data-ops-secret-list="unset">
                       {secrets
                         .filter(x => !x.set)
                         .map(x => (
                           <li data-ops-secret={x.name} data-ops-set="no" key={x.name}>
-                            {x.name}: not set
-                          </li>
+                            {x.name}{T(": not set")}</li>
                         ))}
                     </ul>
                   </details>
@@ -310,17 +302,16 @@ export function SettingsView({
             )}
           </dd>
         </dl>
-        <p>Values are never shown here, in Diagnostics, or in a copied report.</p>
+        <p>{T("Values are never shown here, in Diagnostics, or in a copied report.")}</p>
         <button data-ops-forget-drafts="" onClick={() => setDraftNote(`Forgot ${forgetDrafts()} kept draft(s).`)} type="button">
-          Forget kept Canvas drafts
-        </button>
+          {T("Forget kept Canvas drafts")}</button>
         {draftNote ? <span role="status">{draftNote}</span> : null}
         <dl data-ops-security-boundary="">
-          <dt>Config writes</dt>
-          <dd>Through A5 transactions with the A6 policy check and a backup; remote connections are read-only.</dd>
-          <dt>Cross-site requests</dt>
-          <dd>Hermes refuses Ops, Board and approval writes from a foreign Origin (separate from the Host check).</dd>
-          <dt>Legacy write routes</dt>
+          <dt>{T("Config writes")}</dt>
+          <dd>{T("Through A5 transactions with the A6 policy check and a backup; remote connections are read-only.")}</dd>
+          <dt>{T("Cross-site requests")}</dt>
+          <dd>{T("Hermes refuses Ops, Board and approval writes from a foreign Origin (separate from the Host check).")}</dd>
+          <dt>{T("Legacy write routes")}</dt>
           <dd data-ops-legacy-routes="flag">
             Older Hermes routes (profile soul/model/description, raw config, skills toggle, toolsets) bypass A5/A6. Ops never calls them. Set HERMES_RETIRE_LEGACY_WRITES=1 in the backend environment to retire them (410); off by default because the classic Settings still uses them.
           </dd>

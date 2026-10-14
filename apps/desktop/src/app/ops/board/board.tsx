@@ -207,7 +207,7 @@ export function BoardView(props: BoardViewProps) {
   const moveSelect = (t: BoardTask) =>
     readOnly ? null : (
       <select aria-label={`move ${t.id}`} data-ops-menu={t.id} onChange={e => e.target.value && props.move(t.id, e.target.value)} value="">
-        <option value="">Move…</option>
+        <option value="">{T("Move…")}</option>
         {MOVABLE.filter(s => s !== t.status).map(s => (
           <option key={s} value={s}>
             {s}
@@ -281,7 +281,7 @@ export function BoardView(props: BoardViewProps) {
 
   return (
     <section
-      aria-label="Board"
+      aria-label={T("Board")}
       data-ops-board={layout}
       onKeyDown={e => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'z' && props.lastMove) {
@@ -303,39 +303,37 @@ export function BoardView(props: BoardViewProps) {
         ))}
         {!readOnly && props.createFull ? (
           <button aria-keyshortcuts="n" data-ops-new-task-btn="" onClick={() => setModal('todo')} type="button">
-            New task
-          </button>
+            {T("New task")}</button>
         ) : null}
-        <input aria-label="filter" onChange={e => (setFilter(f => ({ ...f, text: e.target.value })), setActiveView(null))} placeholder="Filter" value={filter.text ?? ''} />
-        <select aria-label="tenant" onChange={e => (setFilter(f => ({ ...f, tenant: e.target.value || null })), setActiveView(null))} value={filter.tenant ?? ''}>
-          <option value="">all tenants</option>
+        <input aria-label={T("filter")} onChange={e => (setFilter(f => ({ ...f, text: e.target.value })), setActiveView(null))} placeholder={T("Filter")} value={filter.text ?? ''} />
+        <select aria-label={T("tenant")} onChange={e => (setFilter(f => ({ ...f, tenant: e.target.value || null })), setActiveView(null))} value={filter.tenant ?? ''}>
+          <option value="">{T("all tenants")}</option>
           {(board.tenants ?? []).map(t => (
             <option key={t}>{t}</option>
           ))}
         </select>
-        <select aria-label="profile" onChange={e => (setFilter(f => ({ ...f, profile: e.target.value || null })), setActiveView(null))} value={filter.profile ?? ''}>
-          <option value="">all profiles</option>
+        <select aria-label={T("profile")} onChange={e => (setFilter(f => ({ ...f, profile: e.target.value || null })), setActiveView(null))} value={filter.profile ?? ''}>
+          <option value="">{T("all profiles")}</option>
           {(board.assignees ?? []).map(a => (
             <option key={a}>{a}</option>
           ))}
         </select>
-        <input aria-label="project" onChange={e => (setFilter(f => ({ ...f, project: e.target.value || null })), setActiveView(null))} placeholder="project" value={filter.project ?? ''} />
+        <input aria-label={T("project")} onChange={e => (setFilter(f => ({ ...f, project: e.target.value || null })), setActiveView(null))} placeholder={T("project")} value={filter.project ?? ''} />
         <label>
           <input checked={Boolean(filter.mine)} disabled={!props.me} onChange={e => setFilter(f => ({ ...f, mine: e.target.checked ? 'me' : null }))} type="checkbox" />
-          Mine
-        </label>
+          {T("Mine")}</label>
         {layout === 'list' || layout === 'table' ? (
           <>
-            <select aria-label="group by" onChange={e => setGroupBy(e.target.value as GroupBy)} value={groupBy}>
-              <option value="none">No grouping</option>
-              <option value="status">Group: Status</option>
-              <option value="profile">Group: Profile</option>
-              <option value="project">Group: Project</option>
-              <option value="priority">Group: Priority</option>
+            <select aria-label={T("group by")} onChange={e => setGroupBy(e.target.value as GroupBy)} value={groupBy}>
+              <option value="none">{T("No grouping")}</option>
+              <option value="status">{T("Group: Status")}</option>
+              <option value="profile">{T("Group: Profile")}</option>
+              <option value="project">{T("Group: Project")}</option>
+              <option value="priority">{T("Group: Priority")}</option>
             </select>
-            <select aria-label="sort by" onChange={e => setSortBy(e.target.value as SortBy)} value={sortBy}>
-              <option value="priority">Sort: Priority</option>
-              <option value="updated">Sort: Updated</option>
+            <select aria-label={T("sort by")} onChange={e => setSortBy(e.target.value as SortBy)} value={sortBy}>
+              <option value="priority">{T("Sort: Priority")}</option>
+              <option value="updated">{T("Sort: Updated")}</option>
             </select>
           </>
         ) : null}
@@ -352,12 +350,11 @@ export function BoardView(props: BoardViewProps) {
             }}
             type="button"
           >
-            Archived
-          </button>
+            {T("Archived")}</button>
         ) : null}
       </div>
 
-      <div aria-label="Saved views" data-ops-views="" role="tablist">
+      <div aria-label={T("Saved views")} data-ops-views="" role="tablist">
         {views.map(v => (
           <span key={v.id}>
             <button aria-selected={activeView === v.id} data-ops-view={v.name} onClick={() => applyView(v.id)} role="tab" type="button">
@@ -380,19 +377,18 @@ export function BoardView(props: BoardViewProps) {
             }
           }}
         >
-          <input aria-label="view name" onChange={e => setViewName(e.target.value)} placeholder="Save current view as…" value={viewName} />
+          <input aria-label={T("view name")} onChange={e => setViewName(e.target.value)} placeholder={T("Save current view as…")} value={viewName} />
           <button data-ops-save-view="" disabled={!viewName.trim()} type="submit">
-            Save view
-          </button>
+            {T("Save view")}</button>
         </form>
       </div>
 
       {showArchived ? (
-        <section aria-label="Archived" data-ops-archived="">
+        <section aria-label={T("Archived")} data-ops-archived="">
           {props.archived === undefined || props.archived === null ? (
-            <p>Archived tasks unknown (loading).</p>
+            <p>{T("Archived tasks unknown (loading).")}</p>
           ) : props.archived.length === 0 ? (
-            <p>No archived tasks.</p>
+            <p>{T("No archived tasks.")}</p>
           ) : (
             <ul>
               {props.archived.map(t => (
@@ -400,8 +396,7 @@ export function BoardView(props: BoardViewProps) {
                   {t.title}{' '}
                   {!readOnly && props.unarchive ? (
                     <button onClick={() => props.unarchive?.(t.id)} type="button">
-                      Unarchive
-                    </button>
+                      {T("Unarchive")}</button>
                   ) : null}
                 </li>
               ))}
@@ -422,24 +417,21 @@ export function BoardView(props: BoardViewProps) {
       ) : null}
       {props.lastMove && !readOnly ? (
         <button data-ops-undo="" data-ops-write="" onClick={() => props.undo(props.lastMove!)} type="button">
-          Undo move {props.lastMove.id} to {props.lastMove.to}
+          {T("Undo move")}{' '}{props.lastMove.id} to {props.lastMove.to}
         </button>
       ) : null}
 
       {selected.size > 0 && !readOnly ? (
         <div data-ops-bulk="" role="region">
-          {selected.size} selected
-          <select aria-label="bulk status" onChange={e => setBulkTo(e.target.value)} value={bulkTo}>
+          {selected.size} {T("selected")}<select aria-label={T("bulk status")} onChange={e => setBulkTo(e.target.value)} value={bulkTo}>
             {MOVABLE.map(s => (
               <option key={s}>{s}</option>
             ))}
           </select>
           <button data-ops-write="" onClick={() => (props.bulkMove([...selected], bulkTo), setSelected(new Set()))} type="button">
-            Move selected
-          </button>
+            {T("Move selected")}</button>
           <button data-ops-write="" onClick={() => (props.archive([...selected]), setSelected(new Set()))} type="button">
-            Archive selected
-          </button>
+            {T("Archive selected")}</button>
         </div>
       ) : null}
 
@@ -468,14 +460,12 @@ export function BoardView(props: BoardViewProps) {
                     <input aria-label={`new task in ${col.name}`} onChange={e => setDraft(e.target.value)} value={draft} />
                     {props.createFull ? (
                       <button onClick={() => (setAdding(null), setModal(col.name))} type="button">
-                        More fields…
-                      </button>
+                        {T("More fields…")}</button>
                     ) : null}
                   </form>
                 ) : (
                   <button data-ops-add={col.name} onClick={() => setAdding(col.name)} type="button">
-                    + Add
-                  </button>
+                    {T("+ Add")}</button>
                 )
               ) : null}
             </section>
@@ -519,17 +509,17 @@ export function BoardView(props: BoardViewProps) {
           {open ? (
             <>
               <dl>
-                <dt>Title</dt>
+                <dt>{T("Title")}</dt>
                 <dd>
                   <InlineTitle onOpen={() => undefined} onRename={props.rename ? title => props.rename?.(open.id, title) : undefined} readOnly={readOnly} task={open} />
                 </dd>
-                <dt>Status</dt>
+                <dt>{T("Status")}</dt>
                 <dd>{open.status}</dd>
-                <dt>Assignee</dt>
+                <dt>{T("Assignee")}</dt>
                 <dd>
                   {!readOnly && props.assign ? (
-                    <select aria-label="drawer assignee" onChange={e => props.assign?.(open.id, e.target.value || null)} value={open.assignee ?? ''}>
-                      <option value="">unassigned</option>
+                    <select aria-label={T("drawer assignee")} onChange={e => props.assign?.(open.id, e.target.value || null)} value={open.assignee ?? ''}>
+                      <option value="">{T("unassigned")}</option>
                       {[...new Set([...(board.assignees ?? []), ...(open.assignee ? [open.assignee] : [])])].map(a => (
                         <option key={a}>{a}</option>
                       ))}
@@ -538,7 +528,7 @@ export function BoardView(props: BoardViewProps) {
                     (open.assignee ?? 'unassigned')
                   )}
                 </dd>
-                <dt>Signals</dt>
+                <dt>{T("Signals")}</dt>
                 <dd>
                   <CardSignals nowS={nowS} task={open} />
                 </dd>
@@ -546,12 +536,11 @@ export function BoardView(props: BoardViewProps) {
               <BodyEditor body={open.body} onSave={props.saveBody ? body => props.saveBody!(open.id, body) : undefined} readOnly={readOnly} />
               {props.openTaskTab ? (
                 <button data-ops-open-task-tab={open.id} onClick={() => props.openTaskTab?.(open.id)} type="button">
-                  Open task tab (timeline, runs, log)
-                </button>
+                  {T("Open task tab (timeline, runs, log)")}</button>
               ) : null}
             </>
           ) : (
-            <p>Task is no longer on this board.</p>
+            <p>{T("Task is no longer on this board.")}</p>
           )}
           {open && !readOnly && props.subtask ? (
             <form
@@ -565,15 +554,14 @@ export function BoardView(props: BoardViewProps) {
                 setSubDraft('')
               }}
             >
-              <input aria-label="drawer subtask" onChange={e => setSubDraft(e.target.value)} placeholder="Add subtask" value={subDraft} />
+              <input aria-label={T("drawer subtask")} onChange={e => setSubDraft(e.target.value)} placeholder={T("Add subtask")} value={subDraft} />
             </form>
           ) : null}
           <button onClick={() => setDrawer(d => d && { ...d, full: !d.full })} type="button">
             {drawer.full ? 'Drawer' : 'Full page'}
           </button>
           <button onClick={() => setDrawer(null)} type="button">
-            Close
-          </button>
+            {T("Close")}</button>
         </aside>
       ) : null}
 
@@ -600,7 +588,7 @@ export function BoardView(props: BoardViewProps) {
           setConfirmArchive(null)
         }}
         open={confirmArchive !== null}
-        title="Archive task?"
+        title={T("Archive task?")}
       />
     </section>
   )
