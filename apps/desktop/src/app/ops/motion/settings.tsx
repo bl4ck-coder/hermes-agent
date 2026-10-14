@@ -106,7 +106,20 @@ export function MotionReadout({ mode, onChange }: { mode: MotionMode; onChange: 
 }
 
 /** R75: one titled group per concern. Module-level so inputs keep focus across renders. */
-function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Group({ id, title, hint, folded = false, children }: { id: string; title: string; hint?: string; folded?: boolean; children: ReactNode }) {
+  // Glass p8: reference groups (shortcuts, security detail) fold behind a one-line summary.
+  if (folded) {
+    return (
+      <details aria-label={title} data-ops-settings-group={id} data-ops-settings-folded="">
+        <summary>
+          <h3>{title}</h3>
+          {hint ? <span data-ops-settings-hint="">{hint}</span> : null}
+        </summary>
+        {children}
+      </details>
+    )
+  }
+
   return (
     <section aria-label={title} data-ops-settings-group={id}>
       <h3>{title}</h3>
@@ -260,14 +273,14 @@ export function SettingsView({
           {T("A task becomes blocked")}</label>
         <p>{T("Silent OS notifications; Desktop never takes focus.")}</p>
       </Group>
-      <Group id="shortcuts" title={T("Shortcuts")}>
+      <Group folded hint={T("Keyboard cheat sheet")} id="shortcuts" title={T("Shortcuts")}>
         <button onClick={() => setSheet(true)} type="button">
           {T("Shortcut sheet")}</button>
       </Group>
       <Group id="diagnostics" title={T("Diagnostics")}>
         <DiagnosticsPanel policySource={policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null} />
       </Group>
-      <Group id="security" title={T("Security")}>
+      <Group folded hint={T("Secrets present, write routes, cross-site rules")} id="security" title={T("Security")}>
         <dl>
           <dt>{T("Secret presence")}</dt>
           <dd data-ops-field="secrets">

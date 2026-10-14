@@ -634,3 +634,21 @@
 :where([data-ops-secret-list]) { column-gap: 24px; columns: 3 220px; }
 :where([data-ops-secret-list] > li) { break-inside: avoid; }
 :where([data-ops-channels-body] li p, [data-ops-channels-body] article p) { -webkit-box-orient: vertical; -webkit-line-clamp: 3; display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; }
+
+/* -- Glass p8 (B32): display headline sizes live here so they beat the earlier ops-base sizes; lit board cards; folded settings groups. */
+:where([data-ops-greeting]) :where(h2) { font-size: 34px; font-weight: 500; }
+:where(section[data-ops-lens] > header > h2) { font-size: 26px; font-weight: 500; }
+:where([data-ops-card]) {
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ops-gold, #c9a227) 7%, var(--ops-surface-2)) 0%, var(--ops-surface-2) 55%);
+  border-color: color-mix(in srgb, var(--ops-gold, #c9a227) 16%, var(--ops-line));
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent), 0 6px 16px -10px rgb(0 0 0 / 0.7);
+}
+:where([data-ops-card]:hover) { border-color: color-mix(in srgb, var(--ops-gold, #c9a227) 34%, var(--ops-line)); }
+:where([data-ops-settings-folded]) { margin: 0 0 12px; padding: 10px 14px; }
+:where([data-ops-settings-folded]) > :where(summary) { align-items: baseline; cursor: pointer; display: flex; gap: 10px; list-style: none; }
+:where([data-ops-settings-folded]) > :where(summary) :where(h3) { margin: 0; }
+:where([data-ops-settings-folded]) > :where(summary)::after { color: var(--ops-muted); content: '›'; margin-left: auto; transition: transform 160ms ease; }
+:where([data-ops-settings-folded][open]) > :where(summary)::after { transform: rotate(90deg); }
+:where([data-ops-settings-folded][open]) > :where(summary) { margin-bottom: 10px; }
+:where([data-ops-settings-hint]) { color: var(--ops-muted); font-size: 12px; }

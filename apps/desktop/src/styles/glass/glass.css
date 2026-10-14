@@ -385,3 +385,12 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='gar
 
 /* -- Glass p7: page shells (Capabilities, Artifacts, Messaging) — the inner body repainted the flat surface over the lit shell; let the shell's light through. */
 html[data-hermes-theme^='gold-night'] [data-page-shell] [class*='bg-(--ui-chat-surface-background)'] { background-color: transparent; }
+
+/* -- Glass p8: Agents empty state sits on a lit glass card instead of floating in a blank overlay. */
+html[data-hermes-theme^='gold-night'] :where(:has(> [data-agents-empty-hint]), div:has(> * > [data-agents-empty-hint])) {
+  background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.55), rgb(var(--glass-panel) / 0.5));
+  border: 1px solid rgb(var(--glass-gold-hi) / 0.16);
+  border-radius: var(--glass-r-card, 16px);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 60px -30px rgb(var(--glass-gold) / 0.45);
+  margin-inline: auto; max-width: 30rem; padding: 2rem 2.25rem;
+}
