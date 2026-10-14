@@ -580,3 +580,16 @@
 :where([data-ops-settings-group] > dl > dd) :where(small) { flex-basis: 100%; }
 :where([data-ops-settings]) :where(select, input:not([type='checkbox'], [type='radio'], [type='range'])) { min-height: 26px; }
 :where([data-ops-prefs-reset]) { background: transparent; color: var(--ops-muted); }
+
+/* ---- B28: Office dispatch row and orbit legibility, Settings rows top-aligned, needs-you overflow link ---- */
+:where([data-ops-dispatch]) { align-items: center; display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 10px 0; }
+:where([data-ops-dispatch] > input) { flex: 1 1 320px; min-height: 30px; padding: 4px 10px; }
+:where([data-ops-dispatch] > button[type='submit']) { background: color-mix(in srgb, var(--ops-gold) 14%, transparent); border-color: color-mix(in srgb, var(--ops-gold) 55%, transparent); color: var(--ops-gold); min-height: 30px; padding: 3px 14px; }
+:where([data-ops-dispatch] > [data-ops-routing]) { color: var(--ops-muted); flex-basis: 100%; font-size: 12px; }
+:where([data-ops-dispatch] > [data-ops-chips]) { flex-basis: 100%; }
+:where([data-ops-orrery] [data-ops-orb]) { font-size: 12.5px; padding: 4px 11px 4px 4px; }
+:where([data-ops-orrery-centre] [data-ops-orb]) { font-size: 14px; padding: 5px 14px 5px 5px; }
+:where(.ops-toast-queue [data-needs-you]) { background: transparent; border-color: transparent; color: var(--ops-gold); font-size: 12px; padding: 2px 4px; }
+:where(.ops-toast-queue [data-needs-you]:hover) { text-decoration: underline; }
+:where([data-ops-settings-group] > dl) { align-items: start; }
+:where([data-ops-settings-group] > dl > dt) { min-height: 34px; padding: 9px 0 6px; }

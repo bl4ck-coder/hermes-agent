@@ -157,17 +157,17 @@ export function NodeEditor({
   const picks = useMemo(() => repairSuggestions(policy), [policy])
 
   if (!s) {
-    return <p data-ops-node-editor={node}>{T("Loading")}{' '}{LABEL[node]}…</p>
+    return <p data-ops-node-editor={node}>{T("Loading")}{' '}{T(LABEL[node])}…</p>
   }
 
   const diff = node === 'model' ? null : diffLines(s.base.content ?? '', s.draft.content ?? '')
 
   return (
-    <section aria-label={LABEL[node]} data-ops-node-editor={node} data-ops-node-status={s.status}>
+    <section aria-label={T(LABEL[node])} data-ops-node-editor={node} data-ops-node-status={s.status}>
       <h3>
-        {LABEL[node]} {isDirty(s) ? <span data-ops-dirty="">{T("● unsaved")}</span> : null}
+        {T(LABEL[node])} {isDirty(s) ? <span data-ops-dirty="">{T("● unsaved")}</span> : null}
       </h3>
-      {ro ? <span data-ops-badge="read-only">read-only</span> : null}
+      {ro ? <span data-ops-badge="read-only">{T('read-only')}</span> : null}
       {stored && !dirtyNow && !ro && (stored.draft.content !== s.base.content || stored.draft.provider !== s.base.provider || stored.draft.model !== s.base.model) ? (
         <p data-ops-draft-restore="">
           {T("An unsaved draft from")}{' '}{new Date(stored.at).toLocaleString()} {T("was kept.")}<button onClick={() => (setS(edit(s, stored.draft)), setStored(null))} type="button">

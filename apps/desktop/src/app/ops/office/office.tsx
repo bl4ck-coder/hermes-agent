@@ -411,9 +411,9 @@ function Dispatch({
         try {
           await onDispatch?.(text)
           setText('')
-          setStatus('Dispatched')
+          setStatus(T('Dispatched'))
         } catch (err) {
-          setStatus(`Dispatch failed: ${err instanceof Error ? err.message : 'request failed'}`)
+          setStatus(T('Dispatch failed: {why}').replace('{why}', err instanceof Error ? err.message : T('request failed')))
         } finally {
           setSending(false)
         }
