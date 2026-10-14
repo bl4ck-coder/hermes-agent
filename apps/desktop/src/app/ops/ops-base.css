@@ -469,3 +469,29 @@
 :where([data-ops-pack-bar]) { background: var(--ops-surface); border-radius: 999px; grid-area: bar; height: 4px; overflow: hidden; position: relative; }
 :where([data-ops-pack-bar])::after { background: var(--ops-gold); border-radius: inherit; content: ''; inset: 0 auto 0 0; position: absolute; transition: width 320ms var(--ease, ease); width: var(--ops-pct, 0%); }
 :where([data-ops-packs] li[data-ops-pack-complete]) { border-color: color-mix(in srgb, var(--ops-gold) 35%, transparent); }
+
+/* ---- B22: Office below the Orbit, Board card hierarchy, tab transitions ---- */
+/* Tab switch: the incoming panel fades in (opacity only, so fixed drawers and menus keep their containing block). */
+@keyframes ops-tab-in { from { opacity: 0; } to { opacity: 1; } }
+:where([data-ops-panel]:not([hidden]) > [data-ops-panel-body]) { animation: ops-tab-in 160ms var(--ease, ease) both; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-panel]:not([hidden]) > [data-ops-panel-body]) { animation: none; } }
+:where([data-ops-motion='reduced'] [data-ops-panel]:not([hidden]) > [data-ops-panel-body]) { animation: none; }
+/* Needs you: who (avatar), what kind (tinted pill), how long (right-aligned numerals); row actions stay compact. */
+:where([data-ops-needs-you]) :where(td[data-ops-agent]) { align-items: center; display: flex; gap: 6px; white-space: nowrap; }
+:where([data-ops-kind]) { background: var(--ops-surface-2); border-radius: 999px; font-size: 11px; padding: 1px 8px; white-space: nowrap; }
+:where([data-ops-kind='kanban_blocked'], [data-ops-kind='cron_failure'], [data-ops-kind='policy']) { background: color-mix(in srgb, #b4434b 18%, transparent); color: #e0989b; }
+:where([data-ops-kind='jsonrpc'], [data-ops-kind='gateway_run'], [data-ops-kind='kanban_review']) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); color: var(--ops-gold); }
+:where([data-ops-needs-you]) :where(td[data-ops-age]) { color: var(--ops-muted); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+:where([data-ops-needs-you]) :where(td[data-ops-waiting-on]) { max-width: 360px; }
+:where([data-ops-needs-you]) :where(td input) { background: transparent; font-size: 12px; width: 140px; }
+:where([data-ops-needs-you]) :where(tbody tr:hover input) { background: color-mix(in srgb, var(--ops-fg) 3%, transparent); }
+/* Board cards: title leads (13/600), id whispers in mono, column state tints the card edge. */
+:where([data-ops-card]) > :where([data-ops-open-task]) { color: var(--ops-fg); font-size: 13px; font-weight: 600; }
+:where([data-ops-card-id]) { background: var(--ops-surface); border-radius: 4px; color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; margin-right: 4px; opacity: 0.8; padding: 0 4px; }
+:where([data-ops-column='blocked'] [data-ops-card]) { box-shadow: inset 2px 0 0 #b4434b; }
+:where([data-ops-column='running'] [data-ops-card]) { box-shadow: inset 2px 0 0 var(--ops-gold); }
+:where([data-ops-column='done'] [data-ops-card]) { opacity: 0.78; }
+:where([data-ops-column='done'] [data-ops-card]:hover) { opacity: 1; }
+/* Channels cards read left-aligned like every other card; Teams cards keep their own height. */
+:where([data-ops-app-grid]) :where(li) { text-align: left; }
+:where([data-ops-teams]) { align-items: start; }

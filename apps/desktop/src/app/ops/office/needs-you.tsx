@@ -11,6 +11,7 @@ import { useState } from 'react'
 
 import type { ApprovalItem, CronJobLite } from '../feed/ops-client'
 import { T } from '../main-i18n'
+import { Sigil } from '../primitives/sigil'
 
 export type KanbanAction = { kind: 'approve_review' | 'request_changes' | 'unblock' | 'comment'; taskId: string; note?: string }
 
@@ -149,8 +150,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
 
             return (
               <tr data-ops-approval={key} data-ops-origin={item.origin} key={key} tabIndex={-1}>
-                <td>{item.profile ?? T('unknown')}</td>
-                <td>{T(KIND[item.origin] ?? item.origin)}</td>
+                <td data-ops-agent="">{item.profile ? <Sigil name={item.profile} size={14} /> : null}{item.profile ?? T('unknown')}</td>
+                <td><span data-ops-kind={item.origin}>{T(KIND[item.origin] ?? item.origin)}</span></td>
                 <td data-ops-waiting-on="">{cmd || item.what_for || item.id}</td>
                 <td data-ops-age="">{age(item.age_s)}</td>
                 <td data-ops-why="">

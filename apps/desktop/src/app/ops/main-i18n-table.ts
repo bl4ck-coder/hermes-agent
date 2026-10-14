@@ -579,6 +579,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No projects": "Sin proyectos",
     "No members": "Sin miembros",
     "{n} of {total} installed": "{n} de {total} instaladas",
+    "No lane": "Sin carril",
   },
   "fr": {
     "\"Today\" and \"this week\" in Office use this zone.": "« Aujourd’hui » et « cette semaine » dans Bureau utilisent ce fuseau.",
@@ -1158,6 +1159,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No projects": "Aucun projet",
     "No members": "Aucun membre",
     "{n} of {total} installed": "{n} sur {total} installées",
+    "No lane": "Sans couloir",
   },
   "de": {
     "\"Today\" and \"this week\" in Office use this zone.": "„Heute“ und „diese Woche“ im Büro nutzen diese Zone.",
@@ -1737,6 +1739,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No projects": "Keine Projekte",
     "No members": "Keine Mitglieder",
     "{n} of {total} installed": "{n} von {total} installiert",
+    "No lane": "Ohne Bahn",
   },
   "ru": {
     "\"Today\" and \"this week\" in Office use this zone.": "«Сегодня» и «эта неделя» в Офисе используют этот пояс.",
@@ -2316,6 +2319,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No projects": "Нет проектов",
     "No members": "Нет участников",
     "{n} of {total} installed": "{n} из {total} установлено",
+    "No lane": "Без потока",
   },
   "ja": {
     "\"Today\" and \"this week\" in Office use this zone.": "オフィスの「今日」と「今週」はこのタイムゾーンを使います。",
@@ -2895,6 +2899,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No projects": "プロジェクトなし",
     "No members": "メンバーなし",
     "{n} of {total} installed": "{total} 件中 {n} 件インストール済み",
+    "No lane": "レーンなし",
   },
   "zh": {
     "\"Today\" and \"this week\" in Office use this zone.": "办公室中的“今天”和“本周”使用此时区。",
@@ -3474,6 +3479,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No projects": "没有项目",
     "No members": "没有成员",
     "{n} of {total} installed": "已安装 {n}/{total}",
+    "No lane": "无泳道",
   },
   "zh-hant": {
     "\"Today\" and \"this week\" in Office use this zone.": "辦公室中的“今天”和“本週”使用此時區。",
@@ -4053,6 +4059,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No projects": "沒有專案",
     "No members": "沒有成員",
     "{n} of {total} installed": "已安裝 {n}/{total}",
+    "No lane": "無泳道",
   },
   "ar": {
     "\"Today\" and \"this week\" in Office use this zone.": "يستخدم «اليوم» و«هذا الأسبوع» في المكتب هذه المنطقة الزمنية.",
@@ -4632,5 +4639,6 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "No projects": "لا مشاريع",
     "No members": "لا أعضاء",
     "{n} of {total} installed": "{n} من {total} مثبتة",
+    "No lane": "بلا مسار",
   },
 };

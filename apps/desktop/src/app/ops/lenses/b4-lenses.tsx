@@ -225,7 +225,7 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
       {list.map(t => (
         <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} key={t.lane}>
           <header data-ops-team-head="">
-            <h3>{t.lane}</h3>
+            <h3>{t.lane === 'No lane' ? T('No lane') : t.lane}</h3>
             <span data-ops-team-open="">{P(t.open, '{n} open')}</span>
           </header>
           <div aria-label={T('Members:')} data-ops-team-members="" role="list">
