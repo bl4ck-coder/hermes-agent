@@ -436,6 +436,14 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                     total={visibleFileArtifacts.length}
                   />
                 </div>
+                {currentFilePage === 1 && (
+                  // B33: the newest files and links as preview cards; the full table stays below.
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 pb-2 pt-1.5" data-artifact-cards="">
+                    {pagedFileArtifacts.slice(0, 8).map(artifact => (
+                      <ArtifactPreviewCard artifact={artifact} key={artifact.id} onOpen={openArtifact} />
+                    ))}
+                  </div>
+                )}
                 <div className="overflow-x-auto rounded-lg border border-(--ui-stroke-tertiary) bg-(--ui-chat-bubble-background)">
                   <ArtifactTable artifacts={pagedFileArtifacts} ctx={cellCtx} filter={kindFilter} />
                 </div>
@@ -445,6 +453,39 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
         </div>
       )}
     </PageSearchShell>
+  )
+}
+
+function artifactBadge(artifact: ArtifactRecord): string {
+  if (artifact.kind === 'link') {
+    try {
+      return new URL(artifact.href).hostname.replace(/^www\./, '').slice(0, 18)
+    } catch {
+      return 'link'
+    }
+  }
+
+  return (/\.(\w{1,5})$/.exec(artifact.value)?.[1] ?? 'file').toUpperCase()
+}
+
+/** B33: a lit preview card for a file or link — type badge, name, where it came from, when. */
+function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; onOpen: (artifact: ArtifactRecord) => void }) {
+  return (
+    <button
+      className="group flex min-w-0 flex-col gap-1.5 rounded-xl border border-(--ui-stroke-tertiary) bg-(--ui-chat-bubble-background) p-3 text-left text-xs transition-colors hover:border-(--ui-stroke-secondary)"
+      data-artifact-card={artifact.kind}
+      onClick={() => onOpen(artifact)}
+      type="button"
+    >
+      <span className="self-start rounded-md px-1.5 py-0.5 font-mono text-[0.62rem] tracking-wide" data-artifact-badge="">
+        {artifactBadge(artifact)}
+      </span>
+      <span className="truncate text-sm font-medium text-foreground">{artifact.label}</span>
+      <span className="truncate text-muted-foreground">{artifact.sessionTitle}</span>
+      <span className="text-[0.62rem] text-muted-foreground/70 tabular-nums">
+        {new Date(artifact.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+      </span>
+    </button>
   )
 }
 
