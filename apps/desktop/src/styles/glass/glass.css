@@ -176,15 +176,38 @@ html[data-hermes-theme^='gold-night'] :is([data-slot='connector-card'], [data-sl
 }
 html[data-hermes-theme^='gold-night'] [data-slot='switch'][data-state='checked'] { box-shadow: var(--glass-glow); }
 
+/* Overlay cards (settings, profiles, cron, agents, command center): the glass card itself is
+   unblurred, since it fills the window and its scrim already frosts the chat behind it. */
+html[data-hermes-theme^='gold-night'] [data-overlay-surface] > div > div:first-child {
+  background: var(--glass-sheen), linear-gradient(170deg, rgb(var(--glass-raised) / 0.96), rgb(var(--glass-panel) / 0.97) 40%, rgb(var(--glass-ink) / 0.97));
+  border-color: var(--glass-edge);
+  border-radius: var(--glass-r-xl);
+  box-shadow: var(--glass-highlight), var(--glass-lowlight), var(--glass-shadow);
+}
+html[data-hermes-theme^='gold-night'] [data-tour='overlay-nav'] {
+  background: linear-gradient(180deg, rgb(var(--glass-raised) / 0.5), transparent 60%);
+  box-shadow: inset -1px 0 0 rgb(var(--glass-gold-hi) / 0.08);
+}
+html[data-hermes-theme^='gold-night'] [data-tour='overlay-nav'] button {
+  border-radius: var(--glass-r-sm);
+  transition: background-color var(--glass-dur-fast) var(--glass-ease), color var(--glass-dur-fast) var(--glass-ease), box-shadow var(--glass-dur-fast) var(--glass-ease);
+}
+html[data-hermes-theme^='gold-night'] [data-tour='overlay-nav'] button[aria-current='page'] {
+  background: var(--glass-tint-gold);
+  border-color: rgb(var(--glass-gold-hi) / 0.22);
+  box-shadow: var(--glass-highlight);
+  color: rgb(var(--glass-ivory));
+}
+html[data-hermes-theme^='gold-night'] [data-scope-collapsible] > summary::-webkit-details-marker { display: none; }
+
 /* Ops panel: same language, no blur (the Office animates; the board and tables scroll). */
 html[data-hermes-theme^='gold-night'] :where([data-ops-settings-group], [data-ops-strip], [data-ops-board-toolbar], [data-ops-teams] > li, [data-ops-channels-body] li) {
   background-image: var(--glass-sheen);
   box-shadow: var(--glass-highlight), var(--glass-shadow-soft);
 }
 html[data-hermes-theme^='gold-night'] :where(.ops-toast) {
-  -webkit-backdrop-filter: var(--glass-blur-soft);
-  backdrop-filter: var(--glass-blur-soft);
-  background: var(--glass-sheen), var(--glass-fill);
+  /* No blur: toasts sit over the animated Office, so a filter would re-sample every frame. */
+  background: var(--glass-sheen), linear-gradient(170deg, rgb(var(--glass-raised) / 0.97), rgb(var(--glass-panel) / 0.97));
   border-color: var(--glass-edge);
   border-radius: var(--glass-r-md);
   box-shadow: var(--glass-highlight), var(--glass-shadow);

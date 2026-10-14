@@ -1121,7 +1121,7 @@ function CronJobRuns({
               // recorded output preview without a chat-navigation affordance.
               <div className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-xs" key={run.id}>
                 <span className="truncate text-foreground/85">
-                  {run.title?.trim() || run.preview?.trim() || run.id}
+                  {cronRunLabel(run.title?.trim() || run.preview?.trim() || run.id)}
                 </span>
                 <span className="shrink-0 text-[0.62rem] text-muted-foreground/55 tabular-nums">
                   {formatRunTime(run.last_active || run.started_at)}
@@ -1137,7 +1137,7 @@ function CronJobRuns({
                 type="button"
               >
                 <span className="truncate text-foreground/85">
-                  {run.title?.trim() || run.preview?.trim() || run.id}
+                  {cronRunLabel(run.title?.trim() || run.preview?.trim() || run.id)}
                 </span>
                 <span className="shrink-0 text-[0.62rem] text-muted-foreground/55 tabular-nums">
                   {formatRunTime(run.last_active || run.started_at)}
@@ -1631,4 +1631,14 @@ interface EditorValues {
 interface ScheduleOption {
   expr?: string
   value: string
+}
+
+/** IA: script-run previews arrive as one markdown line ("COMPLETED · # Cron Job: x **Job ID:** … **Status:** silent").
+ *  The row already sits under its job, so show the outcome, not the boilerplate. Plain titles pass through. */
+export function cronRunLabel(text: string): string {
+  if (!text.includes('**')) return text
+  const status = /\*\*Status:\*\*\s*([^*]+)/.exec(text)?.[1]?.trim()
+  const head = text.split(/\s*[·•-]\s*#|\s#\s/)[0]?.trim()
+  if (status) return head && head !== text ? `${head} · ${status}` : status
+  return text.replace(/\*\*/g, '').replace(/(^|\s)#\s+/g, '$1').replace(/\s+/g, ' ').trim()
 }
