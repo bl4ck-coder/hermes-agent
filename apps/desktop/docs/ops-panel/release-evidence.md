@@ -315,3 +315,38 @@ Agents, Skills and Channels & MCP are now live Ops lenses (lenses/b4-lenses.tsx,
 | G71 | Keep | Built | Sortable headers on every data column; "Individual skills n" count pill tracks the search | b4.test "Skills lens" |
 | G72 | Adapt | Built | Pack metadata "n skills · m installed" (the hub reports no install counts, so none shown); Browse library = Desktop hub picker | b4.test "Skills lens", "G82" |
 | G81 | Keep | Built | Search by name, category, description | b4.test "Skills lens" |
+
+## P8 batch 5 (2026-10-14 ART): Canvas, partials, settings and lifecycle
+
+Tests: src/app/ops/motion/b5.test.tsx (16). Commit 20b8910f1c.
+
+| ID | Disposition | Status | Acceptance line | Evidence |
+|---|---|---|---|---|
+| Canvas edges | Adapt | Built | Every CANVAS_EDGES pair is a drawn SVG cubic (column slots, gold, muted when an end is collapsed, lit during a test run); the text list stays for screen readers | b5.test "drawn edges" |
+| Canvas wheel | Adapt | Built | Ctrl/Cmd+wheel zooms one ZOOM_STEP, plain wheel pans (Shift = horizontal), clamped to PAN_LIMIT | b5.test "wheel" |
+| G42 | Adapt | Built | Every node title opens a detail popover with its real fields (unknown stays unknown); Esc/Close | b5.test "G42" |
+| G51 | Adapt | Built | Unset Identity shows an amber "Set identity" CTA to Desktop's profile setup; disabled on remote | b5.test "G51" |
+| G57 | Keep | Built | Header "Save all (n)", hidden on remote, disabled at 0; saves each dirty node through its own A5 save (with its note); refused nodes named | b5.test "G57" |
+| G86 | Adapt | Built | Prompt node shows "last change: <note>" from the newest Prompt backup; detail popover shows it too | b5.test "G86" |
+| G66 | Keep | Built | Dispatch: leading @profile assigns, #project anywhere sets project_id; routing line says both | b5.test "G66" |
+| O67 | Adapt | Built (Ops surfaces) | Kanban ids (t_ + hex) in task comments are links to the task tab; hostile text stays text. Desktop chat transcript not touched (outside Ops) | b5.test "O67" |
+| O16 / G61 | Adapt | Cut (workflow templates) | Templates lens = cron blueprints with app icons; kanban workflow templates have no backend (stated in the lens) | lenses.test, b4.test "G67" |
+| O41 | Adapt | Built | Approval mode read per profile; Change opens Desktop's approvals settings (Ops does not write config.yaml outside A5) | canvas-p7.test, motion.test |
+| R54 | Adapt | Built | Opt-in silent OS notifications for new approvals and newly blocked tasks; first load only primes (no burst); never focuses the window | b5.test "R75 ... R54" |
+| R55 | Adapt | Partial | "Open Ops on launch" + default tab stored; opsLaunchRoute() gives the route. Desktop's startup does not read it yet (host change) | b5.test "R55" |
+| R75 | Adapt | Built | Settings grouped General / Ops / Notifications / Shortcuts / Diagnostics / Security; theme Gold Night (default) / Light / Dark / System | b5.test "R75" |
+| R77 | Adapt | Built | Dev-only Simulate offline / slow (> 10 s) / 401 on every Ops request; not rendered and forced off when import.meta.env.DEV is false | b5.test "R77 / L4" |
+| L1 | Adapt | Built | Capability probe over A1-A7: 404 = "needs Hermes with <feature>", 401/403 = refused, other = error | b5.test "L1" |
+| L4 | Adapt | Built (client side) | Simulation drives each section's unavailable/stale states; stream drop/401/slow-open recovery covered by kanban-stream-faults.test.ts | b5.test, kanban-stream-faults.test |
+| L6 | Adapt | Built | Diagnostics: stream mode + reason, policy source, probe, last 50 redacted request errors, Copy diagnostics (redacted), Clear | b5.test "L6", "Diagnostics panel" |
+| S2 | Keep | Built | No dangerouslySetInnerHTML / innerHTML / insertAdjacentHTML in any Ops source (static test); Markdown and linkified text render hostile payloads inert | b5.test "S2", board-p8b3 "R17" |
+| S7 | Keep | Built | Redaction of provider keys, Bearer tokens, JWTs, KEY=value and query tokens in the error ring and the copy | b5.test "S7", "L6" |
+| X10 | Adapt | Partial | Today strip shows input/output tokens with provenance and no $ (no price). Per-profile split not in /api/ops/usage/today | b5.test (n/a), office.test |
+| X7 / X11 / X12 / X9 | Keep | Not changed in P8 | Handoff rows exist (data-ops-handoff); orrery motion gating, deep-link copy for every Office row and the evidence-flow test are still open | n/a |
+| L2 / L5 / L8 / L9 / S5 / S6 | Adapt | Deferred to P9 | Connection state matrix, skew glyph, profile create/delete, teardown counts, legacy-write network test, Host header pytest | n/a |
+
+## P11 re-audit (2026-10-14 ART)
+
+- Re-read every P8 table above against the code on ops/P8-polish. Rows marked Built have a named test that asserts the acceptance line; Partial and Cut rows say what is missing.
+- Open after P8: R55 (host startup hook), X10 per-profile split (backend), X7/X9/X11/X12 (Office motion + deep links), G70 (skills author/mtime, backend), O67 in Desktop chat, and the P9 lifecycle rows.
+- Ops suite 40 files / 371 tests green; typecheck clean; lint 0 errors.
