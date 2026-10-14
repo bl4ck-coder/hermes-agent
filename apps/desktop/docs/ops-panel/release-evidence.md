@@ -498,3 +498,37 @@ Live, default changed from unknown to idle. The other 38 profiles stay unknown b
 - Frame times: p50 13.3 ms and p95 13.4 ms in all four scenarios.
 
 **Tests:** vitest 46 files / 441 tests; tsc 0; eslint 0 errors.
+
+## B11 — orbit collisions, inspector i18n, honest unknown, driver safety, live round (2026-10-14)
+
+Code tip on `ops/P8-polish` = `feat/ops-panel`: see PR #1. Commits: `70f9539383` orbit, `e30f8e3d66` inspector i18n,
+`7f97111e83` honest unknown, `a9f89b2afb` driver preflight + toasts + spike timing, `4598015134` live r1 fixes,
+`010689b4f5` live r2 fix.
+
+| Item | Result | Evidence |
+|---|---|---|
+| Office orbit label collisions | Fixed. `spreadOrbs` stretches rings into an ellipse and relaxes overlapping label boxes (centre fixed, clamped to the 240px stage, deterministic); orbs are centred on their point | `office/orrery.ts`, b11.test (raw layout overlaps, spread never does, 3 presence mixes) |
+| Inspector labels i18n | All 9 Ops locales: labels, values (`unset`, `loading`, `yes/no`…), templates (`3 of 5`, `41 cards`, `2 failing`, `n bytes`), footers and hints. 7 locales still said "detail not built in this shell"; replaced | `inspector-i18n.ts`, `locales.ts` (`inspector.fields`), b11.test, locales.test |
+| Per-profile approvals | Not safely readable: pending approvals live in each profile's own process; this backend only sees its own queue (no read-only cross-process API). So `unknown` is now explained: a localized "Not observable from here" row under the Fleet unknown group with the full reason as tooltip; Office unknown chip and orbs carry the same tooltip | `navigation-store.ts` (`hint` row), `rail.tsx`, b11.test |
+| Test-instance toast | Driver dismisses status toasts (any locale) before every screenshot; error alerts stay. Before: dismissal ran before boot with an English-only regex | `scripts/ops-live/live.mjs`, `toastDismissed` in live.json |
+| First-pickup drag spike | Measured with per-frame timing: no pickup spike. The long frames sit at 4.86–5.07 s of the 5 s window = Escape/release (Escape leaves fullscreen and relayouts). Board has no card drag implementation (only a file drop zone), so nothing to optimise at pickup | live.json `fps.board-drag.spikes` |
+| Driver safety | Preflight refuses to launch unless `OPS_LIVE_PYTHON` imports `hermes_cli.web_server` from the checkout (a wrong interpreter made the isolated test window loop on "Hermes couldn't start" on the user's screen). Test window is now off-screen, out of the taskbar, unfocused. desktop.log still lives in the shared HERMES_HOME (the test needs the real home) | `live.mjs` |
+
+Live round (critical UX), found and fixed:
+- r1: Agents/Skills/Channels lens sections were laid out as one flex row (a rail-button rule `[data-ops-lens]` also matched `section[data-ops-lens]`): empty left column, header at the bottom. Rule scoped to `button[data-ops-lens]`, lens sections stack.
+- r1: kept-alive Settings tab leaked its detail into the inspector of other row-slot tabs (Agents showed "Ajustes"). Details now show only on their owning tab (task→board, node→canvas, settings→`lens:settings`).
+- r2: the ownership check first missed lens tab ids (`lens:settings`); fixed.
+
+Final round r3 (isolated instance, real gateway :8642, hermes-agent venv): 14/14 steps ok, 0 console errors, 0 page errors, 0 HTTP ≥400, 0 failed requests, toast dismissed.
+
+| Sample | p50 ms | p95 ms | p99 ms | max ms | long frames (>33 ms, at ms) |
+|---|---|---|---|---|---|
+| office-motion | 13.3 | 13.4 | 13.5 | 66.7 | 173, 4321 |
+| board-scroll | 13.3 | 13.4 | 13.5 | 26.7 | — |
+| board-drag | 13.3 | 13.4 | 26.7 | 146.8 | 1187 (40), 4855, 4975 (Escape/release) |
+| canvas-pan-zoom | 13.3 | 13.4 | 13.5 | 26.7 | — |
+
+Tests: Ops frontend suite 46 files / 449 tests pass; tsc and eslint clean on touched files.
+
+Remaining: Office, Agents, Skills, Channels and the Settings page body are still English-only copy (only the inspector, rail and nav are localized); the long Escape frame comes from leaving fullscreen, not from the board.
+Screenshots: box `/workspace/ops-live/b11/` (contact-sheet.png, before-after.png, before/ = B10).
