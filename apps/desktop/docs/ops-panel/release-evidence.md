@@ -549,3 +549,10 @@ Screenshots: box `/workspace/ops-live/b11/` (contact-sheet.png, before-after.png
 - Tests: 48 files / 462 pass (new b13.test.tsx); tsc clean; build OK.
 - Live r2 (off-screen, venv Python): pageErrors 0, all sections ok, boardUnchanged=true (no real moves; drag measured with dragend-without-drop). fps p95 13.4 ms everywhere; board-drag max 40 ms (B12: 133 ms).
 - Evidence: /workspace/ops-live/b13/ (before-after.png, before-after-canvas.png, contact-sheet.png, sbs-outglow-vs-compose.png, sbs-gr8r-vs-drag.png, live.json).
+
+## B14 — Plurals, layout pills, lens strings, status chips (2026-10-14)
+- `P(n, other, one)` uses Intl.PluralRules per locale (ru one/few/many, ar zero/one/two/few/many, ja/zh single form) with locale number formatting. 8 plural keys × 8 locales.
+- Translated: board layout pills, inspector column ids (falls back to the main table), card counts, skills installed, violations, comments, Agents tabs Fleet/Teams/Roles, status values, kits "N skills · N installed", Add all/All added, on/off, Showing N of M.
+- Fleet status chips: failing garnet, running gold, idle muted.
+- Tests: 49 files / 468 pass (new b14.test.tsx); tsc clean.
+- Live b14r1 (off-screen, venv Python): pageErrors 0, all sections ok, boardUnchanged; fps p95 13.4 ms. Evidence /workspace/ops-live/b14/.
