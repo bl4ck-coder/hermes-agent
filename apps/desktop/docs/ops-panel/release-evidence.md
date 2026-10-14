@@ -597,3 +597,8 @@ Scores (after B26 → after B29): Board 8→9, Canvas 8→9, Office 8→9, Setti
 - Drop highlight moved from React state to DOM attribute: board-drag 368 -> 748 frames, p99 13.5 ms, max 53.4 -> 40.1 ms (2 frames at drag end).
 - Skill names unframed via [data-ops-skill-open]; table cells carry data-col; Fleet model mono/muted, running pulse; Teams 'No lane' spans the row; Settings follow-up dd tucked.
 - Live b30r1: pageErrors 0, boardUnchanged true, 65 files / 524 tests, tsc clean.
+
+## B31 + glass pass 1 (2418d988cf, 1e4c7cc08d, e1f565b492)
+- B31: probe chips sr-only 'available', secrets full-row 3 columns, channel copy clamp.
+- Glass layer (src/styles/glass/glass.css, components/ui/glass.tsx) app-wide in Gold Night; IA audit in docs/ia-audit.md.
+- Live b31r1 (before) vs glass2 (after): pageErrors 0, boardUnchanged true. office-motion p99 26.6 -> 13.5 ms (max 53.4 -> 80, one frame); board-drag p99 26.8 -> 26.6, max 53.5 -> 40; board-scroll max 40 -> 26.8; canvas max 26.7 -> 40. glass1 had a 240 ms Office frame with the blurred ops toast; blur removed from the toast in glass2.
