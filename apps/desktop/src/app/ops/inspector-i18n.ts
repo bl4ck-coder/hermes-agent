@@ -18,10 +18,12 @@ export const INSPECTOR_KEYS = [
   'the card open in Board', 'column totals for the current scope', 'the profile shown in Canvas', 'the node selected in Canvas',
   "this profile's Ops settings",
   '{a} of {b}', '{n} cards', '{n} failing', '{n} bytes', ' (invalid, writes blocked)',
-  'Not observable from here: their approvals live in another process.'
+  'Not observable from here: their approvals live in another process.',
+  'Not observable from here'
 ] as const
 
-export const UNKNOWN_HINT_KEY = INSPECTOR_KEYS[INSPECTOR_KEYS.length - 1]
+export const UNKNOWN_HINT_KEY = INSPECTOR_KEYS[INSPECTOR_KEYS.length - 2]
+export const UNKNOWN_SHORT_KEY = INSPECTOR_KEYS[INSPECTOR_KEYS.length - 1]
 
 const T: Record<string, readonly string[]> = {
   es: [
@@ -37,7 +39,8 @@ const T: Record<string, readonly string[]> = {
     'la tarjeta abierta en Tablero', 'totales por columna del alcance actual', 'el perfil que muestra el Lienzo', 'el nodo elegido en el Lienzo',
     'los ajustes de Ops de este perfil',
     '{a} de {b}', '{n} tarjetas', '{n} con fallos', '{n} bytes', ' (inválida, escrituras bloqueadas)',
-    'No se puede observar desde acá: sus aprobaciones viven en otro proceso.'
+    'No se puede observar desde acá: sus aprobaciones viven en otro proceso.',
+    'No observable desde acá'
   ],
   fr: [
     'Assignée à', 'Priorité', 'Projet', 'Locataire', 'Progression', 'Parents / enfants', 'Commentaires', 'Échecs consécutifs', 'Compétences',
@@ -52,7 +55,8 @@ const T: Record<string, readonly string[]> = {
     'la carte ouverte dans Tableau', 'totaux par colonne du périmètre actuel', 'le profil affiché dans Canevas', 'le nœud sélectionné dans Canevas',
     'les réglages Ops de ce profil',
     '{a} sur {b}', '{n} cartes', '{n} en échec', '{n} octets', ' (invalide, écritures bloquées)',
-    'Non observable d’ici : leurs approbations vivent dans un autre processus.'
+    'Non observable d’ici : leurs approbations vivent dans un autre processus.',
+    'Non observable d’ici'
   ],
   de: [
     'Zugewiesen an', 'Priorität', 'Projekt', 'Mandant', 'Fortschritt', 'Eltern / Kinder', 'Kommentare', 'Fehlschläge in Folge', 'Skills',
@@ -67,7 +71,8 @@ const T: Record<string, readonly string[]> = {
     'die in Board geöffnete Karte', 'Spaltensummen für den aktuellen Bereich', 'das in Leinwand gezeigte Profil', 'der in Leinwand gewählte Knoten',
     'die Ops-Einstellungen dieses Profils',
     '{a} von {b}', '{n} Karten', '{n} fehlerhaft', '{n} Bytes', ' (ungültig, Schreiben blockiert)',
-    'Von hier nicht beobachtbar: ihre Freigaben liegen in einem anderen Prozess.'
+    'Von hier nicht beobachtbar: ihre Freigaben liegen in einem anderen Prozess.',
+    'Von hier nicht beobachtbar'
   ],
   ru: [
     'Исполнитель', 'Приоритет', 'Проект', 'Арендатор', 'Прогресс', 'Родители / дети', 'Комментарии', 'Сбоев подряд', 'Навыки',
@@ -82,7 +87,8 @@ const T: Record<string, readonly string[]> = {
     'карточка, открытая на Доске', 'итоги по колонкам для текущей области', 'профиль, показанный на Холсте', 'узел, выбранный на Холсте',
     'настройки Ops этого профиля',
     '{a} из {b}', 'карточек: {n}', 'со сбоями: {n}', '{n} байт', ' (недействительна, запись заблокирована)',
-    'Отсюда не наблюдается: их подтверждения находятся в другом процессе.'
+    'Отсюда не наблюдается: их подтверждения находятся в другом процессе.',
+    'Отсюда не наблюдается'
   ],
   ja: [
     '担当者', '優先度', 'プロジェクト', 'テナント', '進捗', '親 / 子', 'コメント', '連続失敗', 'スキル',
@@ -97,7 +103,8 @@ const T: Record<string, readonly string[]> = {
     'ボードで開いているカード', '現在の範囲の列ごとの合計', 'キャンバスに表示中のプロフィール', 'キャンバスで選択中のノード',
     'このプロフィールの Ops 設定',
     '{a} / {b}', '{n} 枚', '{n} 件失敗', '{n} バイト', '（無効、書き込みはブロック）',
-    'ここからは観測できません。承認は別のプロセスにあります。'
+    'ここからは観測できません。承認は別のプロセスにあります。',
+    'ここからは観測不可'
   ],
   zh: [
     '负责人', '优先级', '项目', '租户', '进度', '父 / 子', '评论', '连续失败', '技能',
@@ -112,7 +119,8 @@ const T: Record<string, readonly string[]> = {
     '看板中打开的卡片', '当前范围的各列合计', '画布中显示的配置文件', '画布中选中的节点',
     '此配置文件的 Ops 设置',
     '{a} / {b}', '{n} 张卡片', '{n} 个失败', '{n} 字节', '（无效，写入已阻止）',
-    '无法从此处观测：其审批位于另一个进程中。'
+    '无法从此处观测：其审批位于另一个进程中。',
+    '无法从此处观测'
   ],
   'zh-hant': [
     '負責人', '優先順序', '專案', '租戶', '進度', '父 / 子', '留言', '連續失敗', '技能',
@@ -127,7 +135,8 @@ const T: Record<string, readonly string[]> = {
     '看板中開啟的卡片', '目前範圍的各欄合計', '畫布中顯示的設定檔', '畫布中選取的節點',
     '此設定檔的 Ops 設定',
     '{a} / {b}', '{n} 張卡片', '{n} 個失敗', '{n} 位元組', '（無效，寫入已封鎖）',
-    '無法從此處觀測：其核准位於另一個處理程序中。'
+    '無法從此處觀測：其核准位於另一個處理程序中。',
+    '無法從此處觀測'
   ],
   ar: [
     'المكلَّف', 'الأولوية', 'المشروع', 'المستأجر', 'التقدم', 'الآباء / الأبناء', 'التعليقات', 'إخفاقات متتالية', 'المهارات',
@@ -142,7 +151,8 @@ const T: Record<string, readonly string[]> = {
     'البطاقة المفتوحة في اللوح', 'إجماليات الأعمدة للنطاق الحالي', 'الملف المعروض في اللوحة', 'العقدة المحددة في اللوحة',
     'إعدادات Ops لهذا الملف',
     '{a} من {b}', '{n} بطاقة', '{n} متعثرة', '{n} بايت', ' (غير صالحة، الكتابة محظورة)',
-    'غير قابل للرصد من هنا: موافقاتها في عملية أخرى.'
+    'غير قابل للرصد من هنا: موافقاتها في عملية أخرى.',
+    'غير قابل للرصد من هنا'
   ]
 }
 

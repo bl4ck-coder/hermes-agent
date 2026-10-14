@@ -281,3 +281,7 @@
 :where([data-ops-fleet-row]) :where(.ops-presence__label) { display: none; }
 :where([data-ops-fleet-row]) { border-bottom: 0; gap: 8px; }
 :where([data-ops-fleet-folded]) { background: transparent; border: 1px dashed var(--ops-line-strong); color: var(--ops-muted); font-size: 12px; justify-content: flex-start; }
+
+/* B11: honest unknown explanation under the fleet group header. */
+:where([data-ops-fleet-hint]) { color: var(--ops-muted); font-size: 11px; font-style: italic; line-height: 18px; overflow: hidden; padding-left: 2px; text-overflow: ellipsis; white-space: nowrap; }
+

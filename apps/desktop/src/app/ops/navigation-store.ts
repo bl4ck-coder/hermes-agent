@@ -134,6 +134,8 @@ export interface FleetArrangement {
 
 export type FleetFlatRow =
   | { kind: 'header'; id: string; label: string }
+  /** B11: honest explanation under the unknown group (presence not observable from this backend). */
+  | { kind: 'hint'; id: string; label: string }
   | { kind: 'folded'; id: string; label: string; count: number; presence: 'idle' }
   | { kind: 'member'; id: string; member: FleetMember }
 
@@ -935,6 +937,10 @@ export function flattenFleet(groups: FleetGroup[], idleExpanded: boolean): Fleet
 
   for (const group of groups) {
     flat.push({ kind: 'header', id: `group:${group.id}`, label: group.label })
+
+    if (group.id === 'unknown' && group.rows.length > 0) {
+      flat.push({ kind: 'hint', id: `hint:${group.id}`, label: group.label })
+    }
 
     if (group.folded && !idleExpanded) {
       flat.push({

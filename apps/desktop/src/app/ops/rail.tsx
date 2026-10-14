@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 
 import { useI18n } from '@/i18n'
 
+import { UNKNOWN_HINT_KEY, UNKNOWN_SHORT_KEY } from './inspector-i18n'
 import { useOpsEscapeLayer } from './keymap'
 import { opsNavLabel, opsPresenceLabel } from './locales'
 import { type PresenceState, resolvePresence } from './motion'
@@ -145,6 +146,14 @@ export function FleetList({
             return (
               <div data-ops-fleet-group={row.label} key={row.id} style={{ height: FLEET_ROW_PX }}>
                 {opsPresenceLabel(copy, row.label)}
+              </div>
+            )
+          }
+
+          if (row.kind === 'hint') {
+            return (
+              <div data-ops-fleet-hint={row.label} key={row.id} style={{ height: FLEET_ROW_PX }} title={copy.inspector.fields[UNKNOWN_HINT_KEY]}>
+                {copy.inspector.fields[UNKNOWN_SHORT_KEY]}
               </div>
             )
           }

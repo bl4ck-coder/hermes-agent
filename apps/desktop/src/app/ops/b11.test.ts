@@ -71,3 +71,28 @@ describe('B11 inspector localization', () => {
     }
   })
 })
+
+describe('B11 honest unknown presence', () => {
+  it('flattenFleet puts an explanation row under a non-empty unknown group only', async () => {
+    const { flattenFleet } = await import('./navigation-store')
+    const member = (id: string) => ({ id, label: id, presence: 'unknown' }) as never
+
+    const rows = flattenFleet([
+      { id: 'idle', label: 'idle', rows: [member('a')], folded: false },
+      { id: 'unknown', label: 'unknown', rows: [member('b')], folded: false }
+    ] as never, false)
+
+    expect(rows.map(r => r.kind)).toEqual(['header', 'member', 'header', 'hint', 'member'])
+    expect(flattenFleet([{ id: 'unknown', label: 'unknown', rows: [], folded: false }] as never, false).map(r => r.kind)).toEqual(['header'])
+  })
+
+  it('every locale explains unknown (short + full), localized', async () => {
+    const { UNKNOWN_HINT_KEY, UNKNOWN_SHORT_KEY } = await import('./inspector-i18n')
+    expect(OPS_LOCALES.en.inspector.fields[UNKNOWN_SHORT_KEY]).toBe('Not observable from here')
+
+    for (const id of OPS_LOCALE_IDS.filter(l => l !== 'en')) {
+      expect(OPS_LOCALES[id].inspector.fields[UNKNOWN_SHORT_KEY], id).not.toBe(UNKNOWN_SHORT_KEY)
+      expect(OPS_LOCALES[id].inspector.fields[UNKNOWN_HINT_KEY], id).not.toBe(UNKNOWN_HINT_KEY)
+    }
+  })
+})

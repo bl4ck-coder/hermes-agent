@@ -92,6 +92,9 @@ export interface OfficeViewProps {
 const unknown = 'unknown'
 const num = (v: number | null | undefined) => (typeof v === 'number' ? v.toLocaleString('en-US') : unknown)
 
+/** B11: why a profile reads unknown; approvals for other profiles live in their own process. */
+const UNKNOWN_WHY = 'Not observable from here: their approvals live in another process.'
+
 const PRESENCE_LABEL: Record<Presence, string> = {
   working: 'Working',
   needs_you: 'Needs you',
@@ -124,7 +127,7 @@ function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; erro
       {(Object.keys(PRESENCE_LABEL) as Presence[])
         .filter(k => counts.get(k))
         .map(k => (
-          <span data-ops-count={k} key={k}>
+          <span data-ops-count={k} key={k} title={k === 'unknown' ? UNKNOWN_WHY : undefined}>
             {PRESENCE_LABEL[k]} {counts.get(k)}
           </span>
         ))}
@@ -246,6 +249,7 @@ function Orrery({
       key={o.profile}
       onClick={() => onOpenProfile?.(o.profile)}
       style={{ position: 'absolute', left: `calc(50% + ${o.x}px)`, top: `calc(50% + ${o.y}px)`, transform: 'translate(-50%, -50%)', whiteSpace: 'nowrap' }}
+      title={o.presence === 'unknown' ? `${o.profile}: ${UNKNOWN_WHY}` : undefined}
       type="button"
     >
       {o.profile}
