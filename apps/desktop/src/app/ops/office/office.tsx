@@ -16,6 +16,7 @@ import type {
 } from '../feed/ops-client'
 import { shownPresence } from '../feed/ops-client'
 
+import { type KanbanAction, NeedsYouQueue } from './needs-you'
 import { layoutOrrery, ORRERY_CAP } from './orrery'
 
 export type OfficeLayout = 'orrery' | 'table'
@@ -35,6 +36,9 @@ export interface OfficeViewProps {
   onApprove?: (item: ApprovalItem) => Promise<unknown> | void
   onDispatch?: (text: string) => Promise<unknown> | void
   onOpenProfile?: (profile: string) => void
+  onKanban?: (a: KanbanAction) => Promise<unknown> | void
+  onCronRun?: (jobId: string) => Promise<unknown> | void
+  onOpenTask?: (taskId: string) => void
 }
 
 const unknown = 'unknown'
@@ -172,70 +176,6 @@ function FleetTable({ fleet, nowS, onOpenProfile }: { fleet: FleetResponse; nowS
   )
 }
 
-function NeedsYou({
-  items,
-  readOnly,
-  onApprove
-}: {
-  items: ApprovalItem[] | null
-  readOnly?: boolean
-  onApprove?: (item: ApprovalItem) => Promise<unknown> | void
-}) {
-  const [busy, setBusy] = useState<Record<string, 'sending' | 'done' | 'failed'>>({})
-
-  if (!items) {
-    return <section data-ops-needs-you="">Needs you {unknown}</section>
-  }
-
-  const click = async (item: ApprovalItem) => {
-    const key = `${item.origin}:${item.id}`
-    setBusy(b => ({ ...b, [key]: 'sending' }))
-
-    try {
-      await onApprove?.(item)
-      setBusy(b => ({ ...b, [key]: 'done' }))
-    } catch {
-      setBusy(b => ({ ...b, [key]: 'failed' }))
-    }
-  }
-
-  return (
-    <section aria-label="Needs you" data-ops-needs-you="">
-      <h3>Needs you ({items.length})</h3>
-      <table>
-        <tbody>
-          {items.map(item => {
-            const key = `${item.origin}:${item.id}`
-            const state = busy[key]
-
-            return (
-              <tr data-ops-approval={key} key={key}>
-                <td>{item.profile ?? unknown}</td>
-                <td>{item.exact_request?.command ?? item.what_for}</td>
-                <td>{item.why}</td>
-                <td>
-                  {item.actions.includes('approve') && !readOnly ? (
-                    <button
-                      data-ops-approve={key}
-                      disabled={state === 'sending' || state === 'done'}
-                      onClick={() => void click(item)}
-                      type="button"
-                    >
-                      {state === 'done' ? 'Approved' : state === 'failed' ? 'Retry approve' : 'Approve'}
-                    </button>
-                  ) : (
-                    <span data-ops-review={key}>Review</span>
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </section>
-  )
-}
-
 function Dispatch({ onDispatch, readOnly }: { onDispatch?: (text: string) => Promise<unknown> | void; readOnly?: boolean }) {
   const [text, setText] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -301,7 +241,15 @@ export function OfficeView(props: OfficeViewProps) {
         )
       ) : null}
       <Dispatch onDispatch={props.onDispatch} readOnly={props.readOnly} />
-      <NeedsYou items={props.pending} onApprove={props.onApprove} readOnly={props.readOnly} />
+      <NeedsYouQueue
+        cron={props.cron}
+        items={props.pending}
+        onApprove={props.onApprove}
+        onCronRun={props.onCronRun}
+        onKanban={props.onKanban}
+        onOpenTask={props.onOpenTask}
+        readOnly={props.readOnly}
+      />
       <section aria-label="Today" data-ops-today="">
         <h3>Today</h3>
         <span data-ops-tokens="input">Input tokens {num(props.usage?.input_tokens)}</span>

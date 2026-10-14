@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { createOpsActions, type OpsActions } from '../feed/ops-actions'
 import { createOpsClient, type OpsClient, parseDispatch } from '../feed/ops-client'
 import { OPS_POLL_MS, useOpsFeed } from '../feed/ops-feed'
 
@@ -40,13 +41,18 @@ export function useOpsResource<T>(load: () => Promise<T>, deps: unknown[], pollM
 export function OfficeContainer({
   readOnly = false,
   client: clientProp,
-  onOpenProfile
+  actions: actionsProp,
+  onOpenProfile,
+  onOpenTask
 }: {
   readOnly?: boolean
   client?: OpsClient
+  actions?: OpsActions
   onOpenProfile?: (p: string) => void
+  onOpenTask?: (taskId: string) => void
 }) {
   const client = useMemo(() => clientProp ?? createOpsClient(), [clientProp])
+  const actions = useMemo(() => actionsProp ?? createOpsActions(), [actionsProp])
   const feed = useOpsFeed(null, client)
   const pending = useOpsResource(() => client.pendingApprovals(), [client])
   const usage = useOpsResource(() => client.usageToday(), [client])
@@ -92,8 +98,11 @@ export function OfficeContainer({
       inFlight={inFlight}
       nowS={nowS}
       onApprove={approve}
+      onCronRun={async id => (await actions.cronTrigger(id), cron.reload())}
       onDispatch={dispatch}
+      onKanban={async a => (await actions.kanban(a), pending.reload(), board.reload())}
       onOpenProfile={onOpenProfile}
+      onOpenTask={onOpenTask}
       pending={listOrNull(pending.value?.items)}
       readOnly={readOnly}
       usage={usage.value}
