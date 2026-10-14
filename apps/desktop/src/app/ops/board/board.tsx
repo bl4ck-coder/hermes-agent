@@ -31,6 +31,10 @@ export interface BoardActions {
   archive: (ids: string[]) => void
   bulkMove: (ids: string[], to: string) => void
   create: (title: string, column: string) => void
+  assign?: (id: string, assignee: string | null) => void
+  subtask?: (parentId: string, title: string) => void
+  unarchive?: (id: string) => void
+  loadArchived?: () => void
 }
 
 export interface BoardViewProps extends BoardActions {
@@ -42,6 +46,7 @@ export interface BoardViewProps extends BoardActions {
   readOnly?: boolean
   viewport?: number
   initialLayout?: BoardLayout
+  archived?: BoardTask[] | null
 }
 
 function Card({
@@ -101,6 +106,8 @@ export function BoardView(props: BoardViewProps) {
   const [adding, setAdding] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [bulkTo, setBulkTo] = useState('ready')
+  const [subDraft, setSubDraft] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
 
   const shown = useMemo(() => {
     if (!board) {
@@ -201,7 +208,45 @@ export function BoardView(props: BoardViewProps) {
           <input checked={Boolean(filter.mine)} disabled={!props.me} onChange={e => setFilter(f => ({ ...f, mine: e.target.checked ? 'me' : null }))} type="checkbox" />
           Mine
         </label>
+        {props.loadArchived ? (
+          <button
+            aria-pressed={showArchived}
+            data-ops-archived-toggle=""
+            onClick={() => {
+              if (!showArchived) {
+                props.loadArchived?.()
+              }
+
+              setShowArchived(v => !v)
+            }}
+            type="button"
+          >
+            Archived
+          </button>
+        ) : null}
       </div>
+      {showArchived ? (
+        <section aria-label="Archived" data-ops-archived="">
+          {props.archived === undefined || props.archived === null ? (
+            <p>Archived tasks unknown (loading).</p>
+          ) : props.archived.length === 0 ? (
+            <p>No archived tasks.</p>
+          ) : (
+            <ul>
+              {props.archived.map(t => (
+                <li data-ops-archived-task={t.id} key={t.id}>
+                  {t.title}{' '}
+                  {!readOnly && props.unarchive ? (
+                    <button onClick={() => props.unarchive?.(t.id)} type="button">
+                      Unarchive
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
 
       {props.notice ? (
         <p data-ops-snapback="" role="alert">
@@ -317,11 +362,37 @@ export function BoardView(props: BoardViewProps) {
               <dt>Status</dt>
               <dd>{open.status}</dd>
               <dt>Assignee</dt>
-              <dd>{open.assignee ?? 'unassigned'}</dd>
+              <dd>
+                {!readOnly && props.assign ? (
+                  <select aria-label="drawer assignee" onChange={e => props.assign?.(open.id, e.target.value || null)} value={open.assignee ?? ''}>
+                    <option value="">unassigned</option>
+                    {[...new Set([...(board.assignees ?? []), ...(open.assignee ? [open.assignee] : [])])].map(a => (
+                      <option key={a}>{a}</option>
+                    ))}
+                  </select>
+                ) : (
+                  (open.assignee ?? 'unassigned')
+                )}
+              </dd>
             </dl>
           ) : (
             <p>Task is no longer on this board.</p>
           )}
+          {open && !readOnly && props.subtask ? (
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+
+                if (subDraft.trim()) {
+                  props.subtask?.(open.id, subDraft.trim())
+                }
+
+                setSubDraft('')
+              }}
+            >
+              <input aria-label="drawer subtask" onChange={e => setSubDraft(e.target.value)} placeholder="Add subtask" value={subDraft} />
+            </form>
+          ) : null}
           <button onClick={() => setDrawer(d => d && { ...d, full: !d.full })} type="button">
             {drawer.full ? 'Drawer' : 'Full page'}
           </button>

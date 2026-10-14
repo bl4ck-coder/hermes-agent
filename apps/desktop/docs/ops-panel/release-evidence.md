@@ -1,8 +1,8 @@
-# Ops panel release evidence (P5 task 3)
+# Ops panel release evidence (P5 task 3, updated P6)
 
 Generated 2026-10-13 ART from SPEC §12.8 (230 rows). Screenshots: live GUI/screenshot checks waived by Nacho; real-data screenshots are therefore NOT attached. Evidence = jsdom/integration tests named per row.
 
-Totals: Built 16, Cut 14, NOT VERIFIED 192, Not built 2, Partial 6
+Totals: Built 36, Cut 14, NOT VERIFIED 166, Not built 2, Partial 12
 
 Status values: Built (acceptance covered by the named test), Partial (gap stated), Not built, Cut (reason kept), NOT VERIFIED (no Ops-panel work or evidence yet).
 
@@ -12,44 +12,44 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | O2 | Keep | Built | Agent card tab (presence, model, policy, runs, needs-you) | src/app/ops/detail/details.test.tsx |
 | O3 | Adapt | Built | Dispatch composer creates a kanban task, @assignee parsed | src/app/ops/office/office.test.tsx, feed/ops-data.test.ts |
 | O4 | Adapt | NOT VERIFIED | Chips = recent task templates/workflow_template_id and cron blueprints |  |
-| O5 | Keep | Partial | Needs-you table, one-click Approve for jsonrpc items; kanban/cron origins listed read-only | src/app/ops/office/office.test.tsx |
+| O5 | Keep | Built | Needs-you actions per origin: jsonrpc Approve (full args only), review Approve/Request changes (note), blocked Unblock (note)/Open, cron Run now; server refusal shown | src/app/ops/office/needs-you.test.tsx |
 | O6 | Keep | Built | In flight = running board column | src/app/ops/office/office.test.tsx |
-| O7 | Keep | Partial | Activity = resolved approvals; task_events feed not wired | src/app/ops/office/office.test.tsx |
-| O8 | Adapt | NOT VERIFIED | The toast preview is truncated. One-click Approve is allowed only when the full command and args fit unabridged; otherwise show [Review], which focuses the card |  |
+| O7 | Keep | Partial | Activity = resolved approvals with who/what/when; task_events feed not wired | src/app/ops/office/office-toasts.test.tsx |
+| O8 | Adapt | Built | Approval toast: Approve only when full command fits unabridged (char budget + geometry); otherwise [Review] focuses the Needs-you row | src/app/ops/office/office-toasts.test.tsx, primitives/toast-queue tests |
 | O9 | Adapt | Built | Lenses deep-link existing Desktop routes | src/app/ops/navigation.test.tsx |
 | O10 | Keep | Built | Rail Fleet with presence (P0.5) | src/app/ops/navigation.test.tsx |
 | O11 | Keep | NOT VERIFIED | Badge on Office rail item |  |
 | O12 | Keep | NOT VERIFIED | Board filter + Projects lens |  |
 | O13 | Keep | Built | Orrery/Table switch | src/app/ops/office/office.test.tsx |
 | O14 | Adapt | NOT VERIFIED | New profile = Canvas 'New' (clone-from) |  |
-| O15 | Keep | Partial | Board + Add per column; no assignee picker | src/app/ops/board/board.test.tsx |
-| O16 | Adapt | NOT VERIFIED | Workflow templates (kanban workflow_template_id) + cron 'Run now' |  |
-| O17 | Adapt | NOT VERIFIED | Task attachments + workspace files |  |
+| O15 | Keep | Built | Board + Add per column; drawer assignee picker and subtask form | src/app/ops/board/board-extras.test.tsx |
+| O16 | Adapt | Partial | Cron Run now on failing jobs (Needs-you); workflow templates not built | src/app/ops/office/needs-you.test.tsx |
+| O17 | Adapt | Partial | Task attachments listed in task tab; workspace files not built | src/app/ops/detail/task-tab.test.tsx |
 | O18 | Adapt | NOT VERIFIED | O18 = the Desktop sessions list scoped to the profile. O20 = the Activity lens (link it to R26). |  |
 | O19 | Adapt | NOT VERIFIED | Tokens show null as "" with provenance until A2 exists |  |
 | O20 | Adapt | NOT VERIFIED | O18 = the Desktop sessions list scoped to the profile. O20 = the Activity lens (link it to R26). |  |
 | O21 | Keep | Built | Inspector Fleet (P0.5) | src/app/ops/navigation.test.tsx |
 | O22 | Adapt | NOT VERIFIED | Inspector 'Context' for selected task/agent; secrets shown set/unset only |  |
 | O23 | Adapt | Built | Run footer hidden without focus (P0.5) | src/app/ops/navigation.test.tsx |
-| O24 | Keep | NOT VERIFIED | Agent card |  |
+| O24 | Keep | Built | Agent card: sigil, display name, presence, model, skills, next cron, policy, runs, needs-you | src/app/ops/detail/agent-run.test.tsx, detail/details.test.tsx |
 | O25 | Cut | Cut | No fake states (no mock data rule) | reason kept |
 | O26 | Adapt | NOT VERIFIED | For bot profiles, Message must open the canonical "Bot Chat" (identified by profile + title, no stored session id); otherwise a side-chat |  |
-| O27 | Adapt | NOT VERIFIED | Workflow steps (current_step_key) + child tasks via task_links |  |
-| O28 | Keep | NOT VERIFIED | Task timeline |  |
-| O29 | Adapt | NOT VERIFIED | Steer/Stop, Approve, Comment, Unblock (+reclaim) |  |
-| O30 | Keep | NOT VERIFIED | Timeline expand/collapse |  |
+| O27 | Adapt | Built | Task tab shows current_step_key and child tasks (task_links) with add-subtask | src/app/ops/detail/task-tab.test.tsx |
+| O28 | Keep | Built | Task timeline from task_events | src/app/ops/detail/task-tab.test.tsx |
+| O29 | Adapt | Partial | Comment, Unblock (note), Retry, Approve/Request changes built; Steer/Stop not built | src/app/ops/detail/task-tab.test.tsx, office/needs-you.test.tsx |
+| O30 | Keep | Built | Timeline expand/collapse all | src/app/ops/detail/task-tab.test.tsx |
 | O31 | Keep | Built | Tab strip with pinned Office/Canvas/Board (P0.5) | src/app/ops/navigation.test.tsx |
 | O32 | Adapt | NOT VERIFIED | Reuse Desktop chat; Ops opens it scoped to profile |  |
 | O33 | Adapt | NOT VERIFIED | Diff of task worktree via Desktop git review |  |
 | O34 | Keep | NOT VERIFIED | Attachment/markdown preview |  |
 | O35 | Adapt | NOT VERIFIED | Run log panel (worker log) |  |
-| O36 | Adapt | NOT VERIFIED | Show branch only when the focused task has a worktree |  |
+| O36 | Adapt | Built | Branch shown only when the task has branch_name | src/app/ops/detail/task-tab.test.tsx |
 | O37 | Cut | Cut | No mock data | reason kept |
 | O38 | Adapt | NOT VERIFIED | Register an "Ops" palette page and commands in the existing cmdk palette; do not build a second palette |  |
 | O39 | Keep | Built | Motion Full/Reduced/System persisted + prefers-reduced-motion | src/app/ops/motion/motion.test.tsx |
 | O40 | Adapt | Partial | Default model shown + policy source; model write via Canvas model node (A5/A6) | src/app/ops/motion/motion.test.tsx, canvas/node-editor-view.test.tsx |
 | O41 | Adapt | Not built | Shows Not available yet (no approvals.mode source) | src/app/ops/motion/motion.test.tsx |
-| O42 | Adapt | Not built | Shows Not available yet (env names not wired) | src/app/ops/motion/motion.test.tsx |
+| O42 | Adapt | Built | Secret presence: names + set/unset only, never values | src/app/ops/motion/motion.test.tsx, feed/ops-actions.test.ts |
 | O43 | Adapt | Built | Shortcut sheet (OpsShortcutSheet) also reachable from Settings | src/app/ops/motion/motion.test.tsx |
 | O44 | Adapt | Built | Rail full/icons/hidden (P0.5) | src/app/ops/navigation.test.tsx |
 | O45 | Keep | NOT VERIFIED | Connection / profile / view breadcrumb |  |
@@ -63,13 +63,13 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | O53 | Keep | NOT VERIFIED | Rail headers OPS / LENSES / FLEET  N online |  |
 | O54 | Keep | Built | Fleet rows ordered, idle folded (P0.5) | src/app/ops/navigation.test.tsx |
 | O55 | Keep | NOT VERIFIED | kbd hints on rail items (G O, G C, G B, Ctrl+,) |  |
-| O56 | Adapt | NOT VERIFIED | Deterministic profile sigil: monogram on a gold-tint disc hashed from the profile name. Use the profile's colour if one exists |  |
+| O56 | Adapt | Built | Deterministic sigil (resolveSigil hash) on agent card | src/app/ops/detail/agent-run.test.tsx |
 | O57 | Adapt | NOT VERIFIED | Drift runs only while A1 reports live runs. Halo intensity = active-run count. No idle blink (decorative only). Static under reduced motion |  |
 | O58 | Adapt | NOT VERIFIED | Honest routing line: "Assigned to X", or "Unassigned triage" only if kanban triage exists. Keep the kbd hint |  |
-| O59 | Keep | NOT VERIFIED | Columns: Agent, Kind, Waiting on, Age, Why , Actions |  |
+| O59 | Keep | Built | Needs-you columns Agent, Kind, Waiting on, Age, Why, Actions | src/app/ops/office/needs-you.test.tsx |
 | O60 | Keep | NOT VERIFIED | In-flight and Board Table. Show Steps n/m only when the template's step count is known, otherwise show the step key |  |
-| O61 | Keep | NOT VERIFIED | Map task_events.kind to a verb and take the target from the payload |  |
-| O62 | Adapt | NOT VERIFIED | Blocked toast offers only [Open], because Unblock needs a note. It never takes focus. Dismissal is stored per item id |  |
+| O61 | Keep | Built | describeEvent maps task_events.kind to verb + payload target | src/app/ops/detail/task-tab.test.tsx |
+| O62 | Adapt | Built | Blocked toast offers only [Open], never takes focus, dismissal per item id | src/app/ops/office/office-toasts.test.tsx |
 | O63 | Adapt | NOT VERIFIED | Subtitle = task title, approval summary, or sub-state. Bar = step i/n when known, otherwise an indeterminate hairline (never fake progress). Selection is synced across rail, orrery and inspector |  |
 | O64 | Adapt | NOT VERIFIED | Ops dock with Log (worker-log tail), Events (run SSE) and Problems(n) (policy, cron failures, validation, 401). Interactive terminal is cut unless Desktop already has one (verify) |  |
 | O65 | Keep | NOT VERIFIED | Ops statusbar item group. Tokens = today's total, with a provenance tooltip |  |
@@ -78,20 +78,20 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | O68 | Keep | NOT VERIFIED | Already in Desktop chat. Reuse it; no Ops copy |  |
 | O69 | Adapt | NOT VERIFIED | Handled by the Desktop composer; Ops only passes the profile scope |  |
 | O70 | Keep | NOT VERIFIED | Task timeline. Exit code and duration come from tool-result payloads |  |
-| O71 | Adapt | NOT VERIFIED | Handoff = reassign event, child-task link, or delegate_task spawn |  |
-| O72 | Adapt | NOT VERIFIED | Inline [Approve][Deny][Comment]: one click (D3), full args shown |  |
+| O71 | Adapt | Partial | Handoff = reassign event flagged; child-link/delegate_task handoffs not flagged | src/app/ops/detail/task-tab.test.tsx |
+| O72 | Adapt | Partial | Inline Approve (full args) in Needs-you; Deny/Comment inline not built for jsonrpc | src/app/ops/office/needs-you.test.tsx |
 | O73 | Adapt | NOT VERIFIED | Snippet built from patch/write_file tool args. Open git review |  |
-| O74 | Adapt | NOT VERIFIED | Run-failure block from task_runs.error/outcome, with CTAs [Unblock] and [Retry  ready] |  |
+| O74 | Adapt | Built | Run-failure block from task_runs error/outcome with [Unblock] (note) and [Retry → ready] | src/app/ops/detail/task-tab.test.tsx |
 | O75 | Cut | Cut | Security §7 | reason kept |
-| O76 | Adapt | NOT VERIFIED | Role = first clause of the profile description |  |
+| O76 | Adapt | Not built | No source: /api/profiles carries no description field |  |
 | O77 | Adapt | NOT VERIFIED | Sub-states of "working", taken from live events: thinking, tool:<name>, done (fades to idle after 10 s). No state is shown without an event behind it |  |
-| O78 | Adapt | NOT VERIFIED | Idle scheduled profiles show "Next run 18:00" |  |
+| O78 | Adapt | Built | Agent card "Next cron run" = earliest enabled next_run_at; none/unknown kept distinct | src/app/ops/detail/agent-run.test.tsx |
 | O79 | Keep | NOT VERIFIED | Ops settings rows keep the same promise |  |
 | O80 | Keep | Built | Ops settings opens as a lens tab | src/app/ops/live-panels.test.tsx |
 | O81 | Keep | NOT VERIFIED | One A1 query key feeds every surface; no surface derives its own copy |  |
-| O82 | Keep | Partial | Run tab shows active run; no Runs lens row link | src/app/ops/detail/details.test.tsx |
+| O82 | Keep | Partial | Run tab: active run + task_runs history (status/outcome/duration/error, task link); no Runs lens | src/app/ops/detail/agent-run.test.tsx |
 | O83 | Cut | Cut | Single local user | reason kept |
-| O90 | Adapt | NOT VERIFIED | With 36 profiles, toasts need a queue. Show at most 1 per kind, plus a "+n more → Needs-you" chip. Toasts never take focus. |  |
+| O90 | Adapt | Built | Toast queue: max 1 per kind + "+n more → Needs-you", never takes focus | src/app/ops/office/office-toasts.test.tsx, primitives/toast-queue tests |
 | G1 | Adapt | NOT VERIFIED | Office Dispatch composer empty state |  |
 | G2 | Adapt | NOT VERIFIED | P2-filtered picker (Anthropic*, gpt-6.1-sol, grok-4.7) |  |
 | G3 | Adapt | NOT VERIFIED | Delegated to Desktop chat |  |
@@ -126,11 +126,11 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | G32 | Adapt | NOT VERIFIED | No owner field exists. Owner = last writer from the A5 manifest; version = backup sequence |  |
 | G33 | Adapt | NOT VERIFIED | Outglow "tools" are connectors. In Hermes they are toolsets plus the profile's enabled MCP servers |  |
 | G34 | Adapt | NOT VERIFIED | Delegation node read-only |  |
-| G35 | Keep | NOT VERIFIED | Skills node |  |
+| G35 | Keep | Built | Skills node from /api/profiles skill_count; unknown when not loaded | src/app/ops/canvas/canvas-extras.test.tsx |
 | G36 | Keep | NOT VERIFIED | Model node w/ P2 picker |  |
-| G37 | Keep | NOT VERIFIED | Collapse nodes |  |
+| G37 | Keep | Built | Per-node collapse and collapse/expand all | src/app/ops/canvas/canvas-extras.test.tsx |
 | G38 | Adapt | NOT VERIFIED | The screenshots colour ports by state, not edges by kind (see G49) |  |
-| G39 | Keep | NOT VERIFIED | Zoom + fit + pan |  |
+| G39 | Keep | Partial | Zoom in/out + Fit built; pan not built | src/app/ops/canvas/canvas-extras.test.tsx |
 | G40 | Keep | NOT VERIFIED | Badges: New (changed since last backup), Unset, Policy |  |
 | G41 | Adapt | NOT VERIFIED | Nodes must never animate in on load (that was the replay). They only light up on real run events |  |
 | G42 | Adapt | NOT VERIFIED | Every child item opens a detail popover |  |
@@ -146,7 +146,7 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | G52 | Keep | NOT VERIFIED | Prompt node: wheel scrolls the node, not the canvas. Edit appears on hover or focus and is reachable by keyboard |  |
 | G53 | Adapt | NOT VERIFIED | Lucide icon per kind, platform logo for channels |  |
 | G54 | Adapt | NOT VERIFIED | Per-node skeleton tied to that node's own query, with independent failure |  |
-| G55 | Keep | NOT VERIFIED | Bottom-centre zoom plus a Fit () button |  |
+| G55 | Keep | Partial | Zoom + Fit controls built; bottom-centre placement not verified (GUI waived) | src/app/ops/canvas/canvas-extras.test.tsx |
 | G56 | Keep | NOT VERIFIED | Keep pan. The bug must not carry over: overlays never intercept node controls |  |
 | G57 | Keep | NOT VERIFIED | Per-node Save plus a header "Save all (n)", disabled at 0 |  |
 | G58 | Adapt | NOT VERIFIED | Connection  profile switcher, with a "read-only" badge on remote connections |  |
@@ -194,7 +194,7 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | R15 | Keep | NOT VERIFIED | Links parent/child |  |
 | R16 | Keep | NOT VERIFIED | Child tasks |  |
 | R17 | Adapt | NOT VERIFIED | Markdown body editor |  |
-| R18 | Keep | NOT VERIFIED | Comments + events |  |
+| R18 | Keep | Built | Task tab comments (with add) + events | src/app/ops/detail/task-tab.test.tsx |
 | R19 | Adapt | NOT VERIFIED | Pin (local) / move to done / back to ready |  |
 | R20 | Adapt | NOT VERIFIED | Open, Duplicate, Copy deep link, Archive, Reassign; Delete cut |  |
 | R21 | Adapt | NOT VERIFIED | Bulk archive done |  |
@@ -215,7 +215,7 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | R36 | Adapt | NOT VERIFIED | Needs-you "Resolved" tab: the last 50, with who, when and how |  |
 | R37 | Adapt | NOT VERIFIED | "Seen" on review and cron items (local). Never available on approvals or policy items |  |
 | R38 | Adapt | NOT VERIFIED | Review lens: tasks in review, with worktree diff |  |
-| R39 | Adapt | NOT VERIFIED | Pickers offer only legal transitions; assignee uses /reassign |  |
+| R39 | Adapt | Partial | Assignee picker in drawer/task tab via PATCH assignee (not /reassign); server refuses illegal moves | src/app/ops/board/board-extras.test.tsx |
 | R40 | Keep | NOT VERIFIED | Desktop ConfirmDialog plus a New-task modal |  |
 | R41 | Keep | NOT VERIFIED | Themed radix Select |  |
 | R42 | Adapt | NOT VERIFIED | Reorder only if kanban has a priority/order field (verify), otherwise disabled. "land" plays on success; a rejected drop snaps back with the reason |  |
@@ -233,7 +233,7 @@ Status values: Built (acceptance covered by the named test), Partial (gap stated
 | R54 | Adapt | NOT VERIFIED | Opt-in OS notifications on approval.pending and blocked. No focus steal |  |
 | R55 | Adapt | NOT VERIFIED | "Open Ops on launch" plus default tab, checked against the Desktop startup route |  |
 | R56 | Keep | NOT VERIFIED | lucide-react |  |
-| R57 | Adapt | NOT VERIFIED | Archived toggle plus Unarchive |  |
+| R57 | Adapt | Built | Board Archived toggle + Unarchive (→ todo) | src/app/ops/board/board-extras.test.tsx |
 | R58 | Adapt | NOT VERIFIED | Child-task progress chip on the card |  |
 | R60 | Adapt | NOT VERIFIED | Recent searches on the palette's Ops page, stored locally per connection + profile. |  |
 | R61 | Adapt | NOT VERIFIED | An Office header with the date and the connection, no greeting copy. |  |

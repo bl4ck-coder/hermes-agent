@@ -2,20 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { createOpsActions, type OpsActions } from '../feed/ops-actions'
 import { createOpsClient, type OpsClient } from '../feed/ops-client'
 import { OPS_POLL_MS, useOpsFeed } from '../feed/ops-feed'
 
 import { BoardView } from './board'
-import { type BoardClient, type BoardData, createBoardClient, errorReason, isBoard, type MoveRecord, serverMove } from './board-model'
+import { type BoardClient, type BoardData, type BoardTask, createBoardClient, errorReason, isBoard, type MoveRecord, serverMove } from './board-model'
 
 export function BoardContainer({
   client: c,
+  actions: a,
   feedClient,
   me,
   readOnly,
   pollMs = OPS_POLL_MS
 }: {
   client?: BoardClient
+  actions?: OpsActions
   feedClient?: Pick<OpsClient, 'fleet'>
   me?: string | null
   readOnly?: boolean
@@ -29,6 +32,33 @@ export function BoardContainer({
   const [notice, setNotice] = useState<string | null>(null)
   const [lastMove, setLastMove] = useState<MoveRecord | null>(null)
   const busy = useRef(0)
+  const actions = useMemo(() => a ?? createOpsActions(), [a])
+  const [archived, setArchived] = useState<BoardTask[] | null>(null)
+
+  const loadArchived = useCallback(async () => {
+    try {
+      const b = await actions.archivedBoard()
+      const col = Array.isArray(b?.columns) ? b.columns.find(x => x.name === 'archived') : undefined
+      setArchived(col && Array.isArray(col.tasks) ? col.tasks : [])
+    } catch (e) {
+      setArchived(null)
+      setNotice(`Archived unavailable: ${errorReason(e)}`)
+    }
+  }, [actions])
+
+  const write = useCallback(
+    async (fn: () => Promise<unknown>, after?: () => void) => {
+      try {
+        await fn()
+        setNotice(null)
+      } catch (e) {
+        setNotice(`Refused: ${errorReason(e)}`)
+      }
+
+      after?.()
+    },
+    []
+  )
 
   const reload = useCallback(async () => {
     try {
@@ -93,6 +123,8 @@ export function BoardContainer({
   return (
     <BoardView
       archive={ids => void bulk(ids, { archive: true })}
+      archived={archived}
+      assign={(id, who) => void write(() => actions.assign(id, who), () => void reload())}
       board={board}
       bulkMove={(ids, to) => void bulk(ids, { status: to })}
       create={(title, column) =>
@@ -100,10 +132,13 @@ export function BoardContainer({
       }
       error={error}
       lastMove={lastMove}
+      loadArchived={() => void loadArchived()}
       me={me}
       move={(id, to) => void move(id, to)}
       notice={notice}
       readOnly={readOnly}
+      subtask={(parent, title) => void write(() => actions.createSubtask(parent, title), () => void reload())}
+      unarchive={id => void write(() => actions.setStatus(id, 'todo'), () => (void loadArchived(), void reload()))}
       undo={rec => void move(rec.id, rec.from)}
     />
   )

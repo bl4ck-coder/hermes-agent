@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { envPresenceList } from '../feed/ops-actions'
+
 import { cycleMotion, loadMotion, motionCssVars, transition, transitionMs, TRANSITIONS } from './motion'
 import { loadPrefs, MotionReadout, SettingsView } from './settings'
 
@@ -54,7 +56,8 @@ describe('W9 settings (P5-03)', () => {
     const routes: string[] = []
     render(<SettingsView defaultModel={null} onOpenRoute={r => routes.push(r)} policy={null} />)
     expect(document.querySelector('[data-ops-field="default-model"]')?.textContent).toBe('unknown')
-    expect(screen.getAllByText('Not available yet').length).toBe(2)
+    expect(screen.getAllByText('Not available yet').length).toBe(1)
+    expect(document.querySelector('[data-ops-field="secrets"]')?.textContent).toBe('unknown')
     fireEvent.change(screen.getByLabelText('default tab'), { target: { value: 'board' } })
     expect(loadPrefs().defaultTab).toBe('board')
     fireEvent.click(screen.getByLabelText('Motion: System'))
@@ -68,5 +71,15 @@ describe('W9 settings (P5-03)', () => {
   it('malformed prefs fall back to defaults', () => {
     localStorage.setItem('hermes.ops.prefs', '{bad')
     expect(loadPrefs()).toEqual({ defaultTab: 'office', dateFormat: 'relative' })
+  })
+})
+
+describe('W9 secret presence (P6 F5, O42)', () => {
+  it('lists names and set/unset only, never values', () => {
+    const rows = envPresenceList({ OPENAI_API_KEY: { is_set: true, redacted_value: 'sk-***' } as never, SLACK_TOKEN: { is_set: false } })
+    render(<SettingsView defaultModel={null} policy={null} secrets={rows} />)
+    expect(document.querySelector('[data-ops-secret="OPENAI_API_KEY"]')?.getAttribute('data-ops-set')).toBe('yes')
+    expect(document.querySelector('[data-ops-secret="SLACK_TOKEN"]')?.textContent).toBe('SLACK_TOKEN: not set')
+    expect(document.body.textContent).not.toContain('sk-')
   })
 })

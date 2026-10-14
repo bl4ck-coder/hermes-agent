@@ -80,7 +80,8 @@ describe('Office view', () => {
     expect(onApprove).toHaveBeenCalledWith(expect.objectContaining({ id: 'a1' }))
     expect(confirmSpy).not.toHaveBeenCalled()
     expect(document.querySelector('[data-ops-approve="kanban_blocked:k1"]')).toBeNull()
-    expect(document.querySelector('[data-ops-review="kanban_blocked:k1"]')).not.toBeNull()
+    // P6: blocked tasks are actionable through a noted Unblock, never a one-click approve.
+    expect(document.querySelector('[data-ops-unblock="kanban_blocked:k1"]')).not.toBeNull()
   })
 
   it('read-only hides approve and dispatch', () => {

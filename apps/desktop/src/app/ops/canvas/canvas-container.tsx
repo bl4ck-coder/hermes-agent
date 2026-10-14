@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 
+import { createOpsActions } from '../feed/ops-actions'
 import { createOpsClient, type OpsClient } from '../feed/ops-client'
 import { useOpsResource } from '../office/office-container'
 
@@ -20,11 +21,14 @@ export function CanvasContainer({ profile, readOnly, client: clientProp }: { pro
   const prompt = useOpsResource(() => client.promptNode(profile), [client, profile], slow)
   const cron = useOpsResource(() => client.cronJobs(profile), [client, profile], slow)
   const delegation = useOpsResource(() => client.delegation(profile), [client, profile], slow)
+  const actions = useMemo(() => createOpsActions(), [])
+  const rows = useOpsResource(() => actions.profiles(), [actions], slow)
+  const row = Array.isArray(rows.value?.profiles) ? rows.value.profiles.find(r => r.name === profile) : undefined
 
   return (
     <>
     <CanvasView
-      data={{ model: model.value, policy: policy.value, prompt: prompt.value, cron: cron.value, delegation: delegation.value }}
+      data={{ model: model.value, policy: policy.value, prompt: prompt.value, cron: cron.value, delegation: delegation.value, skills: typeof row?.skill_count === 'number' ? row.skill_count : null }}
       profile={profile}
       readOnly={readOnly}
       runs={runsBridge() as never}
