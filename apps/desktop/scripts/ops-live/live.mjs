@@ -20,6 +20,8 @@ const env = {
   HERMES_DESKTOP_PYTHON: process.env.OPS_LIVE_PYTHON,
   HERMES_DESKTOP_ISOLATED_BACKEND: '1',
   HERMES_DESKTOP_USER_DATA_DIR: join(tmpdir(), 'ops-live-userdata'),
+  // The real Hermes home (and so the real gateway). An explicit HERMES_HOME wins over the userData sandbox.
+  ...(process.env.OPS_LIVE_HERMES_HOME ? { HERMES_HOME: process.env.OPS_LIVE_HERMES_HOME } : {}),
   HERMES_DESKTOP_SKIP_QUIT_CONFIRM: '1'
 }
 delete env.HERMES_DESKTOP_DEV_SERVER
@@ -40,12 +42,30 @@ async function section(name, fn) {
   try { note = (await fn()) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 300) }
   await sleep(1500)
   await shot(name)
+  const stray = await page.evaluate(() => {
+    const out = []
+    const root = document.querySelector('[data-ops-root]')
+    if (!root) return out
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      const t = n.textContent.trim()
+      const p = n.parentElement
+      if (!/^(0|undefined|null|NaN|false|true|\[object Object\])$/.test(t) || !p) continue
+      if (n.previousSibling || n.nextSibling) {
+        // a bare literal next to sibling elements (typical `{n && <x/>}` leak)
+        const tag = p.tagName.toLowerCase()
+        if (!/^(span|strong|b|td|dd|small|kbd|output)$/.test(tag) && ![...p.attributes].some(a => /count|value|stat/.test(a.name))) out.push(`${t} in <${tag} ${[...p.attributes].map(a => a.name + '=' + a.value).join(' ').slice(0, 160)}> :: ${p.outerHTML.slice(0, 200)}`)
+      }
+    }
+    return out.slice(0, 10)
+  }).catch(e => [String(e)])
   log.sections[name] = {
     ok, note,
     consoleErrors: log.console.filter(x => x.type === 'error').length - before.c,
     pageErrors: log.pageErrors.length - before.p,
     http4xx5xx: log.http.slice(before.h).map(x => `${x.status} ${x.url}`),
-    failed: log.failed.slice(before.f).map(x => `${x.err} ${x.url}`)
+    failed: log.failed.slice(before.f).map(x => `${x.err} ${x.url}`),
+    stray
   }
   save()
 }
@@ -70,11 +90,12 @@ async function sampleFps(name, act, ms = 5000) {
   save()
 }
 
-const go = async route => { await page.evaluate(r => { location.hash = r }, `#${route}`); await sleep(2500) }
+const ensureFull = async () => { const v = await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen').catch(() => null); if (v !== null && v !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1200) } }
+const go = async route => { await page.evaluate(r => { location.hash = r }, `#${route}`); await sleep(2500); await ensureFull() }
 const lens = async id => {
-  const btn = page.locator(`[data-ops-lens="${id}"]`).first()
+  const btn = page.locator(`[data-ops-rail-list] button[data-ops-lens="${id}"]`).first()
   if (!(await btn.count())) { await page.locator('[data-ops-rail-list] [data-ops-more]').first().click().catch(() => {}); await sleep(400) }
-  await page.locator(`[data-ops-lens="${id}"]`).first().click({ timeout: 8000 })
+  await page.locator(`[data-ops-rail-list] button[data-ops-lens="${id}"]`).first().click({ timeout: 8000 })
   await sleep(2500)
 }
 const want = s => STEPS.includes('all') || STEPS.includes(s)
@@ -92,9 +113,35 @@ await sleep(5000)
 log.bootMs = Date.now() - t0
 await shot('00-boot')
 
+log.boardBefore = await page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') }).catch(e => 'ERR ' + e)
+if (want('probe')) {
+  log.api = await page.evaluate(async () => {
+    const out = {}
+    for (const path of ['/api/status', '/api/ops/fleet', '/api/ops/policy', '/api/plugins/kanban/boards', '/api/plugins/kanban/board']) {
+      try { const r = await window.hermesDesktop.api({ path }); out[path] = JSON.stringify(r).slice(0, 1500) } catch (e) { out[path] = 'ERR ' + String(e).slice(0, 300) }
+    }
+    return out
+  })
+  save()
+}
 if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) } return await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr') })
 if (want('fps')) await sampleFps('office-motion', async () => {}, 6000)
-if (want('board')) await section('02-board', async () => { await go('/ops/board'); return `cards=${await page.locator('[data-ops-open-task]').count()}` })
+if (want('board')) await section('02-board', async () => {
+  await go('/ops/board')
+  log.boardZeros = await page.evaluate(() => {
+    const out = []
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      if (n.textContent.trim() !== '0') continue
+      const p = n.parentElement
+      const r = p.getBoundingClientRect()
+      if (r.width === 0) continue
+      out.push(`@${Math.round(r.x)},${Math.round(r.y)} <${p.tagName.toLowerCase()}> parent=${p.parentElement?.outerHTML.slice(0, 260)}`)
+    }
+    return out
+  })
+  return `cards=${await page.locator('[data-ops-open-task]').count()}`
+})
 if (want('fps')) await sampleFps('board-scroll', async end => {
   const el = page.locator('[data-ops-board], [data-ops-column]').first()
   const box = await el.boundingBox().catch(() => null)
@@ -128,7 +175,7 @@ if (want('draft')) await section('03b-canvas-draft', async () => {
   // One reversible draft edit: open the prompt editor, type, then Discard. Never Review & save.
   await page.locator('[data-ops-node-title]').first().click({ timeout: 8000 })
   await sleep(1000)
-  const ta = page.locator('[data-ops-node-editor] textarea, textarea').first()
+  const ta = page.locator('[data-ops-node-editor] textarea').first()
   await ta.click({ timeout: 8000 }); await page.keyboard.press('End'); await page.keyboard.type(' (ops live check)')
   await sleep(500); await shot('03b-canvas-draft-dirty')
   await page.getByRole('button', { name: /^Discard$/ }).first().click({ timeout: 8000 })
@@ -143,6 +190,9 @@ if (want('diagnostics')) await section('09-diagnostics', async () => {
   await page.locator('[data-ops-probe]').first().click({ timeout: 8000 }); await sleep(4000); await d.scrollIntoViewIfNeeded()
   return await page.evaluate(() => { const e = document.querySelector('[data-ops-diag-connection]'); return `${e?.getAttribute('data-ops-diag-connection')} writes=${e?.getAttribute('data-ops-writes')}` })
 })
+const boardSig = () => page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') })
+log.boardAfter = await boardSig().catch(e => 'ERR ' + e)
+log.boardUnchanged = log.boardBefore === log.boardAfter
 save()
 await app.close().catch(() => {})
-console.log(JSON.stringify({ sections: log.sections, fps: log.fps, bootMs: log.bootMs, console: log.console.length, pageErrors: log.pageErrors.length }, null, 1))
+console.log(JSON.stringify({ boardUnchanged: log.boardUnchanged, sections: log.sections, fps: log.fps, bootMs: log.bootMs, console: log.console.length, pageErrors: log.pageErrors.length }, null, 1))
