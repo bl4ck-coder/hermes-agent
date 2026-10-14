@@ -305,6 +305,12 @@ if (want('diagnostics')) await section('09-diagnostics', async () => {
   await page.locator('[data-ops-probe]').first().click({ timeout: 8000 }); await sleep(4000); await d.scrollIntoViewIfNeeded()
   return await page.evaluate(() => { const e = document.querySelector('[data-ops-diag-connection]'); return `${e?.getAttribute('data-ops-diag-connection')} writes=${e?.getAttribute('data-ops-writes')}` })
 })
+// Glass/IA pass: the main Hermes screens outside Ops (read-only visits; Escape closes overlays).
+for (const [n, route] of [['20-app-chat', '/'], ['21-app-settings', '/settings'], ['22-app-profiles', '/profiles'], ['23-app-capabilities', '/capabilities'], ['24-app-messaging', '/messaging'], ['25-app-artifacts', '/artifacts'], ['26-app-cron', '/cron'], ['27-app-command-center', '/command-center'], ['28-app-agents', '/agents']]) {
+  if (!want('app') && !want(n)) continue
+  await section(n, async () => { await go(route); return page.url() })
+  await page.keyboard.press('Escape').catch(() => {}); await sleep(300)
+}
 const boardSig = () => page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') })
 log.boardAfter = await boardSig().catch(e => 'ERR ' + e)
 log.boardUnchanged = log.boardBefore === log.boardAfter
