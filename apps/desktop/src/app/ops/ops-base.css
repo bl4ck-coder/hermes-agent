@@ -332,3 +332,11 @@
 :where([data-ops-fleet-status='failing']) { background: color-mix(in srgb, #b4474b 18%, transparent); color: #e08a8d; }
 :where([data-ops-fleet-status='running']) { background: color-mix(in srgb, var(--ops-gold, #c9a227) 16%, transparent); color: var(--ops-gold, #c9a227); }
 :where([data-ops-fleet-status='idle'], [data-ops-fleet-status='unknown']) { color: var(--ops-muted); }
+
+/* B15: Compose is one quiet line (Outglow's docked composer) until it holds text or a proposal. */
+:where([data-ops-compose]) { margin: 0 0 8px; }
+:where([data-ops-compose] form) { align-items: flex-start; display: flex; gap: 6px; }
+:where([data-ops-compose] textarea) { flex: 1; min-height: 30px; resize: vertical; }
+:where([data-ops-proposal]) { border: 1px dashed color-mix(in srgb, var(--ops-gold, #c9a227) 55%, transparent); border-radius: 8px; margin-top: 6px; padding: 8px 10px; }
+:where([data-ops-proposal] pre) { color: #8fc79a; margin: 4px 0; white-space: pre-wrap; }
+:where([data-ops-empty-reset]) { margin-left: 6px; }

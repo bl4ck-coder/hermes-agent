@@ -4,6 +4,7 @@
 // `Translations.opsStates` (en.ts spreads the English entry, each locale
 // overlay spreads its own), so `useI18n().t.ops` follows the selected locale.
 // `Ops` is the product name and is intentionally not translated.
+import { T } from './main-i18n'
 import type { OpsStatesTranslations } from '@/i18n/types_ops_states'
 
 type Fn1 = (value: string) => string
@@ -2666,7 +2667,7 @@ export const opsLocaleEntry = (locale: OpsLocaleId) => ({ ops: OPS_LOCALES[local
 export function opsNavLabel(copy: OpsCopy, id: string, fallback: string): string {
   const key = id.startsWith('lens:') ? id.slice(5) : id
 
-  return Object.hasOwn(copy.nav, key) ? copy.nav[key as keyof OpsCopy['nav']] : fallback
+  return Object.hasOwn(copy.nav, key) ? copy.nav[key as keyof OpsCopy['nav']] : T(fallback)
 }
 
 /** Presence/group label for a raw state id (`needs-you` and `needs_you` both resolve). */

@@ -609,7 +609,7 @@ export function OfficeView(props: OfficeViewProps) {
           </table>
         ) : null}
         {/* X10: provenance always shown; no money figure (no price is configured in Hermes). */}
-        <small data-ops-usage-provenance="">source: {props.usage?.provenance ?? '/api/ops/usage/today'} {T("· no $ (no price configured)")}</small>
+        <small data-ops-usage-provenance="">{T('source:')} {props.usage?.provenance ?? '/api/ops/usage/today'} {T("· no $ (no price configured)")}</small>
       </SectionFrame>
       <SectionFrame error={errors.activity} id="activity" loading={props.activity === null && !props.taskEvents?.length} title={T("Activity")}>
         {props.taskEvents && props.taskEvents.length ? (

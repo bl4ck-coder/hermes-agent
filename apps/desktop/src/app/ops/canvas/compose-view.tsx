@@ -32,7 +32,7 @@ export function ComposePanel({ profile, edges, readOnly, onStaged }: { profile: 
             }
           }}
           placeholder={T('Describe a change, e.g. "use model openrouter/deepseek-chat; always answer in Spanish"')}
-          rows={2}
+          rows={text.includes('\n') || text.length > 80 ? 3 : 1}
           value={text}
         />
         <button disabled={!text.trim()} type="submit">

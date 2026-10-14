@@ -434,7 +434,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         )}
       </section>
       <ConfirmDialog
-        confirmLabel={busy ? 'Installing…' : `Install ${confirm?.missing.length ?? 0}`}
+        confirmLabel={busy ? T('Installing…') : T('Install {n}').replace('{n}', String(confirm?.missing.length ?? 0))}
         description={confirm ? `Into ${profile}: ${confirm.missing.map(s => s.name).join(', ')}` : ''}
         onClose={() => {
           if (!busy) {
@@ -468,7 +468,7 @@ function AppTile({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: strin
       {card.warning ? <small data-ops-app-warning="">{card.warning}</small> : null}
       {card.connected ? <span data-ops-app-state="connected">{T("✓ Connected")}</span> : null}
       <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
-        {card.connected ? 'Manage' : 'Connect'}
+        {card.connected ? T('Manage') : T('Connect')}
       </button>
     </li>
   )
@@ -487,7 +487,7 @@ export function QuickConnect({ cards, onOpenRoute, onClose }: { cards: AppCard[]
         <option value="all">{T("All kinds")}</option>
         {(Object.keys(APP_CATEGORIES) as AppCard['kind'][]).map(k => (
           <option key={k} value={k}>
-            {APP_CATEGORIES[k]}
+            {T(APP_CATEGORIES[k])}
           </option>
         ))}
       </select>
@@ -535,7 +535,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
         <div role="tablist">
           {(['all', 'connected'] as const).map(f => (
             <button aria-selected={filter === f} data-ops-app-filter={f} key={f} onClick={() => setFilter(f)} role="tab" type="button">
-              {f === 'all' ? `All ${cards.length}` : `Connected ${cards.filter(x => x.connected).length}`}
+              {f === 'all' ? `${T('All')} ${cards.length}` : `${T('Connected')} ${cards.filter(x => x.connected).length}`}
             </button>
           ))}
         </div>
@@ -576,7 +576,14 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
                 </section>
               ) : null
             })}
-          {shown.length === 0 ? <p data-ops-empty="apps">{filter === 'connected' ? 'Nothing connected yet.' : 'No app matches.'}</p> : null}
+          {shown.length === 0 ? (
+        <p data-ops-empty="apps">
+          {filter === 'connected' ? T('Nothing connected yet.') : T('No app matches.')}{' '}
+          <button data-ops-empty-reset="" onClick={() => (setFilter('all'), setQ(''))} type="button">
+            {T('Show all apps')}
+          </button>
+        </p>
+      ) : null}
         </div>
       </div>
     </section>

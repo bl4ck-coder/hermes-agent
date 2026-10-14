@@ -69,7 +69,7 @@ export function DiagnosticsPanel({
         </dd>
         <dt>{T("Connection")}</dt>
         <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
-          {conn ? conn.copy : 'Run the probe to check the Hermes version and capabilities.'}
+          {conn ? conn.copy : T('Run the probe to check the Hermes version and capabilities.')}
         </dd>
         <dt>{T("Stream generation")}</dt>
         <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
@@ -77,7 +77,7 @@ export function DiagnosticsPanel({
         <dd data-ops-diag-policy="">{policySource ?? T('unknown')}</dd>
       </dl>
       <button data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
-        {probing ? 'Probing…' : 'Run capability probe'}
+        {probing ? T('Probing…') : T('Run capability probe')}
       </button>
       {results ? (
         <ul aria-label={T("Capability probe")} data-ops-probe-results="">
