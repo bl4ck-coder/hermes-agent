@@ -32,15 +32,7 @@ import {
   projectProgress,
   stuckItems
 } from './control-room'
-import {
-  DeliveredList,
-  MyQueue,
-  ProjectTable,
-  SectionFrame,
-  type SectionId,
-  StatCards,
-  StuckList
-} from './control-room-view'
+import { DeliveredList, MyQueue, ProjectTable, SectionFrame, type SectionId, StatCards, StuckList } from './control-room-view'
 import { CopyLink } from './copy-link'
 import { type KanbanAction, NeedsYouQueue, type PolicyNeed } from './needs-you'
 import { activityRow, focusNeedsYouRow, toastsFromPending } from './office-toasts'
@@ -125,12 +117,7 @@ function Greeting() {
   const tz = opsTimezone()
   const now = new Date()
   const hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: tz }).format(now))
-  const date = new Intl.DateTimeFormat(opsMainLocale(), {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    timeZone: tz
-  }).format(now)
+  const date = new Intl.DateTimeFormat(opsMainLocale(), { weekday: 'long', month: 'long', day: 'numeric', timeZone: tz }).format(now)
 
   return (
     <header data-ops-greeting="">
@@ -160,9 +147,7 @@ function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; erro
 
   return (
     <div data-ops-strip="health" role="status">
-      <span data-ops-count="profiles">
-        {fleet.profiles.length} {T('profiles')}
-      </span>
+      <span data-ops-count="profiles">{fleet.profiles.length} {T("profiles")}</span>
       {(Object.keys(PRESENCE_LABEL) as Presence[])
         .filter(k => counts.get(k))
         .map(k => (
@@ -170,30 +155,20 @@ function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; erro
             {T(PRESENCE_LABEL[k])} {counts.get(k)}
           </span>
         ))}
-      {error ? <span data-ops-warn="">{T('refresh failed, showing last snapshot')}</span> : null}
+      {error ? <span data-ops-warn="">{T("refresh failed, showing last snapshot")}</span> : null}
     </div>
   )
 }
 
 /** R1: cron runs in the next 24 h and overdue work (a running task whose heartbeat is stale). */
-export function todayCounts(
-  cron: CronJobLite[] | null,
-  inFlight: KanbanTask[] | null,
-  nowS: number,
-  th: OfficeThresholds = DEFAULT_THRESHOLDS
-) {
+export function todayCounts(cron: CronJobLite[] | null, inFlight: KanbanTask[] | null, nowS: number, th: OfficeThresholds = DEFAULT_THRESHOLDS) {
   const next24 = cron
     ? cron.filter(j => {
         if (j.enabled === false) {
           return false
         }
 
-        const t =
-          typeof j.next_run_at === 'number'
-            ? j.next_run_at
-            : typeof j.next_run_at === 'string'
-              ? Date.parse(j.next_run_at) / 1000
-              : NaN
+        const t = typeof j.next_run_at === 'number' ? j.next_run_at : typeof j.next_run_at === 'string' ? Date.parse(j.next_run_at) / 1000 : NaN
 
         return Number.isFinite(t) && t >= nowS && t - nowS <= 86_400
       }).length
@@ -210,42 +185,22 @@ export function todayCounts(
   return { next24, overdue, running: inFlight ? inFlight.length : null }
 }
 
-function TodayStrip({
-  cron,
-  inFlight,
-  nowS,
-  th
-}: {
-  cron: CronJobLite[] | null
-  inFlight: KanbanTask[] | null
-  nowS: number
-  th: OfficeThresholds
-}) {
+function TodayStrip({ cron, inFlight, nowS, th }: { cron: CronJobLite[] | null; inFlight: KanbanTask[] | null; nowS: number; th: OfficeThresholds }) {
   const c = todayCounts(cron, inFlight, nowS, th)
   const n = (v: number | null) => (v === null ? unknown : String(v))
 
   return (
-    <div aria-label={T('Today strip')} data-ops-strip="today">
-      <span data-ops-count="cron-24h">
-        {T('Cron next 24 h')} {n(c.next24)}
-      </span>
-      <span data-ops-count="running">
-        {T('Running')} {n(c.running)}
-      </span>
-      <span data-ops-alarm={Number(c.overdue) > 0 ? '' : undefined} data-ops-count="overdue">
-        {T('Overdue')} {n(c.overdue)}
-      </span>
+    <div aria-label={T("Today strip")} data-ops-strip="today">
+      <span data-ops-count="cron-24h">{T("Cron next 24 h")}{' '}{n(c.next24)}</span>
+      <span data-ops-count="running">{T("Running")}{' '}{n(c.running)}</span>
+      <span data-ops-alarm={Number(c.overdue) > 0 ? '' : undefined} data-ops-count="overdue">{T("Overdue")}{' '}{n(c.overdue)}</span>
     </div>
   )
 }
 
 function CronStrip({ cron, onOpenCron }: { cron: CronJobLite[] | null; onOpenCron?: (id: string) => void }) {
   if (!cron) {
-    return (
-      <div data-ops-strip="cron">
-        {T('Cron')} {unknown}
-      </div>
-    )
+    return <div data-ops-strip="cron">{T("Cron")}{' '}{unknown}</div>
   }
 
   const failing = cron.filter(j => (j.failure_streak ?? 0) > 0)
@@ -253,20 +208,10 @@ function CronStrip({ cron, onOpenCron }: { cron: CronJobLite[] | null; onOpenCro
 
   return (
     <div data-ops-strip="cron">
-      <span data-ops-count="cron-enabled">
-        {enabled.length} {T('cron jobs')}
-      </span>
-      <span data-ops-alarm={failing.length ? '' : undefined} data-ops-count="cron-failing">
-        {P(failing.length, '{n} failing')}
-      </span>
+      <span data-ops-count="cron-enabled">{enabled.length} {T("cron jobs")}</span>
+      <span data-ops-alarm={failing.length ? '' : undefined} data-ops-count="cron-failing">{P(failing.length, '{n} failing')}</span>
       {failing.slice(0, 3).map(j => (
-        <button
-          data-ops-cron-failure={j.id}
-          disabled={!onOpenCron}
-          key={j.id}
-          onClick={() => onOpenCron?.(j.id)}
-          type="button"
-        >
+        <button data-ops-cron-failure={j.id} disabled={!onOpenCron} key={j.id} onClick={() => onOpenCron?.(j.id)} type="button">
           {j.name || j.id} ({j.failure_streak})
         </button>
       ))}
@@ -277,24 +222,13 @@ function CronStrip({ cron, onOpenCron }: { cron: CronJobLite[] | null; onOpenCro
 /** X7 (P8 b6): a handoff (assigned/reassigned with both ends known) younger than this draws an orrery arc. */
 export const HANDOFF_ARC_WINDOW_S = 10
 
-export function handoffArcs(
-  events: KanbanEvent[] | null | undefined,
-  nowS: number
-): { id: number; from: string; to: string }[] {
+export function handoffArcs(events: KanbanEvent[] | null | undefined, nowS: number): { id: number; from: string; to: string }[] {
   const out: { id: number; from: string; to: string }[] = []
 
   for (const e of events ?? []) {
     const p = (e.payload ?? {}) as { from?: unknown; assignee?: unknown }
 
-    if (
-      (e.kind === 'assigned' || e.kind === 'reassigned') &&
-      typeof p.from === 'string' &&
-      p.from &&
-      typeof p.assignee === 'string' &&
-      p.assignee &&
-      p.from !== p.assignee &&
-      nowS - e.created_at <= HANDOFF_ARC_WINDOW_S
-    ) {
+    if ((e.kind === 'assigned' || e.kind === 'reassigned') && typeof p.from === 'string' && p.from && typeof p.assignee === 'string' && p.assignee && p.from !== p.assignee && nowS - e.created_at <= HANDOFF_ARC_WINDOW_S) {
       out.push({ id: e.id, from: p.from, to: p.assignee })
     }
   }
@@ -330,46 +264,26 @@ function Orrery({
   const arcs = reduced ? [] : handoffArcs(events, nowS).filter(a => at.has(a.from) && at.has(a.to))
 
   const orb = (o: { profile: string; presence: Presence; ring: number; x: number; y: number }) => (
-    <Tip label={o.presence === 'unknown' ? `${o.profile}: ${UNKNOWN_WHY}` : undefined} key={o.profile}>
-      <button
-        aria-label={`${o.profile}: ${T(PRESENCE_LABEL[o.presence])}`}
-        data-ops-halo={moving && live.has(o.profile) ? '' : undefined}
-        data-ops-orb={o.profile}
-        data-ops-presence={o.presence}
-        data-ops-ring={o.ring}
-        data-ops-thinking={live.has(o.profile) && !reduced ? '' : undefined}
-        onClick={() => onOpenProfile?.(o.profile)}
-        style={{
-          position: 'absolute',
-          left: `calc(50% + ${o.x}px)`,
-          top: `calc(50% + ${o.y}px)`,
-          transform: 'translate(-50%, -50%)',
-          whiteSpace: 'nowrap'
-        }}
-        type="button"
-      >
-        <Sigil name={o.profile} size={o.ring === 0 ? 26 : 16} />
-        <span data-ops-orb-label="">{o.profile}</span>
-      </button>
-    </Tip>
+    <Tip label={o.presence === 'unknown' ? `${o.profile}: ${UNKNOWN_WHY}` : undefined} key={o.profile}><button
+      aria-label={`${o.profile}: ${T(PRESENCE_LABEL[o.presence])}`}
+      data-ops-halo={moving && live.has(o.profile) ? '' : undefined}
+      data-ops-orb={o.profile}
+      data-ops-presence={o.presence}
+      data-ops-ring={o.ring}
+      data-ops-thinking={live.has(o.profile) && !reduced ? '' : undefined}
+      onClick={() => onOpenProfile?.(o.profile)}
+      style={{ position: 'absolute', left: `calc(50% + ${o.x}px)`, top: `calc(50% + ${o.y}px)`, transform: 'translate(-50%, -50%)', whiteSpace: 'nowrap' }}
+      type="button"
+    >
+      <Sigil name={o.profile} size={o.ring === 0 ? 26 : 16} />
+      <span data-ops-orb-label="">{o.profile}</span>
+    </button></Tip>
   )
 
   return (
-    <div
-      aria-label={T('Orrery')}
-      data-ops-drift={moving ? '' : undefined}
-      data-ops-orrery=""
-      data-ops-reduced={reduced ? '' : undefined}
-      role="group"
-      style={{ position: 'relative', minHeight: 240 }}
-    >
+    <div aria-label={T("Orrery")} data-ops-drift={moving ? '' : undefined} data-ops-orrery="" data-ops-reduced={reduced ? '' : undefined} role="group" style={{ position: 'relative', minHeight: 240 }}>
       {arcs.length ? (
-        <svg
-          aria-hidden
-          data-ops-handoff-arcs=""
-          style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }}
-          viewBox="-200 -120 400 240"
-        >
+        <svg aria-hidden data-ops-handoff-arcs="" style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none' }} viewBox="-200 -120 400 240">
           {arcs.map(a => {
             const p = at.get(a.from)!
             const q = at.get(a.to)!
@@ -394,34 +308,24 @@ function Orrery({
       {orbs.map(orb)}
       {overflow.length ? (
         <button data-ops-orrery-overflow={overflow.length} onClick={() => onLayout?.('table')} type="button">
-          +{overflow.length} {T('more (cap')} {ORRERY_CAP})
+          +{overflow.length} {T("more (cap")}{' '}{ORRERY_CAP})
         </button>
       ) : null}
     </div>
   )
 }
 
-function FleetTable({
-  fleet,
-  nowS,
-  onOpenProfile,
-  onOpenRun
-}: {
-  fleet: FleetResponse
-  nowS: number
-  onOpenProfile?: (p: string) => void
-  onOpenRun?: (id: string) => void
-}) {
+function FleetTable({ fleet, nowS, onOpenProfile, onOpenRun }: { fleet: FleetResponse; nowS: number; onOpenProfile?: (p: string) => void; onOpenRun?: (id: string) => void }) {
   return (
     <table data-ops-fleet-table="">
       <thead>
         <tr>
-          <th scope="col">{T('Profile')}</th>
-          <th scope="col">{T('Presence')}</th>
-          <th scope="col">{T('Observed')}</th>
-          <th scope="col">{T('Runs')}</th>
+          <th scope="col">{T("Profile")}</th>
+          <th scope="col">{T("Presence")}</th>
+          <th scope="col">{T("Observed")}</th>
+          <th scope="col">{T("Runs")}</th>
           <th scope="col">
-            <span className="sr-only">{T('Link')}</span>
+            <span className="sr-only">{T("Link")}</span>
           </th>
         </tr>
       </thead>
@@ -434,20 +338,13 @@ function FleetTable({
               </button>
             </td>
             <td>{T(PRESENCE_LABEL[shownPresence(p, nowS)])}</td>
-            <td>
-              {typeof p.observed_at === 'number' ? `${Math.max(0, Math.round(nowS - p.observed_at))} s ago` : unknown}
-            </td>
+            <td>{typeof p.observed_at === 'number' ? `${Math.max(0, Math.round(nowS - p.observed_at))} s ago` : unknown}</td>
             <td>
               {p.active_runs
                 ? p.active_runs.length
                   ? p.active_runs.map(r => (
                       <span key={String(r.id)}>
-                        <button
-                          data-ops-open-run={String(r.id)}
-                          disabled={!onOpenRun}
-                          onClick={() => onOpenRun?.(String(r.id))}
-                          type="button"
-                        >
+                        <button data-ops-open-run={String(r.id)} disabled={!onOpenRun} onClick={() => onOpenRun?.(String(r.id))} type="button">
                           #{String(r.id)}
                         </button>
                         <CopyLink id={String(r.id)} kind="run" label={`run ${String(r.id)}`} />
@@ -456,10 +353,8 @@ function FleetTable({
                   : 0
                 : unknown}
             </td>
-            <td data-ops-copy-cell="">
-              <CopyLink id={p.profile} kind="profile" />
-            </td>
-          </tr>
+          <td data-ops-copy-cell=""><CopyLink id={p.profile} kind="profile" /></td>
+</tr>
         ))}
       </tbody>
     </table>
@@ -500,7 +395,7 @@ function Dispatch({
 
   return (
     <form
-      aria-label={T('Dispatch')}
+      aria-label={T("Dispatch")}
       data-ops-dispatch=""
       onSubmit={async e => {
         e.preventDefault()
@@ -517,36 +412,27 @@ function Dispatch({
           setText('')
           setStatus(T('Dispatched'))
         } catch (err) {
-          setStatus(
-            T('Dispatch failed: {why}').replace('{why}', err instanceof Error ? err.message : T('request failed'))
-          )
+          setStatus(T('Dispatch failed: {why}').replace('{why}', err instanceof Error ? err.message : T('request failed')))
         } finally {
           setSending(false)
         }
       }}
     >
       <input
-        aria-label={T('Dispatch a task (@assignee title)')}
+        aria-label={T("Dispatch a task (@assignee title)")}
         onChange={e => setText(e.target.value)}
-        placeholder={T('@builder describe the task')}
+        placeholder={T("@builder describe the task")}
         ref={inputRef}
         value={text}
       />
       <button data-ops-write="" disabled={sending || !text.trim()} type="submit">
-        {T('Dispatch')}
-      </button>
-      <kbd>{T('Enter')}</kbd>
+        {T("Dispatch")}</button>
+      <kbd>{T("Enter")}</kbd>
       <span data-ops-routing="">{routingLine(text)}</span>
       {blueprints && blueprints.length ? (
-        <div aria-label={T('Blueprints')} data-ops-chips="">
+        <div aria-label={T("Blueprints")} data-ops-chips="">
           {blueprints.slice(0, 4).map(b => (
-            <button
-              data-ops-chip={b.key}
-              disabled={!onOpenRoute}
-              key={b.key}
-              onClick={() => onOpenRoute?.(`/cron?blueprint=${encodeURIComponent(b.key)}`)}
-              type="button"
-            >
+            <button data-ops-chip={b.key} disabled={!onOpenRoute} key={b.key} onClick={() => onOpenRoute?.(`/cron?blueprint=${encodeURIComponent(b.key)}`)} type="button">
               {T(b.title)}
             </button>
           ))}
@@ -564,10 +450,7 @@ export function localDay(nowS: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const localTime = (s?: number | null) =>
-  typeof s === 'number' && s > 0
-    ? new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : 'unknown'
+const localTime = (s?: number | null) => (typeof s === 'number' && s > 0 ? new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'unknown')
 
 export function OfficeView(props: OfficeViewProps) {
   const reducedMotion = props.reducedMotion ?? effectiveReduced(loadMotion(), systemPrefersReduced())
@@ -591,9 +474,7 @@ export function OfficeView(props: OfficeViewProps) {
   const stuck = stuckItems(tasks, props.cron, nowS, th)
   const delivered = deliveredToday(tasks, nowS)
   const projects = projectProgress(props.projects ?? null, tasks)
-  const openCron = props.onOpenRoute
-    ? (id: string) => props.onOpenRoute?.(`/cron?job=${encodeURIComponent(id)}`)
-    : undefined
+  const openCron = props.onOpenRoute ? (id: string) => props.onOpenRoute?.(`/cron?job=${encodeURIComponent(id)}`) : undefined
 
   // A stat card filters the Office to its section: highlight it and bring it into view (focus moves
   // only because the user clicked; live updates never move focus).
@@ -613,22 +494,10 @@ export function OfficeView(props: OfficeViewProps) {
         <span data-ops-field="connection">{props.connectionLabel || 'unknown connection'}</span>
         {props.readOnly ? null : (
           <span data-ops-header-actions="">
-            <button
-              data-ops-new-task=""
-              data-ops-primary=""
-              onClick={() => dispatchInput.current?.focus()}
-              type="button"
-            >
-              {T('New task')}
-            </button>
-            <button
-              data-ops-new-profile=""
-              disabled={!props.onNewProfile}
-              onClick={() => props.onNewProfile?.()}
-              type="button"
-            >
-              {T('New profile')}
-            </button>
+            <button data-ops-new-task="" data-ops-primary="" onClick={() => dispatchInput.current?.focus()} type="button">
+              {T("New task")}</button>
+            <button data-ops-new-profile="" disabled={!props.onNewProfile} onClick={() => props.onNewProfile?.()} type="button">
+              {T("New profile")}</button>
           </span>
         )}
       </header>
@@ -637,41 +506,21 @@ export function OfficeView(props: OfficeViewProps) {
       <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} th={th} />
       <HealthStrip error={props.fleetError} fleet={fleet} nowS={nowS} />
       <CronStrip cron={props.cron} onOpenCron={openCron} />
-      <div aria-label={T('Fleet layout')} role="tablist">
+      <div aria-label={T("Fleet layout")} role="tablist">
         {(['orrery', 'table'] as const).map(l => (
-          <button
-            aria-selected={layout === l}
-            data-ops-layout={l}
-            key={l}
-            onClick={() => setLayout(l)}
-            role="tab"
-            type="button"
-          >
+          <button aria-selected={layout === l} data-ops-layout={l} key={l} onClick={() => setLayout(l)} role="tab" type="button">
             {l === 'orrery' ? T('Orrery') : T('Table')}
           </button>
         ))}
       </div>
       {fleet ? (
         layout === 'orrery' ? (
-          <Orrery
-            events={props.taskEvents}
-            fleet={fleet}
-            nowS={nowS}
-            onLayout={setLayout}
-            onOpenProfile={props.onOpenProfile}
-            reduced={reducedMotion}
-          />
+          <Orrery events={props.taskEvents} fleet={fleet} nowS={nowS} onLayout={setLayout} onOpenProfile={props.onOpenProfile} reduced={reducedMotion} />
         ) : (
           <FleetTable fleet={fleet} nowS={nowS} onOpenProfile={props.onOpenProfile} onOpenRun={props.onOpenRun} />
         )
       ) : null}
-      <Dispatch
-        blueprints={props.blueprints}
-        inputRef={dispatchInput}
-        onDispatch={props.onDispatch}
-        onOpenRoute={props.onOpenRoute}
-        readOnly={props.readOnly}
-      />
+      <Dispatch blueprints={props.blueprints} inputRef={dispatchInput} onDispatch={props.onDispatch} onOpenRoute={props.onOpenRoute} readOnly={props.readOnly} />
       {props.readOnly ? null : (
         <ToastQueue
           items={toastsFromPending(props.pending, nowS * 1000, {
@@ -680,20 +529,11 @@ export function OfficeView(props: OfficeViewProps) {
             onReview: focusNeedsYouRow
           })}
           now={nowS * 1000}
-          onNeedsYou={() =>
-            document.querySelector('[data-ops-needs-you-anchor]')?.scrollIntoView?.({ block: 'nearest' })
-          }
+          onNeedsYou={() => document.querySelector('[data-ops-needs-you-anchor]')?.scrollIntoView?.({ block: 'nearest' })}
         />
       )}
       <span data-ops-needs-you-anchor="" />
-      <SectionFrame
-        error={errors.pending}
-        focused={focused === 'needs-you'}
-        heading={false}
-        id="needs-you"
-        loading={props.pending === null}
-        title={T('Needs you')}
-      >
+      <SectionFrame error={errors.pending} focused={focused === 'needs-you'} heading={false} id="needs-you" loading={props.pending === null} title={T("Needs you")}>
         <NeedsYouQueue
           cron={props.cron}
           items={props.pending}
@@ -707,36 +547,17 @@ export function OfficeView(props: OfficeViewProps) {
           readOnly={props.readOnly}
         />
       </SectionFrame>
-      <SectionFrame
-        count={stuck?.length}
-        error={errors.board ?? errors.cron}
-        focused={focused === 'stuck'}
-        id="stuck"
-        loading={stuck === null}
-        title={T('Stuck')}
-      >
+      <SectionFrame count={stuck?.length} error={errors.board ?? errors.cron} focused={focused === 'stuck'} id="stuck" loading={stuck === null} title={T("Stuck")}>
         {stuck ? <StuckList items={stuck} onOpenCron={openCron} onOpenTask={props.onOpenTask} /> : null}
       </SectionFrame>
       {profile ? (
-        <SectionFrame
-          error={errors.board}
-          focused={focused === 'queue'}
-          id="queue"
-          loading={boardLoading}
-          title={`My queue · ${profile}`}
-        >
+        <SectionFrame error={errors.board} focused={focused === 'queue'} id="queue" loading={boardLoading} title={`My queue · ${profile}`}>
           {tasks ? <MyQueue nowS={nowS} onOpenTask={props.onOpenTask} profile={profile} tasks={tasks} th={th} /> : null}
         </SectionFrame>
       ) : null}
-      <SectionFrame
-        error={errors.board}
-        focused={focused === 'in-flight'}
-        id="in-flight"
-        loading={props.inFlight === null}
-        title={T('In flight')}
-      >
+      <SectionFrame error={errors.board} focused={focused === 'in-flight'} id="in-flight" loading={props.inFlight === null} title={T("In flight")}>
         {props.inFlight && props.inFlight.length === 0 ? (
-          <p data-ops-empty="in-flight">{T('Nothing running.')}</p>
+          <p data-ops-empty="in-flight">{T("Nothing running.")}</p>
         ) : (
           <ul>
             {(props.inFlight ?? []).map(t => (
@@ -745,73 +566,37 @@ export function OfficeView(props: OfficeViewProps) {
                   {t.title}
                 </button>{' '}
                 {t.assignee ? `@${t.assignee}` : ''}
-                <CopyLink id={t.id} kind="task" label={t.title} />
-              </li>
+              <CopyLink id={t.id} kind="task" label={t.title} />
+</li>
             ))}
           </ul>
         )}
       </SectionFrame>
-      <SectionFrame
-        count={delivered?.length}
-        error={errors.board}
-        focused={focused === 'delivered'}
-        id="delivered"
-        loading={delivered === null}
-        title={T('Delivered today')}
-      >
+      <SectionFrame count={delivered?.length} error={errors.board} focused={focused === 'delivered'} id="delivered" loading={delivered === null} title={T("Delivered today")}>
         {delivered ? (
-          <DeliveredList
-            attachments={props.attachments ?? {}}
-            nowS={nowS}
-            onOpenAttachment={props.onOpenAttachment}
-            onOpenTask={props.onOpenTask}
-            tasks={delivered}
-          />
+          <DeliveredList attachments={props.attachments ?? {}} nowS={nowS} onOpenAttachment={props.onOpenAttachment} onOpenTask={props.onOpenTask} tasks={delivered} />
         ) : null}
       </SectionFrame>
       {props.projects !== undefined ? (
-        <SectionFrame
-          error={errors.projects ?? errors.board}
-          focused={focused === 'projects'}
-          id="projects"
-          loading={projects === null}
-          title={T('Project progress')}
-        >
-          {projects ? (
-            <ProjectTable
-              nowS={nowS}
-              onOpenProject={
-                props.onOpenRoute ? id => props.onOpenRoute?.(`/kanban?project=${encodeURIComponent(id)}`) : undefined
-              }
-              rows={projects}
-            />
-          ) : null}
+        <SectionFrame error={errors.projects ?? errors.board} focused={focused === 'projects'} id="projects" loading={projects === null} title={T("Project progress")}>
+          {projects ? <ProjectTable nowS={nowS} onOpenProject={props.onOpenRoute ? id => props.onOpenRoute?.(`/kanban?project=${encodeURIComponent(id)}`) : undefined} rows={projects} /> : null}
         </SectionFrame>
       ) : null}
-      <SectionFrame error={errors.usage} id="cost" loading={props.usage === null} title={T('Today')}>
-        <span data-ops-tokens="input">
-          {T('Input tokens')} {num(props.usage?.input_tokens)}
-        </span>
-        <span data-ops-tokens="output">
-          {T('Output tokens')} {num(props.usage?.output_tokens)}
-        </span>
+      <SectionFrame error={errors.usage} id="cost" loading={props.usage === null} title={T("Today")}>
+        <span data-ops-tokens="input">{T("Input tokens")}{' '}{num(props.usage?.input_tokens)}</span>
+        <span data-ops-tokens="output">{T("Output tokens")}{' '}{num(props.usage?.output_tokens)}</span>
         {props.usageByProfile && Object.keys(props.usageByProfile).length ? (
-          <table aria-label={T('Tokens today per profile')} data-ops-usage-profiles="">
+          <table aria-label={T("Tokens today per profile")} data-ops-usage-profiles="">
             <thead>
               <tr>
-                <th scope="col">{T('Profile')}</th>
-                <th scope="col">{T('Input')}</th>
-                <th scope="col">{T('Output')}</th>
+                <th scope="col">{T("Profile")}</th>
+                <th scope="col">{T("Input")}</th>
+                <th scope="col">{T("Output")}</th>
               </tr>
             </thead>
             <tbody>
               {Object.entries(props.usageByProfile)
-                .sort(
-                  ([, a], [, b]) =>
-                    (b?.input_tokens ?? -1) +
-                    (b?.output_tokens ?? 0) -
-                    ((a?.input_tokens ?? -1) + (a?.output_tokens ?? 0))
-                )
+                .sort(([, a], [, b]) => (b?.input_tokens ?? -1) + (b?.output_tokens ?? 0) - ((a?.input_tokens ?? -1) + (a?.output_tokens ?? 0)))
                 .map(([name, u]) => (
                   <tr data-ops-usage-profile={name} key={name}>
                     <th scope="row">{name}</th>
@@ -823,18 +608,11 @@ export function OfficeView(props: OfficeViewProps) {
           </table>
         ) : null}
         {/* X10: provenance always shown; no money figure (no price is configured in Hermes). */}
-        <small data-ops-usage-provenance="">
-          {T('source:')} {props.usage?.provenance ?? '/api/ops/usage/today'} {T('· no $ (no price configured)')}
-        </small>
+        <small data-ops-usage-provenance="">{T('source:')} {props.usage?.provenance ?? '/api/ops/usage/today'} {T("· no $ (no price configured)")}</small>
       </SectionFrame>
-      <SectionFrame
-        error={errors.activity}
-        id="activity"
-        loading={props.activity === null && !props.taskEvents?.length}
-        title={T('Activity')}
-      >
+      <SectionFrame error={errors.activity} id="activity" loading={props.activity === null && !props.taskEvents?.length} title={T("Activity")}>
         {props.taskEvents && props.taskEvents.length ? (
-          <ul aria-label={T('Task events')} data-ops-task-events="">
+          <ul aria-label={T("Task events")} data-ops-task-events="">
             {props.taskEvents.slice(0, 20).map(e => {
               const d = describeEvent(e)
 
@@ -844,14 +622,14 @@ export function OfficeView(props: OfficeViewProps) {
                     {e.task_id}
                   </button>{' '}
                   {d.verb} {d.target} <time>{localTime(e.created_at)}</time>
-                  <CopyLink id={e.task_id} kind="task" />
-                </li>
+                <CopyLink id={e.task_id} kind="task" />
+</li>
               )
             })}
           </ul>
         ) : null}
         {props.activity === null ? null : props.activity.length === 0 && !props.taskEvents?.length ? (
-          <p data-ops-empty="activity">{T('No activity yet today.')}</p>
+          <p data-ops-empty="activity">{T("No activity yet today.")}</p>
         ) : (
           <ul>
             {props.activity.slice(0, 20).map((a, i) => {

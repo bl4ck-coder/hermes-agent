@@ -30,41 +30,22 @@ import { Markdown } from './markdown'
 
 /* ------------------------------ R47 inline title ------------------------------ */
 
-export function InlineTitle({
-  task,
-  readOnly,
-  onOpen,
-  onRename
-}: {
-  task: BoardTask
-  readOnly?: boolean
-  onOpen: () => void
-  onRename?: (title: string) => void
-}) {
+export function InlineTitle({ task, readOnly, onOpen, onRename }: { task: BoardTask; readOnly?: boolean; onOpen: () => void; onRename?: (title: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(task.title)
   const done = useRef(false)
 
   if (!editing || readOnly || !onRename) {
     return (
-      <Tip label={readOnly || !onRename ? undefined : 'Double-click or F2 to rename'}>
-        <button
-          data-ops-open-task={task.id}
-          onClick={onOpen}
-          onDoubleClick={() =>
-            !readOnly && onRename && (setDraft(task.title), (done.current = false), setEditing(true))
-          }
-          onKeyDown={e =>
-            e.key === 'F2' &&
-            !readOnly &&
-            onRename &&
-            (e.preventDefault(), setDraft(task.title), (done.current = false), setEditing(true))
-          }
-          type="button"
-        >
-          {task.title}
-        </button>
-      </Tip>
+      <Tip label={readOnly || !onRename ? undefined : 'Double-click or F2 to rename'}><button
+        data-ops-open-task={task.id}
+        onClick={onOpen}
+        onDoubleClick={() => !readOnly && onRename && (setDraft(task.title), (done.current = false), setEditing(true))}
+        onKeyDown={e => e.key === 'F2' && !readOnly && onRename && (e.preventDefault(), setDraft(task.title), (done.current = false), setEditing(true))}
+        type="button"
+      >
+        {task.title}
+      </button></Tip>
     )
   }
 
@@ -117,30 +98,13 @@ export interface CardMenuActions {
   reassign?: (id: string, who: string | null) => void
 }
 
-export function CardMenu({
-  task,
-  assignees,
-  actions,
-  onClose
-}: {
-  task: BoardTask
-  assignees: string[]
-  actions: CardMenuActions
-  onClose: () => void
-}) {
+export function CardMenu({ task, assignees, actions, onClose }: { task: BoardTask; assignees: string[]; actions: CardMenuActions; onClose: () => void }) {
   const first = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => first.current?.focus(), [])
 
   const item = (label: string, fn: (() => void) | undefined, ref?: (el: HTMLButtonElement | null) => void) => (
-    <button
-      data-ops-menu-item={label}
-      disabled={!fn}
-      onClick={() => (fn?.(), onClose())}
-      ref={ref}
-      role="menuitem"
-      type="button"
-    >
+    <button data-ops-menu-item={label} disabled={!fn} onClick={() => (fn?.(), onClose())} ref={ref} role="menuitem" type="button">
       {label}
     </button>
   )
@@ -157,38 +121,28 @@ export function CardMenu({
 
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault()
-          const items = [
-            ...(e.currentTarget.querySelectorAll('[role="menuitem"]:not(:disabled), select') as NodeListOf<HTMLElement>)
-          ]
+          const items = [...(e.currentTarget.querySelectorAll('[role="menuitem"]:not(:disabled), select') as NodeListOf<HTMLElement>)]
           const i = items.indexOf(document.activeElement as HTMLElement)
           items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
         }
       }}
       role="menu"
     >
-      {item(
-        'Open',
-        () => actions.open(task.id),
-        el => (first.current = el)
-      )}
+      {item('Open', () => actions.open(task.id), el => (first.current = el))}
       {item('Duplicate', actions.duplicate && (() => actions.duplicate?.(task)))}
       {item('Copy link', actions.copyLink && (() => actions.copyLink?.(task.id)))}
       {item('Archive', actions.archive && (() => actions.archive?.(task.id)))}
       {actions.reassign ? (
-        <select
-          aria-label={`reassign ${task.id}`}
-          onChange={e => (actions.reassign?.(task.id, e.target.value || null), onClose())}
-          value={task.assignee ?? ''}
-        >
-          <option value="">{T('Reassign: unassigned')}</option>
+        <select aria-label={`reassign ${task.id}`} onChange={e => (actions.reassign?.(task.id, e.target.value || null), onClose())} value={task.assignee ?? ''}>
+          <option value="">{T("Reassign: unassigned")}</option>
           {[...new Set([...assignees, ...(task.assignee ? [task.assignee] : [])])].map(a => (
             <option key={a} value={a}>
-              {T('Reassign:')} {a}
+              {T("Reassign:")}{' '}{a}
             </option>
           ))}
         </select>
       ) : null}
-      <span data-ops-cut="delete">{T('Delete is not offered (archive instead).')}</span>
+      <span data-ops-cut="delete">{T("Delete is not offered (archive instead).")}</span>
     </div>
   )
 }
@@ -216,10 +170,7 @@ export function CardSignals({ task, nowS }: { task: BoardTask; nowS: number }) {
       ))}
       {tags.length > 3 ? <span data-ops-tag-more="">+{tags.length - 3}</span> : null}
       {prog ? (
-        <span
-          aria-label={`subtasks ${prog.done} of ${prog.total} done`}
-          data-ops-progress={`${prog.done}/${prog.total}`}
-        >
+        <span aria-label={`subtasks ${prog.done} of ${prog.total} done`} data-ops-progress={`${prog.done}/${prog.total}`}>
           ☑ {prog.done}/{prog.total}
         </span>
       ) : null}
@@ -227,11 +178,7 @@ export function CardSignals({ task, nowS }: { task: BoardTask; nowS: number }) {
         <span
           aria-label={`heartbeat ${tone}`}
           data-ops-heartbeat={tone}
-          title={
-            typeof task.last_heartbeat_at === 'number'
-              ? `last heartbeat ${fmtAge(nowS - task.last_heartbeat_at)} ago`
-              : undefined
-          }
+          title={typeof task.last_heartbeat_at === 'number' ? `last heartbeat ${fmtAge(nowS - task.last_heartbeat_at)} ago` : undefined}
         >
           ●
         </span>
@@ -250,13 +197,7 @@ export function StarButton({ kind, id, label }: { kind: Favourite['kind']; id: s
   const on = isFav(kind, id, list)
 
   return (
-    <button
-      aria-label={`${on ? 'Unstar' : 'Star'} ${label}`}
-      aria-pressed={on}
-      data-ops-star={`${kind}:${id}`}
-      onClick={() => toggleFav(kind, id, label)}
-      type="button"
-    >
+    <button aria-label={`${on ? 'Unstar' : 'Star'} ${label}`} aria-pressed={on} data-ops-star={`${kind}:${id}`} onClick={() => toggleFav(kind, id, label)} type="button">
       {on ? '★' : '☆'}
     </button>
   )
@@ -293,9 +234,7 @@ export function GroupedTasks({
               <button
                 aria-expanded={!isClosed}
                 data-ops-group-toggle={g.key}
-                onClick={() =>
-                  setClosed(s => (s.has(g.key) ? new Set([...s].filter(x => x !== g.key)) : new Set([...s, g.key])))
-                }
+                onClick={() => setClosed(s => (s.has(g.key) ? new Set([...s].filter(x => x !== g.key)) : new Set([...s, g.key])))}
                 type="button"
               >
                 {isClosed ? '▸' : '▾'} {g.label} <span data-ops-group-count={g.key}>{g.tasks.length}</span>
@@ -306,11 +245,11 @@ export function GroupedTasks({
                 <thead>
                   <tr>
                     <th>id</th>
-                    <th>{T('title')}</th>
-                    <th>{T('status')}</th>
-                    <th>{T('assignee')}</th>
-                    <th>{T('priority')}</th>
-                    <th>{T('updated')}</th>
+                    <th>{T("title")}</th>
+                    <th>{T("status")}</th>
+                    <th>{T("assignee")}</th>
+                    <th>{T("priority")}</th>
+                    <th>{T("updated")}</th>
                   </tr>
                 </thead>
                 <tbody>{g.tasks.map(render)}</tbody>
@@ -350,7 +289,7 @@ export function TimelineView({
   const m = timelineModel(tasks, links ?? [], nowS, scale, group)
 
   return (
-    <section aria-label={T('Timeline')} data-ops-scale={scale} data-ops-timeline="">
+    <section aria-label={T("Timeline")} data-ops-scale={scale} data-ops-timeline="">
       <div role="toolbar">
         {(['weeks', 'months'] as const).map(s => (
           <button aria-pressed={scale === s} data-ops-scale-btn={s} key={s} onClick={() => setScale(s)} type="button">
@@ -358,44 +297,21 @@ export function TimelineView({
           </button>
         ))}
         <label>
-          {T('Group')}
-          <select
-            aria-label={T('timeline group')}
-            onChange={e => setGroup(e.target.value as 'project' | 'profile')}
-            value={group}
-          >
-            <option value="profile">{T('Profile')}</option>
-            <option value="project">{T('Project')}</option>
+          {T("Group")}<select aria-label={T("timeline group")} onChange={e => setGroup(e.target.value as 'project' | 'profile')} value={group}>
+            <option value="profile">{T("Profile")}</option>
+            <option value="project">{T("Project")}</option>
           </select>
         </label>
-        {links === null ? (
-          <span data-ops-loading="">{T('relations loading')}</span>
-        ) : (
-          <span data-ops-field="links">
-            {m.curves.length} {T('parent/child relations')}
-          </span>
-        )}
+        {links === null ? <span data-ops-loading="">{T("relations loading")}</span> : <span data-ops-field="links">{m.curves.length} {T("parent/child relations")}</span>}
       </div>
       {tasks.length === 0 ? (
-        <p data-ops-empty="timeline">{T('No tasks match.')}</p>
+        <p data-ops-empty="timeline">{T("No tasks match.")}</p>
       ) : (
         <div style={{ overflowX: 'auto', position: 'relative' }}>
-          <svg
-            aria-hidden="true"
-            data-ops-timeline-svg=""
-            height={m.height}
-            style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
-            width={m.width}
-          >
+          <svg aria-hidden="true" data-ops-timeline-svg="" height={m.height} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} width={m.width}>
             <line data-ops-today="" stroke="currentColor" x1={m.todayX} x2={m.todayX} y1={0} y2={m.height} />
             {m.curves.map(c => (
-              <path
-                d={c.d}
-                data-ops-curve={`${c.from}->${c.to}`}
-                fill="none"
-                key={`${c.from}-${c.to}`}
-                stroke="currentColor"
-              />
+              <path d={c.d} data-ops-curve={`${c.from}->${c.to}`} fill="none" key={`${c.from}-${c.to}`} stroke="currentColor" />
             ))}
           </svg>
           <div style={{ height: m.height, position: 'relative', width: m.width }}>
@@ -500,7 +416,7 @@ export function FilesView({
 
   return (
     <section
-      aria-label={T('Files')}
+      aria-label={T("Files")}
       data-ops-drop-over={over ? '' : undefined}
       data-ops-files={mode}
       onDragLeave={() => setOver(false)}
@@ -527,70 +443,47 @@ export function FilesView({
         ))}
         {!readOnly && onUpload ? (
           <>
-            <select aria-label={T('attach to task')} onChange={e => setTarget(e.target.value)} value={target}>
+            <select aria-label={T("attach to task")} onChange={e => setTarget(e.target.value)} value={target}>
               {tasks.map(t => (
                 <option key={t.id} value={t.id}>
                   {t.title}
                 </option>
               ))}
             </select>
-            <button
-              data-ops-upload=""
-              data-ops-write=""
-              disabled={!target}
-              onClick={() => input.current?.click()}
-              type="button"
-            >
-              {T('Upload')}
-            </button>
-            <input
-              aria-label={T('upload file')}
-              hidden
-              multiple
-              onChange={e => void send(e.target.files)}
-              ref={input}
-              type="file"
-            />
-            <span data-ops-drop-zone="">{T('or drop files here')}</span>
+            <button data-ops-upload="" data-ops-write="" disabled={!target} onClick={() => input.current?.click()} type="button">
+              {T("Upload")}</button>
+            <input aria-label={T("upload file")} hidden multiple onChange={e => void send(e.target.files)} ref={input} type="file" />
+            <span data-ops-drop-zone="">{T("or drop files here")}</span>
           </>
         ) : null}
       </div>
       {msg ? <p role="status">{msg}</p> : null}
       {typeof scanned === 'number' ? (
-        <p data-ops-field="scope">
-          {T('Files from the')} {scanned} {T('most recently active tasks (this Hermes has no board-wide file list).')}
-        </p>
+        <p data-ops-field="scope">{T("Files from the")}{' '}{scanned} {T("most recently active tasks (this Hermes has no board-wide file list).")}</p>
       ) : sorted ? (
         <p data-ops-field="scope">
-          {sorted.length} {T('file')}
-          {sorted.length === 1 ? '' : 's'} {T('on this board')}
-          {hasMore ? ' so far' : ''}.
+          {sorted.length} {T("file")}{sorted.length === 1 ? '' : 's'} {T("on this board")}{hasMore ? ' so far' : ''}.
           {hasMore ? (
-            <button
-              data-ops-files-more=""
-              disabled={loadingMore || !onLoadMore}
-              onClick={() => onLoadMore?.()}
-              type="button"
-            >
+            <button data-ops-files-more="" disabled={loadingMore || !onLoadMore} onClick={() => onLoadMore?.()} type="button">
               {loadingMore ? 'Loading…' : 'Load more'}
             </button>
           ) : null}
         </p>
       ) : null}
       {sorted === null ? (
-        <p data-ops-loading="">{T('Files loading…')}</p>
+        <p data-ops-loading="">{T("Files loading…")}</p>
       ) : sorted.length === 0 ? (
-        <p data-ops-empty="files">{T('No files attached yet.')}</p>
+        <p data-ops-empty="files">{T("No files attached yet.")}</p>
       ) : mode === 'list' ? (
         <table>
           <thead>
             <tr>
-              <th>{T('Name')}</th>
-              <th>{T('Type')}</th>
-              <th>{T('Size')}</th>
-              <th>{T('Uploader')}</th>
-              <th>{T('Age')}</th>
-              <th>{T('Task')}</th>
+              <th>{T("Name")}</th>
+              <th>{T("Type")}</th>
+              <th>{T("Size")}</th>
+              <th>{T("Uploader")}</th>
+              <th>{T("Age")}</th>
+              <th>{T("Task")}</th>
             </tr>
           </thead>
           <tbody>
@@ -604,9 +497,7 @@ export function FilesView({
                 <td data-ops-field="type">{typeOf(f)}</td>
                 <td>{fmtBytes(f.size)}</td>
                 <td>{f.uploaded_by ?? T('unknown')}</td>
-                <td>
-                  {typeof f.created_at === 'number' ? `${fmtAge(nowS - f.created_at)} ${T('ago')}` : T('unknown')}
-                </td>
+                <td>{typeof f.created_at === 'number' ? `${fmtAge(nowS - f.created_at)} ${T('ago')}` : T('unknown')}</td>
                 <td>
                   <button disabled={!onOpenTask} onClick={() => onOpenTask?.(f.taskId)} type="button">
                     {f.taskTitle}
@@ -624,8 +515,7 @@ export function FilesView({
                 <strong>{typeOf(f).toUpperCase()}</strong> {f.filename}
               </button>
               <small>
-                {fmtBytes(f.size)} · {f.uploaded_by ?? T('unknown')} ·{' '}
-                {typeof f.created_at === 'number' ? `${fmtAge(nowS - f.created_at)} ${T('ago')}` : T('unknown')}
+                {fmtBytes(f.size)} · {f.uploaded_by ?? T('unknown')} · {typeof f.created_at === 'number' ? `${fmtAge(nowS - f.created_at)} ${T('ago')}` : T('unknown')}
               </small>
             </li>
           ))}
@@ -637,22 +527,17 @@ export function FilesView({
 
 /* ------------------------------- R74 favourites ------------------------------- */
 
-const KIND_LABEL: Record<Favourite['kind'], string> = {
-  task: 'Tasks',
-  profile: 'Profiles',
-  project: 'Projects',
-  run: 'Runs'
-}
+const KIND_LABEL: Record<Favourite['kind'], string> = { task: 'Tasks', profile: 'Profiles', project: 'Projects', run: 'Runs' }
 
 export function FavoritesView({ tasks, onOpen }: { tasks: BoardTask[]; onOpen: (f: Favourite) => void }) {
   const list = favStore.use()
 
   if (!list.length) {
-    return <p data-ops-empty="favorites">{T('Star a project or task to pin it here.')}</p>
+    return <p data-ops-empty="favorites">{T("Star a project or task to pin it here.")}</p>
   }
 
   return (
-    <section aria-label={T('Favorites')} data-ops-favorites="">
+    <section aria-label={T("Favorites")} data-ops-favorites="">
       {(['task', 'profile', 'project', 'run'] as const).map(kind => {
         const xs = list.filter(f => f.kind === kind)
 
@@ -670,9 +555,7 @@ export function FavoritesView({ tasks, onOpen }: { tasks: BoardTask[]; onOpen: (
                     <button onClick={() => onOpen(f)} type="button">
                       {live?.title ?? f.label}
                     </button>
-                    {kind === 'task' ? (
-                      <span data-ops-field="status"> {live ? live.status : 'not on this board'}</span>
-                    ) : null}
+                    {kind === 'task' ? <span data-ops-field="status"> {live ? live.status : 'not on this board'}</span> : null}
                     <StarButton id={f.id} kind={f.kind} label={f.label} />
                   </li>
                 )
@@ -710,13 +593,7 @@ export function NewTaskModal({
 }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [column, setColumn] = useState(
-    initialColumn && columns.includes(initialColumn)
-      ? initialColumn
-      : columns.includes('todo')
-        ? 'todo'
-        : (columns[0] ?? 'todo')
-  )
+  const [column, setColumn] = useState(initialColumn && columns.includes(initialColumn) ? initialColumn : columns.includes('todo') ? 'todo' : columns[0] ?? 'todo')
   const [assignee, setAssignee] = useState('')
   const [priority, setPriority] = useState(0)
   const [preview, setPreview] = useState(false)
@@ -751,7 +628,7 @@ export function NewTaskModal({
 
   return (
     <div
-      aria-label={T('New task')}
+      aria-label={T("New task")}
       aria-modal="true"
       data-ops-new-task-modal=""
       onKeyDown={(e: KeyboardEvent) => {
@@ -767,43 +644,24 @@ export function NewTaskModal({
       }}
       role="dialog"
     >
-      <h3>{T('New task')}</h3>
-      <input
-        aria-label={T('new task title')}
-        onChange={e => setTitle(e.target.value)}
-        placeholder={T('Title (start with @profile to assign)')}
-        ref={first}
-        value={title}
-      />
+      <h3>{T("New task")}</h3>
+      <input aria-label={T("new task title")} onChange={e => setTitle(e.target.value)} placeholder={T("Title (start with @profile to assign)")} ref={first} value={title} />
       <div role="toolbar">
         <button aria-pressed={!preview} onClick={() => setPreview(false)} type="button">
-          {T('Write')}
-        </button>
+          {T("Write")}</button>
         <button aria-pressed={preview} onClick={() => setPreview(true)} type="button">
-          {T('Preview')}
-        </button>
+          {T("Preview")}</button>
       </div>
-      {preview ? (
-        <Markdown text={body} />
-      ) : (
-        <textarea
-          aria-label={T('new task description')}
-          onChange={e => setBody(e.target.value)}
-          placeholder={T('Description (Markdown)')}
-          value={body}
-        />
-      )}
+      {preview ? <Markdown text={body} /> : <textarea aria-label={T("new task description")} onChange={e => setBody(e.target.value)} placeholder={T("Description (Markdown)")} value={body} />}
       <label>
-        {T('Column')}
-        <select aria-label={T('new task column')} onChange={e => setColumn(e.target.value)} value={column}>
+        {T("Column")}<select aria-label={T("new task column")} onChange={e => setColumn(e.target.value)} value={column}>
           {columns.map(c => (
             <option key={c}>{c}</option>
           ))}
         </select>
       </label>
       <label>
-        {T('Assignee')}
-        <select aria-label={T('new task assignee')} onChange={e => setAssignee(e.target.value)} value={who}>
+        {T("Assignee")}<select aria-label={T("new task assignee")} onChange={e => setAssignee(e.target.value)} value={who}>
           <option value="">{column === 'triage' ? 'triage decides' : 'unassigned'}</option>
           {assignees.map(a => (
             <option key={a}>{a}</option>
@@ -811,48 +669,21 @@ export function NewTaskModal({
         </select>
       </label>
       <label>
-        {T('Priority')}
-        <input
-          aria-label={T('new task priority')}
-          max={10}
-          min={0}
-          onChange={e => setPriority(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
-          type="number"
-          value={priority}
-        />
+        {T("Priority")}<input aria-label={T("new task priority")} max={10} min={0} onChange={e => setPriority(Math.max(0, Math.min(10, Number(e.target.value) || 0)))} type="number" value={priority} />
       </label>
-      {err ? (
-        <p role="alert">
-          {T('Not created:')} {err}
-        </p>
-      ) : null}
-      <button
-        data-ops-create=""
-        data-ops-write=""
-        disabled={!cleanTitle || busy}
-        onClick={() => void submit()}
-        type="button"
-      >
-        {busy ? 'Creating…' : 'Create'} <kbd>{T('Ctrl+Enter')}</kbd>
+      {err ? <p role="alert">{T("Not created:")}{' '}{err}</p> : null}
+      <button data-ops-create="" data-ops-write="" disabled={!cleanTitle || busy} onClick={() => void submit()} type="button">
+        {busy ? 'Creating…' : 'Create'} <kbd>{T("Ctrl+Enter")}</kbd>
       </button>
       <button onClick={onClose} type="button">
-        {T('Cancel')}
-      </button>
+        {T("Cancel")}</button>
     </div>
   )
 }
 
 /* ------------------------------ R17 body editor ------------------------------ */
 
-export function BodyEditor({
-  body,
-  readOnly,
-  onSave
-}: {
-  body: string | null | undefined
-  readOnly?: boolean
-  onSave?: (body: string) => Promise<unknown>
-}) {
+export function BodyEditor({ body, readOnly, onSave }: { body: string | null | undefined; readOnly?: boolean; onSave?: (body: string) => Promise<unknown> }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(body ?? '')
   const [err, setErr] = useState<string | null>(null)
@@ -863,48 +694,33 @@ export function BodyEditor({
       <div data-ops-body="">
         <Markdown text={body} />
         {!readOnly && onSave ? (
-          <button
-            data-ops-edit-body=""
-            onClick={() => (setDraft(body ?? ''), setErr(null), setEditing(true))}
-            type="button"
-          >
-            {T('Edit description')}
-          </button>
+          <button data-ops-edit-body="" onClick={() => (setDraft(body ?? ''), setErr(null), setEditing(true))} type="button">
+            {T("Edit description")}</button>
         ) : null}
       </div>
     )
   }
 
-  const wrap = (before: string, after = before) =>
-    setDraft(d => `${d}${d && !d.endsWith('\n') ? ' ' : ''}${before}text${after}`)
+  const wrap = (before: string, after = before) => setDraft(d => `${d}${d && !d.endsWith('\n') ? ' ' : ''}${before}text${after}`)
 
   return (
     <div data-ops-body-editor="" onKeyDown={e => e.key === 'Escape' && (e.stopPropagation(), setEditing(false))}>
-      <div aria-label={T('Formatting')} role="toolbar">
+      <div aria-label={T("Formatting")} role="toolbar">
         <button onClick={() => wrap('**')} type="button">
-          {T('Bold')}
-        </button>
+          {T("Bold")}</button>
         <button onClick={() => setDraft(d => `${d}${d ? '\n' : ''}- item`)} type="button">
-          {T('List')}
-        </button>
+          {T("List")}</button>
         <button onClick={() => setDraft(d => `${d}${d ? '\n' : ''}## Heading`)} type="button">
-          {T('Heading')}
-        </button>
+          {T("Heading")}</button>
         <button onClick={() => wrap('[', '](https://)')} type="button">
-          {T('Link')}
-        </button>
+          {T("Link")}</button>
       </div>
-      <textarea aria-label={T('description')} onChange={e => setDraft(e.target.value)} value={draft} />
+      <textarea aria-label={T("description")} onChange={e => setDraft(e.target.value)} value={draft} />
       <div data-ops-body-preview="">
         <Markdown text={draft} />
       </div>
-      {err ? (
-        <p role="alert">
-          {T('Not saved:')} {err}
-        </p>
-      ) : null}
-      <button
-        data-ops-save-body=""
+      {err ? <p role="alert">{T("Not saved:")}{' '}{err}</p> : null}
+      <button data-ops-save-body=""
         data-ops-write=""
         disabled={busy || draft === (body ?? '')}
         onClick={async () => {
@@ -921,11 +737,9 @@ export function BodyEditor({
         }}
         type="button"
       >
-        {T('Save')}
-      </button>
+        {T("Save")}</button>
       <button onClick={() => setEditing(false)} type="button">
-        {T('Cancel')}
-      </button>
+        {T("Cancel")}</button>
     </div>
   )
 }

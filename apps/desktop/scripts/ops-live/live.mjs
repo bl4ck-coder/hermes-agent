@@ -52,16 +52,18 @@ page.on('response', r => r.status() >= 400 && log.http.push({ status: r.status()
 const dismissToasts = async () => {
   const texts = await page.evaluate(() => {
     const out = []
-    for (const n of document.querySelectorAll('[role="region"] [role="status"]')) {
+    // Glass p3: alerts too (warnings render as role=alert), full text with the details expanded.
+    for (const n of document.querySelectorAll('[role="region"] [role="status"], [role="region"] [role="alert"]')) {
       if (!n.getClientRects().length) continue
+      for (const d of n.querySelectorAll('button, summary')) if (/^(Detalles|Details)$/i.test((d.textContent || '').trim().replace(/^[^A-Za-z]+/, ''))) d.click()
       const b = n.querySelector('button[aria-label]')
-      if (b) { out.push((n.textContent || '').trim().slice(0, 80)); b.click() }
+      if (b) { out.push((n.textContent || '').trim().slice(0, 600)); b.click() }
     }
     return out
   }).catch(() => [])
   if (texts.length) { log.toastDismissed.push(...texts); await sleep(350) }
 }
-const shot = async name => { await dismissToasts(); return page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) })) }
+const shot = async name => { await dismissToasts(); await sleep(250); await dismissToasts(); return page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) })) }
 const save = () => writeFileSync(join(OUT, 'live.json'), JSON.stringify({ ...log, mainTail: typeof log.mainTail === 'function' ? log.mainTail() : '' }, null, 2))
 
 async function section(name, fn) {

@@ -37,25 +37,23 @@ export function CopyLink({ kind, id, label }: { kind: LinkKind; id: string; labe
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
 
   return (
-    <Tip label={state === 'copied' ? 'Link copied' : state === 'failed' ? 'Copy failed' : 'Copy link'}>
-      <button
-        aria-label={`Copy link to ${label ?? `${kind} ${id}`}`}
-        data-ops-copy-link={`${kind}:${id}`}
-        data-ops-copy-state={state}
-        onClick={async e => {
-          e.stopPropagation()
+    <Tip label={state === 'copied' ? 'Link copied' : state === 'failed' ? 'Copy failed' : 'Copy link'}><button
+      aria-label={`Copy link to ${label ?? `${kind} ${id}`}`}
+      data-ops-copy-link={`${kind}:${id}`}
+      data-ops-copy-state={state}
+      onClick={async e => {
+        e.stopPropagation()
 
-          try {
-            await writer(linkFor(kind, id))
-            setState('copied')
-          } catch {
-            setState('failed')
-          }
-        }}
-        type="button"
-      >
-        {state === 'copied' ? '✓' : '⧉'}
-      </button>
-    </Tip>
+        try {
+          await writer(linkFor(kind, id))
+          setState('copied')
+        } catch {
+          setState('failed')
+        }
+      }}
+      type="button"
+    >
+      {state === 'copied' ? '✓' : '⧉'}
+    </button></Tip>
   )
 }
