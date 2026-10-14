@@ -158,11 +158,11 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
         : null
       const nextArtifacts = retry ? [...first.artifacts, ...retry.artifacts] : first.artifacts
       const allFailures = retry
+        ? [...first.failures.filter(f => !isSlotWaitTimeout(f.error)), ...retry.failures]
+        : first.failures
       // A retired profile backend is the pool's normal idle state, not a read error: those
       // sessions are skipped quietly (opening the profile reconnects it) instead of warning on every boot.
       const failures = allFailures.filter(({ error }) => !isRetiredBackend(error))
-        ? [...first.failures.filter(f => !isSlotWaitTimeout(f.error)), ...retry.failures]
-        : first.failures
 
       if (failures.length > 0) {
         const safeLimitFailures = failures.filter(({ error }) =>
