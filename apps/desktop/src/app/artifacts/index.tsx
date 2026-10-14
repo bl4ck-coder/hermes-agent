@@ -157,7 +157,10 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
           )
         : null
       const nextArtifacts = retry ? [...first.artifacts, ...retry.artifacts] : first.artifacts
-      const failures = retry
+      const allFailures = retry
+      // A retired profile backend is the pool's normal idle state, not a read error: those
+      // sessions are skipped quietly (opening the profile reconnects it) instead of warning on every boot.
+      const failures = allFailures.filter(({ error }) => !isRetiredBackend(error))
         ? [...first.failures.filter(f => !isSlotWaitTimeout(f.error)), ...retry.failures]
         : first.failures
 
@@ -744,4 +747,9 @@ function ArtifactTable({
 /** A profile backend that could not start in time because every local slot was busy (transient). */
 export function isSlotWaitTimeout(error: unknown): boolean {
   return /SlotWaitTimeout|waiting for a free slot/i.test(String(error instanceof Error ? error.message : error))
+}
+
+/** The profile's local backend was retired by the pool (idle); reading needs an explicit reopen. */
+export function isRetiredBackend(error: unknown): boolean {
+  return /was retired; open it explicitly/i.test(String(error instanceof Error ? error.message : error))
 }
