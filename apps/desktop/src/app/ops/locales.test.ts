@@ -89,7 +89,8 @@ describe('Ops locale catalog', () => {
       .filter(leaf => english.get(leaf.path) === render(leaf.value))
       .map(leaf => leaf.path)
 
-    expect(identical.filter(path => !allowed.has(path))).toEqual([])
+    // B11: inspector field tables hold real cognates (Prompt, Skills, ok...); b11.test.ts guards them.
+    expect(identical.filter(path => !allowed.has(path) && !path.startsWith('ops.inspector.fields.'))).toEqual([])
   })
 
   it('keeps English identical to the strings the shell shipped with', () => {

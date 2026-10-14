@@ -9,6 +9,8 @@ import type { OpsStatesTranslations } from '@/i18n/types_ops_states'
 type Fn1 = (value: string) => string
 type FnN = (value: number | string) => string
 
+import { inspectorFields } from './inspector-i18n'
+
 export interface OpsCopy {
   brand: string
   unavailable: string
@@ -130,6 +132,8 @@ export interface OpsCopy {
     slots: Record<'fleet' | 'context' | 'task' | 'node' | 'history' | 'events' | 'row', string>
     selection: string
     detailUnavailable: Fn1
+    /** B11: inspector labels/values keyed by the English string. */
+    fields: Record<string, string>
     runEventsEmpty: string
   }
   dock: {
@@ -353,6 +357,7 @@ const opsEn: OpsCopy = {
     },
     selection: "Selection",
     detailUnavailable: value => `Nothing selected in ${value} yet. Select an item to see its detail here.`,
+    fields: inspectorFields('en'),
     runEventsEmpty: "Run events stay empty until a focused run supplies them."
   },
   dock: {
@@ -622,7 +627,8 @@ const opsZh: OpsCopy = {
       row: "行"
     },
     selection: "所选项",
-    detailUnavailable: value => `此外壳中尚未构建 ${value} 的详情。没有办公室、画布或看板业务视图。`,
+    detailUnavailable: value => `${value} 中尚未选择任何内容。选择一项即可在此查看详情。`,
+    fields: inspectorFields('zh'),
     runEventsEmpty: "在聚焦的运行提供事件之前，运行事件保持为空。"
   },
   dock: {
@@ -892,7 +898,8 @@ const opsZhHant: OpsCopy = {
       row: "列"
     },
     selection: "選取項目",
-    detailUnavailable: value => `此外殼中尚未建置 ${value} 的詳細資料。沒有辦公室、畫布或看板業務檢視。`,
+    detailUnavailable: value => `${value} 中尚未選取任何內容。選取一項即可在此檢視詳細資料。`,
+    fields: inspectorFields('zh-hant'),
     runEventsEmpty: "在聚焦的執行提供事件之前，執行事件保持空白。"
   },
   dock: {
@@ -1162,7 +1169,8 @@ const opsJa: OpsCopy = {
       row: "行"
     },
     selection: "選択項目",
-    detailUnavailable: value => `このシェルには ${value} の詳細はまだありません。オフィス、キャンバス、ボードの業務ビューはありません。`,
+    detailUnavailable: value => `${value} ではまだ何も選択されていません。項目を選択するとここに詳細が表示されます。`,
+    fields: inspectorFields('ja'),
     runEventsEmpty: "フォーカス中の実行がイベントを提供するまで、実行イベントは空のままです。"
   },
   dock: {
@@ -1432,7 +1440,8 @@ const opsAr: OpsCopy = {
       row: "الصف"
     },
     selection: "التحديد",
-    detailUnavailable: value => `تفاصيل ${value} غير مبنية في هذا الغلاف. لا توجد طريقة عرض أعمال للمكتب أو اللوحة أو اللوح.`,
+    detailUnavailable: value => `لم يُحدَّد شيء في ${value} بعد. اختر عنصرًا لعرض تفاصيله هنا.`,
+    fields: inspectorFields('ar'),
     runEventsEmpty: "تبقى أحداث التشغيل فارغة حتى يوفرها تشغيل محدد."
   },
   dock: {
@@ -1702,7 +1711,8 @@ const opsRu: OpsCopy = {
       row: "Строка"
     },
     selection: "Выбранное",
-    detailUnavailable: value => `Подробности для ${value} в этой оболочке не реализованы. Бизнес-представлений офиса, холста и доски нет.`,
+    detailUnavailable: value => `В разделе ${value} пока ничего не выбрано. Выберите элемент, чтобы увидеть подробности здесь.`,
+    fields: inspectorFields('ru'),
     runEventsEmpty: "События запуска пусты, пока их не передаст выбранный запуск."
   },
   dock: {
@@ -1972,7 +1982,8 @@ const opsFr: OpsCopy = {
       row: "Ligne"
     },
     selection: "Sélection",
-    detailUnavailable: value => `Le détail de ${value} n'existe pas dans ce shell. Aucune vue métier Bureau, Canevas ou Tableau.`,
+    detailUnavailable: value => `Rien n'est encore sélectionné dans ${value}. Sélectionnez un élément pour voir son détail ici.`,
+    fields: inspectorFields('fr'),
     runEventsEmpty: "Les événements d'exécution restent vides tant qu'une exécution ciblée ne les fournit pas."
   },
   dock: {
@@ -2242,7 +2253,8 @@ const opsDe: OpsCopy = {
       row: "Zeile"
     },
     selection: "Auswahl",
-    detailUnavailable: value => `Details zu ${value} sind in dieser Shell nicht gebaut. Keine Büro-, Leinwand- oder Board-Fachansicht.`,
+    detailUnavailable: value => `In ${value} ist noch nichts ausgewählt. Wähle ein Element, um hier Details zu sehen.`,
+    fields: inspectorFields('de'),
     runEventsEmpty: "Laufereignisse bleiben leer, bis ein fokussierter Lauf sie liefert."
   },
   dock: {
@@ -2513,6 +2525,7 @@ const opsEs: OpsCopy = {
     },
     selection: "Selección",
     detailUnavailable: value => `Todavía no hay nada seleccionado en ${value}. Elegí un elemento para ver su detalle acá.`,
+    fields: inspectorFields('es'),
     runEventsEmpty: "Los eventos de ejecución siguen vacíos hasta que una ejecución enfocada los proporcione."
   },
   dock: {

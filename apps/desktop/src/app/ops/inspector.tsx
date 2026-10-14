@@ -8,6 +8,7 @@
 import { useI18n } from '@/i18n'
 
 import { detailKindForSlot, type InspectorDetail, useInspectorDetail } from './inspector-detail'
+import { localizeInspector } from './inspector-i18n'
 import { useOpsEscapeLayer } from './keymap'
 import { opsNavLabel } from './locales'
 import {
@@ -133,13 +134,17 @@ function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: F
 }
 
 function InspectorDetailView({ detail, history }: { detail: InspectorDetail; history: boolean }) {
+  // B11: field labels, values and footers follow the Ops locale.
+  const fields = useI18n().t.ops.inspector.fields
+  const L = (s: string | null | undefined) => localizeInspector(s, fields)
+
   return (
     <section data-ops-inspector-body={history ? 'history' : detail.kind} data-ops-inspector-detail={detail.kind}>
       <header data-ops-inspector-head="">
-        <h3 data-ops-inspector-title="" title={detail.title}>
-          {detail.title}
+        <h3 data-ops-inspector-title="" title={L(detail.title)}>
+          {L(detail.title)}
         </h3>
-        {detail.badge ? <span data-ops-inspector-badge="">{detail.badge}</span> : null}
+        {detail.badge ? <span data-ops-inspector-badge="">{L(detail.badge)}</span> : null}
       </header>
       {history ? (
         detail.history && detail.history.length > 0 ? (
@@ -149,7 +154,7 @@ function InspectorDetailView({ detail, history }: { detail: InspectorDetail; his
             ))}
           </ol>
         ) : (
-          <p data-ops-inspector-empty="">{detail.historyEmpty ?? ''}</p>
+          <p data-ops-inspector-empty="">{L(detail.historyEmpty)}</p>
         )
       ) : (
         <>
@@ -157,8 +162,8 @@ function InspectorDetailView({ detail, history }: { detail: InspectorDetail; his
             <dl data-ops-inspector-rows="">
               {detail.rows.map(([k, v]) => (
                 <div data-ops-inspector-row="" key={k}>
-                  <dt>{k}</dt>
-                  <dd>{v}</dd>
+                  <dt>{L(k)}</dt>
+                  <dd>{L(v)}</dd>
                 </div>
               ))}
             </dl>
@@ -166,8 +171,8 @@ function InspectorDetailView({ detail, history }: { detail: InspectorDetail; his
           {detail.body ? <p data-ops-inspector-text="">{detail.body}</p> : null}
         </>
       )}
-      {detail.hint ? <p data-ops-inspector-hint="">{detail.hint}</p> : null}
-      <WhyFooter observedAt={null} purpose={null} source={detail.source} why={detail.why} />
+      {detail.hint ? <p data-ops-inspector-hint="">{L(detail.hint)}</p> : null}
+      <WhyFooter observedAt={null} purpose={null} source={L(detail.source)} why={L(detail.why)} />
     </section>
   )
 }

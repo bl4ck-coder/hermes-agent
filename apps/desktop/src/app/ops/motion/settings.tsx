@@ -153,7 +153,7 @@ export function SettingsView({
       ['Legacy write routes', 'active (retire flag off)']
     ],
     source: 'Ops settings',
-    why: 'this profile’s Ops settings'
+    why: "this profile's Ops settings"
   })
 
   const set = (p: Partial<OpsPrefs>) => {

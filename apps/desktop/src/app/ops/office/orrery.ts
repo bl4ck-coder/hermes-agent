@@ -127,12 +127,16 @@ export function spreadOrbs<T extends { profile: string; ring: number; x: number;
 
         if (oy <= ox && room) {
           const s = (a.y <= b.y ? -1 : 1) * oy * share
-          if (!fa) a.y += s
-          if (!fb) b.y -= s
+
+          if (!fa) {a.y += s}
+
+          if (!fb) {b.y -= s}
         } else {
           const s = (a.x <= b.x ? -1 : 1) * ox * share
-          if (!fa) a.x += s
-          if (!fb) b.x -= s
+
+          if (!fa) {a.x += s}
+
+          if (!fb) {b.x -= s}
         }
       }
     }
@@ -157,6 +161,7 @@ export function orbsOverlap(orbs: { profile: string; x: number; y: number }[]): 
     for (let j = i + 1; j < orbs.length; j++) {
       const A = orbLabelBox(orbs[i].profile)
       const B = orbLabelBox(orbs[j].profile)
+
       if (Math.abs(orbs[i].x - orbs[j].x) < (A.w + B.w) / 2 && Math.abs(orbs[i].y - orbs[j].y) < (A.h + B.h) / 2) {
         return true
       }
