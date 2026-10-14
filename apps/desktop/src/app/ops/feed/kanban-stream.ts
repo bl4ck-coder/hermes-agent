@@ -29,6 +29,16 @@ export interface KanbanStreamState {
   version: number
   /** P8 b2: why the stream is not live (shown by Diagnostics / Activity); null while live. */
   reason?: string | null
+  /** SPEC v2.1 0b: subscription generation; bumps on every (re)open and on stop. Late frames from an older generation are dropped. */
+  generation?: number
+}
+
+/** L9 teardown accounting: everything this stream holds. All false after stop(). */
+export interface KanbanStreamResources {
+  subscription: boolean
+  listener: boolean
+  retryTimer: boolean
+  openTimer: boolean
 }
 
 /** P8 b2: an open that has not answered after this long counts as failed (the poll covers meanwhile). */
@@ -83,6 +93,7 @@ export function createKanbanStream({
   let attempt = 0
   let opens = 0
   let retry: ReturnType<typeof setTimeout> | null = null
+  let openTimer: ReturnType<typeof setTimeout> | null = null
   // Bounded dedupe: the ids that can still be replayed are the recent ones.
   const seen = new Set<number>()
   const SEEN_CAP = 1000
@@ -127,8 +138,15 @@ export function createKanbanStream({
 
     let settled = false
     const myOpen = ++opens
+
     // Slow reply: give up on this open after openTimeoutMs; if it answers later it is closed unused.
-    const timer = openTimeoutMs > 0 ? setTimeout(() => !settled && myOpen === opens && fallBack(`no answer in ${openTimeoutMs / 1000} s`), openTimeoutMs) : null
+    if (openTimer) {
+      clearTimeout(openTimer)
+    }
+
+    const timer = openTimeoutMs > 0 ? setTimeout(() => ((openTimer = null), !settled && myOpen === opens && fallBack(`no answer in ${openTimeoutMs / 1000} s`)), openTimeoutMs) : null
+    openTimer = timer
+    set({ generation: myOpen })
 
     Promise.resolve()
       .then(() => bridge.open({ path: KANBAN_STREAM_PATH, ...(board ? { board } : {}) } as { path: string }))
@@ -137,6 +155,10 @@ export function createKanbanStream({
 
         if (timer) {
           clearTimeout(timer)
+
+          if (openTimer === timer) {
+            openTimer = null
+          }
         }
 
         if (!running || myOpen !== opens || (state.mode === 'poll' && retry !== null)) {
@@ -162,6 +184,10 @@ export function createKanbanStream({
 
         if (timer) {
           clearTimeout(timer)
+
+          if (openTimer === timer) {
+            openTimer = null
+          }
         }
 
         if (myOpen === opens) {
@@ -217,8 +243,18 @@ export function createKanbanStream({
       })
       open()
     },
+    resources(): KanbanStreamResources {
+      return { subscription: sub !== null, listener: off !== null, retryTimer: retry !== null, openTimer: openTimer !== null }
+    },
     stop() {
       running = false
+      // Generation bump: any open still in flight is closed unused when it answers.
+      opens += 1
+
+      if (openTimer) {
+        clearTimeout(openTimer)
+        openTimer = null
+      }
 
       if (retry) {
         clearTimeout(retry)
