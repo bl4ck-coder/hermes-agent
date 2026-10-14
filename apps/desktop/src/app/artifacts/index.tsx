@@ -150,6 +150,8 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
 
       const first = await loadArtifactsForSessions(sessions, loadPage)
       const transient = first.failures.filter(({ error }) => isSlotWaitTimeout(error))
+      // Give the pool a beat to drain before the single retry.
+      if (transient.length) await new Promise(resolve => setTimeout(resolve, 1500))
       const retry = transient.length
         ? await loadArtifactsForSessions(
             transient.map(f => f.session),
@@ -162,7 +164,9 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
         : first.failures
       // A retired profile backend is the pool's normal idle state, not a read error: those
       // sessions are skipped quietly (opening the profile reconnects it) instead of warning on every boot.
-      const failures = allFailures.filter(({ error }) => !isRetiredBackend(error))
+      // Pool states (retired, saturated, still waiting after the retry) mean "that profile is not up right now",
+      // not "your transcripts are unreadable": skip them quietly; they index once the profile is opened.
+      const failures = allFailures.filter(({ error }) => !isRetiredBackend(error) && !isSlotWaitTimeout(error))
 
       if (failures.length > 0) {
         const safeLimitFailures = failures.filter(({ error }) =>
@@ -746,7 +750,9 @@ function ArtifactTable({
 
 /** A profile backend that could not start in time because every local slot was busy (transient). */
 export function isSlotWaitTimeout(error: unknown): boolean {
-  return /SlotWaitTimeout|waiting for a free slot|was cancelled during start/i.test(String(error instanceof Error ? error.message : error))
+  return /SlotWaitTimeout|waiting for a free slot|was cancelled during start|BackgroundSlotRetryDeferred|backing off after slot saturation/i.test(
+    String(error instanceof Error ? error.message : error)
+  )
 }
 
 /** The profile's local backend was retired by the pool (idle); reading needs an explicit reopen. */

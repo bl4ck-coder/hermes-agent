@@ -380,3 +380,4 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='gar
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   :where([data-ops-greeting] > h2, [data-ops-lens] > header > h2) { text-shadow: none; }
 }
+:where([data-profile-soul-editor]) .cm-editor { min-height: inherit; }
