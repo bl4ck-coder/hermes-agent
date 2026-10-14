@@ -5,6 +5,8 @@ import { connectionScoped, hermesApi } from '@/api/client'
 
 import {
   clearOpsErrors,
+  connectionView,
+  type ConnectionView,
   diagnosticsText,
   opsErrors,
   probe,
@@ -33,10 +35,18 @@ export function DiagnosticsPanel({
   const [results, setResults] = useState<ProbeResult[] | null>(null)
   const [probing, setProbing] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  const [conn, setConn] = useState<ConnectionView | null>(null)
   const fetcher = get ?? ((path: string) => hermesApi({ ...connectionScoped(), path }))
 
   const runProbe = async () => {
     setProbing(true)
+
+    try {
+      setConn(connectionView((await fetcher('/api/status')) as never))
+    } catch (e) {
+      setConn(connectionView(null, e))
+    }
+
     setResults(await probe(fetcher))
     setProbing(false)
   }
@@ -51,6 +61,12 @@ export function DiagnosticsPanel({
           {stream.mode}
           {stream.reason ? ` (${stream.reason})` : ''}
         </dd>
+        <dt>Connection</dt>
+        <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
+          {conn ? conn.copy : 'Run the probe to check the Hermes version and capabilities.'}
+        </dd>
+        <dt>Stream generation</dt>
+        <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
         <dt>Policy source</dt>
         <dd data-ops-diag-policy="">{policySource ?? 'unknown'}</dd>
       </dl>

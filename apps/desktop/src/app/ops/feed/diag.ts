@@ -191,3 +191,84 @@ export async function opsCall<T>(method: string, path: string, run: () => Promis
     throw e
   }
 }
+
+/* --------------------- L1/L2/L5 compatibility window (SPEC v2.1 3b) --------------------- */
+
+/** The backend window this Ops build supports. Outside it: incompatible, governed writes off. */
+export const OPS_COMPAT = {
+  minBackend: '0.21.0',
+  maxBackendTested: '0.21.5',
+  /** Exclusive upper bound of the window (next minor after the tested series + 1). */
+  maxBackendExclusive: '0.23.0',
+  required: ['ops.fleet', 'ops.policy', 'ops.tx.nodes.prompt'] as readonly string[]
+}
+
+export type ConnectionState = 'connecting' | 'connected' | 'version-skew' | 'incompatible' | 'auth-failed' | 'unreachable'
+
+export interface ConnectionView {
+  state: ConnectionState
+  copy: string
+  /** Governed (A5) writes allowed only when connected or a tolerated skew. */
+  writesEnabled: boolean
+  missing: string[]
+}
+
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(/[.+-]/).map(x => parseInt(x, 10) || 0)
+  const pb = b.split(/[.+-]/).map(x => parseInt(x, 10) || 0)
+
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) {
+      return (pa[i] ?? 0) < (pb[i] ?? 0) ? -1 : 1
+    }
+  }
+
+  return 0
+}
+
+export function connectionView(
+  status: { version?: unknown; ops_capabilities?: { tokens?: unknown } | null } | null | undefined,
+  error?: unknown,
+  compat = OPS_COMPAT
+): ConnectionView {
+  if (error !== undefined && error !== null) {
+    const msg = redact(error instanceof Error ? error.message : String(error))
+
+    return /\b40[13]\b/.test(msg)
+      ? { state: 'auth-failed', copy: 'Hermes refused the key (401/403). Check the connection key in Desktop settings.', writesEnabled: false, missing: [] }
+      : { state: 'unreachable', copy: `Hermes is unreachable: ${msg}. Showing the last data, labelled stale.`, writesEnabled: false, missing: [] }
+  }
+
+  if (!status) {
+    return { state: 'connecting', copy: 'Connecting to Hermes…', writesEnabled: false, missing: [] }
+  }
+
+  const version = typeof status.version === 'string' ? status.version : null
+  const tokens = Array.isArray(status.ops_capabilities?.tokens) ? (status.ops_capabilities!.tokens as unknown[]).filter((t): t is string => typeof t === 'string') : null
+
+  if (!version || compareVersions(version, compat.minBackend) < 0 || compareVersions(version, compat.maxBackendExclusive) >= 0) {
+    return {
+      state: 'incompatible',
+      copy: `Hermes ${version ?? '(no version)'} is outside this Ops window (${compat.minBackend} to below ${compat.maxBackendExclusive}). Ops is read-only until Desktop or Hermes is updated.`,
+      writesEnabled: false,
+      missing: []
+    }
+  }
+
+  const missing = tokens ? compat.required.filter(t => !tokens.includes(t)) : []
+
+  if (missing.length) {
+    return { state: 'incompatible', copy: `Hermes ${version} lacks ${missing.join(', ')}. Ops is read-only for those features.`, writesEnabled: false, missing }
+  }
+
+  if (!tokens || compareVersions(version, compat.maxBackendTested) > 0) {
+    return {
+      state: 'version-skew',
+      copy: tokens ? `Hermes ${version} is newer than tested (${compat.maxBackendTested}); unknown fields are ignored.` : `Hermes ${version} does not publish capability tokens; the route probe decides each section.`,
+      writesEnabled: true,
+      missing: []
+    }
+  }
+
+  return { state: 'connected', copy: `Connected to Hermes ${version}.`, writesEnabled: true, missing: [] }
+}
