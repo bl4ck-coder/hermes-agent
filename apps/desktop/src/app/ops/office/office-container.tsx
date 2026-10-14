@@ -1,6 +1,6 @@
 /** Office container (ops-panel P3-02): wires OfficeView to the P3-01 client and feed. */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { captureGatewayFileDownload } from '@/lib/media'
 
@@ -22,20 +22,18 @@ export function useOpsResource<T>(load: () => Promise<T>, deps: unknown[], pollM
   const [value, setValue] = useState<Loaded<T>>(null)
   const [error, setError] = useState<unknown>(null)
   const [tick, setTick] = useState(0)
-  const prevDeps = useRef<unknown[] | null>(null)
+  const [seenDeps, setSeenDeps] = useState<unknown[]>(deps)
+
+  // F5 (P8): a scope change (profile, client) drops the previous scope's answer instead of showing
+  // it as current until the new one lands (render-time reset, no effect lag).
+  if (seenDeps.length !== deps.length || deps.some((d, i) => !Object.is(d, seenDeps[i]))) {
+    setSeenDeps(deps)
+    setValue(null)
+    setError(null)
+  }
 
   useEffect(() => {
     let live = true
-    // F5 (P8): a scope change (profile, client) drops the previous scope's answer instead of showing
-    // it as current until the new one lands.
-    const changed = prevDeps.current !== null && (prevDeps.current.length !== deps.length || deps.some((d, i) => !Object.is(d, prevDeps.current![i])))
-    prevDeps.current = deps
-
-    if (changed) {
-      setValue(null)
-      setError(null)
-    }
-
     // F5 (P8): a load that throws synchronously (missing bridge/method) becomes this section's error.
     Promise.resolve().then(load).then(
       v => live && (setValue(v), setError(null)),
@@ -167,23 +165,12 @@ export function OfficeContainer({
 
   return (
     <OfficeView
-      attachments={attachments}
-      errors={{ pending: pending.error, board: board.error, cron: cron.error, usage: usage.error, activity: activity.error, projects: projects.error, policy: policy.error }}
-      onNewProfile={onOpenRoute ? () => onOpenRoute('/profiles') : undefined}
-      onOpenAttachment={(_t, a) => {
-        if (a.stored_path) {
-          void captureGatewayFileDownload()(a.stored_path, a.filename)
-        }
-      }}
-      onOpenRun={openTask ? openRun : undefined}
-      policy={violations}
-      profile={profile}
-      projects={listOrNull(projects.value?.projects)}
-      tasks={tasks}
       activity={listOrNull(activity.value?.items)}
+      attachments={attachments}
       blueprints={listOrNull(blueprints.value?.blueprints)}
       connectionLabel={connectionLabel}
       cron={listOrNull(cron.value)}
+      errors={{ pending: pending.error, board: board.error, cron: cron.error, usage: usage.error, activity: activity.error, projects: projects.error, policy: policy.error }}
       fleet={fleetView}
       fleetError={feed.error}
       inFlight={inFlight}
@@ -193,12 +180,23 @@ export function OfficeContainer({
       onDeny={async item => (await client.approve(item, 'deny'), pending.reload())}
       onDispatch={dispatch}
       onKanban={async a => (await actions.kanban(a), pending.reload(), board.reload())}
+      onNewProfile={onOpenRoute ? () => onOpenRoute('/profiles') : undefined}
+      onOpenAttachment={(_t, a) => {
+        if (a.stored_path) {
+          void captureGatewayFileDownload()(a.stored_path, a.filename)
+        }
+      }}
       onOpenProfile={onOpenProfile}
       onOpenRoute={onOpenRoute}
+      onOpenRun={openTask ? openRun : undefined}
       onOpenTask={openTask}
       pending={listOrNull(pending.value?.items)}
+      policy={violations}
+      profile={profile}
+      projects={listOrNull(projects.value?.projects)}
       readOnly={readOnly}
       taskEvents={stream.mode === 'stream' || stream.events.length ? stream.events : null}
+      tasks={tasks}
       usage={usage.value}
     />
   )

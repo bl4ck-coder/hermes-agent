@@ -366,6 +366,7 @@ export function OfficeView(props: OfficeViewProps) {
   const delivered = deliveredToday(tasks, nowS)
   const projects = projectProgress(props.projects ?? null, tasks)
   const openCron = props.onOpenRoute ? (id: string) => props.onOpenRoute?.(`/cron?job=${encodeURIComponent(id)}`) : undefined
+
   // A stat card filters the Office to its section: highlight it and bring it into view (focus moves
   // only because the user clicked; live updates never move focus).
   const focus = (s: SectionId) => {
@@ -384,7 +385,7 @@ export function OfficeView(props: OfficeViewProps) {
         <span data-ops-field="connection">{props.connectionLabel || 'unknown connection'}</span>
         {props.readOnly ? null : (
           <span data-ops-header-actions="">
-            <button data-ops-primary="" data-ops-new-task="" onClick={() => dispatchInput.current?.focus()} type="button">
+            <button data-ops-new-task="" data-ops-primary="" onClick={() => dispatchInput.current?.focus()} type="button">
               New task
             </button>
             <button data-ops-new-profile="" disabled={!props.onNewProfile} onClick={() => props.onNewProfile?.()} type="button">

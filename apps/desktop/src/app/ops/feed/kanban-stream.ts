@@ -139,7 +139,7 @@ export function createKanbanStream({
           clearTimeout(timer)
         }
 
-        if (!running || myOpen !== opens || state.mode === 'poll' && retry) {
+        if (!running || myOpen !== opens || (state.mode === 'poll' && retry !== null)) {
           if (!r.ended) {
             void bridge.close(r.subscriptionId)
           }
