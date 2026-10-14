@@ -3,6 +3,8 @@
  * a null is rendered as "unknown", never 0. Updates never move focus.
  */
 
+import { opsMainLocale, T } from '../main-i18n'
+import { Sigil } from '../primitives/sigil'
 import { type RefObject, useRef, useState } from 'react'
 
 import { describeEvent } from '../detail/task-tab'
@@ -103,6 +105,27 @@ const PRESENCE_LABEL: Record<Presence, string> = {
   offline: 'Offline',
   unknown: 'Unknown',
   stale: 'Stale'
+}
+
+/** B12 (Gr8r): a calm greeting with today's date in the Ops time zone. */
+export function greetingFor(hour: number): string {
+  return hour < 5 ? 'Good evening' : hour < 12 ? 'Good morning' : hour < 19 ? 'Good afternoon' : 'Good evening'
+}
+
+function Greeting() {
+  const tz = opsTimezone()
+  const now = new Date()
+  const hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: tz }).format(now))
+  const date = new Intl.DateTimeFormat(opsMainLocale(), { weekday: 'long', month: 'long', day: 'numeric', timeZone: tz }).format(now)
+
+  return (
+    <header data-ops-greeting="">
+      <h2>{T(greetingFor(hour))}</h2>
+      <p>
+        {date} · {T("Here's what's happening across your agents.")}
+      </p>
+    </header>
+  )
 }
 
 function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; error?: unknown; nowS: number }) {
@@ -244,6 +267,7 @@ function Orrery({
       aria-label={`${o.profile}: ${PRESENCE_LABEL[o.presence]}`}
       data-ops-halo={moving && live.has(o.profile) ? '' : undefined}
       data-ops-orb={o.profile}
+      data-ops-thinking={live.has(o.profile) && !reduced ? '' : undefined}
       data-ops-presence={o.presence}
       data-ops-ring={o.ring}
       key={o.profile}
@@ -252,7 +276,8 @@ function Orrery({
       title={o.presence === 'unknown' ? `${o.profile}: ${UNKNOWN_WHY}` : undefined}
       type="button"
     >
-      {o.profile}
+      <Sigil name={o.profile} size={o.ring === 0 ? 26 : 16} />
+      <span data-ops-orb-label="">{o.profile}</span>
     </button>
   )
 
@@ -480,6 +505,7 @@ export function OfficeView(props: OfficeViewProps) {
           </span>
         )}
       </header>
+      <Greeting />
       <StatCards onFocus={focus} profile={profile} stats={stats} />
       <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} th={th} />
       <HealthStrip error={props.fleetError} fleet={fleet} nowS={nowS} />

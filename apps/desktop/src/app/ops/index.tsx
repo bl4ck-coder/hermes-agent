@@ -5,6 +5,7 @@
  * the Ops pane, not the window.
  */
 
+import { setOpsMainLocale } from './main-i18n'
 import './ops-base.css'
 
 import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
@@ -184,7 +185,10 @@ export function OpsShell({
   viewId = null
 }: OpsShellProps) {
   const [, setTick] = useState(0)
-  const copy = useI18n().t.ops
+  const i18nCtx = useI18n()
+  const copy = i18nCtx.t.ops
+  // B12: main-content strings follow the Desktop locale.
+  setOpsMainLocale(i18nCtx.locale)
   const root = useRef<HTMLDivElement>(null)
   // B8 L2: every [data-ops-write] control is disabled with the reason while the connection check says writes are unsafe.
   const writeGate = useWriteGateOn(root)

@@ -290,3 +290,34 @@
 :where(section[data-ops-lens]) { display: block; }
 :where(section[data-ops-lens] > header) { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 :where(section[data-ops-lens] > header > h2) { font-size: 14px; margin: 0 8px 0 0; }
+
+/* ---- B12 fusion: Orbit (live office), Outglow (canvas builder), Gr8r (task management) ---- */
+/* Gr8r: calm greeting above the stats. */
+:where([data-ops-greeting]) { margin: 2px 0 10px; }
+:where([data-ops-greeting]) h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+:where([data-ops-greeting]) p { color: var(--ops-muted); font-size: 12px; margin: 2px 0 0; }
+/* Orbit: avatar orbs on a soft radial stage; working profiles breathe. */
+:where([data-ops-orrery]) { background: radial-gradient(ellipse at center, color-mix(in srgb, var(--ops-gold, #c9a227) 10%, transparent) 0, transparent 55%), var(--ops-surface); }
+:where([data-ops-orrery] [data-ops-orb]) { align-items: center; background: color-mix(in srgb, var(--ops-surface) 85%, black); border: 1px solid var(--ops-line); border-radius: 999px; display: inline-flex; font-size: 12px; gap: 6px; padding: 3px 9px 3px 3px; }
+:where([data-ops-orrery-centre] [data-ops-orb]) { font-size: 13px; font-weight: 600; padding: 4px 12px 4px 4px; }
+:where([data-ops-orb][data-ops-presence='working'], [data-ops-orb][data-ops-presence='needs_you']) { border-color: var(--ops-gold, #c9a227); }
+:where([data-ops-orb][data-ops-presence='blocked']) { border-color: #b4474b; }
+:where([data-ops-orb][data-ops-presence='unknown'], [data-ops-orb][data-ops-presence='offline']) { opacity: 0.72; }
+@keyframes ops-think { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ops-gold, #c9a227) 45%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
+[data-ops-orb][data-ops-thinking] { animation: ops-think 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { [data-ops-orb][data-ops-thinking] { animation: none; } }
+/* Gr8r: board card id chip + avatar, status glyph per column. */
+:where([data-ops-card] [data-ops-assignee]) { align-items: center; display: inline-flex; gap: 5px; min-width: 0; }
+:where([data-ops-card-id]) { color: var(--ops-muted); font: 10.5px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: 0.02em; }
+:where([data-ops-column] > h3)::before { border: 1.5px solid var(--ops-muted); border-radius: 50%; content: ''; display: inline-block; height: 9px; margin-right: 6px; vertical-align: -1px; width: 9px; }
+:where([data-ops-column='triage'] > h3)::before { border-style: dashed; }
+:where([data-ops-column='ready'] > h3)::before { border-color: #5b8def; }
+:where([data-ops-column='running'] > h3)::before { background: linear-gradient(90deg, #d99b2b 50%, transparent 50%); border-color: #d99b2b; }
+:where([data-ops-column='blocked'] > h3)::before { background: #b4474b; border-color: #b4474b; }
+:where([data-ops-column='review'] > h3)::before { background: linear-gradient(90deg, #8f6fd8 50%, transparent 50%); border-color: #8f6fd8; }
+:where([data-ops-column='done'] > h3)::before { background: #3f9d6b; border-color: #3f9d6b; }
+:where([data-ops-column] > h3 [data-ops-count]) { color: var(--ops-muted); font-variant-numeric: tabular-nums; font-weight: 400; margin-left: 4px; }
+/* Outglow: the canvas is a dotted work surface with card nodes. */
+:where([data-ops-canvas]) { background-color: var(--ops-surface); background-image: radial-gradient(color-mix(in srgb, var(--ops-muted) 35%, transparent) 1px, transparent 1.2px); background-size: 16px 16px; border: 1px solid var(--ops-line); border-radius: var(--ops-radius); }
+:where([data-ops-canvas-nodes] [data-ops-node]) { background: color-mix(in srgb, var(--ops-surface) 92%, black); border: 1px solid var(--ops-line); border-radius: 10px; box-shadow: 0 1px 0 color-mix(in srgb, black 30%, transparent); }
+:where([data-ops-node][data-ops-port='unset']) { border-style: dashed; }

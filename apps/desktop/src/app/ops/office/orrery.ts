@@ -79,7 +79,7 @@ export function layoutOrrery(
 
 /** B11: label box estimate for an orb pill (12px UI font ~7px/char plus padding). */
 export function orbLabelBox(name: string): { w: number; h: number } {
-  return { w: Math.min(170, 18 + name.length * 7), h: 24 }
+  return { w: Math.min(190, 40 + name.length * 7), h: 28 }
 }
 
 export interface SpreadOptions {

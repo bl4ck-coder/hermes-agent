@@ -6,6 +6,8 @@
  * (R71/R58), favourites (R74), card menu (R20), New-task modal (R40), inline rename (R47), Markdown body (R17).
  */
 
+import { T } from '../main-i18n'
+import { Sigil } from '../primitives/sigil'
 import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -226,7 +228,11 @@ export function BoardView(props: BoardViewProps) {
     >
       <input aria-label={`select ${t.id}`} checked={selected.has(t.id)} onChange={() => setSelected(s => toggle(s, t.id))} type="checkbox" />
       <InlineTitle onOpen={() => openDrawer(t.id)} onRename={props.rename ? title => props.rename?.(t.id, title) : undefined} readOnly={readOnly} task={t} />
-      <span data-ops-assignee="">{t.assignee ?? 'unassigned'}</span>
+      <span data-ops-assignee="">
+        <code data-ops-card-id="">{t.id.replace(/^t_/, '').slice(0, 6)}</code>
+        {t.assignee ? <Sigil name={t.assignee} size={14} /> : null}
+        {t.assignee ?? T('unassigned')}
+      </span>
       <CardSignals nowS={nowS} task={t} />
       {/* Quick actions: always in the DOM (keyboard reachable); CSS reveals them on hover / focus-within. */}
       <span data-ops-quick="">
