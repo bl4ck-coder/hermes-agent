@@ -32,11 +32,11 @@ Legend: **A** = adopted · **A+** = adopted and improved · **M** = missing / de
 | Ctrl , settings | Yes | — | — | Settings lens | **A** |
 | Composer with @assign + suggestions | Ask Atlas + chips | Chat = canvas | + New | "Type a task. Start with @profile" + quick prompts | **A+** |
 | Selection → inspector | Click agent | Click node | Click card | Click row/card/orb → inspector | **A** |
-| Drag cards across columns | — | Drag nodes | Drag cards | Column move via actions (no free card-drag yet) | **M** (deferred: no first-pickup drag; move via board actions / Escape fullscreen spike only) |
+| Drag cards across columns | — | Drag nodes | Drag cards | HTML5 card-drag between columns + drop highlight; same optimistic move / Undo / refusal snap-back as keyboard (Alt+arrows) and Move… | **A+** (B13; within-column order not offered: the backend has no rank field) |
 | Live feedback (presence, thinking, tokens) | Orb states, Motion: Full | Thinking timer + tokens | Due colouring | Presence borders, `ops-think` pulse, live events | **A+** |
 | Zoom / pan canvas | — | Zoom pill | — | Zoom + pan + Fit | **A** |
 | "Set identity" CTA | — | Amber CTA | — | Same CTA on unset ports | **A** |
-| Chat→canvas compose (describe → nodes) | — | Core loop | — | Composer dispatches tasks; no auto node graph | **M** (deferred: needs backend proposal path; must never auto-apply) |
+| Chat→canvas compose (describe → nodes) | — | Core loop | — | Canvas Compose: text → reviewable proposal (model / prompt append-replace / link notes); Accept only stages node drafts, then Review & save (A5, op_id, policy, backup); Discard drops it | **A+** (B13; client-only, deterministic, no tokens; never auto-applies) |
 | Shortcuts cheatsheet | Implied | — | — | Shortcuts lens / help | **A** |
 | Reduced motion | Contract | — | — | Honoured (pulse off) | **A+** |
 | i18n of chrome + main content | EN | EN | EN | 9 locales (ops chrome + main T()) | **A+** |
@@ -52,3 +52,8 @@ Legend: **A** = adopted · **A+** = adopted and improved · **M** = missing / de
 
 - Freeform card drag (board already moves via actions; drag spike was fullscreen leave).
 - Outglow "chat becomes canvas" auto-compose (safety: proposal-only, never auto-apply; needs backend).
+
+## B13 update (2026-10-14)
+- Free card-drag and Chat→Canvas compose moved from **M** to **A+**.
+- Residual English closed: stat cards + hints, presence pills, composer placeholder, blueprint chips, column ids, Orrery/Table, table headers, canvas node bodies/details, compose notes (+74 keys × 8 locales; 498 total).
+- Remaining for the polish loop: board layout pills (board/list/table…), inspector column counts, a few template strings ("N skills installed").

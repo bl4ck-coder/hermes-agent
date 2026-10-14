@@ -541,3 +541,11 @@ Screenshots: box `/workspace/ops-live/b11/` (contact-sheet.png, before-after.png
 - Tests: ops vitest 46 files / 455 tests pass (new `b12.test.tsx`); tsc clean; build OK.
 - Live round (off-screen, venv Python, `%TEMP%\ops-live-b12r1`): pageErrors 0. fps p95 13.4 ms on office/board-scroll/board-drag/canvas; board-drag max 133 ms at release (fullscreen exit, as in B11).
 - Deferred: free card-drag; Outglow chat→canvas auto-compose (needs a proposal-only backend path, never auto-apply). Residual English: stat-card labels, composer placeholder/quick prompts, column ids, presence pills (JS constants, not JSX).
+
+## B13 — Card drag, Chat→Canvas compose, residual i18n (2026-10-14)
+- Commits: 4c57428840 (drag + compose + i18n + tests), b0242556e8 (r2 i18n + driver), plus docs.
+- Drag: HTML5 dragstart/dragover/drop on Board columns → existing props.move (optimistic, Undo 8 s, server refusal snaps back). Same-column drop is a no-op (no rank field in backend). Keyboard Alt+←/→ and Move… kept.
+- Compose: `canvas/compose.ts` + `compose-view.tsx`. Proposal is shown, never applied; Accept stages drafts consumed by the Prompt/Model editors; saving still needs Review & save (A5 + op_id). Read-only disables Accept.
+- Tests: 48 files / 462 pass (new b13.test.tsx); tsc clean; build OK.
+- Live r2 (off-screen, venv Python): pageErrors 0, all sections ok, boardUnchanged=true (no real moves; drag measured with dragend-without-drop). fps p95 13.4 ms everywhere; board-drag max 40 ms (B12: 133 ms).
+- Evidence: /workspace/ops-live/b13/ (before-after.png, before-after-canvas.png, contact-sheet.png, sbs-outglow-vs-compose.png, sbs-gr8r-vs-drag.png, live.json).

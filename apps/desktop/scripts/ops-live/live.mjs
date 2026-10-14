@@ -185,7 +185,7 @@ if (want('fps')) await sampleFps('board-drag', async end => {
   // B13: real HTML5 drag events over other columns, then dragend WITHOUT drop: no move is ever sent.
   await page.evaluate(async until => {
     const card = document.querySelector('[data-ops-card][draggable="true"]')
-    const cols = [...document.querySelectorAll('[data-ops-column]')]
+    const cols = [...document.querySelectorAll('[data-ops-columns] > [data-ops-column]')]
     if (!card || cols.length < 2) return
     const dt = new DataTransfer()
     card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }))
@@ -204,7 +204,7 @@ if (want('drag')) await section('02c-board-drag-over', async () => {
   await go('/ops/board')
   const r = await page.evaluate(() => {
     const card = document.querySelector('[data-ops-card][draggable="true"]')
-    const col = [...document.querySelectorAll('[data-ops-column]')].find(c => !c.contains(card) && c.getAttribute('data-ops-column') !== 'running')
+    const col = [...document.querySelectorAll('[data-ops-columns] > [data-ops-column]')].find(c => !c.contains(card) && c.getAttribute('data-ops-column') !== 'running')
     if (!card || !col) return 'no-card'
     window.__opsDt = new DataTransfer()
     card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: window.__opsDt }))
