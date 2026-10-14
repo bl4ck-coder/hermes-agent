@@ -372,3 +372,24 @@
 :where([data-ops-orrery] [data-ops-orrery-overflow]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 11px; left: 8px; position: absolute; top: 8px; }
 @media (prefers-reduced-motion: reduce) { :where([data-ops-orrery-centre])::before { animation: none; } :where([data-ops-root]) :where(button:active:not(:disabled)) { transform: none; } }
 :where([data-ops-motion='reduced'] [data-ops-orrery-centre])::before { animation: none; }
+
+/* ---- B18 design layer: typography scale, 4/8/12 rhythm, Office density, card and row feedback ---- */
+/* Scale: greeting 20 > lens title 16 > section label 11 caps > body 13 > meta 11. */
+:where([data-ops-greeting] h2) { font-size: 20px; }
+:where(section[data-ops-lens] > header > h2) { font-size: 16px; letter-spacing: -0.005em; }
+:where([data-ops-root]) :where(section > h2:first-child, section > h3:first-child, fieldset > legend) { color: var(--ops-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.07em; margin: 0 0 8px; text-transform: uppercase; }
+:where([data-ops-root]) :where(section, fieldset) { margin: 0 0 12px; padding: 12px 14px; }
+/* Office: the three count strips flow as one wrapping line, separated by hairlines, not three stacked rows. */
+:where([data-ops-strip]) { display: inline-flex; margin: 0 10px 10px 0; padding-right: 10px; vertical-align: top; border-right: 1px solid var(--ops-line); }
+:where([data-ops-strip]:last-of-type) { border-right: 0; }
+:where([data-ops-strip]) :where([data-ops-count]) { background: transparent; border-color: transparent; padding: 1px 6px; }
+/* Board cards lift on hover and sink on press; transform only, so the windowed row pitch never changes. */
+:where([data-ops-card]) { transition: border-color 120ms ease, background-color 120ms ease, transform 120ms var(--ease, ease), box-shadow 120ms ease; }
+:where([data-ops-card]:hover) { box-shadow: 0 4px 12px rgb(0 0 0 / 30%); transform: translateY(-1px); }
+:where([data-ops-card]:active) { box-shadow: none; transform: none; }
+:where([data-ops-column] > h3 [data-ops-count]) { background: var(--ops-surface-2); border-radius: 999px; font-size: 11px; padding: 0 7px; }
+/* Tables: the row under the pointer is findable. */
+:where([data-ops-root]) :where(tbody tr) { transition: background-color 120ms ease; }
+:where([data-ops-root]) :where(tbody tr:hover) { background: var(--ops-surface); }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-card]:hover) { transform: none; } }
+:where([data-ops-motion='reduced'] [data-ops-card]:hover) { transform: none; }
