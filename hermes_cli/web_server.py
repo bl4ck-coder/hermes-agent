@@ -646,6 +646,47 @@ async def host_header_middleware(request: Request, call_next):
     return await call_next(request)
 
 
+_OPS_MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+_OPS_ORIGIN_GUARDED_PREFIXES = ("/api/ops/", "/api/approvals/", "/api/plugins/kanban/")
+_DESKTOP_ORIGIN_SCHEMES = frozenset({"app", "file"})
+_LOOPBACK_ORIGIN_RE = re.compile(r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$", re.IGNORECASE)
+
+
+def _is_allowed_ops_origin(origin: str, bound_host: Optional[str], trusted: frozenset) -> bool:
+    """SPEC v2.1 5b: Origin control for Ops mutations, separate from the S6 Host check.
+
+    Absent Origin (non-browser clients, Electron main) passes; auth still applies. ``null`` and the
+    Desktop app/file schemes are the packaged renderer. Loopback http(s) is the dev renderer and the
+    local dashboard; any other origin must name the bound or configured public host."""
+    origin = (origin or "").strip()
+    if not origin or origin == "null":
+        return True
+    try:
+        parsed = urllib.parse.urlparse(origin)
+    except ValueError:
+        return False
+    if parsed.scheme in _DESKTOP_ORIGIN_SCHEMES:
+        return True
+    if _LOOPBACK_ORIGIN_RE.match(origin):
+        return True
+    if parsed.scheme in ("http", "https") and parsed.netloc and bound_host:
+        return _is_accepted_host(parsed.netloc, bound_host, trusted)
+    return False
+
+
+@app.middleware("http")
+async def ops_origin_middleware(request: Request, call_next):
+    """Reject cross-site Ops/kanban/approval mutations by Origin (CSRF), independent of Host (S6)."""
+    if request.method in _OPS_MUTATING_METHODS and request.url.path.startswith(_OPS_ORIGIN_GUARDED_PREFIXES):
+        if not _is_allowed_ops_origin(
+            request.headers.get("origin", ""),
+            getattr(app.state, "bound_host", None),
+            getattr(app.state, "trusted_public_hosts", frozenset()),
+        ):
+            return JSONResponse(status_code=403, content={"detail": {"code": "origin_not_allowed", "detail": "cross-origin Ops mutation refused"}})
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def _plugin_api_runtime_gate(request: Request, call_next):
     """Block requests to disabled plugin API routes at request time.
