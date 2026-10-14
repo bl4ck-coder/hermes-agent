@@ -382,3 +382,6 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='gar
   :where([data-ops-greeting] > h2, [data-ops-lens] > header > h2) { text-shadow: none; }
 }
 :where([data-profile-soul-editor]) .cm-editor { min-height: inherit; }
+
+/* -- Glass p7: page shells (Capabilities, Artifacts, Messaging) — the inner body repainted the flat surface over the lit shell; let the shell's light through. */
+html[data-hermes-theme^='gold-night'] [data-page-shell] [class*='bg-(--ui-chat-surface-background)'] { background-color: transparent; }
