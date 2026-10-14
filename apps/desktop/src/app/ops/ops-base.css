@@ -624,3 +624,13 @@
 :where([data-ops-teams] > li[data-ops-team='No lane']) { grid-column: 1 / -1; order: 1; }
 /* Settings: a control that follows its own row (e.g. Cambiar under Approval mode) tucks under it. */
 :where([data-ops-settings-group] > dl > dd + dd) { min-height: 0; padding-top: 0; }
+
+/* ---- B31: probe chips drop the redundant word, secrets use the full row, channel copy clamps ---- */
+:where([data-ops-probe-ok]) { block-size: 1px; clip-path: inset(50%); inline-size: 1px; overflow: hidden; position: absolute; white-space: nowrap; }
+:where([data-ops-probe-row]) { position: relative; }
+:where([data-ops-probe-id]) { color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 500; margin-right: 4px; }
+:where([data-ops-settings-group] > dl > dd[data-ops-field='secrets']) { grid-column: 1 / -1; border-top: 0; }
+:where([data-ops-secrets]) { inline-size: 100%; }
+:where([data-ops-secret-list]) { column-gap: 24px; columns: 3 220px; }
+:where([data-ops-secret-list] > li) { break-inside: avoid; }
+:where([data-ops-channels-body] li p, [data-ops-channels-body] article p) { -webkit-box-orient: vertical; -webkit-line-clamp: 3; display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; }

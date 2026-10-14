@@ -105,7 +105,7 @@ export function DiagnosticsPanel({
         <ul aria-label={T("Capability probe")} data-ops-probe-results="">
           {results.map(r => (
             <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
-              {r.id} {T(r.label)}: {r.state === 'ok' ? T('available') : r.detail}
+              <b data-ops-probe-id="">{r.id}</b> {T(r.label)}{r.state === 'ok' ? <span data-ops-probe-ok="">: {T('available')}</span> : <>: {r.detail}</>}
             </li>
           ))}
         </ul>
