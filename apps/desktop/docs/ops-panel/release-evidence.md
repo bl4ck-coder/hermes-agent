@@ -568,3 +568,9 @@ Screenshots: box `/workspace/ops-live/b11/` (contact-sheet.png, before-after.png
 - Board drag: a polite aria-live region announces start, move and same-column drops (visually hidden via :where([data-ops-sr])).
 - 540 keys per locale. Tests: 51 files / 475 pass; tsc clean.
 - Live b16r1: pageErrors 0, board unchanged, drag p95 13.4 ms / max 13.7 ms. Evidence: /workspace/ops-live/b16/ (before-after.png, before-after-drag.png, contact-sheet.png).
+## B17–B19 — design critique loop (scored per lens; lowest fixed first)
+Scores (1–10): Office 4→7, Board 5→7, Canvas 5→5, Fleet 5→6, Teams 4→5, Skills 4→5, Channels 6→6, Settings 4→6, Diagnostics 4→6.
+- B17 (f88e8956d2): last connection-state and notification English (all diag variants, Task blocked, approvals via plural P). Every button gets a press sink; the selected tab gets a gold baseline; filter chips go quiet; stat values lead at 26 px; the Orbit gets two orbital rings and a slow centre glow (reduced motion: static).
+- B18 (5004bda328): type scale greeting 20 > lens 16 > section label 11 caps > body 13; 12 px section rhythm; the three Office count strips merge into one hairline-separated line; cards lift on hover (transform only, pitch-safe); table rows highlight on hover.
+- B19 (ee2bbcb5e6): Needs-you kinds/actions/retry localized; while a card is dragged, hover lift and transitions turn off (drag max 53 ms → 26.8 ms, 0 frames over 33 ms); failing/overdue counts carry an alarm colour; empty states get a dashed frame.
+- Tests: 54 files / 484 pass; tsc clean. Live b17r1–b19r1: pageErrors 0, board unchanged. Evidence: /workspace/ops-live/b17/, b18/, b19/.
