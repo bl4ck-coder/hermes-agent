@@ -729,18 +729,25 @@ export function CronView({ onClose, onOpenSession, setStatusbarItemGroup: _setSt
             <PanelAddButton label={c.newCron} onClick={() => setEditor({ mode: 'create' })} />
             {visibleBlueprints.length > 0 && (
               <>
-                <PanelSectionLabel className="mt-3 px-2">{c.blueprints.tab}</PanelSectionLabel>
-                {visibleBlueprints.map(item => (
-                  <PanelListRow
-                    active={false}
-                    icon="rocket"
-                    key={item.key}
-                    meta={item.plugin || undefined}
-                    onSelect={() => setEditor({ blueprintKey: item.key, mode: 'create' })}
-                    rowKey={`blueprint-${item.key}`}
-                    title={item.title}
-                  />
-                ))}
+                {/* IA: templates are a starting point, not the job list; fold them unless searching. */}
+                <details data-cron-templates="" open={query.trim() ? true : undefined}>
+                  <summary className="mt-3 cursor-pointer list-none px-2">
+                    <PanelSectionLabel>
+                      {c.blueprints.tab} · {visibleBlueprints.length}
+                    </PanelSectionLabel>
+                  </summary>
+                  {visibleBlueprints.map(item => (
+                    <PanelListRow
+                      active={false}
+                      icon="rocket"
+                      key={item.key}
+                      meta={item.plugin || undefined}
+                      onSelect={() => setEditor({ blueprintKey: item.key, mode: 'create' })}
+                      rowKey={`blueprint-${item.key}`}
+                      title={item.title}
+                    />
+                  ))}
+                </details>
               </>
             )}
           </PanelList>
@@ -1121,7 +1128,7 @@ function CronJobRuns({
               // recorded output preview without a chat-navigation affordance.
               <div className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-xs" key={run.id}>
                 <span className="truncate text-foreground/85">
-                  {cronRunLabel(run.title?.trim() || run.preview?.trim() || run.id)}
+                  <CronRunText text={run.title?.trim() || run.preview?.trim() || run.id} />
                 </span>
                 <span className="shrink-0 text-[0.62rem] text-muted-foreground/55 tabular-nums">
                   {formatRunTime(run.last_active || run.started_at)}
@@ -1137,7 +1144,7 @@ function CronJobRuns({
                 type="button"
               >
                 <span className="truncate text-foreground/85">
-                  {cronRunLabel(run.title?.trim() || run.preview?.trim() || run.id)}
+                  <CronRunText text={run.title?.trim() || run.preview?.trim() || run.id} />
                 </span>
                 <span className="shrink-0 text-[0.62rem] text-muted-foreground/55 tabular-nums">
                   {formatRunTime(run.last_active || run.started_at)}
@@ -1640,5 +1647,35 @@ export function cronRunLabel(text: string): string {
   const status = /\*\*Status:\*\*\s*([^*]+)/.exec(text)?.[1]?.trim()
   const head = text.split(/\s*[·•-]\s*#|\s#\s/)[0]?.trim()
   if (status) return head && head !== text ? `${head} · ${status}` : status
-  return text.replace(/\*\*/g, '').replace(/(^|\s)#\s+/g, '$1').replace(/\s+/g, ' ').trim()
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/(^|\s)#\s+/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Leading status word of a run preview ("COMPLETED", "FAILED"…), lower-cased; '' when absent. */
+export function cronRunStatus(text: string): string {
+  const m = /^(COMPLETED|SUCCEEDED|SUCCESS|FAILED|ERROR|RUNNING|CANCELLED|CANCELED|SKIPPED|TIMEOUT|TIMED_OUT)\b/.exec(
+    text.trim()
+  )
+  return m ? m[1].toLowerCase() : ''
+}
+
+function CronRunText({ text }: { text: string }) {
+  const label = cronRunLabel(text)
+  const status = cronRunStatus(label)
+  if (!status) return <>{label}</>
+  const rest = label.slice(status.length).replace(/^\s*[·:-]\s*/, '')
+  return (
+    <>
+      <span
+        className="mr-2 inline-block rounded-full border px-1.5 py-px text-[0.6rem] font-medium uppercase tracking-wide"
+        data-cron-run-status={status}
+      >
+        {label.slice(0, status.length)}
+      </span>
+      {rest}
+    </>
+  )
 }

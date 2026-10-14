@@ -73,6 +73,15 @@ interface ModeOptionCopy {
 }
 
 export interface Translations extends NoticeTranslations, OpsStatesTranslations {
+  /** Teaching copy for navigation sections and empty states (IA pass). */
+  teach: {
+    navCore: string
+    navSystem: string
+    navConnections: string
+    navExtensions: string
+    chatIntroHint: string
+    agentsEmptyHint: string
+  }
   /** Ops shell (P0.5) copy; catalog in app/ops/locales.ts. */
   ops: OpsCopy
   /** Shared-metrics consent: first-run dialog + Settings › Safety toggles. */

@@ -232,3 +232,77 @@ html[data-hermes-theme^='gold-night'] :where(.ops-toast) {
   [data-glass='button']:active:not(:disabled),
   html[data-hermes-theme^='gold-night'] [data-slot='button']:active:not(:disabled) { transform: none; }
 }
+
+/* ---- Pass 2: ambient light, stronger glass, IA chips. All static paint, no animation, no new blur. ---- */
+:root {
+  /* Soft gold and amber pools, a garnet ember low left, and a vignette. Carnave gets its depth from
+     a lit backdrop behind the glass; Gold Night gets the same from these. */
+  --glass-ambient:
+    radial-gradient(55% 45% at 88% -8%, rgb(var(--glass-gold-hi) / 0.13), transparent 70%),
+    radial-gradient(45% 40% at 8% 4%, rgb(var(--glass-gold) / 0.08), transparent 70%),
+    radial-gradient(50% 45% at 0% 105%, rgb(180 83 60 / 0.11), transparent 72%),
+    radial-gradient(40% 35% at 100% 100%, rgb(214 140 60 / 0.07), transparent 70%),
+    radial-gradient(130% 95% at 50% 35%, transparent 62%, rgb(0 0 0 / 0.38));
+  /* Static 2-octave noise tile (rasterised once) to break gradient banding. */
+  --glass-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --glass-rim: inset 0 1px 0 rgb(var(--glass-ivory) / 0.14), inset 0 0 0 1px rgb(var(--glass-gold-hi) / 0.1);
+  --glass-fill-card: linear-gradient(170deg, rgb(var(--glass-raised) / 0.74), rgb(var(--glass-panel) / 0.62) 45%, rgb(var(--glass-panel) / 0.7));
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --glass-ambient: linear-gradient(transparent, transparent); --glass-noise: none; --glass-fill-card: var(--glass-fill-solid); }
+}
+
+/* Lit backdrops: the chat area, the sidebar, overlay cards and the Ops root. These elements do not
+   scroll themselves, so the background paints once. */
+html[data-hermes-theme^='gold-night'] [data-slot='sidebar-inset'],
+html[data-hermes-theme^='gold-night'] [data-ops-root] {
+  background-image: var(--glass-noise), var(--glass-ambient);
+}
+html[data-hermes-theme^='gold-night'] [data-slot='sidebar-inner'] {
+  background: var(--glass-noise), radial-gradient(90% 40% at 0% 0%, rgb(var(--glass-gold) / 0.1), transparent 70%), linear-gradient(180deg, rgb(var(--glass-raised) / 0.6), rgb(var(--glass-panel) / 0.4) 40%, transparent), var(--sidebar, transparent);
+}
+html[data-hermes-theme^='gold-night'] [data-overlay-surface] > div > div:first-child {
+  background: var(--glass-noise), var(--glass-sheen), var(--glass-ambient), linear-gradient(170deg, rgb(var(--glass-raised) / 0.96), rgb(var(--glass-panel) / 0.97) 40%, rgb(var(--glass-ink) / 0.97));
+  box-shadow: var(--glass-rim), var(--glass-lowlight), var(--glass-shadow), 0 0 0 1px rgb(0 0 0 / 0.4);
+}
+/* Scrim: a warm frosted dusk instead of a flat grey. */
+html[data-hermes-theme^='gold-night'] [data-overlay-surface] {
+  background: radial-gradient(70% 60% at 80% 0%, rgb(var(--glass-gold) / 0.1), transparent 70%), rgb(var(--glass-ink) / 0.45);
+}
+
+/* Glass cards: translucent over the lit backdrop (no blur; the backdrop is static), with a light edge. */
+html[data-hermes-theme^='gold-night'] :where([data-ops-settings-group], [data-ops-strip], [data-ops-teams] > li, [data-ops-channels-body] li, [data-slot='connector-card'], [data-slot='alert'], .ops-card) {
+  background: var(--glass-sheen), var(--glass-fill-card);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-rim), var(--glass-shadow-soft);
+}
+html[data-hermes-theme^='gold-night'] :where([data-ops-teams] > li, [data-ops-channels-body] li, [data-slot='connector-card']) {
+  transition: box-shadow var(--glass-dur-fast) var(--glass-ease), border-color var(--glass-dur-fast) var(--glass-ease), transform var(--glass-dur-base) var(--glass-spring);
+}
+html[data-hermes-theme^='gold-night'] :where([data-ops-teams] > li, [data-ops-channels-body] li, [data-slot='connector-card']):hover {
+  border-color: var(--glass-edge-strong);
+  box-shadow: var(--glass-rim), var(--glass-glow), var(--glass-shadow-soft);
+}
+html[data-hermes-theme^='gold-night'] :where([data-ops-channels-body] li p, [data-ops-channels-body] article p) { text-align: center; }
+
+/* Primary actions read as lit gold glass. */
+html[data-hermes-theme^='gold-night'] [data-slot='button'][data-variant='default'] {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.18), transparent 55%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 6px 18px -8px rgb(var(--glass-gold) / 0.7);
+}
+/* Composer: the main input floats as a glass pill. */
+html[data-hermes-theme^='gold-night'] [data-slot='aui_composer'], html[data-hermes-theme^='gold-night'] [data-composer-surface] {
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-rim), var(--glass-shadow);
+}
+
+/* IA: nav section headers, session date groups, cron status chips, template disclosure. */
+html[data-hermes-theme^='gold-night'] [data-nav-section] { color: rgb(var(--glass-gold) / 0.85); letter-spacing: 0.1em; }
+html[data-hermes-theme^='gold-night'] [data-session-group] { color: rgb(var(--glass-gold) / 0.85); letter-spacing: 0.1em; }
+[data-cron-run-status] { border-color: rgb(var(--glass-gold-hi) / 0.25); color: rgb(var(--glass-ivory) / 0.8); }
+[data-cron-run-status='completed'], [data-cron-run-status='succeeded'], [data-cron-run-status='success'] { background: rgb(111 191 115 / 0.12); border-color: rgb(111 191 115 / 0.35); color: #9ed7a1; }
+[data-cron-run-status='failed'], [data-cron-run-status='error'], [data-cron-run-status='timeout'], [data-cron-run-status='timed_out'] { background: rgb(180 83 60 / 0.16); border-color: rgb(212 160 140 / 0.4); color: #e2b3a2; }
+[data-cron-run-status='running'] { background: rgb(var(--glass-gold) / 0.14); border-color: rgb(var(--glass-gold-hi) / 0.4); color: rgb(var(--glass-gold-hi)); }
+[data-cron-templates] > summary::-webkit-details-marker, [data-scope-collapsible] > summary::-webkit-details-marker { display: none; }
+[data-cron-templates] > summary > *::after { content: ' ▸'; }
+[data-cron-templates][open] > summary > *::after { content: ' ▾'; }

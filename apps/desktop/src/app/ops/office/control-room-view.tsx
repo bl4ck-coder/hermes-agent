@@ -4,6 +4,7 @@
  * A refresh failure keeps the last rows and says so; nothing is ever shown as a healthy 0.
  */
 
+import { Tip } from '@/components/ui/tooltip'
 import { type ReactNode, useState } from 'react'
 
 import { T } from '../main-i18n'
@@ -24,7 +25,8 @@ import {
 import { CopyLink } from './copy-link'
 import type { OfficeThresholds } from './thresholds'
 
-export type SectionId = 'stats' | 'needs-you' | 'stuck' | 'queue' | 'projects' | 'in-flight' | 'delivered' | 'activity' | 'cost' | 'fleet'
+export type SectionId =
+  'stats' | 'needs-you' | 'stuck' | 'queue' | 'projects' | 'in-flight' | 'delivered' | 'activity' | 'cost' | 'fleet'
 
 const why = (e: unknown) => (e instanceof Error ? e.message : typeof e === 'string' ? e : e ? 'request failed' : '')
 
@@ -54,16 +56,23 @@ export function SectionFrame({
   const state = loading ? (error ? 'unavailable' : 'loading') : error ? 'stale' : 'ok'
 
   return (
-    <section aria-label={title} data-ops-focused={focused ? '' : undefined} data-ops-section={id} data-ops-state={state} id={`ops-office-${id}`} tabIndex={-1}>
+    <section
+      aria-label={title}
+      data-ops-focused={focused ? '' : undefined}
+      data-ops-section={id}
+      data-ops-state={state}
+      id={`ops-office-${id}`}
+      tabIndex={-1}
+    >
       {heading ? (
-      <h3>
-        {title}
-        {typeof count === 'number' ? <span data-ops-section-count=""> ({count})</span> : null}
-        {actions}
-      </h3>
+        <h3>
+          {title}
+          {typeof count === 'number' ? <span data-ops-section-count=""> ({count})</span> : null}
+          {actions}
+        </h3>
       ) : null}
       {state === 'loading' ? (
-        <p data-ops-loading="">{T("Loading…")}</p>
+        <p data-ops-loading="">{T('Loading…')}</p>
       ) : state === 'unavailable' ? (
         <p data-ops-unavailable="" role="status">
           {title} unavailable: {why(error)}
@@ -72,7 +81,10 @@ export function SectionFrame({
         <>
           {state === 'stale' ? (
             <p data-ops-warn="" role="status">
-              {T("Refresh failed (")}{why(error)}{T("); showing the last answer.")}</p>
+              {T('Refresh failed (')}
+              {why(error)}
+              {T('); showing the last answer.')}
+            </p>
           ) : null}
           {children}
         </>
@@ -83,31 +95,79 @@ export function SectionFrame({
 
 /* ---------------------------------- R63 stat cards ---------------------------------- */
 
-export function StatCards({ stats, profile, onFocus }: { stats: OfficeStats; profile: string | null; onFocus: (s: SectionId) => void }) {
+export function StatCards({
+  stats,
+  profile,
+  onFocus
+}: {
+  stats: OfficeStats
+  profile: string | null
+  onFocus: (s: SectionId) => void
+}) {
   const v = (x: number | null) => (x === null ? 'unknown' : String(x))
 
-  const card = (key: string, label: string, value: number | null, sub: string | null, target: SectionId, alarm = false, hint = '') => (
-    <button
-      aria-label={`${label}: ${v(value)}${sub ? `, ${sub}` : ''}. Show ${target.replace('-', ' ')}`}
-      data-ops-alarm={alarm && (value ?? 0) > 0 ? 'garnet' : undefined}
-      data-ops-stat={key}
-      key={key}
-      onClick={() => onFocus(target)}
-      aria-description={T(hint)}
-      type="button"
-    >
-      <strong data-ops-stat-value="">{v(value)}</strong>
-      <span>{T(label)}</span>
-      {sub ? <small data-ops-stat-sub="">{sub}</small> : null}
-    </button>
+  const card = (
+    key: string,
+    label: string,
+    value: number | null,
+    sub: string | null,
+    target: SectionId,
+    alarm = false,
+    hint = ''
+  ) => (
+    <Tip label={T(hint)} key={key}>
+      <button
+        aria-label={`${label}: ${v(value)}${sub ? `, ${sub}` : ''}. Show ${target.replace('-', ' ')}`}
+        data-ops-alarm={alarm && (value ?? 0) > 0 ? 'garnet' : undefined}
+        data-ops-stat={key}
+        onClick={() => onFocus(target)}
+        type="button"
+      >
+        <strong data-ops-stat-value="">{v(value)}</strong>
+        <span>{T(label)}</span>
+        {sub ? <small data-ops-stat-sub="">{sub}</small> : null}
+      </button>
+    </Tip>
   )
 
   return (
-    <div aria-label={T("Office stats")} data-ops-stats="" role="group">
-      {card('working', 'Working agents', stats.working, stats.stuck === null ? null : `${stats.stuck} ${T('at risk')}`, 'stuck', false, 'Profiles working, waiting on you or blocked (fleet presence; running tasks when the fleet is unavailable); at risk = blocked, stale heartbeat, failing runs or failing cron')}
-      {card('open', 'Open tasks', stats.open, profile && stats.openMine !== null ? `${stats.openMine} ${T('for')} ${profile}` : null, 'queue', false, 'Every task not done or archived')}
-      {card('done-week', 'Done this week', stats.doneWeek, null, 'delivered', false, 'Tasks completed since Monday 00:00 in the Ops timezone (Settings › Timezone)')}
-      {card('attention', 'Needs attention', stats.attention, null, 'needs-you', true, 'Decisions waiting on you plus stuck items, each counted once')}
+    <div aria-label={T('Office stats')} data-ops-stats="" role="group">
+      {card(
+        'working',
+        'Working agents',
+        stats.working,
+        stats.stuck === null ? null : `${stats.stuck} ${T('at risk')}`,
+        'stuck',
+        false,
+        'Profiles working, waiting on you or blocked (fleet presence; running tasks when the fleet is unavailable); at risk = blocked, stale heartbeat, failing runs or failing cron'
+      )}
+      {card(
+        'open',
+        'Open tasks',
+        stats.open,
+        profile && stats.openMine !== null ? `${stats.openMine} ${T('for')} ${profile}` : null,
+        'queue',
+        false,
+        'Every task not done or archived'
+      )}
+      {card(
+        'done-week',
+        'Done this week',
+        stats.doneWeek,
+        null,
+        'delivered',
+        false,
+        'Tasks completed since Monday 00:00 in the Ops timezone (Settings › Timezone)'
+      )}
+      {card(
+        'attention',
+        'Needs attention',
+        stats.attention,
+        null,
+        'needs-you',
+        true,
+        'Decisions waiting on you plus stuck items, each counted once'
+      )}
     </div>
   )
 }
@@ -121,23 +181,35 @@ const REASON: Record<StuckItem['reason'], string> = {
   cron_failing: 'Cron failing'
 }
 
-export function StuckList({ items, onOpenTask, onOpenCron }: { items: StuckItem[]; onOpenTask?: (id: string) => void; onOpenCron?: (id: string) => void }) {
+export function StuckList({
+  items,
+  onOpenTask,
+  onOpenCron
+}: {
+  items: StuckItem[]
+  onOpenTask?: (id: string) => void
+  onOpenCron?: (id: string) => void
+}) {
   if (!items.length) {
-    return <p data-ops-empty="stuck">{T("Nothing is stuck.")}</p>
+    return <p data-ops-empty="stuck">{T('Nothing is stuck.')}</p>
   }
 
   return (
     <ul data-ops-stuck="">
       {items.map(s => (
         <li data-ops-stuck-item={s.key} data-ops-stuck-reason={s.reason} key={s.key}>
-          <button disabled={s.kind === 'task' ? !onOpenTask : !onOpenCron} onClick={() => (s.kind === 'task' ? onOpenTask?.(s.id) : onOpenCron?.(s.id))} type="button">
+          <button
+            disabled={s.kind === 'task' ? !onOpenTask : !onOpenCron}
+            onClick={() => (s.kind === 'task' ? onOpenTask?.(s.id) : onOpenCron?.(s.id))}
+            type="button"
+          >
             {s.title}
           </button>{' '}
           <span data-ops-field="reason">{REASON[s.reason]}</span> <span data-ops-field="detail">{s.detail}</span>{' '}
           <span data-ops-field="age">{s.ageS === null ? 'age unknown' : `for ${fmtAge(s.ageS)}`}</span>
           {s.profile ? <span data-ops-field="profile"> @{s.profile}</span> : null}
-        {s.kind === 'task' ? <CopyLink id={s.id} kind="task" /> : <CopyLink id={s.id} kind="cron" />}
-</li>
+          {s.kind === 'task' ? <CopyLink id={s.id} kind="task" /> : <CopyLink id={s.id} kind="cron" />}
+        </li>
       ))}
     </ul>
   )
@@ -145,7 +217,19 @@ export function StuckList({ items, onOpenTask, onOpenCron }: { items: StuckItem[
 
 /* ------------------------------------ R64 my queue ----------------------------------- */
 
-export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: BoardTask[]; profile: string; nowS: number; th?: OfficeThresholds; onOpenTask?: (id: string) => void }) {
+export function MyQueue({
+  tasks,
+  profile,
+  nowS,
+  th,
+  onOpenTask
+}: {
+  tasks: BoardTask[]
+  profile: string
+  nowS: number
+  th?: OfficeThresholds
+  onOpenTask?: (id: string) => void
+}) {
   const q = myQueue(tasks, profile, nowS, th)!
   // Open where the work is: overdue first when there is any.
   const [tab, setTab] = useState<QueueTab>(() => (q.overdue.length ? 'overdue' : 'upcoming'))
@@ -154,9 +238,16 @@ export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: Board
 
   return (
     <div data-ops-queue={profile}>
-      <div aria-label={T("Queue")} role="tablist">
+      <div aria-label={T('Queue')} role="tablist">
         {(['upcoming', 'overdue', 'completed'] as const).map(t => (
-          <button aria-selected={tab === t} data-ops-queue-tab={t} key={t} onClick={() => setTab(t)} role="tab" type="button">
+          <button
+            aria-selected={tab === t}
+            data-ops-queue-tab={t}
+            key={t}
+            onClick={() => setTab(t)}
+            role="tab"
+            type="button"
+          >
             {LABEL[t]} <span data-ops-queue-count={t}>{q[t].length}</span>
           </button>
         ))}
@@ -164,7 +255,9 @@ export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: Board
       {q.upcoming.length + q.overdue.length === 0 && tab !== 'completed' ? (
         <p data-ops-empty="queue">{T("You're all caught up.")}</p>
       ) : rows.length === 0 ? (
-        <p data-ops-empty={`queue-${tab}`}>{T("Nothing")}{' '}{LABEL[tab].toLowerCase()}.</p>
+        <p data-ops-empty={`queue-${tab}`}>
+          {T('Nothing')} {LABEL[tab].toLowerCase()}.
+        </p>
       ) : (
         <ul role="tabpanel">
           {rows.map(r => (
@@ -174,8 +267,8 @@ export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: Board
               </button>{' '}
               <span data-ops-field="status">{r.task.status}</span>
               {r.why ? <span data-ops-field="why"> {r.why}</span> : null}
-            <CopyLink id={r.task.id} kind="task" label={r.task.title} />
-</li>
+              <CopyLink id={r.task.id} kind="task" label={r.task.title} />
+            </li>
           ))}
         </ul>
       )}
@@ -185,22 +278,30 @@ export function MyQueue({ tasks, profile, nowS, th, onOpenTask }: { tasks: Board
 
 /* -------------------------------- R65 project progress ------------------------------- */
 
-export function ProjectTable({ rows, nowS, onOpenProject }: { rows: ProjectProgress[]; nowS: number; onOpenProject?: (id: string) => void }) {
+export function ProjectTable({
+  rows,
+  nowS,
+  onOpenProject
+}: {
+  rows: ProjectProgress[]
+  nowS: number
+  onOpenProject?: (id: string) => void
+}) {
   if (!rows.length) {
-    return <p data-ops-empty="projects">{T("No projects yet. Group tasks into a project from the Board.")}</p>
+    return <p data-ops-empty="projects">{T('No projects yet. Group tasks into a project from the Board.')}</p>
   }
 
   return (
     <table data-ops-project-table="">
       <thead>
         <tr>
-          <th scope="col">{T("Project")}</th>
-          <th scope="col">{T("Status")}</th>
-          <th scope="col">{T("Progress")}</th>
-          <th scope="col">{T("Team")}</th>
-          <th scope="col">{T("Updated")}</th>
+          <th scope="col">{T('Project')}</th>
+          <th scope="col">{T('Status')}</th>
+          <th scope="col">{T('Progress')}</th>
+          <th scope="col">{T('Team')}</th>
+          <th scope="col">{T('Updated')}</th>
           <th scope="col">
-            <span className="sr-only">{T("Link")}</span>
+            <span className="sr-only">{T('Link')}</span>
           </th>
         </tr>
       </thead>
@@ -230,8 +331,10 @@ export function ProjectTable({ rows, nowS, onOpenProject }: { rows: ProjectProgr
               {p.team.length > 4 ? <span> +{p.team.length - 4}</span> : null}
             </td>
             <td>{p.updatedAt === null ? 'unknown' : `${fmtAge(nowS - p.updatedAt)} ${T('ago')}`}</td>
-          <td data-ops-copy-cell=""><CopyLink id={p.id} kind="project" label={p.name ?? p.id} /></td>
-</tr>
+            <td data-ops-copy-cell="">
+              <CopyLink id={p.id} kind="project" label={p.name ?? p.id} />
+            </td>
+          </tr>
         ))}
       </tbody>
     </table>
@@ -255,7 +358,7 @@ export function DeliveredList({
   onOpenAttachment?: (taskId: string, a: AttachmentLite) => void
 }) {
   if (!tasks.length) {
-    return <p data-ops-empty="delivered">{T("Nothing delivered in the last 24 h.")}</p>
+    return <p data-ops-empty="delivered">{T('Nothing delivered in the last 24 h.')}</p>
   }
 
   return (
@@ -270,21 +373,29 @@ export function DeliveredList({
               {t.title}
             </button>{' '}
             {t.assignee ? <span>@{t.assignee}</span> : null}{' '}
-            <time>{typeof t.completed_at === 'number' ? `${fmtAge(nowS - t.completed_at)} ${T('ago')}` : T('unknown')}</time>
+            <time>
+              {typeof t.completed_at === 'number' ? `${fmtAge(nowS - t.completed_at)} ${T('ago')}` : T('unknown')}
+            </time>
             {t.latest_summary ? <p data-ops-field="summary">{t.latest_summary}</p> : null}
             {top ? (
-              <button data-ops-open-output={top.id} disabled={!onOpenAttachment} onClick={() => onOpenAttachment?.(t.id, top)} type="button">
-                {T("Open")}{' '}{top.filename} ({fmtBytes(top.size)}){files && files.length > 1 ? ` +${files.length - 1} more` : ''}
+              <button
+                data-ops-open-output={top.id}
+                disabled={!onOpenAttachment}
+                onClick={() => onOpenAttachment?.(t.id, top)}
+                type="button"
+              >
+                {T('Open')} {top.filename} ({fmtBytes(top.size)})
+                {files && files.length > 1 ? ` +${files.length - 1} more` : ''}
               </button>
             ) : files === undefined ? (
-              <span data-ops-loading="">{T("outputs loading")}</span>
+              <span data-ops-loading="">{T('outputs loading')}</span>
             ) : files === null ? (
-              <span data-ops-unavailable="">{T("outputs unavailable")}</span>
+              <span data-ops-unavailable="">{T('outputs unavailable')}</span>
             ) : (
-              <span data-ops-field="no-output">{T("no files attached")}</span>
+              <span data-ops-field="no-output">{T('no files attached')}</span>
             )}
-          <CopyLink id={t.id} kind="task" label={t.title} />
-</li>
+            <CopyLink id={t.id} kind="task" label={t.title} />
+          </li>
         )
       })}
     </ol>

@@ -14,6 +14,14 @@ import { enUninstallSection } from './en_uninstall_section'
 import type { Translations } from './types'
 
 export const en: Translations = {
+  teach: {
+    navCore: 'Agent & app',
+    navSystem: 'System',
+    navConnections: 'Connections & data',
+    navExtensions: 'Extensions',
+    chatIntroHint: 'Type / for commands · Ctrl+K to search sessions and settings',
+    agentsEmptyHint: 'Try: “Research A and B in parallel, then compare.”',
+  },
   externalOpenFailed: {
     title: 'Couldn’t open this link',
     message: 'No browser is registered to open this address. Copy the link and open it manually.',

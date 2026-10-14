@@ -11,6 +11,14 @@ import { frSharedMetrics } from './fr_shared_metrics'
 import { introFr } from './intro-fr'
 
 export const frOverrides = {
+  teach: {
+    navCore: 'Agent et app',
+    navSystem: 'Système',
+    navConnections: 'Connexions et données',
+    navExtensions: 'Extensions',
+    chatIntroHint: 'Tapez / pour les commandes · Ctrl+K pour chercher sessions et réglages',
+    agentsEmptyHint: 'Essayez : « Recherche A et B en parallèle, puis compare. »',
+  },
   ...opsLocaleEntry('fr'),
   sharedMetrics: frSharedMetrics,
   intro: introFr,
