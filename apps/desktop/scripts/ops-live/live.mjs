@@ -26,6 +26,17 @@ const env = {
 }
 delete env.HERMES_DESKTOP_DEV_SERVER
 
+// B11 safety: never launch a test window whose backend cannot start (a wrong interpreter makes the
+// isolated instance loop on 'Hermes couldn't start' in a visible window on the user's desktop).
+{
+  const { spawnSync } = await import('node:child_process')
+  const py = process.env.OPS_LIVE_PYTHON
+  const probe = py ? spawnSync(py, ['-c', 'import hermes_cli.web_server'], { cwd: resolve(DESKTOP, '..', '..'), encoding: 'utf8', timeout: 120_000 }) : null
+  if (!probe || probe.status !== 0) {
+    console.error('ops-live preflight failed: OPS_LIVE_PYTHON must import hermes_cli.web_server from this checkout.', probe?.stderr?.slice(-400) ?? 'unset')
+    process.exit(2)
+  }
+}
 const app = await _electron.launch({ executablePath: electronBin, args: [DESKTOP], env, cwd: DESKTOP, timeout: 120_000 })
 const page = await app.firstWindow()
 page.on('console', m => (m.type() === 'error' || m.type() === 'warning') && log.console.push({ type: m.type(), text: m.text().slice(0, 400), at: page.url() }))
@@ -33,7 +44,21 @@ page.on('pageerror', e => log.pageErrors.push({ text: String(e).slice(0, 400), a
 page.on('requestfailed', r => log.failed.push({ url: r.url().slice(0, 200), err: r.failure()?.errorText }))
 page.on('response', r => r.status() >= 400 && log.http.push({ status: r.status(), url: r.url().slice(0, 200) }))
 
-const shot = async name => page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) }))
+// B11: dismiss status toasts (warnings/info, e.g. the test-instance shared-profile notice) in any
+// locale before a screenshot; error alerts stay visible as evidence.
+const dismissToasts = async () => {
+  const texts = await page.evaluate(() => {
+    const out = []
+    for (const n of document.querySelectorAll('[role="region"] [role="status"]')) {
+      if (!n.getClientRects().length) continue
+      const b = n.querySelector('button[aria-label]')
+      if (b) { out.push((n.textContent || '').trim().slice(0, 80)); b.click() }
+    }
+    return out
+  }).catch(() => [])
+  if (texts.length) { log.toastDismissed.push(...texts); await sleep(350) }
+}
+const shot = async name => { await dismissToasts(); return page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) })) }
 const save = () => writeFileSync(join(OUT, 'live.json'), JSON.stringify({ ...log, mainTail: typeof log.mainTail === 'function' ? log.mainTail() : '' }, null, 2))
 
 async function section(name, fn) {
@@ -87,6 +112,9 @@ async function sampleFps(name, act, ms = 5000) {
   const s = [...d].sort((a, b) => a - b)
   const q = p => s[Math.min(s.length - 1, Math.floor(p * s.length))]
   log.fps[name] = { frames: d.length, p50: +q(0.5).toFixed(2), p95: +q(0.95).toFixed(2), p99: +q(0.99).toFixed(2), max: +s[s.length - 1].toFixed(2), over16_7: d.filter(x => x > 16.7).length, over33: d.filter(x => x > 33.4).length }
+  // B11: when each long frame happened (ms from sample start), to tell pickup from release.
+  let acc = 0
+  log.fps[name].spikes = d.map(x => { acc += x; return [Math.round(acc), +x.toFixed(1)] }).filter(([, x]) => x > 33.4)
   save()
 }
 
@@ -99,12 +127,8 @@ const lens = async id => {
   await sleep(2500)
 }
 const want = s => STEPS.includes('all') || STEPS.includes(s)
-log.toastDismissed = await page.evaluate(() => {
-  const el = [...document.querySelectorAll('body *')].filter(n => n.getClientRects().length > 0 && /Another Hermes installation/.test(n.textContent || '')).sort((a, b) => (a.textContent || '').length - (b.textContent || '').length)[0]
-  for (let p = el; p && p !== document.body; p = p.parentElement) { const b = p.querySelector('button'); if (b) { b.click(); return true } }
-  return false
-}).catch(() => false)
-await sleep(400)
+// B11: toasts are dismissed before every screenshot (see shot()), in any locale.
+log.toastDismissed = []
 
 // Boot: wait for the shell, past the boot overlay.
 await page.waitForLoadState('domcontentloaded')
