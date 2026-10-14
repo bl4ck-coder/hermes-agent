@@ -312,7 +312,7 @@ export function BoardView(props: BoardViewProps) {
         }
       }}
     >
-      <div role="toolbar">
+      <div data-ops-board-toolbar="" role="toolbar">
         {LAYOUTS.map(l => (
           <button aria-pressed={l === layout} data-ops-layout={l} key={l} onClick={() => setLayout(l)} type="button">
             {layoutLabel(l)}

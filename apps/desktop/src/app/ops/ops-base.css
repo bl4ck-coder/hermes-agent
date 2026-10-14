@@ -257,7 +257,7 @@
 :where([data-ops-card]) > :where([data-ops-card-signals]) { grid-area: sig; max-width: 150px; }
 
 /* Office strips: each count is a quiet chip. */
-:where(:has(> [data-ops-count])) { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+:where([data-ops-strip]) { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 :where([data-ops-count]) { background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 999px; color: var(--ops-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; padding: 2px 10px; white-space: nowrap; }
 
 /* Canvas inline node detail: one key/value row per line, like the Inspector. */
@@ -530,7 +530,6 @@
 :where([data-ops-secret][data-ops-set='yes'])::before { background: #6fbf73; opacity: 1; }
 :where([data-ops-secret-summary]) { color: var(--ops-muted); font-size: 12px; margin: 0; }
 :where([data-ops-diagnostics] h4) { margin-top: 14px; }
-:where([data-ops-root]) :where(label:has(> input[type='checkbox'])) { align-items: center; display: inline-flex; gap: 6px; margin-right: 14px; }
 /* Board: the view pills are one segmented switcher, not a row of equal buttons; New task is the primary action. */
 :where([role='toolbar'] > [data-ops-layout]) { background: transparent; border-color: transparent; border-radius: 6px; color: var(--ops-muted); text-transform: capitalize; }
 :where([role='toolbar'] > [data-ops-layout]:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; color: var(--ops-fg); }
@@ -561,6 +560,6 @@
 :where([data-ops-run-text]:empty) { display: none; }
 @media (prefers-reduced-motion: reduce) { :where([data-ops-run-status])::before { animation: none; } }
 :where([data-ops-motion='reduced'] [data-ops-run-status])::before { animation: none; }
-/* Board toolbar keeps the view switcher on one line and scrolls sideways if it must. */
-:where([role='toolbar']:has(> [data-ops-layout])) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
-:where([role='toolbar']:has(> [data-ops-layout])) > :where(*) { flex: none; }
+/* Board toolbar keeps the view switcher on one line and scrolls sideways if it must. B26: an attribute, not :has(), so Office updates never re-match it. */
+:where([data-ops-board-toolbar]) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+:where([data-ops-board-toolbar]) > :where(*) { flex: none; }
