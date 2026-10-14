@@ -648,7 +648,7 @@
 :where([data-ops-settings-folded]) { margin: 0 0 12px; padding: 10px 14px; }
 :where([data-ops-settings-folded]) > :where(summary) { align-items: baseline; cursor: pointer; display: flex; gap: 10px; list-style: none; }
 :where([data-ops-settings-folded]) > :where(summary) :where(h3) { margin: 0; }
-:where([data-ops-settings-folded]) > :where(summary)::after { color: var(--ops-muted); content: '›'; margin-left: auto; transition: transform 160ms ease; }
+:where([data-ops-settings-folded]) > :where(summary)::after { color: var(--ops-muted); content: 'â€º'; margin-left: auto; transition: transform 160ms ease; }
 :where([data-ops-settings-folded][open]) > :where(summary)::after { transform: rotate(90deg); }
 :where([data-ops-settings-folded][open]) > :where(summary) { margin-bottom: 10px; }
 :where([data-ops-settings-hint]) { color: var(--ops-muted); font-size: 12px; }

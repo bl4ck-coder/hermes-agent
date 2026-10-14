@@ -71,11 +71,11 @@ Legend: **Done** = landed in this pass and checked in the live screenshot. **Nex
   - Text colours are unchanged: ivory #F2E8D5 on panel is about 15:1, and gold-hi #E8C77A on the gold-tinted pill is about 10:1.
   - The fills are at least 0.94 opaque on overlay cards, so AA holds.
 
-## Glass pass 3 follow-up (glass6–glass11)
+## Glass pass 3 follow-up (glass6â€“glass11)
 
 | Screen | Before | After |
 |---|---|---|
-| Profiles · SOUL.md | Editor used the GitHub-light ink (#1f2328) on Gold Night, so the prompt was close to invisible; a cream 2px box framed only the text, and only the first ~60px took clicks. | The editor follows the painted mode (as the terminal does), so the ink is legible. The whole frame is the click target and focus shows as one gold glow on the frame. |
+| Profiles Â· SOUL.md | Editor used the GitHub-light ink (#1f2328) on Gold Night, so the prompt was close to invisible; a cream 2px box framed only the text, and only the first ~60px took clicks. | The editor follows the painted mode (as the terminal does), so the ink is legible. The whole frame is the click target and focus shows as one gold glow on the frame. |
 | Office / Agents / Skills / Channels titles | Same weight and size as the body, so nothing said "this is the page". | Editorial serif display title in lit gold (Carnave's "Lo que ve el socio" treatment); the greeting is the largest. |
 | Capabilities / Artifacts / Messaging | The page-shell body repainted the flat surface over the lit shell, so these pages looked unlit next to chat. | The shell's ambient light and spotlight show through. |
-| Artifacts load | A warning toast on most boots ("Skipped N of 30 …") caused by the profile-backend pool (slot wait, cancelled start, back-off after saturation, retired idle backend). | Pool states get one delayed retry, then are skipped quietly; only real read errors and safe-limit skips warn. |
+| Artifacts load | A warning toast on most boots ("Skipped N of 30 â€¦") caused by the profile-backend pool (slot wait, cancelled start, back-off after saturation, retired idle backend). | Pool states get one delayed retry, then are skipped quietly; only real read errors and safe-limit skips warn. |

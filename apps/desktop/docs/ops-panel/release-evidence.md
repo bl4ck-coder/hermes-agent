@@ -608,9 +608,9 @@ Scores (after B26 â†’ after B29): Board 8â†’9, Canvas 8â†’9, Office 8â†’9, Setti
 - IA: Settings nav sections (Sistema / Conexiones y datos / Extensiones), sessions search above list + date groups, chat intro hint, agents empty hint, cron status chips + folded templates. Ops hover hints restored through Tip.
 - Live glass3: pageErrors 0, boardUnchanged true, zero frames over 33 ms in all four measurements (frame interval was ~15.1 ms this round vs ~13.3 ms before, so p95 numbers are not directly comparable).
 
-## Glass pass 3 follow-up (glass6–glass11)
+## Glass pass 3 follow-up (glass6â€“glass11)
 
 - Live driver: app screens now leave Ops fullscreen instead of forcing it (Artifacts/Capabilities/Messaging used to capture the Ops lens). Long-animation-frame attribution is recorded per fps sample.
 - Fixes: artifacts pool-state toasts (3 commits), code editor ink on Gold Night, SOUL frame, display headlines, page-shell light.
-- Board scroll 221.8 ms (glass6): did not reproduce in glass7–glass10 (max 15.6–29.7 ms, 0 frames over 33 ms). It was a one-off. The probe recorded no long frame that pointed at app script or rendering.
-- Board drag: p95 15.1 ms throughout. The 58–68 ms outliers in glass9/10 are long-animation-frames with 0 ms blocking, ~1–2 ms render/layout and no attributed script, i.e. a gap between frames rather than app work. The synthetic drag test was the same as when it measured 28.8 ms.
+- Board scroll 221.8 ms (glass6): did not reproduce in glass7â€“glass10 (max 15.6â€“29.7 ms, 0 frames over 33 ms). It was a one-off. The probe recorded no long frame that pointed at app script or rendering.
+- Board drag: p95 15.1 ms throughout. The 58â€“68 ms outliers in glass9/10 are long-animation-frames with 0 ms blocking, ~1â€“2 ms render/layout and no attributed script, i.e. a gap between frames rather than app work. The synthetic drag test was the same as when it measured 28.8 ms.
