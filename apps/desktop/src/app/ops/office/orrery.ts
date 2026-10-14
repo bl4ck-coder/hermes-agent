@@ -76,3 +76,92 @@ export function layoutOrrery(
 
   return { centre, orbs, overflow }
 }
+
+/** B11: label box estimate for an orb pill (12px UI font ~7px/char plus padding). */
+export function orbLabelBox(name: string): { w: number; h: number } {
+  return { w: Math.min(170, 18 + name.length * 7), h: 24 }
+}
+
+export interface SpreadOptions {
+  /** Horizontal stretch of the rings: the orrery is a wide strip, not a square. */
+  sx?: number
+  gap?: number
+  /** Half-height clamp so orbs stay inside the 240px stage. */
+  maxY?: number
+  iterations?: number
+}
+
+/**
+ * B11 collision avoidance: stretch the rings into an ellipse, then relax overlapping label
+ * boxes apart along the axis of least overlap. The centre (ring 0) never moves. Pure and
+ * deterministic, so the same fleet always draws the same picture.
+ */
+export function spreadOrbs<T extends { profile: string; ring: number; x: number; y: number }>(
+  orbs: T[],
+  { sx = 2.6, gap = 6, maxY = 96, iterations = 80 }: SpreadOptions = {}
+): T[] {
+  const out = orbs.map(o => ({ ...o, x: o.ring === 0 ? o.x : o.x * sx, y: o.y }))
+
+  for (let it = 0; it < iterations; it++) {
+    let moved = false
+
+    for (let i = 0; i < out.length; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        const a = out[i]
+        const b = out[j]
+        const A = orbLabelBox(a.profile)
+        const B = orbLabelBox(b.profile)
+        const ox = (A.w + B.w) / 2 + gap - Math.abs(a.x - b.x)
+        const oy = (A.h + B.h) / 2 + gap - Math.abs(a.y - b.y)
+
+        if (ox <= 0 || oy <= 0) {
+          continue
+        }
+
+        moved = true
+        const fa = a.ring === 0
+        const fb = b.ring === 0
+        const share = fa || fb ? 1 : 0.5
+        // Prefer vertical separation while there is room, else go sideways.
+        const room = Math.abs(a.y) < maxY - 1 || Math.abs(b.y) < maxY - 1
+
+        if (oy <= ox && room) {
+          const s = (a.y <= b.y ? -1 : 1) * oy * share
+          if (!fa) a.y += s
+          if (!fb) b.y -= s
+        } else {
+          const s = (a.x <= b.x ? -1 : 1) * ox * share
+          if (!fa) a.x += s
+          if (!fb) b.x -= s
+        }
+      }
+    }
+
+    for (const o of out) {
+      if (o.ring !== 0) {
+        o.y = Math.max(-maxY, Math.min(maxY, o.y))
+      }
+    }
+
+    if (!moved) {
+      break
+    }
+  }
+
+  return out.map(o => ({ ...o, x: Math.round(o.x), y: Math.round(o.y) }))
+}
+
+/** True when any two label boxes overlap (test/diagnostic helper). */
+export function orbsOverlap(orbs: { profile: string; x: number; y: number }[]): boolean {
+  for (let i = 0; i < orbs.length; i++) {
+    for (let j = i + 1; j < orbs.length; j++) {
+      const A = orbLabelBox(orbs[i].profile)
+      const B = orbLabelBox(orbs[j].profile)
+      if (Math.abs(orbs[i].x - orbs[j].x) < (A.w + B.w) / 2 && Math.abs(orbs[i].y - orbs[j].y) < (A.h + B.h) / 2) {
+        return true
+      }
+    }
+  }
+
+  return false
+}

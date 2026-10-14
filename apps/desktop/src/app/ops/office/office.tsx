@@ -33,7 +33,7 @@ import { DeliveredList, MyQueue, ProjectTable, SectionFrame, type SectionId, Sta
 import { CopyLink } from './copy-link'
 import { type KanbanAction, NeedsYouQueue, type PolicyNeed } from './needs-you'
 import { activityRow, focusNeedsYouRow, toastsFromPending } from './office-toasts'
-import { layoutOrrery, ORRERY_CAP } from './orrery'
+import { layoutOrrery, ORRERY_CAP, spreadOrbs } from './orrery'
 import { DEFAULT_THRESHOLDS, type OfficeThresholds, useOfficeThresholds } from './thresholds'
 
 export type OfficeLayout = 'orrery' | 'table'
@@ -226,7 +226,10 @@ function Orrery({
   onOpenProfile?: (p: string) => void
   onLayout?: (l: OfficeLayout) => void
 }) {
-  const { centre, orbs, overflow } = layoutOrrery(fleet.profiles, p => shownPresence(p, nowS))
+  const laid = layoutOrrery(fleet.profiles, p => shownPresence(p, nowS))
+  const { overflow } = laid
+  // B11: labels never overlap (ellipse + relaxation); the centre stays put.
+  const [centre, ...orbs] = spreadOrbs([laid.centre, ...laid.orbs])
   // X11: drift and halos only while a run is live (A1 active_runs), never under reduced motion.
   const live = new Set(fleet.profiles.filter(p => (p.active_runs?.length ?? 0) > 0).map(p => p.profile))
   const moving = !reduced && live.size > 0
@@ -242,7 +245,7 @@ function Orrery({
       data-ops-ring={o.ring}
       key={o.profile}
       onClick={() => onOpenProfile?.(o.profile)}
-      style={{ position: 'absolute', left: `calc(50% + ${o.x}px)`, top: `calc(50% + ${o.y}px)` }}
+      style={{ position: 'absolute', left: `calc(50% + ${o.x}px)`, top: `calc(50% + ${o.y}px)`, transform: 'translate(-50%, -50%)', whiteSpace: 'nowrap' }}
       type="button"
     >
       {o.profile}
