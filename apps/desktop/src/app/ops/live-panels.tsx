@@ -5,6 +5,7 @@ import { BoardContainer } from './board/board-container'
 import { CanvasContainer } from './canvas/canvas-container'
 import { AgentCardContainer, RunDetailContainer } from './detail/details'
 import { TaskTabContainer } from './detail/task-tab'
+import { ActivityLens, ProjectsLens, RunsLens, TemplatesLens } from './lenses/lenses'
 import { SettingsContainer } from './motion/settings'
 import { hostIdentityFromTab, type OpsTab } from './navigation-store'
 import { OfficeContainer } from './office/office-container'
@@ -22,7 +23,7 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
   }
 
   if (tab.kind === 'office') {
-    return <OfficeContainer />
+    return <OfficeContainer onOpenRoute={onOpenRoute} profile={profile} />
   }
 
   // P3 Canvas has no write paths at all (readOnly is the remote badge); the writable Canvas is P5.
@@ -38,6 +39,25 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
   // W9 Ops settings is a live lens; other lenses (W12) keep their existing route buttons.
   if (tab.kind === 'lens' && tab.id === 'lens:settings') {
     return <SettingsContainer onOpenRoute={onOpenRoute} profile={profile} />
+  }
+
+  // P7 F3: live lenses. Task/run links go through the host's route handler (Desktop kanban route).
+  if (tab.kind === 'lens') {
+    const openTask = onOpenRoute ? (id: string) => onOpenRoute(`/kanban?task=${encodeURIComponent(id)}`) : undefined
+
+    switch (tab.id) {
+      case 'lens:runs':
+        return <RunsLens onOpenTask={openTask} />
+
+      case 'lens:projects':
+        return <ProjectsLens onOpenBoard={onOpenRoute ? id => onOpenRoute(`/kanban?project=${encodeURIComponent(id)}`) : undefined} />
+
+      case 'lens:templates':
+        return <TemplatesLens onOpenRoute={onOpenRoute} profile={profile} />
+
+      case 'lens:activity':
+        return <ActivityLens onOpenTask={openTask} />
+    }
   }
 
   const id = hostIdentityFromTab(tab).id

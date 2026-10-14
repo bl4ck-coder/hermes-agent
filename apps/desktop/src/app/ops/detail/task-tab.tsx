@@ -26,7 +26,10 @@ const VERB: Record<string, string> = {
   archived: 'archived',
   failed: 'failed',
   reclaimed: 'reclaimed',
-  linked: 'linked'
+  linked: 'spawned child',
+  unlinked: 'unlinked',
+  delegated: 'delegated to',
+  delegate_spawned: 'delegated to'
 }
 
 /** O61/O71: verb from the event kind, target from the payload (assignee/profile/child/reason). */
@@ -34,9 +37,10 @@ export function describeEvent(e: TaskEvent): { verb: string; target: string; han
   const p = (e.payload && typeof e.payload === 'object' ? e.payload : {}) as Record<string, unknown>
   const pick = (...k: string[]) => k.map(x => p[x]).find(v => typeof v === 'string' && v) as string | undefined
   const verb = VERB[e.kind] ?? e.kind.replace(/_/g, ' ')
-  const target = pick('assignee', 'to', 'profile', 'child_id', 'reason', 'status', 'summary') ?? ''
+  const target = pick('assignee', 'to', 'profile', 'child', 'child_id', 'reason', 'status', 'summary') ?? ''
 
-  return { verb, target, handoff: e.kind === 'reassigned' || e.kind === 'assigned' || e.kind === 'linked' }
+  // O71: a handoff is a reassign, a child-task link, or a delegate_task spawn.
+  return { verb, target, handoff: e.kind === 'reassigned' || e.kind === 'assigned' || e.kind === 'linked' || /delegat/.test(e.kind) }
 }
 
 const hhmm = (s?: number | null) => (typeof s === 'number' ? new Date(s * 1000).toISOString().slice(11, 16) : '--:--')
@@ -49,13 +53,15 @@ export function TaskTabView({
   readOnly,
   onAction,
   onOpenTask,
-  onOpenRoute
+  onOpenRoute,
+  loadLog
 }: {
   detail: TaskDetail | null
   error?: string | null
   assignees?: string[]
   readOnly?: boolean
-  onAction: (a: { kind: 'comment' | 'assign' | 'subtask' | 'unblock' | 'retry'; value?: string }) => Promise<unknown>
+  onAction: (a: { kind: 'comment' | 'assign' | 'subtask' | 'unblock' | 'retry' | 'stop' | 'steer'; value?: string }) => Promise<unknown>
+  loadLog?: () => Promise<{ exists: boolean; content: string; truncated: boolean }>
   onOpenTask?: (id: string) => void
   onOpenRoute?: (r: string) => void
 }) {
@@ -64,6 +70,9 @@ export function TaskTabView({
   const [sub, setSub] = useState('')
   const [note, setNote] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
+  const [confirmStop, setConfirmStop] = useState<number | null>(null)
+  const [steer, setSteer] = useState('')
+  const [log, setLog] = useState<string | null>(null)
 
   if (!detail) {
     return <p data-ops-unavailable="">{error ? `Task unavailable: ${error}` : 'Task is loading (unknown).'}</p>
@@ -72,6 +81,7 @@ export function TaskTabView({
   const t = detail.task
   const runs = Array.isArray(detail.runs) ? detail.runs : []
   const events = Array.isArray(detail.events) ? detail.events : []
+  const live = runs.find(r => r.status === 'running' && (r.ended_at === null || r.ended_at === undefined))
   const failed = runs.find(r => r.outcome === 'failed' || r.status === 'failed' || r.error)
 
   const act = async (a: Parameters<typeof onAction>[0], done: string) => {
@@ -104,6 +114,37 @@ export function TaskTabView({
         </button>
       </header>
       {msg ? <p role="status">{msg}</p> : null}
+      {t.workspace_path ? (
+        <p data-ops-field="workspace">
+          Workspace <code>{t.workspace_path}</code>
+        </p>
+      ) : null}
+
+      {live && !readOnly ? (
+        <div aria-label="Live run controls" data-ops-live-run={live.id}>
+          {confirmStop === live.id ? (
+            <>
+              <span>Stop run {live.id}? The worker is terminated.</span>
+              <button data-ops-stop-confirm="" onClick={() => (setConfirmStop(null), void act({ kind: 'stop', value: String(live.id) }, 'Stopped'))} type="button">
+                Confirm stop
+              </button>
+              <button onClick={() => setConfirmStop(null)} type="button">
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button data-ops-stop="" onClick={() => setConfirmStop(live.id)} type="button">
+              Stop
+            </button>
+          )}
+          <form onSubmit={e => (e.preventDefault(), steer.trim() && void act({ kind: 'steer', value: steer.trim() }, 'Steer sent').then(() => setSteer('')))}>
+            <input aria-label="steer" onChange={e => setSteer(e.target.value)} placeholder="Steer the running worker" value={steer} />
+            <button disabled={!steer.trim()} type="submit">
+              Steer
+            </button>
+          </form>
+        </div>
+      ) : null}
 
       {failed ? (
         <div data-ops-run-failure="" role="alert">
@@ -184,6 +225,24 @@ export function TaskTabView({
         </table>
       </section>
 
+      {loadLog ? (
+        <section aria-label="Worker log" data-ops-worker-log="">
+          <h3>Worker log</h3>
+          <button
+            onClick={() =>
+              void loadLog().then(
+                l => setLog(l.exists ? `${l.truncated ? '…(tail)\n' : ''}${l.content}` : 'No worker log: this task never spawned a worker.'),
+                e => setLog(`Log unavailable: ${e instanceof Error ? e.message : 'request failed'}`)
+              )
+            }
+            type="button"
+          >
+            {log === null ? 'Show worker log' : 'Refresh log'}
+          </button>
+          {log !== null ? <pre data-ops-log="">{log}</pre> : null}
+        </section>
+      ) : null}
+
       <section aria-label="Attachments" data-ops-attachments="">
         <h3>Attachments ({detail.attachments?.length ?? 0})</h3>
         <ul>
@@ -230,6 +289,20 @@ export function TaskTabContainer({
   const actions = useMemo(() => a ?? createOpsActions(), [a])
   const [detail, setDetail] = useState<TaskDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [names, setNames] = useState<string[] | undefined>(assignees)
+
+  useEffect(() => {
+    if (assignees) {
+      return
+    }
+
+    Promise.resolve()
+      .then(() => actions.assignees())
+      .then(
+      r => setNames(Array.isArray(r?.assignees) ? r.assignees.map(String) : undefined),
+      () => setNames(undefined)
+    )
+  }, [actions, assignees])
 
   const load = useCallback(async () => {
     try {
@@ -259,10 +332,17 @@ export function TaskTabContainer({
       await actions.kanban({ kind: 'unblock', taskId: id, note: x.value })
     } else if (x.kind === 'retry') {
       await actions.setStatus(id, 'ready')
+    } else if (x.kind === 'stop') {
+      await actions.terminate(x.value ?? '')
+    } else if (x.kind === 'steer') {
+      // The live worker comment bridge delivers new comments to a running worker.
+      await actions.comment(id, `Steer: ${x.value ?? ''}`)
     }
 
     await load()
   }
 
-  return <TaskTabView assignees={assignees} detail={detail} error={error} onAction={onAction} onOpenRoute={onOpenRoute} onOpenTask={onOpenTask} />
+  return (
+    <TaskTabView assignees={names} detail={detail} error={error} loadLog={() => actions.taskLog(id)} onAction={onAction} onOpenRoute={onOpenRoute} onOpenTask={onOpenTask} />
+  )
 }

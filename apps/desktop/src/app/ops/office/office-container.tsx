@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { useKanbanStream } from '../feed/kanban-stream'
 import { createOpsActions, type OpsActions } from '../feed/ops-actions'
 import { createOpsClient, type OpsClient, parseDispatch } from '../feed/ops-client'
 import { OPS_POLL_MS, useOpsFeed } from '../feed/ops-feed'
@@ -43,8 +44,14 @@ export function OfficeContainer({
   client: clientProp,
   actions: actionsProp,
   onOpenProfile,
-  onOpenTask
+  onOpenTask,
+  onOpenRoute,
+  connectionLabel,
+  profile = 'default'
 }: {
+  onOpenRoute?: (route: string) => void
+  connectionLabel?: string | null
+  profile?: string
   readOnly?: boolean
   client?: OpsClient
   actions?: OpsActions
@@ -59,6 +66,18 @@ export function OfficeContainer({
   const cron = useOpsResource(() => client.cronJobs(), [client])
   const board = useOpsResource(() => client.board(), [client])
   const activity = useOpsResource(() => client.resolvedApprovals(), [client])
+  const blueprints = useOpsResource(() => actions.blueprints(profile), [actions, profile], 60_000)
+  const stream = useKanbanStream()
+
+  // A kanban push refreshes the board-derived sections and Needs-you at once (poll stays the fallback).
+  useEffect(() => {
+    if (stream.version) {
+      board.reload()
+      pending.reload()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream.version])
+
   const [nowS, setNowS] = useState(() => Date.now() / 1000)
 
   useEffect(() => {
@@ -92,6 +111,8 @@ export function OfficeContainer({
   return (
     <OfficeView
       activity={listOrNull(activity.value?.items)}
+      blueprints={listOrNull(blueprints.value?.blueprints)}
+      connectionLabel={connectionLabel}
       cron={listOrNull(cron.value)}
       fleet={Array.isArray(feed.fleet?.profiles) ? feed.fleet : null}
       fleetError={feed.error}
@@ -99,12 +120,15 @@ export function OfficeContainer({
       nowS={nowS}
       onApprove={approve}
       onCronRun={async id => (await actions.cronTrigger(id), cron.reload())}
+      onDeny={async item => (await client.approve(item, 'deny'), pending.reload())}
       onDispatch={dispatch}
       onKanban={async a => (await actions.kanban(a), pending.reload(), board.reload())}
       onOpenProfile={onOpenProfile}
+      onOpenRoute={onOpenRoute}
       onOpenTask={onOpenTask}
       pending={listOrNull(pending.value?.items)}
       readOnly={readOnly}
+      taskEvents={stream.mode === 'stream' || stream.events.length ? stream.events : null}
       usage={usage.value}
     />
   )

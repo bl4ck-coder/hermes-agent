@@ -8,7 +8,7 @@ import { connectionScoped, hermesApi } from '@/api/client'
 
 import type { KanbanAction } from '../office/needs-you'
 
-import type { OpsApi } from './ops-client'
+import type { KanbanTask, OpsApi } from './ops-client'
 
 const K = '/api/plugins/kanban'
 const enc = encodeURIComponent
@@ -52,6 +52,18 @@ export interface TaskDetail {
   runs: TaskRun[]
 }
 
+export interface ActiveWorker {
+  run_id: number
+  task_id: string
+  task_title: string
+  task_status: string
+  task_assignee: string | null
+  profile: string | null
+  worker_pid: number | null
+  started_at: number | null
+  last_heartbeat_at: number | null
+}
+
 export interface ProfileRow {
   name: string
   model: string | null
@@ -74,9 +86,41 @@ export function createOpsActions(api: OpsApi = hermesApi) {
   return {
     comment,
     setStatus,
-    assign: (taskId: string, assignee: string | null) => call<unknown>('PATCH', `${K}/tasks/${enc(taskId)}`, { assignee: assignee ?? '' }),
+    /** R39: assignee changes go through /reassign (server refuses a running task unless reclaim_first). */
+    assign: (taskId: string, assignee: string | null, reclaimFirst = false) =>
+      call<{ ok: boolean }>('POST', `${K}/tasks/${enc(taskId)}/reassign`, { profile: assignee ?? '', reclaim_first: reclaimFirst, reason: 'ops' }),
+    assignees: () => call<{ assignees: string[] }>('GET', `${K}/assignees`),
+    /** O29/G43: Stop = terminate the in-flight run (409 if already ended). */
+    terminate: (runId: string | number, reason = 'stopped from Ops') => call<{ ok: boolean }>('POST', `${K}/runs/${enc(String(runId))}/terminate`, { reason }),
+    /** O35: worker stdout/stderr tail. */
+    taskLog: (taskId: string, tail = 64_000) =>
+      call<{ exists: boolean; content: string; truncated: boolean; size_bytes: number; path: string }>('GET', `${K}/tasks/${enc(taskId)}/log?tail=${tail}`),
+    /** Kanban profile roster: carries the profile description (O76 role, G31 identity). */
+    kanbanProfiles: () =>
+      call<{ profiles: { name: string; description?: string; description_auto?: boolean; skill_count?: number; model?: string; provider?: string }[] }>(
+        'GET',
+        `${K}/profiles`
+      ),
+    memory: (profile: string) => call<{ active: string; builtin_files?: Record<string, number> }>('GET', `/api/memory?profile=${enc(profile)}`),
+    /** O41: approvals.mode from the profile's config. */
+    config: (profile: string) => call<Record<string, unknown>>('GET', `/api/config?profile=${enc(profile)}`),
+    projects: () => call<{ projects: { id: string; slug: string; name: string; primary_path?: string }[] }>('GET', `${K}/projects`),
+    /** Flat task list from the board (for project overviews); malformed → null. */
+    boardTasks: () =>
+      call<{ columns?: { name: string; tasks?: unknown[] }[] }>('GET', `${K}/board`).then(b =>
+        Array.isArray(b?.columns) ? (b.columns.flatMap(c => (Array.isArray(c.tasks) ? c.tasks : [])) as KanbanTask[]) : null
+      ),
+    blueprints: (profile: string) =>
+      call<{ blueprints: { key: string; title: string; description: string; category: string; tags?: string[]; source?: string }[] }>(
+        'GET',
+        `/api/cron/blueprints?profile=${enc(profile)}`
+      ),
+    resolved: (limit = 50) => call<{ items: Record<string, unknown>[] }>('GET', `/api/approvals/resolved?limit=${limit}`),
+    activeWorkers: () => call<{ workers: ActiveWorker[]; count: number; checked_at: number }>('GET', `${K}/workers/active`),
     taskDetail: (taskId: string) => call<TaskDetail>('GET', `${K}/tasks/${enc(taskId)}`),
-    runDetail: (runId: string | number) => call<TaskRun & Record<string, unknown>>('GET', `${K}/runs/${enc(String(runId))}`),
+    /** The route answers {run: {...}}; unwrap so callers get the row (a bare row is accepted too). */
+    runDetail: (runId: string | number) =>
+      call<{ run?: TaskRun } & Partial<TaskRun>>('GET', `${K}/runs/${enc(String(runId))}`).then(r => (r && typeof r === 'object' && 'run' in r && r.run ? r.run : (r as TaskRun))),
     reclaim: (taskId: string) => call<unknown>('POST', `${K}/tasks/${enc(taskId)}/reclaim`, {}),
     createSubtask: (parentId: string, title: string, assignee?: string | null) =>
       call<{ task?: { id: string } }>('POST', `${K}/tasks`, { title, assignee: assignee || null, parents: [parentId] }),
@@ -89,6 +133,14 @@ export function createOpsActions(api: OpsApi = hermesApi) {
     kanban: async (a: KanbanAction) => {
       if (a.kind === 'approve_review') {
         return setStatus(a.taskId, 'done')
+      }
+
+      if (a.kind === 'comment') {
+        if (!a.note?.trim()) {
+          throw new Error('a comment is required')
+        }
+
+        return comment(a.taskId, a.note.trim())
       }
 
       if (!a.note?.trim()) {
@@ -114,4 +166,23 @@ export function envPresenceList(rows: EnvRows | null | undefined): { name: strin
     .filter(([, v]) => v && typeof v === 'object')
     .map(([name, v]) => ({ name, set: Boolean(v.is_set) }))
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** O76: role = first clause of the profile description (up to the first . ; : , or dash break). */
+export function roleFromDescription(d: string | null | undefined): string | null {
+  const t = (d ?? '').trim()
+
+  if (!t) {
+    return null
+  }
+
+  return t.split(/(?<=[.;:])\s|,\s|\s[—–-]\s/)[0].replace(/[.;:,]$/, '').trim() || null
+}
+
+/** O41: approvals.mode from /api/config; unknown when the key is absent. */
+export function approvalMode(cfg: Record<string, unknown> | null | undefined): string | null {
+  const a = cfg && typeof cfg === 'object' ? (cfg as { approvals?: unknown }).approvals : null
+  const m = a && typeof a === 'object' ? (a as { mode?: unknown }).mode : null
+
+  return typeof m === 'string' && m ? m : typeof m === 'boolean' ? String(m) : null
 }

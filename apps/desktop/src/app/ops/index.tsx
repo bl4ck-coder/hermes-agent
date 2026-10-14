@@ -11,9 +11,11 @@ import { useI18n } from '@/i18n'
 import { comboFromEvent } from '@/lib/keybinds/combo'
 import { openCommandPalettePage } from '@/store/command-palette'
 
+import { useCanvasDirty } from './canvas/dirty-store'
 import { OpsChrome, type OpsStatusSources } from './chrome'
 import { DockHost, type DockProblem } from './dock-host'
 import { DocumentTabs } from './document-tabs'
+import { useKanbanStream } from './feed/kanban-stream'
 import { Inspector } from './inspector'
 import {
   claimOpsFocusedChord,
@@ -197,6 +199,16 @@ export function OpsShell({
   const scopeKey = `${connectionId}\0${profile}`
   const viewKey = `${view}\0${viewId ?? ''}`
   const hostSync = useRef<{ scope: string; view: string } | null>(null)
+  const canvasDirty = useCanvasDirty(profile)
+  const kanban = useKanbanStream()
+  const newestEvent = kanban.events[0]?.id
+
+  // O47: champagne dot = kanban events since the Board tab was last focused (never moves focus).
+  useEffect(() => {
+    if (newestEvent != null) {
+      noteBackgroundEvent(connectionId, profile, 'board', 'unread', newestEvent)
+    }
+  }, [connectionId, profile, newestEvent])
 
   if (hosted) {
     const previous = hostSync.current
@@ -604,7 +616,7 @@ export function OpsShell({
           style={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', minHeight: 0, minWidth: 0 }}
         >
           <DocumentTabs
-            dots={nav.dots}
+            dots={canvasDirty ? { ...nav.dots, canvas: 'unsaved' } : nav.dots}
             narrow={narrow.tabs}
             onClose={id => {
               closeTab(connectionId, profile, id)

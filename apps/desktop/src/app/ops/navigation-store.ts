@@ -43,8 +43,8 @@ export type FeedStatus = 'ready' | 'missing'
 export const LENS_CATALOG = [
   { id: 'runs', label: 'Runs', route: '/command-center', hint: 'G R', more: false, unavailable: false },
   { id: 'review', label: 'Review', route: 'pane:review', hint: '', more: false, unavailable: false },
-  { id: 'templates', label: 'Templates', route: '', hint: '', more: false, unavailable: true },
-  { id: 'projects', label: 'Projects', route: '', hint: '', more: false, unavailable: true },
+  { id: 'templates', label: 'Templates', route: 'ops:templates', hint: '', more: false, unavailable: false },
+  { id: 'projects', label: 'Projects', route: 'ops:projects', hint: '', more: false, unavailable: false },
   { id: 'files', label: 'Files', route: 'pane:files', hint: '', more: false, unavailable: false },
   { id: 'conversations', label: 'Conversations', route: '/', hint: '', more: true, unavailable: false },
   { id: 'skills', label: 'Skills', route: '/capabilities', hint: 'G S', more: true, unavailable: false },

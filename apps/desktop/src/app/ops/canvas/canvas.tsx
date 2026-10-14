@@ -18,6 +18,10 @@ export interface CanvasData {
   delegation: DelegationView | null
   /** P6: skill count from /api/profiles; undefined = not loaded. */
   skills?: number | null
+  /** P7: identity from the kanban profile roster (display name + description). */
+  identity?: { name: string; description: string } | null
+  /** P7: /api/memory for the profile. */
+  memory?: { active: string; builtin_files?: Record<string, number> } | null
 }
 
 export const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5] as const
@@ -29,10 +33,30 @@ export function stepZoom(z: number, dir: 1 | -1): number {
   return ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, at + dir))]
 }
 
-export const CANVAS_NODES = ['prompt', 'model', 'tools', 'skills', 'delegation', 'schedule', 'policy', 'channels', 'memory'] as const
+export const CANVAS_NODES = ['identity', 'prompt', 'model', 'tools', 'skills', 'delegation', 'schedule', 'policy', 'channels', 'memory'] as const
+
+/** G48: fixed three-column layout; left = inputs, centre = Identity/Prompt/Model, right = Tools/Skills/Delegation. */
+export const CANVAS_COLUMN: Record<(typeof CANVAS_NODES)[number], 'left' | 'centre' | 'right'> = {
+  schedule: 'left',
+  policy: 'left',
+  channels: 'left',
+  memory: 'left',
+  identity: 'centre',
+  prompt: 'centre',
+  model: 'centre',
+  tools: 'right',
+  skills: 'right',
+  delegation: 'right'
+}
+
+const PAN_KEYS = { ArrowLeft: [-40, 0], ArrowRight: [40, 0], ArrowUp: [0, -40], ArrowDown: [0, 40] } as const
+
+/** G49: port colour by node state. */
+export const PORT_COLOUR = { ok: 'champagne', unset: 'amber', policy: 'garnet', unknown: 'muted' } as const
 export type CanvasNodeId = (typeof CANVAS_NODES)[number]
 
 export const CANVAS_EDGES: [CanvasNodeId, CanvasNodeId][] = [
+  ['identity', 'prompt'],
   ['prompt', 'model'],
   ['model', 'tools'],
   ['model', 'skills'],
@@ -93,6 +117,23 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
       }
     }
 
+    case 'identity':
+      return d.identity === undefined || d.identity === null
+        ? { text: 'unknown', state: 'unknown' }
+        : d.identity.description
+          ? { text: `${d.identity.name}: ${d.identity.description}`, state: 'ok' }
+          : { text: `${d.identity.name} (no description)`, state: 'unset' }
+    case 'memory': {
+      if (!d.memory) {
+        return { text: 'unknown', state: 'unknown' }
+      }
+
+      const files = d.memory.builtin_files ?? {}
+      const bytes = Object.values(files).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0)
+
+      return { text: `${d.memory.active || 'built-in'} memory, ${bytes} bytes in MEMORY/USER`, state: 'ok' }
+    }
+
     case 'skills':
       return typeof d.skills === 'number' ? { text: `${d.skills} skills installed`, state: d.skills ? 'ok' : 'unset' } : { text: 'unknown', state: 'unknown' }
 
@@ -137,6 +178,9 @@ export function CanvasView({
 }) {
   const [run, setRun] = useState<RunView>(initialRun)
   const [zoom, setZoom] = useState(1)
+  const [runOpen, setRunOpen] = useState(true)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
   const [collapsed, setCollapsed] = useState<Set<CanvasNodeId>>(() => new Set())
 
   const toggle = (id: CanvasNodeId) =>
@@ -228,22 +272,48 @@ export function CanvasView({
         <strong>Canvas · {profile}</strong>
         {readOnly ? <span data-ops-badge="remote">remote: read-only</span> : null}
       </header>
-      <div aria-label="Canvas zoom" data-ops-canvas-zoom={String(zoom)} role="toolbar">
-        <button aria-label="Zoom out" disabled={zoom <= ZOOM_STEPS[0]} onClick={() => setZoom(z => stepZoom(z, -1))} type="button">
-          −
-        </button>
-        <span>{Math.round(zoom * 100)}%</span>
-        <button aria-label="Zoom in" disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]} onClick={() => setZoom(z => stepZoom(z, 1))} type="button">
-          +
-        </button>
-        <button aria-label="Fit" onClick={() => setZoom(1)} type="button">
-          Fit
-        </button>
-        <button aria-label="Collapse all" onClick={() => setCollapsed(c => (c.size === CANVAS_NODES.length ? new Set() : new Set(CANVAS_NODES)))} type="button">
-          {collapsed.size === CANVAS_NODES.length ? 'Expand all' : 'Collapse all'}
-        </button>
-      </div>
-      <div data-ops-canvas-nodes="" role="list" style={{ transform: `scale(${zoom})`, transformOrigin: '0 0' }}>
+      <div
+        aria-label="Canvas viewport (drag the background or Shift+arrows to pan)"
+        data-ops-canvas-viewport=""
+        onKeyDown={e => {
+          const step = (PAN_KEYS as Record<string, readonly [number, number] | undefined>)[e.key]
+
+          if (e.shiftKey && step) {
+            e.preventDefault()
+            setPan(p => ({ x: p.x + step[0], y: p.y + step[1] }))
+          }
+        }}
+        onPointerDown={e => {
+          // G56: only the bare background pans; node controls are never intercepted.
+          if (e.target !== e.currentTarget) {
+            return
+          }
+
+          drag.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }
+        }}
+        onPointerMove={e => {
+          const d = drag.current
+
+          if (d) {
+            setPan({ x: d.px + e.clientX - d.x, y: d.py + e.clientY - d.y })
+          }
+        }}
+        onPointerUp={() => (drag.current = null)}
+        role="group"
+        style={{ overflow: 'hidden', position: 'relative', touchAction: 'none' }}
+        tabIndex={0}
+      >
+      <div
+        data-ops-canvas-nodes=""
+        data-ops-pan={`${pan.x},${pan.y}`}
+        role="list"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transformOrigin: '0 0'
+        }}
+      >
         {CANVAS_NODES.map(id => {
           const b = nodeBody(id, data)
           const closed = collapsed.has(id)
@@ -251,11 +321,14 @@ export function CanvasView({
           return (
             <div
               data-ops-collapsed={closed ? '' : undefined}
+              data-ops-column={CANVAS_COLUMN[id]}
               data-ops-lit={run.lit.has(id) ? '' : undefined}
               data-ops-node={id}
               data-ops-port={b.state}
+              data-ops-port-colour={PORT_COLOUR[b.state]}
               key={id}
               role="listitem"
+              style={{ gridColumn: { left: 1, centre: 2, right: 3 }[CANVAS_COLUMN[id]] }}
             >
               <button aria-expanded={!closed} aria-label={`${closed ? 'Expand' : 'Collapse'} ${id}`} onClick={() => toggle(id)} type="button">
                 {closed ? '+' : '−'}
@@ -266,6 +339,28 @@ export function CanvasView({
           )
         })}
       </div>
+      </div>
+      <div
+        aria-label="Canvas zoom"
+        data-ops-canvas-zoom={String(zoom)}
+        data-ops-zoom-position="bottom-centre"
+        role="toolbar"
+        style={{ position: 'sticky', bottom: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 1, width: 'max-content' }}
+      >
+        <button aria-label="Zoom out" disabled={zoom <= ZOOM_STEPS[0]} onClick={() => setZoom(z => stepZoom(z, -1))} type="button">
+          −
+        </button>
+        <span>{Math.round(zoom * 100)}%</span>
+        <button aria-label="Zoom in" disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]} onClick={() => setZoom(z => stepZoom(z, 1))} type="button">
+          +
+        </button>
+        <button aria-label="Fit" onClick={() => (setZoom(1), setPan({ x: 0, y: 0 }))} type="button">
+          Fit
+        </button>
+        <button aria-label="Collapse all" onClick={() => setCollapsed(c => (c.size === CANVAS_NODES.length ? new Set() : new Set(CANVAS_NODES)))} type="button">
+          {collapsed.size === CANVAS_NODES.length ? 'Expand all' : 'Collapse all'}
+        </button>
+      </div>
       <ul aria-label="Canvas edges" data-ops-canvas-edges="">
         {CANVAS_EDGES.map(([a, b]) => (
           <li data-ops-edge={`${a}->${b}`} key={`${a}-${b}`}>
@@ -273,7 +368,10 @@ export function CanvasView({
           </li>
         ))}
       </ul>
-      <section aria-label="Test run" data-ops-run-panel="">
+      <button aria-expanded={runOpen} data-ops-run-toggle="" onClick={() => setRunOpen(o => !o)} type="button">
+        {runOpen ? 'Hide run panel' : 'Show run panel'}
+      </button>
+      <section aria-label="Test run" data-ops-run-panel="" hidden={!runOpen}>
         <textarea aria-label="Test run input" onChange={e => setInput(e.target.value)} value={input} />
         <button data-ops-test-run="" disabled={!runs || active} onClick={() => void start()} type="button">
           Test run

@@ -14,6 +14,7 @@ import {
 } from '@/app/routes'
 import { I18nProvider } from '@/i18n'
 
+import { setCanvasDirty } from './canvas/dirty-store'
 import { DocumentTabs } from './document-tabs'
 import { $opsInspectorOpen, $opsOpen, $opsRail, $opsScope, $opsView, $opsViewId, $opsWidthPx } from './layout-store'
 import {
@@ -280,6 +281,14 @@ describe('ops navigation shell', () => {
     expect((view.container.querySelector('[data-ops-panel="office"]') as HTMLDivElement).scrollTop).toBe(before)
     expect(focus).not.toHaveBeenCalled()
     expect(view.container.querySelector('[data-ops-tab="canvas"] [data-ops-dot="unread"]')).not.toBeNull()
+  })
+
+  it('O47: an unsaved Canvas draft puts the gold dot on the Canvas tab and clears with the draft', () => {
+    const view = shell()
+    act(() => setCanvasDirty('mirror', 'model', true))
+    expect(view.container.querySelector('[data-ops-tab="canvas"] [data-ops-dot="unsaved"]')).not.toBeNull()
+    act(() => setCanvasDirty('mirror', 'model', false))
+    expect(view.container.querySelector('[data-ops-tab="canvas"] [data-ops-dot="unsaved"]')).toBeNull()
   })
 
   it('switches inspector slots, hides the run footer, and keeps unknown tokens unknown', () => {

@@ -1,12 +1,14 @@
 /**
  * W9 Settings tab and Motion readout (ops-panel P5-03); the shortcut sheet is the shell's OpsShortcutSheet. Settings only shows values it
- * has a source for; theme opens Desktop settings (D5); approval mode says
- * "not available yet"; secret presence lists names and set/unset only until a backend reports them.
+ * has a source for; theme opens Desktop settings (D5); approval mode reads approvals.mode from /api/config; the default model is edited
+ * through the Canvas model node (P2 policy, A5/A6 backup); secret presence lists names and set/unset only until a backend reports them.
  */
 
 import { useMemo, useState } from 'react'
 
-import { createOpsActions, envPresenceList } from '../feed/ops-actions'
+import { createNodeClient } from '../canvas/node-editor'
+import { NodeEditor } from '../canvas/node-editor-view'
+import { approvalMode, createOpsActions, envPresenceList } from '../feed/ops-actions'
 import { createOpsClient, type PolicyView } from '../feed/ops-client'
 import { useOpsResource } from '../office/office-container'
 import { OpsShortcutSheet } from '../shortcut-sheet'
@@ -63,8 +65,16 @@ export function SettingsView({
   policy,
   defaultModel,
   onOpenRoute,
-  secrets = null
+  secrets = null,
+  approval,
+  profile,
+  editModel
 }: {
+  /** O41: approvals.mode; undefined = not loaded, null = key absent. */
+  approval?: string | null
+  profile?: string
+  /** O40: the default model is written through the Canvas model node (P2 policy + A5/A6 backup). */
+  editModel?: boolean
   /** O42: names and set/unset only, never values. null = unknown. */
   secrets?: { name: string; set: boolean }[] | null
   policy: PolicyView | null
@@ -115,8 +125,16 @@ export function SettingsView({
           {defaultModel ? `${defaultModel.provider ?? 'unknown'} / ${defaultModel.model ?? 'unknown'}` : 'unknown'}
           {policy ? <span data-ops-field="policy-source"> (policy: {policy.source}{policy.error ? `, error: ${policy.error}` : ''})</span> : null}
         </dd>
-        <dt>Approval mode per profile</dt>
-        <dd data-ops-unavailable="">Not available yet</dd>
+        <dt>Approval mode{profile ? ` (${profile})` : ''}</dt>
+        <dd data-ops-field="approval-mode">{approval === undefined ? 'unknown' : approval === null ? 'default (approvals.mode not set)' : approval}</dd>
+        {editModel && profile ? (
+          <>
+            <dt>Change default model</dt>
+            <dd data-ops-field="model-editor">
+              <ModelEditor policy={policy} profile={profile} />
+            </dd>
+          </>
+        ) : null}
         <dt>Secret presence</dt>
         <dd data-ops-field="secrets">
           {secrets === null ? (
@@ -143,12 +161,23 @@ export function SettingsView({
   )
 }
 
+function ModelEditor({ profile, policy }: { profile: string; policy: PolicyView | null }) {
+  const client = useMemo(() => createNodeClient(), [])
+
+  return <NodeEditor client={client} node="model" policy={policy} profile={profile} />
+}
+
 export function SettingsContainer({ profile, onOpenRoute }: { profile: string; onOpenRoute?: (r: string) => void }) {
   const client = useMemo(() => createOpsClient(), [])
   const policy = useOpsResource(() => client.policy(profile), [client, profile], 30_000)
   const model = useOpsResource(() => client.modelNode(profile), [client, profile], 30_000)
   const actions = useMemo(() => createOpsActions(), [])
   const env = useOpsResource(() => actions.envPresence(profile), [actions, profile], 30_000)
+  const cfg = useOpsResource(() => actions.config(profile), [actions, profile], 30_000)
 
-  return <SettingsView defaultModel={model.value} onOpenRoute={onOpenRoute} policy={policy.value} secrets={envPresenceList(env.value)} />
+  return <SettingsView approval={cfg.value ? approvalMode(cfg.value) : undefined} defaultModel={model.value} editModel onOpenRoute={onOpenRoute}
+      policy={policy.value}
+      profile={profile}
+      secrets={envPresenceList(env.value)}
+    />
 }
