@@ -614,3 +614,8 @@ Scores (after B26 → after B29): Board 8→9, Canvas 8→9, Office 8→9, Setti
 - Fixes: artifacts pool-state toasts (3 commits), code editor ink on Gold Night, SOUL frame, display headlines, page-shell light.
 - Board scroll 221.8 ms (glass6): did not reproduce in glass7–glass10 (max 15.6–29.7 ms, 0 frames over 33 ms). It was a one-off. The probe recorded no long frame that pointed at app script or rendering.
 - Board drag: p95 15.1 ms throughout. The 58–68 ms outliers in glass9/10 are long-animation-frames with 0 ms blocking, ~1–2 ms render/layout and no attributed script, i.e. a gap between frames rather than app work. The synthetic drag test was the same as when it measured 28.8 ms.
+
+## B32 (glass12-glass14)
+
+- The glass12 capture was stale: a cp1252 byte from a PowerShell append made ops-base.css unloadable, and the live script hid the failed build. All appended blocks have been re-encoded as UTF-8, and b-live.ps1 now stops with BUILD FAILED.
+- glass14: no frame over 33 ms in any sample (max 27-30 ms). No artifacts warning.

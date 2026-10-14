@@ -79,3 +79,13 @@ Legend: **Done** = landed in this pass and checked in the live screenshot. **Nex
 | Office / Agents / Skills / Channels titles | Same weight and size as the body, so nothing said "this is the page". | Editorial serif display title in lit gold (Carnave's "Lo que ve el socio" treatment); the greeting is the largest. |
 | Capabilities / Artifacts / Messaging | The page-shell body repainted the flat surface over the lit shell, so these pages looked unlit next to chat. | The shell's ambient light and spotlight show through. |
 | Artifacts load | A warning toast on most boots ("Skipped N of 30 …") caused by the profile-backend pool (slot wait, cancelled start, back-off after saturation, retired idle backend). | Pool states get one delayed retry, then are skipped quietly; only real read errors and safe-limit skips warn. |
+
+## B32 (glass12-glass14)
+
+| Screen | Before | After |
+|---|---|---|
+| Artifacts | Spinner for more than 15 s while 30 sessions were read one by one. | The first load streams: the list fills session by session, and a refresh swaps in the full list only when it is complete. The loader yields between sessions. |
+| Ops Settings | Shortcuts and Security were fully expanded, so the page ran about three screens long. | Both fold behind a one-line summary with a hint of what is inside (8 locales). |
+| Office | The greeting was 20 px (a (0,0,1) rule beat the display size). | 34 px editorial serif in gold. |
+| Board | Flat cards. | Lit cards: a gold-tinted gradient, an inner highlight, a soft drop and a hover edge. |
+| Agents (empty) | A small line of text in a blank overlay. | The empty state sits on a lit glass card. |
