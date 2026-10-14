@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { BoardContainer } from './board/board-container'
 import { CanvasContainer } from './canvas/canvas-container'
 import { AgentCardContainer, RunDetailContainer, TaskDetailContainer } from './detail/details'
+import { SettingsContainer } from './motion/settings'
 import { hostIdentityFromTab, type OpsTab } from './navigation-store'
 import { OfficeContainer } from './office/office-container'
 
@@ -31,6 +32,11 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
   // P4 Board: Mine = the scoped profile.
   if (tab.kind === 'board') {
     return <BoardContainer me={profile} />
+  }
+
+  // W9 Ops settings is a live lens; other lenses (W12) keep their existing route buttons.
+  if (tab.kind === 'lens' && tab.id === 'lens:settings') {
+    return <SettingsContainer onOpenRoute={onOpenRoute} profile={profile} />
   }
 
   const id = hostIdentityFromTab(tab).id

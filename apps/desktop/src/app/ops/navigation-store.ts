@@ -54,7 +54,8 @@ export const LENS_CATALOG = [
   { id: 'schedule', label: 'Schedule', route: '/cron', hint: '', more: true, unavailable: false },
   { id: 'memory', label: 'Memory', route: '/starmap', hint: '', more: true, unavailable: false },
   { id: 'profiles', label: 'Profiles', route: '/profiles', hint: '', more: true, unavailable: false },
-  { id: 'agents', label: 'Agents', route: '/agents', hint: '', more: true, unavailable: false }
+  { id: 'agents', label: 'Agents', route: '/agents', hint: '', more: true, unavailable: false },
+  { id: 'settings', label: 'Ops settings', route: 'ops:settings', hint: '', more: true, unavailable: false }
 ] as const
 
 export type LensId = (typeof LENS_CATALOG)[number]['id']

@@ -31,6 +31,8 @@ import {
   type OpsScope
 } from './layout-store'
 import { opsNavLabel } from './locales'
+import { cycleMotion } from './motion/motion'
+import { useMotionMode } from './motion/settings'
 import {
   applyHostDocument,
   captureSnapshot,
@@ -179,7 +181,8 @@ export function OpsShell({
   const [, setTick] = useState(0)
   const copy = useI18n().t.ops
   const root = useRef<HTMLDivElement>(null)
-  const [motion, setMotion] = useState<'system' | 'full' | 'reduced'>('system')
+  // P5-03: persisted Full / Reduced / System (SPEC 12.3); same cycle as before.
+  const [motion, setMotion] = useMotionMode()
 
   useEffect(() => subscribeOpsNavigation(() => setTick(value => value + 1)), [])
 
@@ -492,7 +495,7 @@ export function OpsShell({
           key={`${scopeKey}\0${crumb}`}
           modelLabel={modelLabel}
           onCycleMotion={() =>
-            setMotion(value => (value === 'system' ? 'full' : value === 'full' ? 'reduced' : 'system'))
+            setMotion(cycleMotion(motion))
           }
           onToggleDock={toggleDock}
           profile={profile}
