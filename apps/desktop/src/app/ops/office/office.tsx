@@ -16,7 +16,7 @@ import type {
   Presence,
   UsageToday
 } from '../feed/ops-client'
-import { shownPresence } from '../feed/ops-client'
+import { parseDispatch, shownPresence } from '../feed/ops-client'
 import { ToastQueue } from '../primitives/toast-queue'
 
 import { type KanbanAction, NeedsYouQueue } from './needs-you'
@@ -46,6 +46,11 @@ export interface OfficeViewProps {
   onKanban?: (a: KanbanAction) => Promise<unknown> | void
   onCronRun?: (jobId: string) => Promise<unknown> | void
   onOpenTask?: (taskId: string) => void
+  /** R61: header shows the date and the connection, no greeting. */
+  connectionLabel?: string | null
+  /** O4: cron blueprint chips under the composer; picking one opens Schedule with it. */
+  blueprints?: { key: string; title: string }[] | null
+  onOpenRoute?: (route: string) => void
 }
 
 const unknown = 'unknown'
@@ -88,6 +93,44 @@ function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; erro
           </span>
         ))}
       {error ? <span data-ops-warn="">refresh failed, showing last snapshot</span> : null}
+    </div>
+  )
+}
+
+/** R1: cron runs in the next 24 h and overdue work (a running task whose heartbeat is stale). */
+export function todayCounts(cron: CronJobLite[] | null, inFlight: KanbanTask[] | null, nowS: number) {
+  const next24 = cron
+    ? cron.filter(j => {
+        if (j.enabled === false) {
+          return false
+        }
+
+        const t = typeof j.next_run_at === 'number' ? j.next_run_at : typeof j.next_run_at === 'string' ? Date.parse(j.next_run_at) / 1000 : NaN
+
+        return Number.isFinite(t) && t >= nowS && t - nowS <= 86_400
+      }).length
+    : null
+
+  const overdue = inFlight
+    ? inFlight.filter(t => {
+        const hb = (t as KanbanTask & { last_heartbeat_at?: number | null }).last_heartbeat_at
+
+        return typeof hb === 'number' && nowS - hb > 600
+      }).length
+    : null
+
+  return { next24, overdue, running: inFlight ? inFlight.length : null }
+}
+
+function TodayStrip({ cron, inFlight, nowS }: { cron: CronJobLite[] | null; inFlight: KanbanTask[] | null; nowS: number }) {
+  const c = todayCounts(cron, inFlight, nowS)
+  const n = (v: number | null) => (v === null ? unknown : String(v))
+
+  return (
+    <div aria-label="Today strip" data-ops-strip="today">
+      <span data-ops-count="cron-24h">Cron next 24 h {n(c.next24)}</span>
+      <span data-ops-count="running">Running {n(c.running)}</span>
+      <span data-ops-count="overdue">Overdue {n(c.overdue)}</span>
     </div>
   )
 }
@@ -183,7 +226,27 @@ function FleetTable({ fleet, nowS, onOpenProfile }: { fleet: FleetResponse; nowS
   )
 }
 
-function Dispatch({ onDispatch, readOnly }: { onDispatch?: (text: string) => Promise<unknown> | void; readOnly?: boolean }) {
+export function routingLine(text: string): string {
+  if (!text.trim()) {
+    return 'Type a task. Start with @profile to assign it; otherwise it goes to triage.'
+  }
+
+  const { assignee } = parseDispatch(text)
+
+  return assignee ? `Assigned to ${assignee}` : 'Unassigned → triage'
+}
+
+function Dispatch({
+  onDispatch,
+  readOnly,
+  blueprints,
+  onOpenRoute
+}: {
+  onDispatch?: (text: string) => Promise<unknown> | void
+  readOnly?: boolean
+  blueprints?: { key: string; title: string }[] | null
+  onOpenRoute?: (route: string) => void
+}) {
   const [text, setText] = useState('')
   const [status, setStatus] = useState<string | null>(null)
 
@@ -217,7 +280,20 @@ function Dispatch({ onDispatch, readOnly }: { onDispatch?: (text: string) => Pro
         placeholder="@builder describe the task"
         value={text}
       />
-      <button type="submit">Dispatch</button>
+      <button disabled={!text.trim()} type="submit">
+        Dispatch
+      </button>
+      <kbd>Enter</kbd>
+      <span data-ops-routing="">{routingLine(text)}</span>
+      {blueprints && blueprints.length ? (
+        <div aria-label="Blueprints" data-ops-chips="">
+          {blueprints.slice(0, 4).map(b => (
+            <button data-ops-chip={b.key} disabled={!onOpenRoute} key={b.key} onClick={() => onOpenRoute?.(`/cron?blueprint=${encodeURIComponent(b.key)}`)} type="button">
+              {b.title}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {status ? <span role="status">{status}</span> : null}
     </form>
   )
@@ -231,6 +307,11 @@ export function OfficeView(props: OfficeViewProps) {
 
   return (
     <div data-ops-office="">
+      <header data-ops-office-header="">
+        <time dateTime={new Date(nowS * 1000).toISOString().slice(0, 10)}>{new Date(nowS * 1000).toISOString().slice(0, 10)}</time>
+        <span data-ops-field="connection">{props.connectionLabel || 'unknown connection'}</span>
+      </header>
+      <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} />
       <HealthStrip error={props.fleetError} fleet={fleet} nowS={nowS} />
       <CronStrip cron={props.cron} />
       <div aria-label="Fleet layout" role="tablist">
@@ -247,7 +328,7 @@ export function OfficeView(props: OfficeViewProps) {
           <FleetTable fleet={fleet} nowS={nowS} onOpenProfile={props.onOpenProfile} />
         )
       ) : null}
-      <Dispatch onDispatch={props.onDispatch} readOnly={props.readOnly} />
+      <Dispatch blueprints={props.blueprints} onDispatch={props.onDispatch} onOpenRoute={props.onOpenRoute} readOnly={props.readOnly} />
       {props.readOnly ? null : (
         <ToastQueue
           items={toastsFromPending(props.pending, nowS * 1000, {

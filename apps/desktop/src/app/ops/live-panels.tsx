@@ -23,7 +23,7 @@ export function opsLivePanel(tab: OpsTab, profile: string, onOpenRoute?: (route:
   }
 
   if (tab.kind === 'office') {
-    return <OfficeContainer />
+    return <OfficeContainer onOpenRoute={onOpenRoute} profile={profile} />
   }
 
   // P3 Canvas has no write paths at all (readOnly is the remote badge); the writable Canvas is P5.

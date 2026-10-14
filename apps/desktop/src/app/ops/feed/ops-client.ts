@@ -171,7 +171,9 @@ export function createOpsClient(api: OpsApi = hermesApi) {
       send<{ task?: KanbanTask; id?: string }>('POST', '/api/plugins/kanban/tasks', {
         title,
         assignee: assignee || null,
-        tenant: tenant || null
+        tenant: tenant || null,
+        // O58: no @assignee means the kanban triage lane routes it (honest "Unassigned → triage").
+        triage: !assignee
       }),
     policy: (profile?: string | null) => get<PolicyView>(`/api/ops/policy${q({ profile: profile || 'default' })}`),
     modelNode: (profile: string) => get<ModelNode>(`/api/ops/profiles/${encodeURIComponent(profile)}/nodes/model`),

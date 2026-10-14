@@ -44,8 +44,14 @@ export function OfficeContainer({
   client: clientProp,
   actions: actionsProp,
   onOpenProfile,
-  onOpenTask
+  onOpenTask,
+  onOpenRoute,
+  connectionLabel,
+  profile = 'default'
 }: {
+  onOpenRoute?: (route: string) => void
+  connectionLabel?: string | null
+  profile?: string
   readOnly?: boolean
   client?: OpsClient
   actions?: OpsActions
@@ -60,6 +66,7 @@ export function OfficeContainer({
   const cron = useOpsResource(() => client.cronJobs(), [client])
   const board = useOpsResource(() => client.board(), [client])
   const activity = useOpsResource(() => client.resolvedApprovals(), [client])
+  const blueprints = useOpsResource(() => actions.blueprints(profile), [actions, profile], 60_000)
   const stream = useKanbanStream()
 
   // A kanban push refreshes the board-derived sections and Needs-you at once (poll stays the fallback).
@@ -104,6 +111,8 @@ export function OfficeContainer({
   return (
     <OfficeView
       activity={listOrNull(activity.value?.items)}
+      blueprints={listOrNull(blueprints.value?.blueprints)}
+      connectionLabel={connectionLabel}
       cron={listOrNull(cron.value)}
       fleet={Array.isArray(feed.fleet?.profiles) ? feed.fleet : null}
       fleetError={feed.error}
@@ -115,6 +124,7 @@ export function OfficeContainer({
       onDispatch={dispatch}
       onKanban={async a => (await actions.kanban(a), pending.reload(), board.reload())}
       onOpenProfile={onOpenProfile}
+      onOpenRoute={onOpenRoute}
       onOpenTask={onOpenTask}
       pending={listOrNull(pending.value?.items)}
       readOnly={readOnly}
