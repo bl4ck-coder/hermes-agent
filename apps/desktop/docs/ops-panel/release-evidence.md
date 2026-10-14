@@ -472,3 +472,29 @@ p95 is well under 16.7 ms everywhere, so no optimization was needed.
 - vitest Ops: 45 files / 424 tests pass. tsc: 0 errors. eslint: 0 errors.
 - pytest S5/capabilities: pass.
 - Broad 40-file pytest selection: 693 pass. The remaining failures are pre-existing on Windows at base 2fcb5d61ee, plus 9 that fail only because the clone sits inside the real HERMES_HOME (real-home I/O guard). Those 9 pass with the new code from a %TEMP% worktree.
+
+## B10: real Inspector, Fleet presence, live UI/UX polish
+
+Tip: `ops/P8-polish` = `feat/ops-panel` = 82b758bc34.
+
+**Inspector.** A per-kind selection store (`inspector-detail.ts`) replaces the "detail not built in this shell" stub:
+- **Board:** the open card, or column totals when no card is open.
+- **Canvas:** the selected node, or the profile summary plus history.
+- **Settings:** the profile's Ops settings.
+- **Empty state:** an honest "Nothing selected" message.
+
+Tests: `b10.test.tsx` (17).
+
+**Fleet "unknown".** Rule 3.4 needs a fresh empty `gateway_runs` before it can report idle, and no provider supplied one. `gateway_runs_observation` now reads it from the gateway heartbeat (`runtime.active_agents`):
+- 0 on a live, non-stale gateway is an authoritative empty for every profile it serves.
+- A positive count is work only for the profile whose home the gateway runs under.
+- A stopped or stale gateway is missing.
+
+Live, default changed from unknown to idle. The other 38 profiles stay unknown because A3 approvals can only be observed for the backend's own profile. Tests: `test_ops_fleet_gateway_runs.py` (9); the fleet suite is 33/33.
+
+**UX rounds.**
+- r1–r3 fixed card overlap, inspector layout, the Settings detail race, the secrets list, needs-you age and reason, icon-rail noise, tab close, checkbox spacing, Office chips, Canvas row placement and stretch, the card quick bar covering the title, and Fleet hierarchy. Full list in FINAL-REPORT.
+- Final r4 pass: every section had 0 console errors, 0 page errors and 0 HTTP failures. The board was unchanged and the gateway stayed pid 6816.
+- Frame times: p50 13.3 ms and p95 13.4 ms in all four scenarios.
+
+**Tests:** vitest 46 files / 441 tests; tsc 0; eslint 0 errors.
