@@ -11,13 +11,15 @@ import { useState } from 'react'
 
 import type { ApprovalItem, CronJobLite } from '../feed/ops-client'
 
-export type KanbanAction = { kind: 'approve_review' | 'request_changes' | 'unblock'; taskId: string; note?: string }
+export type KanbanAction = { kind: 'approve_review' | 'request_changes' | 'unblock' | 'comment'; taskId: string; note?: string }
 
 export interface NeedsYouProps {
   items: ApprovalItem[] | null
   cron?: CronJobLite[] | null
   readOnly?: boolean
   onApprove?: (item: ApprovalItem) => Promise<unknown> | void
+  /** O72: Deny is one click too (D3); it never needs the full args to be visible. */
+  onDeny?: (item: ApprovalItem) => Promise<unknown> | void
   onKanban?: (a: KanbanAction) => Promise<unknown> | void
   onCronRun?: (jobId: string) => Promise<unknown> | void
   onOpenTask?: (taskId: string) => void
@@ -98,13 +100,20 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                   {p.readOnly ? (
                     <span data-ops-review={key}>Review</span>
                   ) : item.origin === 'jsonrpc' ? (
-                    item.actions.includes('approve') && fullFits ? (
-                      <button data-ops-approve={key} disabled={sending} onClick={() => void run(key, () => p.onApprove?.(item))} type="button">
-                        {label(key, 'Approve', 'Approved')}
-                      </button>
-                    ) : (
-                      <span data-ops-review={key}>Review</span>
-                    )
+                    <>
+                      {item.actions.includes('approve') && fullFits ? (
+                        <button data-ops-approve={key} disabled={sending} onClick={() => void run(key, () => p.onApprove?.(item))} type="button">
+                          {label(key, 'Approve', 'Approved')}
+                        </button>
+                      ) : (
+                        <span data-ops-review={key}>Review</span>
+                      )}
+                      {p.onDeny && item.actions.includes('deny') ? (
+                        <button data-ops-deny={key} disabled={sending || busy[`d:${key}`] === 'sending' || busy[`d:${key}`] === 'done'} onClick={() => void run(`d:${key}`, () => p.onDeny?.(item))} type="button">
+                          {label(`d:${key}`, 'Deny', 'Denied')}
+                        </button>
+                      ) : null}
+                    </>
                   ) : item.origin === 'kanban_review' ? (
                     <>
                       <button data-ops-approve={key} disabled={sending} onClick={() => void run(key, () => p.onKanban?.({ kind: 'approve_review', taskId: item.id }))} type="button">
@@ -137,7 +146,31 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                   ) : (
                     <span data-ops-review={key}>Not routable from this connection</span>
                   )}
+                  {!p.readOnly && (item.origin === 'kanban_review' || item.origin === 'kanban_blocked') ? (
+                    <>
+                      <input
+                        aria-label={`comment for ${item.id}`}
+                        onChange={e => setNotes(n => ({ ...n, [`c:${key}`]: e.target.value }))}
+                        placeholder="Comment"
+                        value={notes[`c:${key}`] ?? ''}
+                      />
+                      <button
+                        data-ops-comment={key}
+                        disabled={!(notes[`c:${key}`] ?? '').trim()}
+                        onClick={() =>
+                          void run(`c:${key}`, () => p.onKanban?.({ kind: 'comment', taskId: item.id, note: (notes[`c:${key}`] ?? '').trim() })).then(() =>
+                            setNotes(n => ({ ...n, [`c:${key}`]: '' }))
+                          )
+                        }
+                        type="button"
+                      >
+                        Comment
+                      </button>
+                    </>
+                  ) : null}
                   {errors[key] && busy[key] === 'failed' ? <span role="alert">{errors[key]}</span> : null}
+                  {errors[`d:${key}`] && busy[`d:${key}`] === 'failed' ? <span role="alert">{errors[`d:${key}`]}</span> : null}
+                  {errors[`c:${key}`] && busy[`c:${key}`] === 'failed' ? <span role="alert">{errors[`c:${key}`]}</span> : null}
                 </td>
               </tr>
             )

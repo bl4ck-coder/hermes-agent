@@ -52,6 +52,18 @@ export interface TaskDetail {
   runs: TaskRun[]
 }
 
+export interface ActiveWorker {
+  run_id: number
+  task_id: string
+  task_title: string
+  task_status: string
+  task_assignee: string | null
+  profile: string | null
+  worker_pid: number | null
+  started_at: number | null
+  last_heartbeat_at: number | null
+}
+
 export interface ProfileRow {
   name: string
   model: string | null
@@ -74,9 +86,20 @@ export function createOpsActions(api: OpsApi = hermesApi) {
   return {
     comment,
     setStatus,
-    assign: (taskId: string, assignee: string | null) => call<unknown>('PATCH', `${K}/tasks/${enc(taskId)}`, { assignee: assignee ?? '' }),
+    /** R39: assignee changes go through /reassign (server refuses a running task unless reclaim_first). */
+    assign: (taskId: string, assignee: string | null, reclaimFirst = false) =>
+      call<{ ok: boolean }>('POST', `${K}/tasks/${enc(taskId)}/reassign`, { profile: assignee ?? '', reclaim_first: reclaimFirst, reason: 'ops' }),
+    assignees: () => call<{ assignees: string[] }>('GET', `${K}/assignees`),
+    /** O29/G43: Stop = terminate the in-flight run (409 if already ended). */
+    terminate: (runId: string | number, reason = 'stopped from Ops') => call<{ ok: boolean }>('POST', `${K}/runs/${enc(String(runId))}/terminate`, { reason }),
+    /** O35: worker stdout/stderr tail. */
+    taskLog: (taskId: string, tail = 64_000) =>
+      call<{ exists: boolean; content: string; truncated: boolean; size_bytes: number; path: string }>('GET', `${K}/tasks/${enc(taskId)}/log?tail=${tail}`),
+    activeWorkers: () => call<{ workers: ActiveWorker[]; count: number; checked_at: number }>('GET', `${K}/workers/active`),
     taskDetail: (taskId: string) => call<TaskDetail>('GET', `${K}/tasks/${enc(taskId)}`),
-    runDetail: (runId: string | number) => call<TaskRun & Record<string, unknown>>('GET', `${K}/runs/${enc(String(runId))}`),
+    /** The route answers {run: {...}}; unwrap so callers get the row (a bare row is accepted too). */
+    runDetail: (runId: string | number) =>
+      call<{ run?: TaskRun } & Partial<TaskRun>>('GET', `${K}/runs/${enc(String(runId))}`).then(r => (r && typeof r === 'object' && 'run' in r && r.run ? r.run : (r as TaskRun))),
     reclaim: (taskId: string) => call<unknown>('POST', `${K}/tasks/${enc(taskId)}/reclaim`, {}),
     createSubtask: (parentId: string, title: string, assignee?: string | null) =>
       call<{ task?: { id: string } }>('POST', `${K}/tasks`, { title, assignee: assignee || null, parents: [parentId] }),
@@ -89,6 +112,14 @@ export function createOpsActions(api: OpsApi = hermesApi) {
     kanban: async (a: KanbanAction) => {
       if (a.kind === 'approve_review') {
         return setStatus(a.taskId, 'done')
+      }
+
+      if (a.kind === 'comment') {
+        if (!a.note?.trim()) {
+          throw new Error('a comment is required')
+        }
+
+        return comment(a.taskId, a.note.trim())
       }
 
       if (!a.note?.trim()) {

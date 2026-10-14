@@ -111,6 +111,7 @@ export function OfficeContainer({
       nowS={nowS}
       onApprove={approve}
       onCronRun={async id => (await actions.cronTrigger(id), cron.reload())}
+      onDeny={async item => (await client.approve(item, 'deny'), pending.reload())}
       onDispatch={dispatch}
       onKanban={async a => (await actions.kanban(a), pending.reload(), board.reload())}
       onOpenProfile={onOpenProfile}

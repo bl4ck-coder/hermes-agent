@@ -40,6 +40,7 @@ export interface OfficeViewProps {
   layout?: OfficeLayout
   onLayout?: (layout: OfficeLayout) => void
   onApprove?: (item: ApprovalItem) => Promise<unknown> | void
+  onDeny?: (item: ApprovalItem) => Promise<unknown> | void
   onDispatch?: (text: string) => Promise<unknown> | void
   onOpenProfile?: (profile: string) => void
   onKanban?: (a: KanbanAction) => Promise<unknown> | void
@@ -264,6 +265,7 @@ export function OfficeView(props: OfficeViewProps) {
         items={props.pending}
         onApprove={props.onApprove}
         onCronRun={props.onCronRun}
+        onDeny={props.onDeny}
         onKanban={props.onKanban}
         onOpenTask={props.onOpenTask}
         readOnly={props.readOnly}
