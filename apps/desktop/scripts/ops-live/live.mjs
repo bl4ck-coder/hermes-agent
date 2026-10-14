@@ -55,8 +55,8 @@ const dismissToasts = async () => {
     // Glass p3: alerts too (warnings render as role=alert), full text with the details expanded.
     for (const n of document.querySelectorAll('[role="region"] [role="status"], [role="region"] [role="alert"]')) {
       if (!n.getClientRects().length) continue
-      for (const d of n.querySelectorAll('button, summary')) if (/^(Detalles|Details)$/i.test((d.textContent || '').trim().replace(/^[^A-Za-z]+/, ''))) d.click()
-      const b = n.querySelector('button[aria-label]')
+      // Only the close control: never the toast's own actions (e.g. Copy detail writes the clipboard).
+      const b = [...n.querySelectorAll('button[aria-label]')].find(x => /close|cerrar|dismiss|descartar|fermer|schlie/i.test(x.getAttribute('aria-label') || ''))
       if (b) { out.push((n.textContent || '').trim().slice(0, 600)); b.click() }
     }
     return out
@@ -310,8 +310,26 @@ if (want('diagnostics')) await section('09-diagnostics', async () => {
 // Glass/IA pass: the main Hermes screens outside Ops (read-only visits; Escape closes overlays).
 for (const [n, route] of [['20-app-chat', '/'], ['21-app-settings', '/settings'], ['22-app-profiles', '/profiles'], ['23-app-capabilities', '/capabilities'], ['24-app-messaging', '/messaging'], ['25-app-artifacts', '/artifacts'], ['26-app-cron', '/cron'], ['27-app-command-center', '/command-center'], ['28-app-agents', '/agents']]) {
   if (!want('app') && !want(n)) continue
-  await section(n, async () => { await go(route); if (route === '/') { await page.locator('button:has-text("Chats")').first().click({ timeout: 4000 }).catch(() => {}); await sleep(1500) } return page.url() })
+  await section(n, async () => { await go(route); if (route === '/') { await page.locator('button:has-text("Chats")').first().click({ timeout: 4000 }).catch(() => {}); await sleep(1500); log.chatStack = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.3, innerHeight * 0.3).slice(0, 14).map(e => { const c = getComputedStyle(e); return `${e.tagName.toLowerCase()}${e.getAttribute('data-slot') ? '[slot=' + e.getAttribute('data-slot') + ']' : ''}${e.hasAttribute('data-chat-surface') ? '[chat-surface]' : ''} bg=${c.backgroundColor} img=${c.backgroundImage.slice(0, 40)} cls=${(e.className && e.className.baseVal === undefined ? e.className : '').slice(0, 90)}` })).catch(e => String(e)) } return page.url() })
   await page.keyboard.press('Escape').catch(() => {}); await sleep(300)
+}
+log.themeProbe = await page.evaluate(() => { const h = document.documentElement; const cs = el => { const e = document.querySelector(el); if (!e) return null; const c = getComputedStyle(e); return { bg: c.backgroundColor, img: c.backgroundImage.slice(0, 120) } }; return { attrs: [...h.attributes].map(a => `${a.name}=${a.value}`.slice(0, 80)), chat: cs('[data-chat-surface]'), bounds: cs("[data-slot='composer-bounds']"), sidebar: cs("[data-slot='sidebar-inner']"), ops: cs('[data-ops-root]') } }).catch(e => String(e))
+// Glass p3: why do artifact loads fail? Read-only GETs mirroring app/artifacts refreshArtifacts.
+if (want('app') || want('artifacts-probe')) {
+  log.artifactsProbe = await page.evaluate(async () => {
+    const api = window.hermesDesktop.api
+    const out = []
+    try {
+      const list = await api({ path: '/api/profiles/sessions?limit=30&offset=0&min_messages=1&archived=exclude&order=recent&profile=all' })
+      for (const s of list.sessions || []) {
+        const q = new URLSearchParams({ limit: '50', offset: '0', order: 'oldest', include_compacted: 'true' })
+        if (s.profile) q.set('profile', s.profile)
+        try { const r = await api({ path: `/api/sessions/${encodeURIComponent(s.id)}/messages?${q}`, profile: s.profile }); out.push({ id: s.id, profile: s.profile, ok: true, n: (r.messages || []).length }) }
+        catch (e) { out.push({ id: s.id, profile: s.profile, ok: false, err: String(e && (e.message || e)).slice(0, 300) }) }
+      }
+    } catch (e) { out.push({ listErr: String(e && (e.message || e)).slice(0, 300) }) }
+    return out
+  }).catch(e => [{ evalErr: String(e) }])
 }
 const boardSig = () => page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') })
 log.boardAfter = await boardSig().catch(e => 'ERR ' + e)

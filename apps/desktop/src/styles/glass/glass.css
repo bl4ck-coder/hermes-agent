@@ -220,7 +220,6 @@ html[data-hermes-theme^='gold-night'] :where(.ops-toast) {
   :root {
     --glass-fill: var(--glass-fill-solid);
     --glass-fill-quiet: var(--glass-fill-solid);
-    --glass-sheen: linear-gradient(transparent, transparent);
     --glass-scrim: rgb(var(--glass-ink) / 0.82);
   }
 }
@@ -249,7 +248,8 @@ html[data-hermes-theme^='gold-night'] :where(.ops-toast) {
   --glass-fill-card: linear-gradient(170deg, rgb(var(--glass-raised) / 0.74), rgb(var(--glass-panel) / 0.62) 45%, rgb(var(--glass-panel) / 0.7));
 }
 @media (prefers-reduced-transparency: reduce) {
-  :root { --glass-ambient: linear-gradient(transparent, transparent); --glass-noise: none; --glass-fill-card: var(--glass-fill-solid); }
+  /* Ambient light and grain are opaque paint, not transparency, so they stay; only fills go solid. */
+  :root { --glass-fill-card: var(--glass-fill-solid); }
 }
 
 /* Lit backdrops: the chat area, the sidebar, overlay cards and the Ops root. These elements do not
@@ -320,7 +320,7 @@ html[data-hermes-theme^='gold-night'] [data-session-group] { color: rgb(var(--gl
   --glass-r-card: 16px;
 }
 @media (prefers-reduced-transparency: reduce) {
-  :root { --glass-ambient: linear-gradient(transparent, transparent); --glass-spot: linear-gradient(transparent, transparent); --glass-spot-top: linear-gradient(transparent, transparent); }
+  /* (spotlights are opaque paint and stay on under reduced transparency) */
 }
 
 /* Chat stage and page shells (Capabilities, Messaging, Artifacts): the lit backdrop plus a spotlight

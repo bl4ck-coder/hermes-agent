@@ -138,13 +138,28 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
     try {
       const sessions = (await listAllProfileSessions(30, 1)).sessions
 
-      const { artifacts: nextArtifacts, failures } = await loadArtifactsForSessions(sessions, (session, page) =>
+      // Other profiles' sessions are read through their own local backends. A cold start can
+      // time out waiting for a free backend slot while the app is still booting; those are
+      // transient, so retry them once after the first sweep before reporting anything.
+      const loadPage = (session: (typeof sessions)[number], page: { limit: number; offset: number }) =>
         getSessionMessages(session.id, session.profile, {
           ...page,
           includeCompacted: true,
           order: 'oldest'
         })
-      )
+
+      const first = await loadArtifactsForSessions(sessions, loadPage)
+      const transient = first.failures.filter(({ error }) => isSlotWaitTimeout(error))
+      const retry = transient.length
+        ? await loadArtifactsForSessions(
+            transient.map(f => f.session),
+            loadPage
+          )
+        : null
+      const nextArtifacts = retry ? [...first.artifacts, ...retry.artifacts] : first.artifacts
+      const failures = retry
+        ? [...first.failures.filter(f => !isSlotWaitTimeout(f.error)), ...retry.failures]
+        : first.failures
 
       if (failures.length > 0) {
         const safeLimitFailures = failures.filter(({ error }) =>
@@ -155,7 +170,11 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
 
         const detail = [
           safeLimitFailures ? `${safeLimitFailures} exceeded the safe transcript load limit.` : '',
-          otherFailures ? `${otherFailures} could not be read.` : ''
+          otherFailures ? `${otherFailures} could not be read.` : '',
+          // Name the first non-limit reason so the toast is actionable, not just a count.
+          otherFailures
+            ? `First error: ${String((failures.find(({ error }) => !String(error instanceof Error ? error.message : error).includes('safe-load limit'))?.error as Error | undefined)?.message ?? failures[0]?.error).slice(0, 160)}`
+            : ''
         ]
           .filter(Boolean)
           .join(' ')
@@ -720,4 +739,9 @@ function ArtifactTable({
       </tbody>
     </table>
   )
+}
+
+/** A profile backend that could not start in time because every local slot was busy (transient). */
+export function isSlotWaitTimeout(error: unknown): boolean {
+  return /SlotWaitTimeout|waiting for a free slot/i.test(String(error instanceof Error ? error.message : error))
 }
