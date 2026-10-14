@@ -103,6 +103,8 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
   )
 }
 
+const DETAIL_TAB: Record<string, string> = { task: 'board', node: 'canvas', settings: 'settings' }
+
 function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: FleetFeed; tab: OpsTab | null }) {
   const copy = useI18n().t.ops
   const want = detailKindForSlot(active)
@@ -112,7 +114,12 @@ function InspectorBody({ active, fleet, tab }: { active: InspectorSlot; fleet: F
     return <FleetList feed={fleet} filter="" />
   }
 
-  if (detail && want && detail.kind === want) {
+  // B11: a detail belongs to the tab that published it; kept-alive tabs must not leak into others
+  // (Settings detail showed on Agents under the row slot).
+  const owner = want ? DETAIL_TAB[want] : null
+  const ownsTab = !tab || !owner || tab.id === owner
+
+  if (detail && want && detail.kind === want && ownsTab) {
     return <InspectorDetailView detail={detail} history={active === 'history'} />
   }
 

@@ -126,7 +126,7 @@
 :where([data-ops-rail-list]) :where(button) { background: transparent; border-color: transparent; justify-content: flex-start; width: 100%; }
 :where([data-ops-rail-list]) :where(button:hover:not(:disabled)) { background: var(--ops-surface-2); }
 :where([data-ops-rail-list]) :where(h2, h3, h4, [role='heading']) { color: var(--ops-muted); font-size: 10px; letter-spacing: 0.08em; margin: 10px 0 2px; text-transform: uppercase; }
-:where([data-ops-rail-item], [data-ops-lens]) { align-items: center; display: flex; gap: 4px; justify-content: space-between; }
+:where([data-ops-rail-item], button[data-ops-lens]) { align-items: center; display: flex; gap: 4px; justify-content: space-between; }
 :where([data-ops-rail-footer]) { border-top: 1px solid var(--ops-line); display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; padding-top: 8px; }
 
 /* Office */
@@ -285,3 +285,8 @@
 /* B11: honest unknown explanation under the fleet group header. */
 :where([data-ops-fleet-hint]) { color: var(--ops-muted); font-size: 11px; font-style: italic; line-height: 18px; overflow: hidden; padding-left: 2px; text-overflow: ellipsis; white-space: nowrap; }
 
+
+/* B11: lens sections stack (header row, search, table); the rail-button flex rule no longer leaks here. */
+:where(section[data-ops-lens]) { display: block; }
+:where(section[data-ops-lens] > header) { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+:where(section[data-ops-lens] > header > h2) { font-size: 14px; margin: 0 8px 0 0; }

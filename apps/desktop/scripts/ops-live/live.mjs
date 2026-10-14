@@ -39,6 +39,9 @@ delete env.HERMES_DESKTOP_DEV_SERVER
 }
 const app = await _electron.launch({ executablePath: electronBin, args: [DESKTOP], env, cwd: DESKTOP, timeout: 120_000 })
 const page = await app.firstWindow()
+// B11: keep the test window off the user's screen and taskbar (screenshots still render via CDP).
+const offscreen = () => app.evaluate(({ BrowserWindow }) => { for (const w of BrowserWindow.getAllWindows()) { w.setSkipTaskbar(true); w.setSize(1600, 1000); w.setPosition(-20000, -20000); w.blur() } }).catch(() => {})
+await offscreen()
 page.on('console', m => (m.type() === 'error' || m.type() === 'warning') && log.console.push({ type: m.type(), text: m.text().slice(0, 400), at: page.url() }))
 page.on('pageerror', e => log.pageErrors.push({ text: String(e).slice(0, 400), at: page.url() }))
 page.on('requestfailed', r => log.failed.push({ url: r.url().slice(0, 200), err: r.failure()?.errorText }))
@@ -138,7 +141,7 @@ app.process().stdout?.on('data', d => mainOut.push(String(d)))
 app.process().stderr?.on('data', d => mainOut.push(String(d)))
 log.bootReady = await page.waitForFunction(() => { const t = document.body?.innerText ?? ''; return t.length > 0 && !/Starting Hermes|Waiting for Hermes backend|Let's get you setup/.test(t) }, null, { timeout: 240_000 }).then(() => true, () => false)
 log.mainTail = () => mainOut.join('').slice(-6000)
-await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1600, 1000); w.center() })
+await offscreen()
 await sleep(5000)
 log.bootMs = Date.now() - t0
 await shot('00-boot')

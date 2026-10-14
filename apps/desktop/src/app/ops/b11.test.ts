@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import type { FleetProfile, Presence } from './feed/ops-client'
 import { layoutOrrery, orbsOverlap, spreadOrbs } from './office/orrery'
@@ -94,5 +94,24 @@ describe('B11 honest unknown presence', () => {
       expect(OPS_LOCALES[id].inspector.fields[UNKNOWN_SHORT_KEY], id).not.toBe(UNKNOWN_SHORT_KEY)
       expect(OPS_LOCALES[id].inspector.fields[UNKNOWN_HINT_KEY], id).not.toBe(UNKNOWN_HINT_KEY)
     }
+  })
+})
+
+describe('B11 live round fixes', () => {
+  it('rail flex rule is scoped to buttons; lens sections stack', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const css = readFileSync(join(__dirname, 'ops-base.css'), 'utf8')
+    expect(css).toContain(':where([data-ops-rail-item], button[data-ops-lens])')
+    expect(css).not.toContain(':where([data-ops-rail-item], [data-ops-lens])')
+    expect(css).toMatch(/:where\(section\[data-ops-lens\]\) \{ display: block; \}/)
+  })
+
+  it('inspector shows a detail only on the tab that owns it', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const src = readFileSync(join(__dirname, 'inspector.tsx'), 'utf8')
+    expect(src).toContain("const DETAIL_TAB: Record<string, string> = { task: 'board', node: 'canvas', settings: 'settings' }")
+    expect(src).toMatch(/detail\.kind === want && ownsTab/)
   })
 })
