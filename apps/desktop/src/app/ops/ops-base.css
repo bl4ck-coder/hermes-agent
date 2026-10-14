@@ -321,3 +321,9 @@
 :where([data-ops-canvas]) { background-color: var(--ops-surface); background-image: radial-gradient(color-mix(in srgb, var(--ops-muted) 35%, transparent) 1px, transparent 1.2px); background-size: 16px 16px; border: 1px solid var(--ops-line); border-radius: var(--ops-radius); }
 :where([data-ops-canvas-nodes] [data-ops-node]) { background: color-mix(in srgb, var(--ops-surface) 92%, black); border: 1px solid var(--ops-line); border-radius: 10px; box-shadow: 0 1px 0 color-mix(in srgb, black 30%, transparent); }
 :where([data-ops-node][data-ops-port='unset']) { border-style: dashed; }
+
+/* B13: drop target highlight while dragging a board card. */
+:where([data-ops-column][data-ops-drop='over']) { background: color-mix(in srgb, var(--ops-gold, #c9a227) 8%, transparent); outline: 1px dashed color-mix(in srgb, var(--ops-gold, #c9a227) 55%, transparent); outline-offset: -2px; }
+:where([data-ops-card][draggable='true']) { cursor: grab; }
+:where([data-ops-card][draggable='true']:active) { cursor: grabbing; }
+:where([data-ops-card][data-ops-dragging]) { opacity: 0.55; }

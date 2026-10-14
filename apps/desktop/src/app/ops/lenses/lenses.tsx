@@ -20,7 +20,7 @@ import { type AppCard, appCards, appGlyph, appsInTags } from './b4-model'
 
 const why = (e: unknown) => (e instanceof Error ? e.message : e ? String(e) : null)
 /** P8: local time for the operator (was UTC ISO). */
-const iso = (s?: number | null) => (typeof s === 'number' && s > 0 ? new Date(s * 1000).toLocaleString() : 'unknown')
+const iso = (s?: number | null) => (typeof s === 'number' && s > 0 ? new Date(s * 1000).toLocaleString() : T('unknown'))
 
 function Unavailable({ what, error }: { what: string; error: unknown }) {
   return <p data-ops-unavailable="">{error ? `${what} unavailable: ${why(error)}` : `${what} loading (unknown).`}</p>
@@ -74,10 +74,10 @@ export function RunsLensView({
                     {w.task_title || w.task_id}
                   </button>
                 </td>
-                <td>{w.profile ?? 'unknown'}</td>
-                <td>{typeof w.started_at === 'number' ? `${Math.max(0, Math.round(nowS - w.started_at))} s` : 'unknown'}</td>
+                <td>{w.profile ?? T('unknown')}</td>
+                <td>{typeof w.started_at === 'number' ? `${Math.max(0, Math.round(nowS - w.started_at))} s` : T('unknown')}</td>
                 <td data-ops-stale={typeof w.last_heartbeat_at === 'number' && nowS - w.last_heartbeat_at > 120 ? '' : undefined}>
-                  {typeof w.last_heartbeat_at === 'number' ? `${Math.max(0, Math.round(nowS - w.last_heartbeat_at))} s ago` : 'unknown'}
+                  {typeof w.last_heartbeat_at === 'number' ? `${Math.max(0, Math.round(nowS - w.last_heartbeat_at))} s ${T('ago')}` : T('unknown')}
                 </td>
               </tr>
             ))}

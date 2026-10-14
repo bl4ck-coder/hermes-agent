@@ -267,7 +267,7 @@ export function GroupedTasks({
 export const updatedLabel = (t: BoardTask, nowS: number) => {
   const u = touched(t)
 
-  return u === null ? 'unknown' : `${fmtAge(nowS - u)} ago`
+  return u === null ? 'unknown' : `${fmtAge(nowS - u)} ${T('ago')}`
 }
 
 /* ------------------------------- R68 timeline ------------------------------- */
@@ -496,8 +496,8 @@ export function FilesView({
                 </td>
                 <td data-ops-field="type">{typeOf(f)}</td>
                 <td>{fmtBytes(f.size)}</td>
-                <td>{f.uploaded_by ?? 'unknown'}</td>
-                <td>{typeof f.created_at === 'number' ? `${fmtAge(nowS - f.created_at)} ago` : 'unknown'}</td>
+                <td>{f.uploaded_by ?? T('unknown')}</td>
+                <td>{typeof f.created_at === 'number' ? `${fmtAge(nowS - f.created_at)} ${T('ago')}` : T('unknown')}</td>
                 <td>
                   <button disabled={!onOpenTask} onClick={() => onOpenTask?.(f.taskId)} type="button">
                     {f.taskTitle}
@@ -515,7 +515,7 @@ export function FilesView({
                 <strong>{typeOf(f).toUpperCase()}</strong> {f.filename}
               </button>
               <small>
-                {fmtBytes(f.size)} · {f.uploaded_by ?? 'unknown'} · {typeof f.created_at === 'number' ? `${fmtAge(nowS - f.created_at)} ago` : 'unknown'}
+                {fmtBytes(f.size)} · {f.uploaded_by ?? T('unknown')} · {typeof f.created_at === 'number' ? `${fmtAge(nowS - f.created_at)} ${T('ago')}` : T('unknown')}
               </small>
             </li>
           ))}

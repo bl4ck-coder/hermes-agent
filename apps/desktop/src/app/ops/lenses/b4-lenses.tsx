@@ -166,7 +166,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                   </button>
                 )
               },
-              { id: 'model', header: 'Model', sortable: true, sortValue: r => r.model, cell: r => r.model ?? 'unknown' },
+              { id: 'model', header: 'Model', sortable: true, sortValue: r => r.model, cell: r => r.model ?? T('unknown') },
               { id: 'lane', header: 'Lane', sortable: true, sortValue: r => r.lane, cell: r => r.lane ?? '—' },
               { id: 'active', header: 'Active tasks', sortable: true, tabular: true, sortValue: r => r.active, cell: r => String(r.active) },
               {
@@ -421,7 +421,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
               { id: 'type', header: 'Type', sortable: true, sortValue: r => r.category, cell: r => <span data-ops-skill-tag={tagTone(r.category || 'general')}>{r.category || 'general'}</span> },
               { id: 'description', header: 'Description', description: r => r.description },
               { id: 'agents', header: 'Agents', sortable: true, tabular: true, sortValue: r => r.agents.length, cell: r => <AgentLinks agents={r.agents} onOpen={onOpenRoute ? openAgent : undefined} /> },
-              { id: 'source', header: 'Source', sortable: true, sortValue: r => r.provenance ?? '', cell: r => r.provenance ?? 'unknown' },
+              { id: 'source', header: 'Source', sortable: true, sortValue: r => r.provenance ?? '', cell: r => r.provenance ?? T('unknown') },
               { id: 'usage', header: 'Uses', sortable: true, tabular: true, sortValue: r => r.usage ?? -1, cell: r => (typeof r.usage === 'number' ? String(r.usage) : '—') },
               { id: 'enabled', header: 'On', sortable: true, sortValue: r => (r.enabled ? 1 : 0), cell: r => (r.enabled ? 'on' : 'off') }
             ]}

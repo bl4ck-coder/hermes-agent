@@ -27,7 +27,8 @@ import {
   MOVABLE,
   type MoveRecord,
   windowRange
-} from './board-model'
+,
+  statusOf} from './board-model'
 import {
   BodyEditor,
   CardMenu,
@@ -126,6 +127,8 @@ export function BoardView(props: BoardViewProps) {
   const [showArchived, setShowArchived] = useState(false)
   const [groupBy, setGroupBy] = useState<GroupBy>('status')
   const [sortBy, setSortBy] = useState<SortBy>('priority')
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [dropCol, setDropCol] = useState<string | null>(null)
   const [menu, setMenu] = useState<string | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<BoardTask | null>(null)
   const [modal, setModal] = useState<string | null>(null)
@@ -210,7 +213,7 @@ export function BoardView(props: BoardViewProps) {
         <option value="">{T("Move…")}</option>
         {MOVABLE.filter(s => s !== t.status).map(s => (
           <option key={s} value={s}>
-            {s}
+            {T(s)}
           </option>
         ))}
       </select>
@@ -219,10 +222,22 @@ export function BoardView(props: BoardViewProps) {
   const card = (t: BoardTask) => (
     <div
       data-ops-card={t.id}
+      draggable={!readOnly}
       key={t.id}
       onContextMenu={e => (e.preventDefault(), setMenu(t.id))}
+      onDragEnd={() => setDragging(null)}
+      onDragStart={e => {
+        if (readOnly) {
+          return
+        }
+
+        setDragging(t.id)
+        e.dataTransfer.setData('text/ops-card', t.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
       onKeyDown={keyFor(t)}
       role="listitem"
+      data-ops-dragging={dragging === t.id ? '' : undefined}
       style={{ height: ROW_H - 6 }}
       tabIndex={0}
     >
@@ -238,7 +253,7 @@ export function BoardView(props: BoardViewProps) {
       <span data-ops-quick="">
         <StarButton id={t.id} kind="task" label={t.title} />
         <button aria-pressed={pins.has(t.id)} data-ops-pin={t.id} onClick={() => setPins(p => toggle(p, t.id))} type="button">
-          {pins.has(t.id) ? 'Unpin' : 'Pin'}
+          {pins.has(t.id) ? T('Unpin') : T('Pin')}
         </button>
         {moveSelect(t)}
         <button aria-expanded={menu === t.id} aria-haspopup="menu" aria-label={`more actions for ${t.title}`} data-ops-more={t.id} onClick={() => setMenu(m => (m === t.id ? null : t.id))} type="button">
@@ -257,9 +272,9 @@ export function BoardView(props: BoardViewProps) {
         <CardSignals nowS={nowS} task={t} />
         {menu === t.id ? <CardMenu actions={menuActions} assignees={board.assignees ?? []} onClose={() => setMenu(null)} task={t} /> : null}
       </td>
-      <td>{t.status}</td>
-      <td>{t.assignee ?? 'unassigned'}</td>
-      <td>{typeof t.priority === 'number' ? t.priority : 'unknown'}</td>
+      <td>{T(t.status)}</td>
+      <td>{t.assignee ?? T('unassigned')}</td>
+      <td>{typeof t.priority === 'number' ? t.priority : T('unknown')}</td>
       <td>{updatedLabel(t, nowS)}</td>
     </tr>
   )
@@ -438,9 +453,43 @@ export function BoardView(props: BoardViewProps) {
       {layout === 'board' || layout === 'review' ? (
         <div data-ops-columns="">
           {shown.columns.map(col => (
-            <section aria-label={col.name} data-ops-column={col.name} key={col.name}>
+            <section
+              aria-label={col.name}
+              data-ops-column={col.name}
+              data-ops-drop={dropCol === col.name ? 'over' : undefined}
+              key={col.name}
+              onDragLeave={e => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setDropCol(cur => (cur === col.name ? null : cur))
+                }
+              }}
+              onDragOver={e => {
+                if (readOnly || !(MOVABLE as readonly string[]).includes(col.name)) {
+                  return
+                }
+
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                setDropCol(col.name)
+              }}
+              onDrop={e => {
+                e.preventDefault()
+                setDropCol(null)
+                const id = e.dataTransfer.getData('text/ops-card') || dragging
+
+                if (!readOnly && id && (MOVABLE as readonly string[]).includes(col.name)) {
+                  const from = statusOf(board, id)
+
+                  if (from && from !== col.name) {
+                    props.move(id, col.name)
+                  }
+                }
+
+                setDragging(null)
+              }}
+            >
               <h3>
-                {col.name} <span data-ops-count={col.name}>{c[col.name]}</span>
+                {T(col.name)} <span data-ops-count={col.name}>{c[col.name]}</span>
               </h3>
               <Windowed render={card} tasks={pinnedFirst(col.tasks)} viewport={viewport} />
               {!readOnly && (MOVABLE as readonly string[]).includes(col.name) ? (

@@ -149,7 +149,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
 
             return (
               <tr data-ops-approval={key} data-ops-origin={item.origin} key={key} tabIndex={-1}>
-                <td>{item.profile ?? 'unknown'}</td>
+                <td>{item.profile ?? T('unknown')}</td>
                 <td>{KIND[item.origin] ?? item.origin}</td>
                 <td data-ops-waiting-on="">{cmd || item.what_for || item.id}</td>
                 <td data-ops-age="">{age(item.age_s)}</td>
@@ -262,7 +262,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
 
             return (
               <tr data-ops-approval={key} data-ops-origin="cron_failure" key={key}>
-                <td>{j.profile ?? 'unknown'}</td>
+                <td>{j.profile ?? T('unknown')}</td>
                 <td>{KIND.cron_failure}</td>
                 <td>{j.name ?? j.id}</td>
                 <td>{T("unknown")}</td>

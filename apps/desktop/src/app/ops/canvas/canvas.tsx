@@ -10,6 +10,7 @@ import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } f
 import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
 import { T } from '../main-i18n'
 
+import { ComposePanel } from './compose-view'
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
 import { elapsedMs, initialRun, reduceRun, type RunView } from './run-stream'
 
@@ -481,6 +482,17 @@ export function CanvasView({
         )}
         {saveNote ? <span role="status">{saveNote}</span> : null}
       </header>
+      {readOnly ? null : (
+        <ComposePanel
+          edges={CANVAS_EDGES}
+          onStaged={nodes => {
+            if (nodes.includes('prompt') || nodes.includes('model')) {
+              setDetail(nodes.includes('model') ? 'model' : 'prompt')
+            }
+          }}
+          profile={profile}
+        />
+      )}
       <div
         aria-label={T("Canvas viewport (drag the background or Shift+arrows to pan)")}
         data-ops-canvas-viewport=""

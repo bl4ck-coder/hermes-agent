@@ -74,7 +74,7 @@ export function DiagnosticsPanel({
         <dt>{T("Stream generation")}</dt>
         <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
         <dt>{T("Policy source")}</dt>
-        <dd data-ops-diag-policy="">{policySource ?? 'unknown'}</dd>
+        <dd data-ops-diag-policy="">{policySource ?? T('unknown')}</dd>
       </dl>
       <button data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
         {probing ? 'Probing…' : 'Run capability probe'}

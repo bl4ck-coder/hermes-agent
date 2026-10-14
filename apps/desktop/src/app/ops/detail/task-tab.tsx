@@ -57,7 +57,7 @@ const hhmm = (s?: number | null) => {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-const dur = (r: TaskRun) => (typeof r.started_at === 'number' && typeof r.ended_at === 'number' ? `${r.ended_at - r.started_at} s` : 'unknown')
+const dur = (r: TaskRun) => (typeof r.started_at === 'number' && typeof r.ended_at === 'number' ? `${r.ended_at - r.started_at} s` : T('unknown'))
 
 /** X9: a worker run can report a diff in its metadata (``diff`` or ``diffstat``); newest run wins. */
 export function latestDiff(runs: { metadata?: unknown; started_at?: number | null }[]): string | null {
@@ -188,7 +188,7 @@ export function TaskTabView({
             {runs.map(r => (
               <tr data-ops-run-row={r.id} key={r.id}>
                 <td>#{r.id}</td>
-                <td>{r.profile ?? 'unknown'}</td>
+                <td>{r.profile ?? T('unknown')}</td>
                 <td>{r.status}</td>
                 <td>{r.outcome ?? ''}</td>
                 <td>{dur(r)}</td>
@@ -314,7 +314,7 @@ export function TaskTabView({
         <ul>
           {(detail.comments ?? []).map((c, i) => (
             <li key={c.id ?? i}>
-              <strong>{c.author ?? 'unknown'}</strong> <LinkedText onOpenTask={onOpenTask} text={c.body ?? ''} />
+              <strong>{c.author ?? T('unknown')}</strong> <LinkedText onOpenTask={onOpenTask} text={c.body ?? ''} />
             </li>
           ))}
         </ul>

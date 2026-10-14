@@ -182,14 +182,39 @@ if (want('fps')) await sampleFps('board-scroll', async end => {
   while (Date.now() < end - 200) { await page.mouse.wheel(0, 240); await sleep(40); await page.mouse.wheel(0, -240); await sleep(40) }
 })
 if (want('fps')) await sampleFps('board-drag', async end => {
-  // Drag a card around and cancel with Escape before release: no move is ever sent.
-  const card = page.locator('[data-ops-open-task]').first()
-  const b = await card.boundingBox().catch(() => null)
-  if (!b) return
-  await page.mouse.move(b.x + 20, b.y + 10); await page.mouse.down()
-  let i = 0
-  while (Date.now() < end - 300) { i++; await page.mouse.move(b.x + 20 + 120 * Math.sin(i / 6), b.y + 10 + 40 * Math.cos(i / 6), { steps: 2 }); await sleep(16) }
-  await page.keyboard.press('Escape'); await page.mouse.move(b.x + 20, b.y + 10); await page.mouse.up()
+  // B13: real HTML5 drag events over other columns, then dragend WITHOUT drop: no move is ever sent.
+  await page.evaluate(async until => {
+    const card = document.querySelector('[data-ops-card][draggable="true"]')
+    const cols = [...document.querySelectorAll('[data-ops-column]')]
+    if (!card || cols.length < 2) return
+    const dt = new DataTransfer()
+    card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }))
+    let i = 0
+    while (Date.now() < until) {
+      const col = cols[i++ % cols.length]
+      const r = col.getBoundingClientRect()
+      col.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.x + 20, clientY: r.y + 60 }))
+      await new Promise(f => requestAnimationFrame(() => f()))
+    }
+    card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }))
+  }, end - 300)
+})
+if (want('drag')) await section('02c-board-drag-over', async () => {
+  // Screenshot the drop highlight mid-drag; ends with dragend (no drop).
+  await go('/ops/board')
+  const r = await page.evaluate(() => {
+    const card = document.querySelector('[data-ops-card][draggable="true"]')
+    const col = [...document.querySelectorAll('[data-ops-column]')].find(c => !c.contains(card) && c.getAttribute('data-ops-column') !== 'running')
+    if (!card || !col) return 'no-card'
+    window.__opsDt = new DataTransfer()
+    card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: window.__opsDt }))
+    col.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__opsDt }))
+    return `${card.getAttribute('data-ops-card')} over ${col.getAttribute('data-ops-column')}`
+  })
+  await sleep(400); await shot('02c-board-drag-over-live')
+  const lit = await page.locator('[data-ops-drop="over"]').count()
+  await page.evaluate(() => document.querySelector('[data-ops-card][data-ops-dragging]')?.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__opsDt })))
+  return `${r}; highlighted=${lit}`
 })
 if (want('canvas')) await section('03-canvas', async () => { await go('/ops/canvas'); return `nodes=${await page.locator('[data-ops-node-title]').count()}` })
 if (want('fps')) await sampleFps('canvas-pan-zoom', async end => {
@@ -242,6 +267,18 @@ if (want('settings-inspector')) await section('08b-settings-inspector', async ()
   await page.locator('[data-ops-rail-list] button[data-ops-lens=settings]').first().click({ timeout: 8000 })
   await sleep(1500)
   return `inspector=${await page.locator('[data-ops-inspector-detail]').getAttribute('data-ops-inspector-detail').catch(() => 'none')}`
+})
+if (want('compose')) await section('03d-canvas-compose', async () => {
+  // B13: propose only, screenshot, then Discard. Never Accept, never Save.
+  await go('/ops/canvas')
+  const ta = page.locator('[data-ops-compose] textarea').first()
+  await ta.fill('use model openrouter/deepseek-chat\nalways answer in Spanish\nconnect tools to skills', { timeout: 8000 })
+  await page.locator('[data-ops-compose] button[type=submit]').click({ timeout: 5000 })
+  await sleep(500); await shot('03d-canvas-compose-proposal')
+  const items = await page.locator('[data-ops-proposal-item]').count()
+  await page.locator('[data-ops-proposal-discard]').click({ timeout: 5000 })
+  const staged = await page.locator('[data-ops-dirty]').count()
+  return `items=${items}; discarded; dirty=${staged}`
 })
 if (want('draft')) await section('03b-canvas-draft', async () => {
   // One reversible draft edit: open the prompt editor, type, then Discard. Never Review & save.

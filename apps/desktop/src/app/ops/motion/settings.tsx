@@ -150,7 +150,7 @@ export function SettingsView({
       ['Policy', policy ? (policy.fail_closed ? `${policy.source} (invalid, writes blocked)` : policy.source) : 'loading'],
       ['Default model', defaultModel ? `${defaultModel.provider || 'unset'} / ${defaultModel.model || 'unset'}` : 'loading'],
       ['Approvals', approval === undefined ? 'loading' : (approval ?? 'not set')],
-      ['Secrets set', secrets ? `${secrets.filter(s => s.set).length} of ${secrets.length}` : 'unknown'],
+      ['Secrets set', secrets ? `${secrets.filter(s => s.set).length} of ${secrets.length}` : T('unknown')],
       ['Legacy write routes', 'active (retire flag off)']
     ],
     source: 'Ops settings',
@@ -229,7 +229,7 @@ export function SettingsView({
         <dl>
           <dt>{T("Default model (P2)")}</dt>
           <dd data-ops-field="default-model">
-            {defaultModel ? `${defaultModel.provider ?? 'unknown'} / ${defaultModel.model ?? 'unknown'}` : 'unknown'}
+            {defaultModel ? `${defaultModel.provider ?? T('unknown')} / ${defaultModel.model ?? T('unknown')}` : T('unknown')}
             {policy ? <span data-ops-field="policy-source"> {T("(policy:")}{' '}{policy.source}{policy.error ? `, error: ${policy.error}` : ''})</span> : null}
           </dd>
           <dt>{T("Approval mode")}{profile ? ` (${profile})` : ''}</dt>

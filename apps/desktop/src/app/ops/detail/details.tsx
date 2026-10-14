@@ -117,9 +117,9 @@ export function AgentCardView({
         <dt>{T("Presence")}</dt>
         <dd data-ops-field="presence">{fleet === undefined ? 'unknown' : fleet ? show(fleet.presence) : 'not in fleet'}</dd>
         <dt>{T("Model")}</dt>
-        <dd data-ops-field="model">{model ? `${show(model.provider)} / ${show(model.model)}` : 'unknown'}</dd>
+        <dd data-ops-field="model">{model ? `${show(model.provider)} / ${show(model.model)}` : T('unknown')}</dd>
         <dt>{T("Skills")}</dt>
-        <dd data-ops-field="skills">{row && typeof row.skill_count === 'number' ? row.skill_count : 'unknown'}</dd>
+        <dd data-ops-field="skills">{row && typeof row.skill_count === 'number' ? row.skill_count : T('unknown')}</dd>
         <dt>{T("Next cron run")}</dt>
         <dd data-ops-field="next-cron">
           {(() => {
@@ -135,9 +135,9 @@ export function AgentCardView({
           {violations === null ? 'unknown' : violations.length === 0 ? 'inside policy' : `${violations.length} violation(s)`}
         </dd>
         <dt>{T("Active runs")}</dt>
-        <dd data-ops-field="runs">{fleet && Array.isArray(fleet.active_runs) ? fleet.active_runs.length : 'unknown'}</dd>
+        <dd data-ops-field="runs">{fleet && Array.isArray(fleet.active_runs) ? fleet.active_runs.length : T('unknown')}</dd>
         <dt>{T("Needs you")}</dt>
-        <dd data-ops-field="pending">{pending ? pending.filter(p => p.profile === name).length : 'unknown'}</dd>
+        <dd data-ops-field="pending">{pending ? pending.filter(p => p.profile === name).length : T('unknown')}</dd>
       </dl>
     </section>
   )
@@ -170,7 +170,7 @@ export function TaskDetailView({ id, task, onOpenRoute }: { id: string; task: Ka
   )
 }
 
-const secs = (a?: number | null, b?: number | null) => (typeof a === 'number' && typeof b === 'number' ? `${Math.max(0, b - a).toFixed(0)} s` : 'unknown')
+const secs = (a?: number | null, b?: number | null) => (typeof a === 'number' && typeof b === 'number' ? `${Math.max(0, b - a).toFixed(0)} s` : T('unknown'))
 
 export function RunHistoryView({ id, run, error, onOpenRoute }: { id: string; run: TaskRun | null | undefined; error?: string | null; onOpenRoute?: (r: string) => void }) {
   if (error) {
@@ -196,7 +196,7 @@ export function RunHistoryView({ id, run, error, onOpenRoute }: { id: string; ru
       <dt>{T("Step")}</dt>
       <dd>{show(run.step_key)}</dd>
       <dt>{T("Started")}</dt>
-      <dd>{typeof run.started_at === 'number' ? new Date(run.started_at * 1000).toISOString() : 'unknown'}</dd>
+      <dd>{typeof run.started_at === 'number' ? new Date(run.started_at * 1000).toISOString() : T('unknown')}</dd>
       <dt>{T("Duration")}</dt>
       <dd data-ops-field="duration">{secs(run.started_at, run.ended_at)}</dd>
       {run.summary ? (
@@ -237,7 +237,7 @@ export function RunDetailView({ id, found }: { id: string; found: { profile: str
           <dt>{T("Task")}</dt>
           <dd>{show(found.run.task_id)}</dd>
           <dt>{T("Started")}</dt>
-          <dd>{found.run.started_at ? new Date(found.run.started_at * 1000).toISOString() : 'unknown'}</dd>
+          <dd>{found.run.started_at ? new Date(found.run.started_at * 1000).toISOString() : T('unknown')}</dd>
         </dl>
       )}
     </section>

@@ -151,7 +151,7 @@ function HealthStrip({ fleet, error, nowS }: { fleet: FleetResponse | null; erro
         .filter(k => counts.get(k))
         .map(k => (
           <span data-ops-count={k} key={k} title={k === 'unknown' ? UNKNOWN_WHY : undefined}>
-            {PRESENCE_LABEL[k]} {counts.get(k)}
+            {T(PRESENCE_LABEL[k])} {counts.get(k)}
           </span>
         ))}
       {error ? <span data-ops-warn="">{T("refresh failed, showing last snapshot")}</span> : null}
@@ -264,7 +264,7 @@ function Orrery({
 
   const orb = (o: { profile: string; presence: Presence; ring: number; x: number; y: number }) => (
     <button
-      aria-label={`${o.profile}: ${PRESENCE_LABEL[o.presence]}`}
+      aria-label={`${o.profile}: ${T(PRESENCE_LABEL[o.presence])}`}
       data-ops-halo={moving && live.has(o.profile) ? '' : undefined}
       data-ops-orb={o.profile}
       data-ops-presence={o.presence}
@@ -338,7 +338,7 @@ function FleetTable({ fleet, nowS, onOpenProfile, onOpenRun }: { fleet: FleetRes
                 {p.profile}
               </button>
             </td>
-            <td>{PRESENCE_LABEL[shownPresence(p, nowS)]}</td>
+            <td>{T(PRESENCE_LABEL[shownPresence(p, nowS)])}</td>
             <td>{typeof p.observed_at === 'number' ? `${Math.max(0, Math.round(nowS - p.observed_at))} s ago` : unknown}</td>
             <td>
               {p.active_runs
@@ -364,7 +364,7 @@ function FleetTable({ fleet, nowS, onOpenProfile, onOpenRun }: { fleet: FleetRes
 
 export function routingLine(text: string): string {
   if (!text.trim()) {
-    return 'Type a task. Start with @profile to assign it, add #project to file it; otherwise it goes to triage.'
+    return T('Type a task. Start with @profile to assign it, add #project to file it; otherwise it goes to triage.')
   }
 
   const { assignee, project } = parseDispatch(text)

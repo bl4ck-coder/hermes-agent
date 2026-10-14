@@ -11,6 +11,7 @@ import type { PolicyView } from '../feed/ops-client'
 import { T } from '../main-i18n'
 
 import { registerCanvasSaver, setCanvasDirty } from './dirty-store'
+import { patchFor, takeStaged, useStagedVersion } from './compose'
 import { clearDraft, loadDraft, saveDraft } from './drafts'
 import {
   createNodeClient,
@@ -71,6 +72,39 @@ export function NodeEditor({
 
   const ro = Boolean(readOnly) || s?.status === 'read_only'
   const dirtyNow = s ? isDirty(s) : false
+  const stagedVer = useStagedVersion()
+
+  // B13: consume accepted compose proposals into this node's draft (never auto-save).
+  useEffect(() => {
+    if (!s || ro) {
+      return
+    }
+
+    const items = takeStaged(profile, node)
+
+    if (!items.length) {
+      return
+    }
+
+    setS(cur => {
+      if (!cur) {
+        return cur
+      }
+
+      let next = cur
+
+      for (const item of items) {
+        const p = patchFor(item, next.draft)
+
+        if (p && p.node === node) {
+          next = edit(next, p.patch)
+        }
+      }
+
+      return next
+    })
+  }, [stagedVer, profile, node, s, ro])
+
 
   // L8: keep the latest unsaved draft (Prompt/Model only) so a profile switch, delete or disconnect never loses it.
   useEffect(() => {

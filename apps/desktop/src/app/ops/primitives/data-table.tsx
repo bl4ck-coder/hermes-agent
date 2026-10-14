@@ -1,5 +1,6 @@
 import '../motion.css'
 
+import { T } from '../main-i18n'
 import type { CSSProperties, ReactNode } from 'react'
 import { useId, useRef, useState } from 'react'
 
@@ -217,7 +218,7 @@ export function DataTable<T>({
                       }}
                       type="button"
                     >
-                      {column.header}
+                      {typeof column.header === 'string' ? T(column.header) : column.header}
                     </button>
                   ) : (
                     column.header

@@ -93,19 +93,19 @@ export function StatCards({ stats, profile, onFocus }: { stats: OfficeStats; pro
       data-ops-stat={key}
       key={key}
       onClick={() => onFocus(target)}
-      title={hint}
+      title={T(hint)}
       type="button"
     >
       <strong data-ops-stat-value="">{v(value)}</strong>
-      <span>{label}</span>
+      <span>{T(label)}</span>
       {sub ? <small data-ops-stat-sub="">{sub}</small> : null}
     </button>
   )
 
   return (
     <div aria-label={T("Office stats")} data-ops-stats="" role="group">
-      {card('working', 'Working agents', stats.working, stats.stuck === null ? null : `${stats.stuck} at risk`, 'stuck', false, 'Profiles working, waiting on you or blocked (fleet presence; running tasks when the fleet is unavailable); at risk = blocked, stale heartbeat, failing runs or failing cron')}
-      {card('open', 'Open tasks', stats.open, profile && stats.openMine !== null ? `${stats.openMine} for ${profile}` : null, 'queue', false, 'Every task not done or archived')}
+      {card('working', 'Working agents', stats.working, stats.stuck === null ? null : `${stats.stuck} ${T('at risk')}`, 'stuck', false, 'Profiles working, waiting on you or blocked (fleet presence; running tasks when the fleet is unavailable); at risk = blocked, stale heartbeat, failing runs or failing cron')}
+      {card('open', 'Open tasks', stats.open, profile && stats.openMine !== null ? `${stats.openMine} ${T('for')} ${profile}` : null, 'queue', false, 'Every task not done or archived')}
       {card('done-week', 'Done this week', stats.doneWeek, null, 'delivered', false, 'Tasks completed since Monday 00:00 in the Ops timezone (Settings › Timezone)')}
       {card('attention', 'Needs attention', stats.attention, null, 'needs-you', true, 'Decisions waiting on you plus stuck items, each counted once')}
     </div>
@@ -229,7 +229,7 @@ export function ProjectTable({ rows, nowS, onOpenProject }: { rows: ProjectProgr
                 : 'no one assigned'}
               {p.team.length > 4 ? <span> +{p.team.length - 4}</span> : null}
             </td>
-            <td>{p.updatedAt === null ? 'unknown' : `${fmtAge(nowS - p.updatedAt)} ago`}</td>
+            <td>{p.updatedAt === null ? 'unknown' : `${fmtAge(nowS - p.updatedAt)} ${T('ago')}`}</td>
           <td data-ops-copy-cell=""><CopyLink id={p.id} kind="project" label={p.name ?? p.id} /></td>
 </tr>
         ))}
@@ -270,7 +270,7 @@ export function DeliveredList({
               {t.title}
             </button>{' '}
             {t.assignee ? <span>@{t.assignee}</span> : null}{' '}
-            <time>{typeof t.completed_at === 'number' ? `${fmtAge(nowS - t.completed_at)} ago` : 'unknown'}</time>
+            <time>{typeof t.completed_at === 'number' ? `${fmtAge(nowS - t.completed_at)} ${T('ago')}` : T('unknown')}</time>
             {t.latest_summary ? <p data-ops-field="summary">{t.latest_summary}</p> : null}
             {top ? (
               <button data-ops-open-output={top.id} disabled={!onOpenAttachment} onClick={() => onOpenAttachment?.(t.id, top)} type="button">
