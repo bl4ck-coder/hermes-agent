@@ -126,6 +126,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
 
   const [refreshing, setRefreshing] = useState(false)
   const refreshInFlightRef = useRef(false)
+  const artifactsLoadedRef = useRef(false)
 
   const refreshArtifacts = useCallback(async () => {
     if (refreshInFlightRef.current) {
@@ -148,7 +149,16 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
           order: 'oldest'
         })
 
-      const first = await loadArtifactsForSessions(sessions, loadPage)
+      // First load streams: show artifacts session by session instead of a spinner until all 30 are read.
+      // A refresh keeps the current list until the new one is complete, so it never flickers.
+      const streaming = !artifactsLoadedRef.current
+      const first = await loadArtifactsForSessions(sessions, loadPage, {
+        onSession: found => {
+          if (streaming && found.length) {
+            setArtifacts([...found].sort((left, right) => right.timestamp - left.timestamp))
+          }
+        }
+      })
       const transient = first.failures.filter(({ error }) => isSlotWaitTimeout(error))
       // Give the pool a beat to drain before the single retry.
       if (transient.length) await new Promise(resolve => setTimeout(resolve, 1500))
@@ -197,6 +207,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
       }
 
       setArtifacts(nextArtifacts.sort((left, right) => right.timestamp - left.timestamp))
+      artifactsLoadedRef.current = true
     } catch (err) {
       notifyError(err, a.failedLoad)
       setArtifacts([])

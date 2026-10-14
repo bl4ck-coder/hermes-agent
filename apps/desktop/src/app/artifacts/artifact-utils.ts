@@ -539,7 +539,11 @@ export async function loadArtifactsForSessions(
     session: SessionInfo,
     page: { limit: number; offset: number }
   ) => Promise<Pick<SessionMessagesResponse, 'messages' | 'pagination'>>,
-  options: { maxPageJsonChars?: number } = {}
+  options: {
+    maxPageJsonChars?: number
+    /** Called after each session so the page can show results as they arrive. */
+    onSession?: (artifacts: ArtifactRecord[]) => void
+  } = {}
 ): Promise<ArtifactLoadResult> {
   const artifacts: ArtifactRecord[] = []
   const failures: ArtifactLoadFailure[] = []
@@ -578,9 +582,13 @@ export async function loadArtifactsForSessions(
       }
 
       artifacts.push(...sessionArtifacts.values())
+      options.onSession?.(artifacts)
     } catch (error) {
       failures.push({ error, session })
     }
+
+    // Yield between sessions: each page is parsed and scanned on the renderer thread.
+    await new Promise(resolve => setTimeout(resolve, 0))
   }
 
   return { artifacts, failures }
