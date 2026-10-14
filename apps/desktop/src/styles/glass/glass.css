@@ -368,3 +368,15 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='gar
 :where([data-profile-soul-editor]) .cm-content { box-shadow: none; }
 :where([data-profile-soul-editor]) { border-radius: var(--glass-r-card, 14px); transition: box-shadow 160ms var(--glass-ease, ease); }
 :where([data-profile-soul-editor]:focus-within) { box-shadow: 0 0 0 1px rgb(var(--glass-gold-hi) / 0.45), 0 0 24px -6px rgb(var(--glass-gold-hi) / 0.35); }
+
+/* -- Glass p6: Carnave-style display headlines — the page says what it is in a large editorial serif, the rest stays Geist. */
+:where(html[data-hermes-theme^='gold-night']) :where([data-ops-greeting] > h2, [data-ops-lens] > header > h2) {
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-size: 1.75rem; line-height: 1.1; font-weight: 500; letter-spacing: -0.015em;
+  color: rgb(var(--glass-gold-hi));
+  text-shadow: 0 0 28px rgb(var(--glass-gold) / 0.28);
+}
+:where(html[data-hermes-theme^='gold-night']) :where([data-ops-greeting] > p) { margin-top: 0.35rem; opacity: 0.8; }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :where([data-ops-greeting] > h2, [data-ops-lens] > header > h2) { text-shadow: none; }
+}
