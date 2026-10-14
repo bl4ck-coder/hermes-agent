@@ -593,3 +593,7 @@ Scores (after B26 → after B29): Board 8→9, Canvas 8→9, Office 8→9, Setti
 - B28 (85fb70d768 test only, df37559e3c edits; the first edit script aborted on a CRLF mismatch and was re-applied): Office dispatch input fills the row with a primary submit, routing hint below, "+N más → Te necesita" as a link, larger orbit badges; settings rows top-aligned; node editor heading/badge, dispatch status localized. Driver scroll fixed (verified: Settings top visible).
 - B29 (e064d53912): skills agent chips as pills; thresholds as labelled inputs; first-column name rule did NOT take (names still framed), noted for the next batch.
 - Tests: 64 files / 521 pass; tsc clean. Live b27r1, b28r2, b29r1: pageErrors 0, board unchanged. b29r1: Office max 26.7 ms (0 over 33), drag max 53.4 ms (2 frames), scroll max 40 ms (1). Evidence: /workspace/ops-live/b27/–b29/.
+## B30 (c754ab9635)
+- Drop highlight moved from React state to DOM attribute: board-drag 368 -> 748 frames, p99 13.5 ms, max 53.4 -> 40.1 ms (2 frames at drag end).
+- Skill names unframed via [data-ops-skill-open]; table cells carry data-col; Fleet model mono/muted, running pulse; Teams 'No lane' spans the row; Settings follow-up dd tucked.
+- Live b30r1: pageErrors 0, boardUnchanged true, 65 files / 524 tests, tsc clean.
