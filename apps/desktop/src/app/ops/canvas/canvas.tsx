@@ -264,7 +264,7 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
       const failing = d.cron.filter(j => (j.failure_streak ?? 0) > 0).length
 
       return {
-        text: `${d.cron.length} ${T('cron jobs')}${next ? `, ${T('next')} ${new Date(next).toISOString()}` : ''}${failing ? `, ${failing} ${T('failing')}` : ''}`,
+        text: `${d.cron.length} ${T('cron jobs')}${next ? `, ${T('next')} ${new Date(next).toLocaleString(opsMainLocale().replace('zh-hant', 'zh-Hant'), { dateStyle: 'medium', timeStyle: 'short' })}` : ''}${failing ? `, ${failing} ${T('failing')}` : ''}`,
         state: failing ? 'policy' : d.cron.length ? 'ok' : 'unset'
       }
     }
@@ -274,7 +274,7 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
         ? { text: 'unknown', state: 'unknown' }
         : d.identity.description
           ? { text: `${d.identity.name}: ${d.identity.description}`, state: 'ok' }
-          : { text: `${d.identity.name} (no description)`, state: 'unset' }
+          : { text: T('{name} (no description)').replace('{name}', d.identity.name), state: 'unset' }
     case 'memory': {
       if (!d.memory) {
         return { text: 'unknown', state: 'unknown' }
@@ -283,7 +283,7 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
       const files = d.memory.builtin_files ?? {}
       const bytes = Object.values(files).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0)
 
-      return { text: `${d.memory.active || 'built-in'} memory, ${bytes} bytes in MEMORY/USER`, state: 'ok' }
+      return { text: T('{kind} memory, {bytes} in MEMORY/USER').replace('{kind}', d.memory.active || T('built-in')).replace('{bytes}', `${bytes} bytes`), state: 'ok' }
     }
 
     case 'skills':
@@ -292,7 +292,7 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
     case 'delegation':
       return d.delegation
         ? {
-            text: d.delegation.inherit_model ? 'inherits main model' : `${d.delegation.provider ?? ''} · ${d.delegation.model ?? ''}`,
+            text: d.delegation.inherit_model ? T('inherits main model') : `${d.delegation.provider ?? ''} · ${d.delegation.model ?? ''}`,
             state: 'ok'
           }
         : { text: 'unknown', state: 'unknown' }
@@ -658,7 +658,7 @@ export function CanvasView({
         <button aria-label={T("Fit")} onClick={() => (setZoom(1), setPan({ x: 0, y: 0 }))} type="button">
           {T("Fit")}</button>
         <button aria-label={T("Collapse all")} onClick={() => setCollapsed(c => (c.size === CANVAS_NODES.length ? new Set() : new Set(CANVAS_NODES)))} type="button">
-          {collapsed.size === CANVAS_NODES.length ? 'Expand all' : 'Collapse all'}
+          {collapsed.size === CANVAS_NODES.length ? T('Expand all') : T('Collapse all')}
         </button>
       </div>
       <ul aria-label={T("Canvas edges")} data-ops-canvas-edges="">
@@ -669,7 +669,7 @@ export function CanvasView({
         ))}
       </ul>
       <button aria-expanded={runOpen} data-ops-run-toggle="" onClick={() => setRunOpen(o => !o)} type="button">
-        {runOpen ? 'Hide run panel' : 'Show run panel'}
+        {runOpen ? T('Hide run panel') : T('Show run panel')}
       </button>
       <section aria-label={T("Test run")} data-ops-run-panel="" hidden={!runOpen}>
         <textarea aria-label={T("Test run input")} onChange={e => setInput(e.target.value)} value={input} />

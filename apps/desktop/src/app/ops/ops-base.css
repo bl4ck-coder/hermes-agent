@@ -433,3 +433,39 @@
 :where([data-ops-edge-layer] [data-ops-edge-lit]) { animation: ops-flow 700ms linear infinite; stroke-dasharray: 6 6; stroke-width: 2; }
 @media (prefers-reduced-motion: reduce) { :where([data-ops-edge-layer] [data-ops-edge-lit]) { animation: none; stroke-dasharray: none; } }
 :where([data-ops-motion='reduced'] [data-ops-edge-layer] [data-ops-edge-lit]) { animation: none; stroke-dasharray: none; }
+
+/* ---- B21: Channels, Teams, Skills breathe (grids, visual status, pinned actions) ---- */
+/* Channels: equal-height cards, action pinned to the foot, connected apps lead their group and glow gold. */
+:where([data-ops-app-grid]) { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); list-style: none; margin: 0; padding: 0; }
+:where([data-ops-app-grid]) :where(li) { display: flex; flex-direction: column; gap: 6px; min-height: 132px; padding: 12px; transition: border-color 140ms ease, background-color 140ms ease; }
+:where([data-ops-app-grid]) :where(li:hover) { background: color-mix(in srgb, var(--ops-fg) 9%, transparent); border-color: var(--ops-line-strong); }
+:where([data-ops-app-grid]) :where(li > p) { -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: var(--ops-muted); display: -webkit-box; font-size: 12px; line-height: 1.45; margin: 0; overflow: hidden; }
+:where([data-ops-app-grid]) :where(li > [data-ops-app-action]) { align-self: flex-start; margin-top: auto; }
+:where([data-ops-app-grid]) :where([data-ops-app-action='connect']) { background: transparent; color: var(--ops-muted); }
+:where([data-ops-app-grid]) :where(li:hover [data-ops-app-action='connect']) { border-color: var(--ops-line-strong); color: var(--ops-fg); }
+:where([data-ops-app-glyph]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 8px; color: var(--ops-muted); display: inline-flex; font-size: 11px; font-weight: 600; height: 28px; justify-content: center; width: 28px; }
+:where([data-ops-app][data-ops-app-connected]) { border-color: color-mix(in srgb, var(--ops-gold) 45%, transparent); order: -1; }
+:where([data-ops-app][data-ops-app-connected] [data-ops-app-glyph]) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); border-color: color-mix(in srgb, var(--ops-gold) 40%, transparent); color: var(--ops-gold); }
+:where([data-ops-app-state='connected']) { color: var(--ops-gold); font-size: 11px; }
+/* Teams: a card per lane: name and open count up top, member avatars, projects as chips. */
+:where([data-ops-teams]) { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); list-style: none; margin: 0; padding: 0; }
+:where([data-ops-teams] > li) { background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: var(--ops-radius); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; transition: border-color 140ms ease; }
+:where([data-ops-teams] > li:hover) { border-color: var(--ops-line-strong); }
+:where([data-ops-team-head]) { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
+:where([data-ops-team-head] h3) { font-size: 13px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-team-open]) { background: var(--ops-surface); border-radius: 999px; color: var(--ops-muted); flex: none; font-size: 11px; font-variant-numeric: tabular-nums; padding: 1px 8px; }
+:where([data-ops-teams] > li[data-ops-team-busy] [data-ops-team-open]) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); color: var(--ops-gold); }
+:where([data-ops-team-members]) { display: flex; flex-wrap: wrap; gap: 6px; }
+:where([data-ops-team-member]) { align-items: center; background: var(--ops-surface); border: 1px solid var(--ops-line); border-radius: 999px; display: inline-flex; font-size: 12px; gap: 5px; padding: 1px 8px 1px 3px; }
+:where([data-ops-team-projects]) { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+:where([data-ops-team-projects]) :where(button) { font-size: 11px; padding: 1px 7px; }
+:where([data-ops-team-none]) { color: var(--ops-muted); font-size: 11px; font-style: italic; }
+/* Skills starter packs: a grid of kit cards with an install progress bar. */
+:where([data-ops-packs] > ul) { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); list-style: none; margin: 0; padding: 0; }
+:where([data-ops-packs] li[data-ops-pack]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: var(--ops-radius); display: grid; gap: 6px 8px; grid-template-areas: 'title action' 'meta action' 'bar bar'; grid-template-columns: minmax(0, 1fr) auto; padding: 10px 12px; }
+:where([data-ops-packs] li[data-ops-pack] > strong) { grid-area: title; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-pack-meta]) { color: var(--ops-muted); font-size: 11px; grid-area: meta; }
+:where([data-ops-packs] li[data-ops-pack] > button) { grid-area: action; }
+:where([data-ops-pack-bar]) { background: var(--ops-surface); border-radius: 999px; grid-area: bar; height: 4px; overflow: hidden; position: relative; }
+:where([data-ops-pack-bar])::after { background: var(--ops-gold); border-radius: inherit; content: ''; inset: 0 auto 0 0; position: absolute; transition: width 320ms var(--ease, ease); width: var(--ops-pct, 0%); }
+:where([data-ops-packs] li[data-ops-pack-complete]) { border-color: color-mix(in srgb, var(--ops-gold) 35%, transparent); }

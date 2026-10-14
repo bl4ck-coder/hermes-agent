@@ -15,6 +15,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { opsCall } from '../feed/diag'
 import { type ActiveWorker, createOpsActions } from '../feed/ops-actions'
 import { P, T } from '../main-i18n'
+import { Sigil } from '../primitives/sigil'
 import type { BoardTask } from '../office/control-room'
 import { fmtAge } from '../office/control-room'
 import { useOpsResource } from '../office/office-container'
@@ -222,20 +223,30 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
   return (
     <ul data-ops-teams="">
       {list.map(t => (
-        <li data-ops-team={t.lane} key={t.lane}>
-          <h3>{t.lane}</h3>
-          <span data-ops-team-open="">{t.open} {T("open")}</span>
-          <p>
-            {T("Projects:")}{' '}
+        <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} key={t.lane}>
+          <header data-ops-team-head="">
+            <h3>{t.lane}</h3>
+            <span data-ops-team-open="">{P(t.open, '{n} open')}</span>
+          </header>
+          <div aria-label={T('Members:')} data-ops-team-members="" role="list">
+            {t.members.length
+              ? t.members.map(m => (
+                  <span data-ops-team-member={m} key={m} role="listitem">
+                    <Sigil name={m} size={14} />
+                    {m}
+                  </span>
+                ))
+              : <span data-ops-team-none="">{T('No members')}</span>}
+          </div>
+          <p data-ops-team-projects="">
             {t.projects.length
               ? t.projects.map(p => (
                   <button data-ops-team-project={p} disabled={!onOpenRoute} key={p} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(p)}`)} type="button">
                     {p}
                   </button>
                 ))
-              : 'none'}
+              : <span data-ops-team-none="">{T('No projects')}</span>}
           </p>
-          <p data-ops-team-members="">{T("Members:")}{' '}{t.members.join(', ') || 'none'}</p>
         </li>
       ))}
     </ul>
@@ -361,8 +372,9 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         ) : (
           <ul>
             {packs.map(p => (
-              <li data-ops-pack={p.id} key={p.id}>
+              <li data-ops-pack={p.id} data-ops-pack-complete={p.missing.length === 0 ? '' : undefined} key={p.id}>
                 <strong>{p.title}</strong> <span data-ops-pack-meta="">{P(p.skills.length, '{n} skills', '{n} skill')}{p.missing.length < p.skills.length ? ` · ${P(p.skills.length - p.missing.length, '{n} installed')}` : ''}</span>
+                <span aria-label={T('{n} of {total} installed').replace('{n}', String(p.skills.length - p.missing.length)).replace('{total}', String(p.skills.length))} data-ops-pack-bar="" role="img" style={{ ['--ops-pct' as string]: `${Math.round(((p.skills.length - p.missing.length) / Math.max(1, p.skills.length)) * 100)}%` }} />
                 <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
                   {p.missing.length === 0 ? T('All added') : T('Add all')}
                 </button>
