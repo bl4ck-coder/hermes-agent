@@ -45,7 +45,7 @@ export interface HistoryItem {
   readback_composite?: string | null
 }
 
-export type NodeStatus = 'clean' | 'dirty' | 'saving' | 'saved' | 'conflict' | 'blocked' | 'read_only' | 'error'
+export type NodeStatus = 'clean' | 'dirty' | 'saving' | 'saved' | 'conflict' | 'blocked' | 'read_only' | 'error' | 'unknown'
 
 export interface Violation {
   field: string
@@ -65,6 +65,8 @@ export interface NodeState {
   violations?: Violation[]
   warnings?: unknown[]
   lastBackup?: string | null
+  /** SPEC v2.1 2b: the op_id whose outcome is not yet known (lost response). */
+  pendingOp?: string | null
 }
 
 const same = (a: NodeValue, b: NodeValue) => (a.content ?? '') === (b.content ?? '') && (a.provider ?? '') === (b.provider ?? '') && (a.model ?? '') === (b.model ?? '')
@@ -168,11 +170,12 @@ export function createNodeClient(api: OpsApi = hermesApi) {
 
   return {
     read: (profile: string, node: WritableNode) => call<NodeRead>('GET', base(profile, node)),
-    save: (profile: string, node: WritableNode, expected_hash: string, value: NodeValue, note?: string) =>
-      call<SaveResult>('PUT', base(profile, node), { expected_hash, ...value, note: note ?? null }),
+    save: (profile: string, node: WritableNode, expected_hash: string, value: NodeValue, note?: string, op_id?: string) =>
+      call<SaveResult>('PUT', base(profile, node), { expected_hash, ...value, note: note ?? null, op_id: op_id ?? null }),
+    opStatus: (profile: string, node: WritableNode, op_id: string) => call<OpStatus>('GET', `${base(profile, node)}/ops/${encodeURIComponent(op_id)}`),
     history: (profile: string, node: WritableNode) => call<{ items: HistoryItem[] }>('GET', `${base(profile, node)}/history`),
-    restore: (profile: string, node: WritableNode, backup: string, expected_hash: string) =>
-      call<SaveResult>('POST', `${base(profile, node)}/restore`, { backup, expected_hash })
+    restore: (profile: string, node: WritableNode, backup: string, expected_hash: string, op_id?: string) =>
+      call<SaveResult>('POST', `${base(profile, node)}/restore`, { backup, expected_hash, op_id: op_id ?? null })
   }
 }
 
@@ -190,6 +193,14 @@ export function refusal(s: NodeState, e: unknown): NodeState {
     return { ...s, status: 'blocked', violations: (p.extra.blocked as Violation[]) ?? [], warnings: (p.extra.warnings as unknown[]) ?? [], message: p.detail || 'disallowed by policy' }
   }
 
+  if (p.code === 'policy_invalid') {
+    return { ...s, status: 'blocked', violations: [], message: 'ops-policy.yaml is invalid, so every governed save is blocked until it is fixed (see Ops settings › Diagnostics).' }
+  }
+
+  if (p.code === 'origin_not_allowed') {
+    return { ...s, status: 'error', message: 'Refused: this request did not come from Hermes Desktop (Origin check).' }
+  }
+
   if (p.code === 'remote_read_only' || p.status === 403) {
     return { ...s, status: 'read_only', message: 'Remote connection: read-only (D11).' }
   }
@@ -205,19 +216,73 @@ export function refusal(s: NodeState, e: unknown): NodeState {
   return { ...s, status: 'error', message: [p.code, p.detail].filter(Boolean).join(': ') || 'Not saved (disconnected?)' }
 }
 
+export interface OpStatus {
+  op_id: string
+  state: 'applied' | 'rejected' | 'not_found' | 'indeterminate'
+  backup?: string
+}
+
+let opSeq = 0
+
+/** Unique per write; a retry always gets a new one (SPEC v2.1 2b). */
+export function newOpId(): string {
+  opSeq += 1
+
+  return `op-${Date.now().toString(36)}-${opSeq.toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+/** A refusal with no HTTP status means the response was lost: the write may or may not have landed. */
+export function outcomeUnknown(e: unknown): boolean {
+  return parseApiError(e).status === null
+}
+
+/** Resolve an outcome-unknown write by its op_id, never by comparing the current hash. */
+export async function reconcile(s: NodeState, profile: string, client: NodeClient): Promise<NodeState> {
+  if (!s.pendingOp) {
+    return s
+  }
+
+  let st: OpStatus
+
+  try {
+    st = await client.opStatus(profile, s.node, s.pendingOp)
+  } catch {
+    return { ...s, status: 'unknown', message: 'Outcome unknown: Hermes is unreachable. Check again, retry (new op) or discard.' }
+  }
+
+  if (st.state === 'applied') {
+    const fresh = await client.read(profile, s.node).catch(() => null)
+    const next = fresh ? fromRead(s.node, fresh) : { ...s, base: s.draft }
+
+    return { ...next, status: 'saved', pendingOp: null, message: `Saved (confirmed after a lost response${st.backup ? `, backup ${st.backup}` : ''})`, lastBackup: st.backup ?? null }
+  }
+
+  if (st.state === 'indeterminate') {
+    return { ...s, status: 'unknown', message: 'Outcome unknown: the write is still settling on the backend. Check again shortly.' }
+  }
+
+  return { ...s, status: 'dirty', pendingOp: null, message: st.state === 'rejected' ? 'Not applied (the backend rejected it). Your draft is kept.' : 'Not applied. Your draft is kept; saving again is safe.' }
+}
+
 export async function save(s: NodeState, profile: string, client: NodeClient, note?: string): Promise<NodeState> {
   if (s.status === 'read_only' || !s.hash || !isDirty(s)) {
     return s
   }
 
+  const op = newOpId()
+
   try {
-    const r = await client.save(profile, s.node, s.hash, s.draft, note)
+    const r = await client.save(profile, s.node, s.hash, s.draft, note, op)
     // Re-read: the server may normalise (model saves re-dump config.yaml); the base becomes what is on disk.
     const fresh = await client.read(profile, s.node).catch(() => null)
     const next = fresh ? fromRead(s.node, fresh) : { ...s, base: s.draft, hash: r.content_hash }
 
-    return { ...next, status: 'saved', message: `Saved (backup ${r.backup})`, warnings: r.warnings, lastBackup: r.backup }
+    return { ...next, status: 'saved', pendingOp: null, message: `Saved (backup ${r.backup})`, warnings: r.warnings, lastBackup: r.backup }
   } catch (e) {
+    if (outcomeUnknown(e)) {
+      return reconcile({ ...s, status: 'unknown', pendingOp: op, message: 'Outcome unknown: checking with Hermes…' }, profile, client)
+    }
+
     return refusal(s, e)
   }
 }

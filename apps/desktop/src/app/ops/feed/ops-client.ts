@@ -97,6 +97,8 @@ export interface PolicyViolation {
 export interface PolicyView {
   source: string
   error: string | null
+  /** SPEC v2.1 1.6: true when ops-policy.yaml is present but invalid (governed writes blocked). */
+  fail_closed?: boolean
   enabled: boolean
   allow: { provider: string[]; models: string[] }[]
   violations?: PolicyViolation[] | null
@@ -211,10 +213,19 @@ export function isFresh(p: Pick<FleetProfile, 'observed_at'>, nowS: number): boo
   return typeof p.observed_at === 'number' && nowS - p.observed_at <= FRESH_S
 }
 
+const KNOWN_PRESENCE = new Set<string>(['working', 'needs_you', 'blocked', 'idle', 'offline', 'unknown', 'stale'])
+
+/** L5 (SPEC v2.1 3): an enum value this Ops build does not know renders as "unknown", never blank. */
+export function presenceOf(v: unknown): Presence {
+  return typeof v === 'string' && KNOWN_PRESENCE.has(v) ? (v as Presence) : 'unknown'
+}
+
 export function shownPresence(p: FleetProfile, nowS: number): Presence {
-  if (p.presence === 'unknown' || p.presence === 'stale' || p.presence === 'offline') {
-    return p.presence
+  const v = presenceOf(p.presence)
+
+  if (v === 'unknown' || v === 'stale' || v === 'offline') {
+    return v
   }
 
-  return isFresh(p, nowS) ? p.presence : 'stale'
+  return isFresh(p, nowS) ? v : 'stale'
 }

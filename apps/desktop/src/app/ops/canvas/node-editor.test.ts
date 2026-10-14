@@ -51,7 +51,7 @@ describe('node editor model (P5-01)', () => {
   it('save sends the expected hash, re-reads the normalised value and records the backup', async () => {
     const c = fake()
     const out = await save(edit(fromRead('prompt', read('a')), { content: 'new' }), 'p', c, 'why')
-    expect(c.save).toHaveBeenCalledWith('p', 'prompt', 'h1', { content: 'new' }, 'why')
+    expect(c.save).toHaveBeenCalledWith('p', 'prompt', 'h1', { content: 'new' }, 'why', expect.stringMatching(/^op-/))
     expect(out).toMatchObject({ status: 'saved', hash: 'h2', lastBackup: 'tx1' })
     expect(out.base.content).toBe('new')
   })
@@ -78,7 +78,8 @@ describe('node editor model (P5-01)', () => {
     expect(ro.status).toBe('read_only')
     expect(edit(ro, { model: 'x' })).toBe(ro)
     const dc = await save(s, 'p', fake({ save: vi.fn().mockRejectedValue(new Error('ECONNREFUSED')) }))
-    expect(dc).toMatchObject({ status: 'error' })
+    // SPEC v2.1 2b: a lost response is outcome-unknown (checked by op_id), never a plain error.
+    expect(dc).toMatchObject({ status: 'unknown' })
     expect(dc.draft.model).toBe('bad')
   })
 
