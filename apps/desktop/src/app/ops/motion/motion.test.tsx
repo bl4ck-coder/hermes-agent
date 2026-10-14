@@ -71,7 +71,7 @@ describe('W9 settings (P5-03)', () => {
 
   it('malformed prefs fall back to defaults', () => {
     localStorage.setItem('hermes.ops.prefs', '{bad')
-    expect(loadPrefs()).toEqual({ defaultTab: 'office', dateFormat: 'relative', theme: 'gold-night', openOnLaunch: false, notifyApprovals: false, notifyBlocked: false })
+    expect(loadPrefs()).toEqual({ defaultTab: 'office', dateFormat: 'relative', theme: 'gold-night', openOnLaunch: false, notifyApprovals: false, notifyBlocked: false, timezone: '' })
   })
 })
 

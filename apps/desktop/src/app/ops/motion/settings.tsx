@@ -6,6 +6,7 @@
 
 import { type ReactNode, useMemo, useState } from 'react'
 
+import { forgetDrafts } from '../canvas/drafts'
 import { createNodeClient } from '../canvas/node-editor'
 import { NodeEditor } from '../canvas/node-editor-view'
 import { approvalMode, createOpsActions, envPresenceList } from '../feed/ops-actions'
@@ -16,6 +17,7 @@ import { OpsShortcutSheet } from '../shortcut-sheet'
 
 import { DiagnosticsPanel } from './diagnostics'
 import { cycleMotion, loadMotion, type MotionMode, saveMotion } from './motion'
+import { hostTimezone, opsTimezone as tzOf, validTimezone } from './tz'
 
 const PREF = 'hermes.ops.prefs'
 
@@ -31,6 +33,8 @@ export interface OpsPrefs {
   /** R54: opt-in OS notifications. */
   notifyApprovals: boolean
   notifyBlocked: boolean
+  /** SPEC v2.1 4a: Ops timezone for "today" / "this week"; '' = host local. */
+  timezone: string
 }
 
 export const DEFAULT_PREFS: OpsPrefs = {
@@ -39,8 +43,16 @@ export const DEFAULT_PREFS: OpsPrefs = {
   theme: 'gold-night',
   openOnLaunch: false,
   notifyApprovals: false,
-  notifyBlocked: false
+  notifyBlocked: false,
+  timezone: ''
 }
+
+/** The effective Ops timezone (pref, else host). */
+export function opsTimezone(p: OpsPrefs = loadPrefs()): string {
+  return tzOf(p.timezone)
+}
+
+const TZ_CHOICES = ['America/Buenos_Aires', 'UTC', 'America/New_York', 'Europe/Madrid', 'Asia/Tokyo']
 
 export function loadPrefs(): OpsPrefs {
   try {
@@ -52,7 +64,8 @@ export function loadPrefs(): OpsPrefs {
       theme: v.theme === 'light' || v.theme === 'dark' || v.theme === 'system' ? v.theme : 'gold-night',
       openOnLaunch: v.openOnLaunch === true,
       notifyApprovals: v.notifyApprovals === true,
-      notifyBlocked: v.notifyBlocked === true
+      notifyBlocked: v.notifyBlocked === true,
+      timezone: validTimezone(v.timezone)
     }
   } catch {
     return { ...DEFAULT_PREFS }
@@ -123,6 +136,7 @@ export function SettingsView({
   const [motion, setMotion] = useMotionMode()
   const [prefs, setPrefs] = useState<OpsPrefs>(() => loadPrefs())
   const [sheet, setSheet] = useState(false)
+  const [draftNote, setDraftNote] = useState<string | null>(null)
 
   const set = (p: Partial<OpsPrefs>) => {
     const next = { ...prefs, ...p }
@@ -163,6 +177,18 @@ export function SettingsView({
             <input aria-label="open ops on launch" checked={prefs.openOnLaunch} onChange={e => set({ openOnLaunch: e.target.checked })} type="checkbox" />
             <small data-ops-launch-route="">{opsLaunchRoute(prefs) ?? 'Desktop opens its own start page.'}</small>
           </dd>
+          <dt>Timezone</dt>
+          <dd>
+            <select aria-label="timezone" data-ops-timezone={opsTimezone(prefs)} onChange={e => set({ timezone: validTimezone(e.target.value) })} value={prefs.timezone}>
+              <option value="">Host local ({hostTimezone()})</option>
+              {[...new Set([...TZ_CHOICES, ...(prefs.timezone ? [prefs.timezone] : [])])].map(z => (
+                <option key={z} value={z}>
+                  {z}
+                </option>
+              ))}
+            </select>
+            <small>"Today" and "this week" in Office use this zone.</small>
+          </dd>
           <dt>Date format</dt>
           <dd>
             <select aria-label="date format" onChange={e => set({ dateFormat: e.target.value as OpsPrefs['dateFormat'] })} value={prefs.dateFormat}>
@@ -172,8 +198,16 @@ export function SettingsView({
             </select>
           </dd>
         </dl>
+        <button data-ops-prefs-reset="" disabled={JSON.stringify(prefs) === JSON.stringify(DEFAULT_PREFS)} onClick={() => set({ ...DEFAULT_PREFS })} type="button">
+          Reset to defaults
+        </button>
       </Group>
       <Group id="ops" title="Ops">
+        {policy?.fail_closed ? (
+          <p data-ops-policy-invalid="" role="alert">
+            ops-policy.yaml is invalid, so every governed save is blocked until it is fixed: {policy.error ?? 'reason not recorded'}
+          </p>
+        ) : null}
         <ThresholdSettings />
         <dl>
           <dt>Default model (P2)</dt>
@@ -218,7 +252,7 @@ export function SettingsView({
         </button>
       </Group>
       <Group id="diagnostics" title="Diagnostics">
-        <DiagnosticsPanel policySource={policy?.source ?? null} />
+        <DiagnosticsPanel policySource={policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null} />
       </Group>
       <Group id="security" title="Security">
         <dl>
@@ -238,6 +272,20 @@ export function SettingsView({
           </dd>
         </dl>
         <p>Values are never shown here, in Diagnostics, or in a copied report.</p>
+        <button data-ops-forget-drafts="" onClick={() => setDraftNote(`Forgot ${forgetDrafts()} kept draft(s).`)} type="button">
+          Forget kept Canvas drafts
+        </button>
+        {draftNote ? <span role="status">{draftNote}</span> : null}
+        <dl data-ops-security-boundary="">
+          <dt>Config writes</dt>
+          <dd>Through A5 transactions with the A6 policy check and a backup; remote connections are read-only.</dd>
+          <dt>Cross-site requests</dt>
+          <dd>Hermes refuses Ops, Board and approval writes from a foreign Origin (separate from the Host check).</dd>
+          <dt>Legacy write routes</dt>
+          <dd data-ops-legacy-routes="deferred">
+            Older Hermes routes (profile soul/model/description, raw config, skills toggle, toolsets) still bypass A5/A6. Ops never calls them; removing them is deferred.
+          </dd>
+        </dl>
       </Group>
       {sheet ? <OpsShortcutSheet onClose={() => setSheet(false)} /> : null}
     </section>
