@@ -923,7 +923,7 @@ function CronJobDetail({
             data-cron-glance-tile="next"
             data-overdue={nextRunOverdueMs(job) === null ? undefined : ''}
           >
-            <div className="text-[0.7rem] font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
+            <div className="text-xs font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
               {(nextRunOverdueMs(job) === null ? c.next : c.overdueSince).replace(/:$/, '')}
             </div>
             <div className="mt-1 text-lg font-semibold tabular-nums text-foreground">
@@ -936,7 +936,7 @@ function CronJobDetail({
             data-cron-glance-tile="last"
             data-result={lastResult}
           >
-            <div className="text-[0.7rem] font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
+            <div className="text-xs font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
               {c.last.replace(/:$/, '')}
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-lg font-semibold tabular-nums text-foreground">
@@ -967,7 +967,7 @@ function CronJobDetail({
         />
 
         {job.last_error ? (
-          <div className="space-y-1.5 rounded bg-destructive/10 p-2 text-[0.7rem] text-destructive">
+          <div className="space-y-1.5 rounded bg-destructive/10 p-2 text-xs text-destructive">
             <div className="flex items-start gap-1.5">
               <AlertTriangle className="mt-px size-3 shrink-0" />
               <span className="min-w-0 break-words" title={job.last_error}>

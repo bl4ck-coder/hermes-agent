@@ -209,7 +209,7 @@ export function ConfigField({
       />
       {zeroIsAuto ? (
         <span
-          className="pointer-events-none absolute top-1/2 right-9 -translate-y-1/2 rounded-full border border-(--ui-stroke-secondary) px-2 py-0.5 text-[0.7rem] text-muted-foreground"
+          className="pointer-events-none absolute top-1/2 right-9 -translate-y-1/2 rounded-full border border-(--ui-stroke-secondary) px-2 py-0.5 text-xs text-muted-foreground"
           data-config-zero-auto=""
         >
           0 = {t.settings.appearance.textDirection.auto}

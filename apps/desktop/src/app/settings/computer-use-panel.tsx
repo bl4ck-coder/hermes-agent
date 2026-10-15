@@ -38,7 +38,7 @@ function PermissionRow({ granted, label, hint }: { granted: boolean | null; labe
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-background/55 p-2.5">
       <div className="min-w-0">
         <span className="text-sm font-medium">{label}</span>
-        <p className="mt-0.5 text-[0.7rem] text-muted-foreground">{hint}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
       </div>
       <Pill tone={tone(granted)}>
         <GrantIcon granted={granted} />
@@ -211,14 +211,14 @@ export function ComputerUsePanel({ onConfiguredChange }: ComputerUsePanelProps) 
       )}
 
       {failingChecks.map(c => (
-        <p className="px-1 text-[0.7rem] text-muted-foreground" key={c.label}>
+        <p className="px-1 text-xs text-muted-foreground" key={c.label}>
           <AlertTriangle className="mr-1 inline size-3" />
           {c.label}: {c.message}
         </p>
       ))}
 
       {status.error && (
-        <p className="px-1 text-[0.7rem] text-muted-foreground">
+        <p className="px-1 text-xs text-muted-foreground">
           <AlertTriangle className="mr-1 inline size-3" />
           {status.error}
         </p>

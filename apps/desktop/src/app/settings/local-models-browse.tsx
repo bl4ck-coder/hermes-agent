@@ -308,7 +308,7 @@ export function LocalModelsBrowseSection(): ReactElement {
                                     : copy.browseFitUnknown}
                             </Pill>
 
-                            <span className="shrink-0 text-[0.7rem] text-muted-foreground">
+                            <span className="shrink-0 text-xs text-muted-foreground">
                               {gbLabel(group.total_bytes)}
                             </span>
                           </span>

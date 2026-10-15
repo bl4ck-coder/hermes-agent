@@ -335,7 +335,7 @@ function SoulEditor({ profileName }: { profileName: string }) {
     <section className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <PanelSectionLabel className="text-[0.7rem] tracking-[0.14em]">SOUL.md</PanelSectionLabel>
+          <PanelSectionLabel className="text-xs tracking-[0.14em]">SOUL.md</PanelSectionLabel>
           <p className="text-sm text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
         </div>
         <div className="flex items-center gap-3" data-profile-soul-actions="">

@@ -996,7 +996,7 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
         <RowButton
           aria-controls={`group-activity:${group}`}
           aria-expanded={activityOpen}
-          className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-left text-[0.7rem] text-(--ui-text-quaternary) transition-colors hover:text-foreground"
+          className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1 text-left text-xs text-(--ui-text-quaternary) transition-colors hover:text-foreground"
           onClick={() => setActivityOpen(prev => !prev)}
         >
           <Codicon className="shrink-0 text-xs" name={activityOpen ? 'chevron-down' : 'chevron-right'} />
@@ -1025,7 +1025,7 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
         <div className="grid gap-0.5 px-2.5 pb-1.5" id={`group-activity:${group}`}>
           {activityEvents.length ? (
             [...activityEvents].reverse().map((event, i) => (
-              <div className="flex items-center gap-1.5 text-[0.7rem]" key={`${event.at}:${i}`}>
+              <div className="flex items-center gap-1.5 text-xs" key={`${event.at}:${i}`}>
                 <Codicon
                   className={cn('shrink-0 text-xs', groupActivityTone(event.kind))}
                   name={GROUP_ACTIVITY_GLYPHS[event.kind] || 'circle-outline'}
@@ -1284,11 +1284,11 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {isUser ? (
-              <span className="text-[0.7rem] font-semibold text-foreground">{label}</span>
+              <span className="text-xs font-semibold text-foreground">{label}</span>
             ) : (
               <Tip label={revealed ? 'Hide full handle' : 'Show full handle'}>
                 <Button
-                  className="text-left text-[0.7rem] font-semibold text-(--ui-accent)"
+                  className="text-left text-xs font-semibold text-(--ui-accent)"
                   onClick={() => setRevealedSpeaker(revealed ? null : entryKey)}
                   size="inline"
                   variant="text"
@@ -1486,7 +1486,7 @@ export function GroupChatWorkspace({ group, members, onBack, visible = true }: G
             />
           ))}
           {room.running ? (
-            <div className="px-2 py-1 text-[0.7rem] italic text-(--ui-text-quaternary)" key={'working'}>
+            <div className="px-2 py-1 text-xs italic text-(--ui-text-quaternary)" key={'working'}>
               {roomClarifies.length
                 ? b.group.waitingForAnswer
                 : room.turn

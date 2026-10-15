@@ -24,7 +24,7 @@ export function LocalInstall({
     <div className="grid justify-items-start gap-2">
       {installFields.length > 0 ? (
         <>
-          <p className="text-[0.7rem] text-(--ui-text-tertiary)">{t.settings.mcp.catalogEnvRequired}</p>
+          <p className="text-xs text-(--ui-text-tertiary)">{t.settings.mcp.catalogEnvRequired}</p>
           {installFields.map(field => (
             <label className="grid w-full gap-1" key={field.name}>
               <span className="text-xs text-(--ui-text-secondary)">

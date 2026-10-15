@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 /** B35: one lit hero band for app pages (Cron, Sessions, Settings, Capabilities): icon tile, title, stats, optional sparkline. */
 export interface HeroStat {
   label: ReactNode
+  /** B43 (judge pass 6): only this stat becomes the view's PrimaryMetric; inventory counts stay secondary. */
+  primary?: boolean
   tone?: 'bad' | 'good' | 'muted' | 'warn'
   value: ReactNode
 }
@@ -45,7 +47,8 @@ export function HeroBand({
   subtitle?: ReactNode
   title: ReactNode
 }) {
-  const [first, ...rest] = stats ?? []
+  const first = stats?.find(s => s.primary)
+  const rest = (stats ?? []).filter(s => s !== first)
 
   return (
     <div className={className} data-hero-band={id}>

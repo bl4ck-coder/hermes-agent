@@ -346,7 +346,7 @@ export const SessionControlGoalSection = memo(function SessionControlGoalSection
                 {hasDetails && (
                   <StatusControlRow icon="eye">
                     <Button
-                      className="text-[0.7rem] text-muted-foreground/75 hover:text-foreground/90"
+                      className="text-xs text-muted-foreground/75 hover:text-foreground/90"
                       onClick={() => setDetailsOpen(true)}
                       size="inline"
                       type="button"
@@ -603,7 +603,7 @@ export const SessionControlGoalSection = memo(function SessionControlGoalSection
                       className="rounded border border-(--ui-stroke-tertiary)/60 bg-(--ui-control-active-background)/20 p-2"
                       key={`${i}-${gate.command}`}
                     >
-                      <div className="font-mono text-[0.7rem] text-foreground/95">{gate.command}</div>
+                      <div className="font-mono text-xs text-foreground/95">{gate.command}</div>
                       <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground/80">
                         <span>{ctrl.gateAttempts(gate.attempts, gate.max_retries)}</span>
                         <span className="text-muted-foreground/40">·</span>

@@ -135,7 +135,7 @@ function ToolDetail({ hints, tool }: { hints: ReturnType<typeof hintTags>; tool:
 
   return (
     <div className="grid gap-1 pb-2.5 pl-[3.625rem] pr-3.5">
-      <p className="max-w-[60ch] text-[0.7rem] leading-relaxed text-(--ui-text-secondary)">{tool.description}</p>
+      <p className="max-w-[60ch] text-xs leading-relaxed text-(--ui-text-secondary)">{tool.description}</p>
       {hints.length > MAX_ROW_HINTS ? (
         <p className="text-xs text-(--ui-text-quaternary)">
           {hints.map(hint => tagCopy(hint, t.connectorsPage.vocabulary).label).join(' · ')}

@@ -235,7 +235,7 @@ export function MaintenancePanel() {
             </div>
             {Object.entries(share.urls).map(([key, url]) => (
               <div className="flex items-center justify-between gap-2 py-1" key={key}>
-                <span className="min-w-0 truncate font-mono text-[0.7rem]">
+                <span className="min-w-0 truncate font-mono text-xs">
                   {key}: {url}
                 </span>
                 <Button

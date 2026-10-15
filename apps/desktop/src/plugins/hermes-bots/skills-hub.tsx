@@ -200,7 +200,7 @@ export function HubSkillsSection({ bot, onInstalled }: HubSkillsSectionProps) {
   return (
     <div className="grid gap-1.5 border-t border-(--ui-stroke-secondary) pt-2">
       <div className="flex items-baseline justify-between gap-2">
-        <div className="text-[0.7rem] font-medium text-(--ui-text-secondary)">{b.tools.skillsHub}</div>
+        <div className="text-xs font-medium text-(--ui-text-secondary)">{b.tools.skillsHub}</div>
         <Button
           className="text-xs text-(--ui-text-quaternary) hover:text-(--ui-text-secondary)"
           onClick={() => setBrowseHub(v => !v)}
@@ -280,7 +280,7 @@ export function HubSkillsSection({ bot, onInstalled }: HubSkillsSectionProps) {
       </div>
       {searching ? <div className="px-1 text-xs text-(--ui-text-quaternary)">{b.tools.searchHint}</div> : null}
       {results === null ? null : results.length === 0 ? (
-        <div className="px-1 py-1.5 text-[0.7rem] text-(--ui-text-quaternary)">{h.noResults}</div>
+        <div className="px-1 py-1.5 text-xs text-(--ui-text-quaternary)">{h.noResults}</div>
       ) : (
         <div
           className="overflow-y-auto overscroll-contain"

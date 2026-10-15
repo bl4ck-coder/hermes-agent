@@ -360,7 +360,7 @@ function LocalFoot({ advanced, cost }: PartProps) {
   return (
     <div className="grid shrink-0 gap-3 border-t border-(--ui-stroke-tertiary) px-3.5 py-2.5">
       {metrics ? (
-        <p className="text-[0.7rem] text-(--ui-text-tertiary)">
+        <p className="text-xs text-(--ui-text-tertiary)">
           {[
             cost?.usesPerMonth ? `${cost.usesPerMonth} ${copy.usesPerMonth}` : null,
             cost?.tokensPerCall ? `${cost.tokensPerCall} ${copy.tokensPerCall}` : null
@@ -390,7 +390,7 @@ function LocalFoot({ advanced, cost }: PartProps) {
 
 function FootLine({ children }: { children: string }) {
   return (
-    <p className="shrink-0 border-t border-(--ui-stroke-tertiary) px-3.5 py-2 text-[0.7rem] text-(--ui-text-tertiary)">
+    <p className="shrink-0 border-t border-(--ui-stroke-tertiary) px-3.5 py-2 text-xs text-(--ui-text-tertiary)">
       {children}
     </p>
   )
@@ -406,7 +406,7 @@ function OrgNote({ count, onOpenAdmin }: { count: number; onOpenAdmin?: () => vo
 
   return (
     <div className="grid gap-1 rounded-md bg-(--ui-orange)/8 p-2.5">
-      <p className="text-[0.7rem] text-(--ui-text-secondary)">{copy.orgNote(count)}</p>
+      <p className="text-xs text-(--ui-text-secondary)">{copy.orgNote(count)}</p>
       {onOpenAdmin ? (
         <Button className="justify-self-start" onClick={onOpenAdmin} size="inline" variant="textStrong">
           {copy.orgLink}

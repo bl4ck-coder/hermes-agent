@@ -589,7 +589,7 @@ export function RoutineRow({ job, onOpen, owner }: RoutineRowProps) {
           line instead of being cut to "next in 4" (#89534). */}
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 pl-3.5">
         <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-(--ui-stroke-secondary) px-1.5 py-0.5 text-xs text-(--ui-text-tertiary)">
-          <Codicon className="text-[0.7rem]" name="calendar" />
+          <Codicon className="text-xs" name="calendar" />
           {scheduleLabel(job.schedule)}
         </span>
         <span className="ml-auto shrink-0 whitespace-nowrap text-xs text-(--ui-text-quaternary)">

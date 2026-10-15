@@ -221,7 +221,7 @@ export function ReviewPane() {
             {revertingAll ? c.revertAllConfirm : c.revertConfirm}
             {!revertingAll && revertTarget?.path && (
               <span
-                className="mt-2 block truncate font-mono text-[0.7rem] text-(--ui-text-secondary)"
+                className="mt-2 block truncate font-mono text-xs text-(--ui-text-secondary)"
                 title={displayPath(revertTarget.path)}
               >
                 {displayPath(revertTarget.path)}

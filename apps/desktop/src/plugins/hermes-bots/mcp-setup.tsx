@@ -312,7 +312,7 @@ export function McpSetupButton({ profile, entry, onDone, ensureProfile }: McpSet
       <div className="mt-1 grid gap-1">
         {requires.map(k => (
           <Input
-            className="h-6 text-[0.7rem]"
+            className="h-6 text-xs"
             key={k}
             onChange={e =>
               setKeyValues(prev => ({

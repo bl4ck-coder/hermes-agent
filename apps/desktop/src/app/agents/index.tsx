@@ -69,7 +69,7 @@ function streamGlyph(entry: SubagentStreamEntry): ReactNode {
 
   if (entry.kind === 'thinking') {
     return (
-      <span aria-hidden className="font-mono text-[0.7rem] leading-none text-muted-foreground/70">
+      <span aria-hidden className="font-mono text-xs leading-none text-muted-foreground/70">
         …
       </span>
     )
@@ -277,7 +277,7 @@ function SubagentTree({ tree }: { tree: SubagentNode[] }) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <p className="shrink-0 text-[0.7rem] text-muted-foreground/70">
+      <p className="shrink-0 text-xs text-muted-foreground/70">
         {summary.map((part, index) => (
           <Fragment key={part}>
             {index > 0 ? ' · ' : null}
@@ -473,7 +473,7 @@ export function agentHeroStats(list: readonly { status: SubagentStatus }[], a: T
   // Empty metrics read as broken; the hero shows numbers only once a turn delegated.
   if (n.done + n.failed + n.running === 0) return undefined
   return [
-    { label: a.running, tone: n.running ? ('good' as const) : ('muted' as const), value: n.running },
+    { label: a.running, primary: true, tone: n.running ? ('good' as const) : ('muted' as const), value: n.running },
     { label: a.done, value: n.done },
     { label: a.failed, tone: n.failed ? ('bad' as const) : undefined, value: n.failed }
   ]
@@ -482,7 +482,7 @@ export function agentHeroStats(list: readonly { status: SubagentStatus }[], a: T
 /** B36: one meaningful picture of delegation: a parent turn fanning out to child agents. */
 function DelegationIllustration() {
   return (
-    <svg aria-hidden className="mb-3 h-36 w-72" data-agents-illustration="" fill="none" viewBox="0 0 224 112">
+    <svg aria-hidden className="mb-3 h-[120px] w-60" data-agents-illustration="" fill="none" viewBox="0 0 224 112">
       <path d="M112 30 C112 58 40 52 40 84 M112 30 V84 M112 30 C112 58 184 52 184 84" stroke="currentColor" strokeDasharray="3 4" strokeOpacity="0.45" strokeWidth="1.5" />
       <circle cx="112" cy="22" fill="currentColor" fillOpacity="0.18" r="14" stroke="currentColor" strokeWidth="1.5" />
       <circle cx="112" cy="22" fill="currentColor" r="4" />

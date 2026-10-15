@@ -216,7 +216,7 @@ function EnvVarField({ envVar, isSet, onSaved, onCleared, profile }: EnvVarField
               </Pill>
             </div>
             {envVar.prompt && envVar.prompt !== envVar.key && (
-              <p className="mt-0.5 text-[0.7rem] text-muted-foreground">{envVar.prompt}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{envVar.prompt}</p>
             )}
           </div>
           {!editing && (
@@ -398,7 +398,7 @@ function PostSetupRunner({ toolset, postSetupKey, installed = false, onComplete,
 
       {status && (status.lines.length > 0 || status.running) && (
         <pre
-          className="max-h-48 overflow-y-auto rounded-md bg-background px-2.5 py-1.5 font-mono text-[0.7rem] leading-relaxed text-muted-foreground whitespace-pre-wrap"
+          className="max-h-48 overflow-y-auto rounded-md bg-background px-2.5 py-1.5 font-mono text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap"
           data-selectable-text="true"
         >
           {status.lines.length > 0 ? status.lines.join('\n') : copy.postSetupStarting}

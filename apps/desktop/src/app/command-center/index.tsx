@@ -766,7 +766,7 @@ function UsageList({
         <ul>
           {rows.map(row => (
             <li className="flex items-center justify-between gap-2 py-1.5" key={row.key}>
-              <span className="min-w-0 truncate font-mono text-[0.7rem] text-foreground">{row.label}</span>
+              <span className="min-w-0 truncate font-mono text-xs text-foreground">{row.label}</span>
               <span className="shrink-0 text-xs text-(--ui-text-tertiary)">{row.value}</span>
             </li>
           ))}

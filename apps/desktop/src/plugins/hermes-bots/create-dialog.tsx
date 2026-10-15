@@ -692,7 +692,7 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
               )
             : null}
           {remoteTarget ? (
-            <div className="text-[0.7rem] leading-5 text-(--ui-text-tertiary)">{b.editor.remoteHint(targetLabel)}</div>
+            <div className="text-xs leading-5 text-(--ui-text-tertiary)">{b.editor.remoteHint(targetLabel)}</div>
           ) : null}
           {labeled(
             b.editor.title,
@@ -814,7 +814,7 @@ export function CreateAgentDialog({ open, onClose, onConfigureModel, roster }: C
                     <Checkbox checked={shareAuth} onCheckedChange={value => setShareAuth(Boolean(value))} />
                     {remoteTarget ? b.editor.shareKeysOn(targetLabel) : b.editor.shareKeys}
                   </label>
-                  <div className="pl-6 pt-0.5 text-[0.7rem] leading-5 text-(--ui-text-tertiary)">
+                  <div className="pl-6 pt-0.5 text-xs leading-5 text-(--ui-text-tertiary)">
                     {b.editor.shareKeysHint}
                   </div>
                   <label className="flex items-center gap-2 text-xs text-(--ui-text-secondary)">
