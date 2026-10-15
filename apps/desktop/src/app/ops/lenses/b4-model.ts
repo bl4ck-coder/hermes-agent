@@ -34,6 +34,8 @@ export interface FleetRow {
   failed7d: number | null
   lastActive: number | null
   status: FleetStatus
+  /** P8: the open task that is failing (most consecutive failures), so attention says why. */
+  failingTask?: { id: string; title: string; failures: number } | null
 }
 
 export const WEEK_S = 7 * 86_400
@@ -76,7 +78,9 @@ export function fleetRows(
     const lane = [...lanes.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null
     const last = mine ? mine.reduce<number | null>((m, t) => Math.max(m ?? 0, touchedAt(t) ?? 0) || m, null) : null
     const live = workers?.some(w => w.profile === p.name) ?? false
-    const failing = mine?.some(t => OPEN.has(t.status) && (t.consecutive_failures ?? 0) > 0) ?? false
+    const failingTasks = (mine ?? []).filter(t => OPEN.has(t.status) && (t.consecutive_failures ?? 0) > 0)
+    const failing = failingTasks.length > 0
+    const worst = failingTasks.sort((a, b) => (b.consecutive_failures ?? 0) - (a.consecutive_failures ?? 0))[0]
 
     return {
       name: p.name,
@@ -88,7 +92,8 @@ export function fleetRows(
       runsSource: stats ? 'runs' : 'task-starts',
       failed7d: stats ? (stats[p.name]?.failed ?? 0) : null,
       lastActive: Math.max(last ?? 0, stats?.[p.name]?.last_started_at ?? 0) || null,
-      status: !tasks && !workers ? 'unknown' : failing ? 'failing' : live ? 'running' : 'idle'
+      status: !tasks && !workers ? 'unknown' : failing ? 'failing' : live ? 'running' : 'idle',
+      failingTask: worst ? { id: worst.id, title: worst.title || worst.id, failures: worst.consecutive_failures ?? 0 } : null
     }
   })
 }
@@ -106,10 +111,18 @@ export interface Team {
   projects: string[]
   open: number
   members: string[]
-  /** P7: what the lane is working on now: up to 3 open task titles, newest first. */
+  /** P7: what the lane is working on now: up to 3 open task titles, blocked first, then newest. */
   focus: string[]
+  /** P8: titles among `focus` that are blocked. */
+  blockedFocus: string[]
   blocked: number
 }
+
+const focusOf = (ts: BoardTask[]) =>
+  ts
+    .filter(t => OPEN.has(t.status) && t.title)
+    .sort((a, b) => Number(b.status === 'blocked') - Number(a.status === 'blocked') || (Number((b as { created_at?: number }).created_at) || 0) - (Number((a as { created_at?: number }).created_at) || 0))
+    .slice(0, 3)
 
 /** R73: a team is a tenant lane: its projects, open tasks and the profiles that work it. */
 export function teams(tasks: BoardTask[]): Team[] {
@@ -126,11 +139,8 @@ export function teams(tasks: BoardTask[]): Team[] {
       projects: [...new Set(ts.map(t => t.project_id).filter((x): x is string => !!x))].sort(),
       open: ts.filter(t => OPEN.has(t.status)).length,
       members: [...new Set(ts.map(t => t.assignee).filter((x): x is string => !!x))].sort(),
-      focus: ts
-        .filter(t => OPEN.has(t.status) && t.title)
-        .sort((a, b) => (Number((b as { created_at?: number }).created_at) || 0) - (Number((a as { created_at?: number }).created_at) || 0))
-        .slice(0, 3)
-        .map(t => String(t.title)),
+      focus: focusOf(ts).map(t => String(t.title)),
+      blockedFocus: focusOf(ts).filter(t => t.status === 'blocked').map(t => String(t.title)),
       blocked: ts.filter(t => t.status === 'blocked').length
     }))
     .sort((a, b) => (a.lane === 'No lane' ? 1 : b.lane === 'No lane' ? -1 : b.open - a.open || a.lane.localeCompare(b.lane)))

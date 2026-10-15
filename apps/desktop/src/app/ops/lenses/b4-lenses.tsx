@@ -244,7 +244,7 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
       {P(list.length, '{n} lanes')} · {P(openTotal, '{n} open tasks')} · {P(people.length, '{n} members')}
     </p>
     <ul data-ops-teams="">
-      {list.map(t => (
+      {list.filter(t => t.open > 0).map(t => (
         <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} data-ops-team-unassigned={t.lane === 'No lane' ? '' : undefined} key={t.lane}>
           <header data-ops-team-head="">
             <h3>{t.lane === 'No lane' ? T('Unassigned') : t.lane}</h3>
@@ -254,7 +254,10 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
           {t.focus.length ? (
             <ul aria-label={T('Working on')} data-ops-team-purpose="">
               {t.focus.map((f, k) => (
-                <li key={k} title={f}>{f}</li>
+                <li data-ops-team-task-blocked={t.blockedFocus.includes(f) ? '' : undefined} key={k} title={f}>
+                  {t.blockedFocus.includes(f) ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
+                  {f}
+                </li>
               ))}
             </ul>
           ) : (
@@ -284,13 +287,36 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
         </li>
       ))}
     </ul>
+    {/* P8: lanes with no open work take one line, not a card each. */}
+    {list.some(t => t.open === 0) ? (
+      <p data-ops-teams-idle="">
+        <span>{T('No open work')}:</span>{' '}
+        {list
+          .filter(t => t.open === 0)
+          .map(t => (
+            <span data-ops-team={t.lane} data-ops-team-idle-lane="" key={t.lane}>
+              {t.lane === 'No lane' ? T('Unassigned') : t.lane}
+              <span aria-label={T('Members:')} data-ops-team-members="" role="list">
+                {t.members.map(m => (
+                  <span data-ops-team-member={m} key={m} role="listitem" title={m}>
+                    <span data-ops-sr="">{m}</span>
+                  </span>
+                ))}
+              </span>
+            </span>
+          ))}
+      </p>
+    ) : null}
     </>
   )
 }
 
-/** P7: agents that need a look lead the Fleet; the table below is the inventory. */
+/** P7/P8: agents that need a look lead the Fleet, each with the reason and what to open; the inventory follows. */
 function FleetAttention({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; now: number; onOpen?: (name: string) => void }) {
-  const hot = rows.filter(r => r.status === 'failing' || r.status === 'unknown' || (r.failed7d ?? 0) > 0)
+  const [all, setAll] = useState(false)
+  const hot = rows
+    .filter(r => r.status === 'failing' || r.status === 'unknown' || (r.failed7d ?? 0) > 0)
+    .sort((a, b) => Number(b.status === 'failing') - Number(a.status === 'failing') || (b.failed7d ?? 0) - (a.failed7d ?? 0))
   const running = rows.filter(r => r.status === 'running').length
 
   if (hot.length === 0) {
@@ -301,26 +327,39 @@ function FleetAttention({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRo
     )
   }
 
+  const shown = all ? hot : hot.slice(0, 3)
+  const reason = (r: (typeof hot)[number]) =>
+    r.failingTask
+      ? `${T('Failing task')}: ${r.failingTask.title} · ${P(r.failingTask.failures, '{n} failures in a row')}`
+      : r.status === 'unknown'
+        ? T('No task or worker data for this agent.')
+        : `${P(r.failed7d ?? 0, '{n} failed runs')} ${T('in the last 7 days')}`
+
   return (
     <section aria-label={T('Needs attention')} data-ops-fleet-attention="">
       <h3>
         {T('Needs attention')} <span>{hot.length}</span>
       </h3>
       <ul>
-        {hot.map(r => (
-          <li data-ops-fleet-attention-row={r.name} key={r.name}>
+        {shown.map(r => (
+          <li data-ops-fleet-attention-row={r.name} data-ops-fleet-attention-kind={r.failingTask ? 'failing' : r.status === 'unknown' ? 'unknown' : 'failed-runs'} key={r.name}>
             <button disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
               <Sigil name={r.name} size={32} />
               <span data-ops-fleet-attention-name="">{r.name}</span>
               <span data-ops-fleet-status={r.status}>{T(r.status)}</span>
+              <span data-ops-fleet-attention-reason="">{reason(r)}</span>
               <small>
-                {r.failed7d ? `${P(r.failed7d, '{n} failed')} · ` : ''}
                 {P(r.active, '{n} active')} · {r.lastActive ? fmtAge(now - r.lastActive) : T('never')}
               </small>
             </button>
           </li>
         ))}
       </ul>
+      {hot.length > 3 ? (
+        <button data-ops-fleet-attention-more="" onClick={() => setAll(v => !v)} type="button">
+          {all ? T('Show fewer') : `${T('Show all')} (${hot.length})`}
+        </button>
+      ) : null}
     </section>
   )
 }

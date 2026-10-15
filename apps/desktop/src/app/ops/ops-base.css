@@ -876,3 +876,13 @@
 /* P8: hidden tab panels stay hidden even though both views are grids. */
 :where([data-ops-settings-main][hidden], [data-ops-settings-system][hidden]) { display: none; }
 
+
+/* P8: attention rows say why; idle lanes are one line; blocked work is tagged. */
+:where([data-ops-fleet-attention]) :where(li > button) { grid-template-rows: auto auto auto; min-height: var(--row-md,48px); }
+:where([data-ops-fleet-attention]) :where(li > button > :first-child) { grid-row: 1 / span 3; }
+:where([data-ops-fleet-attention-reason]) { grid-column: 2 / span 2; font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); color: var(--ops-fg); overflow-wrap: anywhere; }
+:where([data-ops-fleet-attention-kind='failing']) :where([data-ops-fleet-attention-reason]) { color: var(--ops-warn,#e3a33b); }
+:where([data-ops-fleet-attention-more]) { margin-top: var(--space-2,8px); }
+:where([data-ops-teams-idle]) { margin: var(--space-4,16px) 0 0; font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); display: flex; flex-wrap: wrap; gap: var(--space-1,4px) var(--space-3,12px); }
+:where([data-ops-team-idle-lane]) { color: var(--ops-fg); }
+:where([data-ops-team-blocked-tag]) { display: inline-block; margin-right: var(--space-2,8px); padding: 0 var(--space-2,8px); border-radius: 999px; font-size: var(--type-caption,12px); line-height: var(--type-caption-lh,16px); background: color-mix(in srgb, var(--ops-warn,#e3a33b) 18%, transparent); color: var(--ops-warn,#e3a33b); vertical-align: 2px; }

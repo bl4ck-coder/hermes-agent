@@ -2,6 +2,8 @@
 
 export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDMLPluralRule, string>>>> = {
   "es": {
+     "{n} failed runs": {"one": "{n} ejecución fallida", "many": "{n} ejecuciones fallidas", "other": "{n} ejecuciones fallidas"},
+     "{n} failures in a row": {"one": "{n} fallo seguido", "many": "{n} fallos seguidos", "other": "{n} fallos seguidos"},
     "{n} cards": {"one": "{n} tarjeta", "other": "{n} tarjetas"},
     "{n} skills installed": {"one": "{n} habilidad instalada", "other": "{n} habilidades instaladas"},
     "{n} violations": {"one": "{n} infracción", "other": "{n} infracciones"},
@@ -22,6 +24,8 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"one": "{n} fallo", "other": "{n} fallos"},
   },
   "fr": {
+     "{n} failed runs": {"one": "{n} exécution échouée", "many": "{n} exécutions échouées", "other": "{n} exécutions échouées"},
+     "{n} failures in a row": {"one": "{n} échec d'affilée", "many": "{n} échecs d'affilée", "other": "{n} échecs d'affilée"},
     "{n} cards": {"one": "{n} carte", "other": "{n} cartes"},
     "{n} skills installed": {"one": "{n} compétence installée", "other": "{n} compétences installées"},
     "{n} violations": {"one": "{n} violation", "other": "{n} violations"},
@@ -42,6 +46,8 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"one": "{n} échec", "other": "{n} échecs"},
   },
   "de": {
+     "{n} failed runs": {"one": "{n} fehlgeschlagener Lauf", "other": "{n} fehlgeschlagene Läufe"},
+     "{n} failures in a row": {"one": "{n} Fehlschlag in Folge", "other": "{n} Fehlschläge in Folge"},
     "{n} cards": {"one": "{n} Karte", "other": "{n} Karten"},
     "{n} skills installed": {"one": "{n} Skill installiert", "other": "{n} Skills installiert"},
     "{n} violations": {"one": "{n} Verstoß", "other": "{n} Verstöße"},
@@ -62,6 +68,8 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"one": "{n} Fehlschlag", "other": "{n} Fehlschläge"},
   },
   "ru": {
+     "{n} failed runs": {"one": "{n} неудачный запуск", "few": "{n} неудачных запуска", "many": "{n} неудачных запусков", "other": "{n} неудачного запуска"},
+     "{n} failures in a row": {"one": "{n} сбой подряд", "few": "{n} сбоя подряд", "many": "{n} сбоев подряд", "other": "{n} сбоя подряд"},
     "{n} cards": {"one": "{n} карточка", "few": "{n} карточки", "many": "{n} карточек", "other": "{n} карточки"},
     "{n} skills installed": {"one": "{n} навык установлен", "few": "{n} навыка установлено", "many": "{n} навыков установлено", "other": "{n} навыка установлено"},
     "{n} violations": {"one": "{n} нарушение", "few": "{n} нарушения", "many": "{n} нарушений", "other": "{n} нарушения"},
@@ -82,6 +90,8 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"one": "{n} сбой", "few": "{n} сбоя", "many": "{n} сбоев", "other": "{n} сбоя"},
   },
   "ja": {
+     "{n} failed runs": {"other": "失敗した実行 {n} 件"},
+     "{n} failures in a row": {"other": "{n} 回連続で失敗"},
     "{n} cards": {"other": "{n} 枚のカード"},
     "{n} skills installed": {"other": "{n} 個のスキルをインストール済み"},
     "{n} violations": {"other": "{n} 件の違反"},
@@ -102,6 +112,8 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"other": "失敗 {n} 件"},
   },
   "zh": {
+     "{n} failed runs": {"other": "{n} 次运行失败"},
+     "{n} failures in a row": {"other": "连续失败 {n} 次"},
     "{n} cards": {"other": "{n} 张卡片"},
     "{n} skills installed": {"other": "已安装 {n} 个技能"},
     "{n} violations": {"other": "{n} 项违规"},
@@ -122,6 +134,8 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"other": "{n} 次失败"},
   },
   "zh-hant": {
+     "{n} failed runs": {"other": "{n} 次執行失敗"},
+     "{n} failures in a row": {"other": "連續失敗 {n} 次"},
     "{n} cards": {"other": "{n} 張卡片"},
     "{n} skills installed": {"other": "已安裝 {n} 個技能"},
     "{n} violations": {"other": "{n} 項違規"},
@@ -142,6 +156,8 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"other": "{n} 次失敗"},
   },
   "ar": {
+     "{n} failed runs": {"zero": "{n} تشغيل فاشل", "one": "تشغيل فاشل واحد ({n})", "two": "تشغيلان فاشلان ({n})", "few": "{n} تشغيلات فاشلة", "many": "{n} تشغيلًا فاشلًا", "other": "{n} تشغيل فاشل"},
+     "{n} failures in a row": {"zero": "{n} إخفاق متتالٍ", "one": "إخفاق واحد متتالٍ ({n})", "two": "إخفاقان متتاليان ({n})", "few": "{n} إخفاقات متتالية", "many": "{n} إخفاقًا متتاليًا", "other": "{n} إخفاق متتالٍ"},
     "{n} cards": {"zero": "لا بطاقات", "one": "بطاقة واحدة", "two": "بطاقتان", "few": "{n} بطاقات", "many": "{n} بطاقة", "other": "{n} بطاقة"},
     "{n} skills installed": {"zero": "لا مهارات مثبتة", "one": "مهارة واحدة مثبتة", "two": "مهارتان مثبتتان", "few": "{n} مهارات مثبتة", "many": "{n} مهارة مثبتة", "other": "{n} مهارة مثبتة"},
     "{n} violations": {"zero": "لا مخالفات", "one": "مخالفة واحدة", "two": "مخالفتان", "few": "{n} مخالفات", "many": "{n} مخالفة", "other": "{n} مخالفة"},
