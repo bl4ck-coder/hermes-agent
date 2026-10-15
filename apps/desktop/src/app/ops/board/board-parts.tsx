@@ -3,8 +3,9 @@
  * Files (R11/R70), Favourites (R74), New-task modal (R40) and the Markdown body editor (R17).
  */
 
-import { Tip } from '@/components/ui/tooltip'
 import { type DragEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
+
+import { Tip } from '@/components/ui/tooltip'
 
 import { P, T } from '../main-i18n'
 import { fmtAge, fmtBytes } from '../office/control-room'
@@ -37,11 +38,14 @@ export function InlineTitle({ task, readOnly, onOpen, onRename }: { task: BoardT
 
   if (!editing || readOnly || !onRename) {
     return (
-      <Tip label={readOnly || !onRename ? undefined : T('Double-click or F2 to rename')}><button
+      // P24a: the full title stays recoverable on hover when it is clamped to two lines: in the rename tip when there is
+      // one, else a native title (no tooltip per card, the board stays cheap to render). Focus expands the card instead.
+      <Tip label={readOnly || !onRename ? undefined : `${task.title} · ${T('Double-click or F2 to rename')}`}><button
         data-ops-open-task={task.id}
         onClick={onOpen}
         onDoubleClick={() => !readOnly && onRename && (setDraft(task.title), (done.current = false), setEditing(true))}
         onKeyDown={e => e.key === 'F2' && !readOnly && onRename && (e.preventDefault(), setDraft(task.title), (done.current = false), setEditing(true))}
+        title={readOnly || !onRename ? task.title : undefined}
         type="button"
       >
         {task.title}

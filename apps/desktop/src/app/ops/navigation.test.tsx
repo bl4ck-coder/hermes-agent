@@ -92,6 +92,11 @@ describe('ops navigation shell', () => {
     expect(narrow.container.querySelector('[data-ops-inspector]')?.getAttribute('data-ops-inspector')).toBe('overlay')
     expect(narrow.container.querySelector('[data-ops-rail-list]')?.getAttribute('data-ops-rail')).toBe('icons')
     expect(narrow.container.querySelector('[data-ops-tab-dropdown]')).not.toBeNull()
+    // P24: icon rail items are real glyphs with an accessible name, not a column of initials.
+    const office = narrow.container.querySelector('[data-ops-rail-item="office"]')!
+    expect(office.querySelector('[data-ops-rail-glyph="office"]')).not.toBeNull()
+    expect(office.getAttribute('aria-label')).toBeTruthy()
+    expect(office.textContent?.trim()).toBe('')
   })
 
   it('keeps full, icons, and hidden as a persisted preference and shows the remote badge', () => {

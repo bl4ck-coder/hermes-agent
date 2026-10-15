@@ -7,6 +7,7 @@
 import { type CSSProperties, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { Codicon } from '@/components/ui/codicon'
 import { useI18n } from '@/i18n'
 
 import { UNKNOWN_HINT_KEY, UNKNOWN_SHORT_KEY } from './inspector-i18n'
@@ -27,6 +28,30 @@ import {
 } from './navigation-store'
 import { PresenceGlyph } from './primitives/presence-glyph'
 import { Sigil } from './primitives/sigil'
+
+/** P24: the icon rail draws real glyphs, not the first letter of each label (a column of letters is not recognisable). */
+const RAIL_ICON: Record<string, string> = {
+  office: 'organization',
+  canvas: 'type-hierarchy',
+  board: 'project',
+  runs: 'play-circle',
+  review: 'checklist',
+  templates: 'files',
+  projects: 'folder-library',
+  files: 'file',
+  conversations: 'comment-discussion',
+  skills: 'tools',
+  channels: 'plug',
+  activity: 'pulse',
+  triggers: 'zap',
+  schedule: 'calendar',
+  memory: 'database',
+  profiles: 'person',
+  agents: 'hubot',
+  settings: 'settings-gear'
+}
+
+const railGlyph = (id: string, label: string) => (RAIL_ICON[id] ? <Codicon data-ops-rail-glyph={id} name={RAIL_ICON[id]} size={16} /> : label.slice(0, 1))
 
 export interface RailConnection {
   id: string
@@ -432,7 +457,7 @@ export function Rail({
         )}
         {icons ? (
           <button aria-keyshortcuts="Control+K" aria-label={copy.rail.palette} data-ops-palette="" onClick={onOpenPalette} style={fit} type="button">
-            K
+            <Codicon name="search" size={16} />
           </button>
         ) : null}
       </div>
@@ -464,7 +489,7 @@ export function Rail({
           style={fit}
           type="button"
         >
-          {icons ? nav(view.id, view.label).slice(0, 1) : nav(view.id, view.label)}
+          {icons ? railGlyph(view.id, nav(view.id, view.label)) : nav(view.id, view.label)}
           {icons ? null : <kbd data-kbd={view.hint}>{view.hint}</kbd>}
         </button>
       ))}
@@ -473,8 +498,8 @@ export function Rail({
       {pins.length === 0 ? <div data-ops-pins-empty="">{copy.rail.noPins}</div> : null}
       {pins.filter(id => matches(pinText(id), filter)).map(id => (
         <div data-ops-pin-row={id} key={id} style={rowStyle}>
-          <button data-ops-pin={id} onClick={() => onOpenPin(id)} style={fit} type="button">
-            {icons ? '★' : pinText(id)}
+          <button aria-label={icons ? pinText(id) : undefined} data-ops-pin={id} onClick={() => onOpenPin(id)} style={fit} type="button">
+            {icons ? <Codicon name="star-full" size={16} /> : pinText(id)}
           </button>
           <button aria-label={copy.rail.unpinItem(pinText(id))} data-ops-unpin={id} onClick={() => onTogglePin(id)} style={fit} type="button">
             ×
@@ -494,7 +519,7 @@ export function Rail({
             style={fit}
             type="button"
           >
-            {icons ? nav(lens.id, lens.label).slice(0, 1) : nav(lens.id, lens.label)}
+            {icons ? railGlyph(lens.id, nav(lens.id, lens.label)) : nav(lens.id, lens.label)}
             {icons || !lens.hint ? null : <kbd>{lens.hint}</kbd>}
           </button>
           {icons ? null : (
@@ -510,8 +535,8 @@ export function Rail({
           )}
         </div>
       ))}
-      <button aria-expanded={moreOpen} data-ops-more="" onClick={() => setMoreOpen(open => !open)} style={fit} type="button">
-        {icons ? '…' : copy.rail.more}
+      <button aria-expanded={moreOpen} aria-label={icons ? copy.rail.more : undefined} data-ops-more="" onClick={() => setMoreOpen(open => !open)} style={fit} type="button">
+        {icons ? <Codicon name="ellipsis" size={16} /> : copy.rail.more}
       </button>
       {moreOpen || filter.trim()
         ? visibleMore.map(lens => (
@@ -525,7 +550,7 @@ export function Rail({
               style={fit}
               type="button"
             >
-              {icons ? nav(lens.id, lens.label).slice(0, 1) : nav(lens.id, lens.label)}
+              {icons ? railGlyph(lens.id, nav(lens.id, lens.label)) : nav(lens.id, lens.label)}
             </button>
           ))
         : null}

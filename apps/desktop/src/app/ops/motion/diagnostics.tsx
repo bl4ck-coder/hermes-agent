@@ -84,9 +84,10 @@ export function DiagnosticsPanel({
   const ok = results ? results.filter(r => r.state === 'ok').length : 0
   const total = results?.length ?? 0
   const failing = results ? results.filter(r => r.state !== 'ok') : []
+  const passing = results ? results.filter(r => r.state === 'ok') : []
   const tone = !results ? 'idle' : failing.length === 0 && errors.length === 0 ? 'good' : 'warn'
 
-  // P7: confirmed state, then the evidence for it, then the next action. Details fold away.
+  // P7/P24: confirmed state, then the next action, then the probe result and error evidence. Details and the raw log fold away, last.
   return (
     <div data-ops-diagnostics="">
       <header data-ops-diag-hero={tone}>
@@ -99,29 +100,7 @@ export function DiagnosticsPanel({
           {stream.reason ? ` (${stream.reason})` : ''}
         </p>
       </header>
-      {failing.length ? (
-        <section aria-label={T('Needs attention')} data-ops-diag-evidence="probe">
-          <h4>{T('Needs attention')}</h4>
-          <ul data-ops-probe-failing="">
-            {failing.map(r => (
-              <li data-ops-probe-fail={r.state} key={r.id}>
-                <strong>{T(r.label)}</strong>
-                <span>{r.detail}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : results ? (
-        <section aria-label={T('Checked')} data-ops-diag-evidence="checked">
-          <h4>{T('Checked')}</h4>
-          <ul data-ops-diag-checked="">
-            {results.map(r => (
-              <li key={r.id}>{T(r.label)}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {/* P20c: the next step sits right after the summary, before the error evidence. */}
+      {/* P20c/P24: the next step sits right after the summary, before the probe result and the error evidence. */}
       <div data-ops-diag-next="">
           <span data-ops-diag-actions="">
             <button data-ops-primary="" data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
@@ -143,12 +122,42 @@ export function DiagnosticsPanel({
           </span>
         {note ? <p role="status">{note}</p> : null}
       </div>
+      {/* P24: the finished probe, one line per check (failures first, with their reason), right after the actions. */}
+      {results ? (
+        <section aria-label={T('Capability probe')} data-ops-diag-evidence="probe" data-ops-diag-result="">
+          {failing.length ? (
+            <>
+              <h4>{T('Needs attention')}</h4>
+              <ul data-ops-probe-failing="">
+                {failing.map(r => (
+                  <li data-ops-probe-check={r.id} data-ops-probe-fail={r.state} data-ops-probe-state={r.state} key={r.id}>
+                    <strong>{T(r.label)}</strong>
+                    <span>{r.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {passing.length ? (
+            <>
+              <h4>{T('Checked')}</h4>
+              <ul data-ops-diag-checked="">
+                {passing.map(r => (
+                  <li data-ops-probe-check={r.id} data-ops-probe-state="ok" key={r.id}>
+                    {T(r.label)}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </section>
+      ) : null}
       {errors.length > 0 ? (
         <section aria-label={T('Recent errors')} data-ops-diag-evidence="errors">
           <h4>
             {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
           </h4>
-          {/* P20c: one line per failing endpoint (latest message, repeat count); the raw log is secondary. */}
+          {/* P20c/P24: one line per failing endpoint (latest message, repeat count); the raw log is folded at the end. */}
           <ul data-ops-error-groups="">
             {groupOpsErrors(errors).map(g => (
               <li data-ops-error-group="" key={g.key}>
@@ -157,18 +166,6 @@ export function DiagnosticsPanel({
               </li>
             ))}
           </ul>
-          <details data-ops-errors-log="">
-            <summary>{T('Full error log')}</summary>
-            <ol data-ops-errors="">
-              {errors.map((e, i) => (
-                <li key={`${e.at}-${i}`}>
-                  <time>{new Date(e.at).toLocaleTimeString()}</time> {e.method} {e.path}: {e.message}
-                </li>
-              ))}
-            </ol>
-            <button onClick={clearOpsErrors} type="button">
-              {T("Clear errors")}</button>
-          </details>
         </section>
       ) : null}
       <details data-ops-diag-details="">
@@ -188,15 +185,6 @@ export function DiagnosticsPanel({
           <dt>{T("Policy source")}</dt>
           <dd data-ops-diag-policy="">{policySource ?? T('unknown')}</dd>
         </dl>
-        {results ? (
-          <ul aria-label={T("Capability probe")} data-ops-probe-results="">
-            {results.map(r => (
-              <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
-                <b data-ops-probe-id="">{r.id}</b> {T(r.label)}{r.state === 'ok' ? <span data-ops-probe-ok="">: {T('available')}</span> : <>: {r.detail}</>}
-              </li>
-            ))}
-          </ul>
-        ) : null}
       </details>
       {simAllowed() ? (
         <label data-ops-simulate="">
@@ -207,6 +195,20 @@ export function DiagnosticsPanel({
             <option value="auth">401</option>
           </select>
         </label>
+      ) : null}
+      {errors.length > 0 ? (
+        <details data-ops-errors-log="">
+          <summary>{T('Full error log')}</summary>
+          <ol data-ops-errors="">
+            {errors.map((e, i) => (
+              <li key={`${e.at}-${i}`}>
+                <time>{new Date(e.at).toLocaleTimeString()}</time> {e.method} {e.path}: {e.message}
+              </li>
+            ))}
+          </ol>
+          <button onClick={clearOpsErrors} type="button">
+            {T("Clear errors")}</button>
+        </details>
       ) : null}
     </div>
   )
@@ -230,12 +232,32 @@ export function SystemStatus({ policySource, onOpen }: { policySource: string | 
   )
 }
 
+/** P20c/P24: one line per endpoint with its repeat count and its MOST RECENT message (by `at`; the ring prepends, so on ties the first seen is newest). */
 export function groupOpsErrors(errors: readonly { at: number | string; message: string; method?: string; path?: string }[]) {
   const m = new Map<string, { count: number; key: string; message: string }>()
+  const latest = new Map<string, number>()
+  const time = (at: number | string) => (typeof at === 'number' ? at : Date.parse(at))
+
   for (const e of errors) {
     const key = `${e.method ?? ''} ${e.path ?? ''}`.trim() || '?'
     const g = m.get(key)
-    if (g) { g.count += 1; g.message = e.message } else m.set(key, { count: 1, key, message: e.message })
+    const t = time(e.at)
+
+    if (!g) {
+      m.set(key, { count: 1, key, message: e.message })
+      latest.set(key, t)
+
+      continue
+    }
+
+    g.count += 1
+
+    // Only a strictly newer entry replaces the message (older ones further down the ring never do).
+    if (t > (latest.get(key) ?? Number.NaN)) {
+      g.message = e.message
+      latest.set(key, t)
+    }
   }
+
   return [...m.values()]
 }

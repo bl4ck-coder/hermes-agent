@@ -1033,6 +1033,11 @@
 :where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: var(--space-2,8px); padding-top: var(--space-2,8px); text-align: left; }
 :where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) :where(input, textarea) { min-height: 40px; flex: 1 1 14rem; min-width: 0; max-width: var(--width-field, 28rem); }
 :where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) :where(button) { min-height: 40px; padding: 0 var(--space-3,12px); font-size: var(--type-meta,14px); }
+/* P24 (judge pass 18): one intent per line inside a row expansion; secondary links stay quiet and left-aligned. */
+:where([data-ops-intent]) { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: var(--space-2,8px); min-width: 0; }
+:where([data-ops-intent="links"]) :where(button[data-ops-row-link]) { background: transparent; border-color: transparent; color: var(--ops-muted); text-decoration: underline; text-underline-offset: 3px; }
+:where([data-ops-intent]) :where([data-ops-disclosure] > summary) { margin-left: 0; }
+:where([data-ops-refused]) { flex: 1 1 100%; color: var(--ops-bad, #e5484d); font-size: var(--type-meta,14px); }
 @container ops-rows (max-width: 40rem) { :where([data-ops-row]) { grid-template-columns: auto minmax(0, 1fr); } :where([data-ops-row-actions]) { grid-column: 2; max-width: none; justify-content: flex-start; padding-top: var(--space-2,8px); } :where([data-ops-row-more-slot]) { grid-column: 2; grid-row: auto; justify-content: flex-start; } }
 :where([data-ops-team-task-status]) { color: var(--ops-muted); }
 :where([data-ops-team-task-status='blocked']) { color: var(--ops-warn,#e3a33b); }
@@ -1066,4 +1071,29 @@
 /* P22a (pass 17): on hover/focus the quick actions REPLACE the meta row as one opaque strip, instead of partly covering
    assignee and signals. The title rows stay readable; the metadata returns when the pointer leaves. */
 :where([data-ops-card]) > :where([data-ops-quick]) { bottom: 3px; justify-content: flex-end; left: 28px; right: 4px; }
-:where([data-ops-card]:hover, [data-ops-card]:focus-within) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: hidden; }
+:where([data-ops-card]:hover:not([data-ops-card-expanded])) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: hidden; }
+/* P24 (judge pass 18): a lane's expansion opens under the work it continues, not at the far edge. */
+:where([data-ops-team]) :where([data-ops-row-more-slot]) { justify-content: flex-start; }
+:where([data-ops-team]) :where([data-ops-row-more-slot]) :where([data-ops-disclosure][open] > summary) { margin-left: 0; }
+:where([data-ops-team-label]) { color: var(--ops-muted); font-size: var(--type-meta,14px); margin-right: var(--space-1,4px); }
+/* P24: skill detail as two compact lines, opened under the description. */
+:where([data-ops-skill]) :where([data-ops-row-more-slot]) { justify-content: flex-start; }
+:where([data-ops-skill]) :where([data-ops-row-more-slot]) :where([data-ops-disclosure][open] > summary) { margin-left: 0; }
+:where([data-ops-skill-facts]) { display: flex; flex-wrap: wrap; column-gap: var(--space-4,16px); row-gap: var(--space-1,4px); }
+:where([data-ops-skill-detail] [data-ops-skill-agents]) { align-items: center; }
+
+/* P24 (pass 18): Ops preferences use the shared SettingsFormRow (styles/hierarchy.css). Controls and the in-row recovery
+   (Retry / Revert to saved value) are 40px targets; checkboxes keep a 20px box (their label is also the target). */
+:where([data-ops-settings]) :where([data-sfr-control]) :where(select, button, input) { min-height: 40px; }
+:where([data-ops-settings]) :where([data-sfr-control]) :where(input[type='checkbox']) { min-height: auto; inline-size: 20px; block-size: 20px; margin: 10px 0; }
+:where([data-ops-pref-recover]) { display: inline-flex; flex-wrap: wrap; gap: var(--space-2,8px); margin-inline-start: var(--space-2,8px); vertical-align: middle; }
+:where([data-ops-pref-retry], [data-ops-pref-revert]) { min-height: 40px; min-width: 40px; padding: 0 var(--space-3,12px); font-size: var(--type-meta,14px); font-weight: 500; }
+
+/* P24a (pass 18, Board): the card holding focus grows in flow instead of swapping information: the full title unclamps,
+   assignee and signals stay, and the quick actions take their own row with 40px targets. Blur restores the windowed card.
+   Hover keeps the one-strip swap above; the tip on the title carries the full text. Nothing is positioned over text. */
+:where([data-ops-card][data-ops-card-expanded]) { grid-template-areas: 'chk title title' 'chk who sig' 'chk quick quick'; grid-template-rows: auto auto auto; }
+:where([data-ops-card][data-ops-card-expanded]) :where([data-ops-open-task]) { display: block; -webkit-line-clamp: none; overflow: visible; overflow-wrap: anywhere; }
+:where([data-ops-card][data-ops-card-expanded]) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: visible; }
+:where([data-ops-card][data-ops-card-expanded]) > :where([data-ops-quick]) { grid-area: quick; position: static; flex-wrap: wrap; justify-content: flex-start; gap: var(--space-2,8px); opacity: 1; pointer-events: auto; background: none; padding: 0; }
+:where([data-ops-card][data-ops-card-expanded]) :where([data-ops-quick]) :where(button, select) { min-height: 40px; min-width: 40px; font-size: var(--type-meta,14px); }

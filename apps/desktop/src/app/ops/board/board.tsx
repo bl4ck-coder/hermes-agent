@@ -100,6 +100,25 @@ export interface BoardViewProps extends BoardActions {
   loadMoreFiles?: () => void
 }
 
+/**
+ * P24a (judge pass 18, Board): the badge words the transport from the push state alone. A failed refresh says the
+ * board is stale; it never proves a connection, so only a live stream may say "Connected". No push state, no claim.
+ */
+export function pushBadge(pushMode: BoardViewProps['pushMode'] | null | undefined, error: string | null | undefined): { state: string; text: string } | null {
+  if (!pushMode) {
+    return null
+  }
+
+  if (!error) {
+    return { state: pushMode, text: T(pushMode === 'stream' ? 'Live' : pushMode === 'poll' ? 'Polling every 5 s' : 'Connecting') }
+  }
+
+  return {
+    state: 'stale',
+    text: T(pushMode === 'stream' ? 'Connected, board not updated' : pushMode === 'poll' ? 'Polling, board not updated' : 'Connecting, board not updated')
+  }
+}
+
 function Windowed({ tasks, viewport, render }: { tasks: BoardTask[]; viewport: number; render: (t: BoardTask) => ReactNode }) {
   const [top, setTop] = useState(0)
   const w = windowRange(tasks.length, top, viewport, ROW_H)
@@ -142,6 +161,8 @@ export function BoardView(props: BoardViewProps) {
 
   const [announce, setAnnounce] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
+  // P24a: the card holding keyboard focus grows to show its full title, metadata and actions in their own rows.
+  const [focusCard, setFocusCard] = useState<string | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<BoardTask | null>(null)
   const [modal, setModal] = useState<string | null>(null)
   const [viewName, setViewName] = useState('')
@@ -236,9 +257,11 @@ export function BoardView(props: BoardViewProps) {
   const card = (t: BoardTask) => (
     <div
       data-ops-card={t.id}
+      data-ops-card-expanded={focusCard === t.id ? '' : undefined}
       data-ops-dragging={dragging === t.id ? '' : undefined}
       draggable={!readOnly}
       key={t.id}
+      onBlur={e => !e.currentTarget.contains(e.relatedTarget as Node | null) && setFocusCard(f => (f === t.id ? null : f))}
       onContextMenu={e => (e.preventDefault(), setMenu(t.id))}
       onDragEnd={() => (setDragging(null), setAnnounce(''), markDrop(null))}
       onDragStart={e => {
@@ -251,9 +274,11 @@ export function BoardView(props: BoardViewProps) {
         e.dataTransfer.setData('text/ops-card', t.id)
         e.dataTransfer.effectAllowed = 'move'
       }}
+      onFocus={() => setFocusCard(t.id)}
       onKeyDown={keyFor(t)}
       role="listitem"
-      style={{ height: ROW_H - 6 }}
+      // Windowed pitch (height + 6px gap = ROW_H); only the focused card may grow, in flow, so nothing overlaps.
+      style={focusCard === t.id ? { minHeight: ROW_H - 6 } : { height: ROW_H - 6 }}
       tabIndex={0}
     >
       <input aria-label={`select ${t.id}`} checked={selected.has(t.id)} onChange={() => setSelected(s => toggle(s, t.id))} type="checkbox" />
@@ -295,6 +320,7 @@ export function BoardView(props: BoardViewProps) {
   )
 
   const c = counts(shown)
+  const badge = pushBadge(props.pushMode, props.error)
   const open = drawer ? allTasks(board).find(t => t.id === drawer.id) : null
 
   const applyView = (id: string) => {
@@ -461,10 +487,10 @@ export function BoardView(props: BoardViewProps) {
         </section>
       ) : null}
 
-      {props.pushMode ? (
-        <span data-ops-push={props.error ? 'stale' : props.pushMode} role="status">
-          {/* P20b: transport state and snapshot freshness are different facts; a failed refresh wins. */}
-          {props.error ? T('Connected, board not updated') : T(props.pushMode === 'stream' ? 'Live' : props.pushMode === 'poll' ? 'Polling every 5 s' : 'Connecting')}
+      {badge ? (
+        <span data-ops-push={badge.state} data-ops-push-transport={props.pushMode} role="status">
+          {/* P20b/P24a: transport state and snapshot freshness are different facts; the transport words come from pushMode only. */}
+          {badge.text}
         </span>
       ) : null}
       {props.notice ? (

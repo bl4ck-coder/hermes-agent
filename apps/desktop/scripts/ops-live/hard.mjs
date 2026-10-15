@@ -14,6 +14,13 @@ const electronBin = join(DESKTOP, 'node_modules', 'electron', 'dist', 'electron.
 const log = { console: [], pageErrors: [], failed: [], http: [], sections: {}, fps: {} }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
+// P24: OPS_HARD_TAG gives a run its own userData dir and sandbox HERMES_HOME so parallel runs never collide
+// (unset: the original ops-hard-userdata / ops-hard-home paths). OPS_HARD_SELFTEST=1 runs the negative controls.
+const TAG = (process.env.OPS_HARD_TAG ?? '').replace(/[^a-z0-9_-]/gi, '')
+const SELFTEST = process.env.OPS_HARD_SELFTEST === '1'
+// Optional: OPS_HARD_ONLY=<regex on "screen-state"> runs a subset (e.g. "narrow").
+const ONLY = process.env.OPS_HARD_ONLY ? new RegExp(process.env.OPS_HARD_ONLY) : null
+const HOME = join(tmpdir(), TAG ? `ops-hard-home-${TAG}` : 'ops-hard-home')
 const env = {
   ...process.env,
   HERMES_DESKTOP_HERMES_ROOT: resolve(DESKTOP, '..', '..'),
@@ -21,14 +28,20 @@ const env = {
   HERMES_DESKTOP_ISOLATED_BACKEND: '1',
   // Never start, stop, restart or replace a gateway from this checkout (hermes_cli/gateway_lifecycle_guard.py).
   HERMES_OPS_NO_GATEWAY: '1',
-  HERMES_DESKTOP_USER_DATA_DIR: join(tmpdir(), 'ops-hard-userdata'),
+  HERMES_DESKTOP_USER_DATA_DIR: join(tmpdir(), TAG ? `ops-hard-userdata-${TAG}` : 'ops-hard-userdata'),
   // P19: sandbox home only. Refuse to run if a real home is forced.
-  HERMES_HOME: join(tmpdir(), 'ops-hard-home'),
+  HERMES_HOME: HOME,
   HERMES_DESKTOP_SKIP_QUIT_CONFIRM: '1'
 }
 delete env.HERMES_DESKTOP_DEV_SERVER
 if (process.env.OPS_LIVE_HERMES_HOME) { console.error('hard.mjs never uses OPS_LIVE_HERMES_HOME'); process.exit(4) }
-mkdirSync(join(tmpdir(), 'ops-hard-home'), { recursive: true })
+mkdirSync(HOME, { recursive: true })
+// The sandbox has no provider, so the first-run setup dialog can cover the app mid-run (it depended on
+// provider keys leaking in from the parent shell). A placeholder key keeps setup closed; nothing is ever sent.
+{
+  const envFile = join(HOME, '.env')
+  if (!existsSync(envFile)) writeFileSync(envFile, 'ANTHROPIC_API_KEY=ops-hard-placeholder-not-a-real-key\n')
+}
 
 
 // B11 safety: never launch a test window whose backend cannot start (a wrong interpreter makes the
@@ -170,12 +183,15 @@ await app.evaluate(({ ipcMain }) => {
   const orig = m && m.get('hermes:api')
   globalThis.__opsSeen = []
   globalThis.__opsMocks = []
+  // P24: every served rule is recorded, so a state that depends on a mock can prove the mock answered.
+  globalThis.__opsHits = []
   if (!orig) { globalThis.__opsMockErr = 'no _invokeHandlers'; return }
   m.set('hermes:api', async (e, req) => {
     const path = String(req?.path ?? ''), method = String(req?.method ?? 'GET').toUpperCase()
     globalThis.__opsSeen.push(`${method} ${path}`)
     for (const r of globalThis.__opsMocks) {
       if (new RegExp(r.path).test(path) && (!r.method || r.method === method)) {
+        globalThis.__opsHits.push({ rule: r.path, method, path, at: Date.now() })
         if (r.delay) await new Promise(res => setTimeout(res, r.delay))
         if (r.throw) throw new Error(r.throw)
         if (!('body' in r)) return orig(e, req)
@@ -185,22 +201,130 @@ await app.evaluate(({ ipcMain }) => {
     return orig(e, req)
   })
 })
-const mock = rules => app.evaluate((_, r) => { globalThis.__opsMocks = r }, rules)
+// First matching rule wins: specific rules must come before the base fixtures. Installing rules resets the hit log.
+const mock = rules => app.evaluate((_, r) => { globalThis.__opsMocks = r; globalThis.__opsHits = [] }, rules)
 const seen = () => app.evaluate(() => [...new Set(globalThis.__opsSeen)].sort())
 const mockErr = await app.evaluate(() => globalThis.__opsMockErr ?? null)
-const matrix = []
-const state = async (screen, st, fn) => {
-  const name = `h-${screen}-${st}`.replace(/[^a-z0-9-]/gi, '_')
-  let ok = true, note = ''
-  // P21: a state that hangs is recorded as failed and the run moves on (h4/h5 froze mid-run).
-  const within = (pr, ms, what) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error(`watchdog: ${what} > ${ms} ms`)), ms))])
-  try { note = (await within(Promise.resolve().then(fn), 45000, 'state')) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 200) }
-  await sleep(1200); await within(shot(name), 20000, 'shot').catch(e => { ok = false; note += ` ${e}` })
-  matrix.push({ screen, state: st, shot: `${name}.png`, ok, note })
-  writeFileSync(join(OUT, 'state-matrix.json'), JSON.stringify({ mockErr, matrix }, null, 2))
+
+// ---------------------------------------------------------------- assertions (P24)
+// A state is ok only when VISIBLE, specific evidence is on screen after the interaction: Playwright visibility
+// (non-empty box, not display:none / visibility:hidden), plus text / attribute / value checks. Node counts never pass.
+const visible = sel => page.locator(sel).filter({ visible: true })
+const poll = async (fn, ms) => {
+  const end = Date.now() + ms
+  for (;;) {
+    try { return await fn() } catch (e) { if (Date.now() > end) throw e }
+    await sleep(250)
+  }
 }
-// P21: semantic checks. A state counts as reached only when its evidence is on screen.
-const need = async (...sels) => { for (const sel of sels) if (!(await page.locator(sel).count())) throw new Error(`not shown: ${sel}`); return `verified: ${sels.join(' + ')}` }
+const CHECK_MS = 10_000
+/** see(sel, { count, min, max, text, attr, value, clear }): visible matches, with optional specifics on the first match. */
+const see = (sel, o = {}) => poll(async () => {
+  const loc = visible(sel)
+  const n = await loc.count()
+  if (o.count !== undefined && n !== o.count) throw new Error(`${sel}: ${n} visible, want ${o.count}`)
+  if (n < (o.min ?? 1)) throw new Error(`${sel}: ${n} visible, want >= ${o.min ?? 1}`)
+  if (o.max !== undefined && n > o.max) throw new Error(`${sel}: ${n} visible, want <= ${o.max}`)
+  for (const t of [].concat(o.text ?? [])) if (!(await loc.filter({ hasText: t }).count())) throw new Error(`${sel}: no visible match contains "${t}"`)
+  for (const [k, v] of Object.entries(o.attr ?? {})) {
+    const got = await loc.first().getAttribute(k)
+    if (v instanceof RegExp ? !v.test(got ?? '') : got !== v) throw new Error(`${sel}: ${k}=${JSON.stringify(got)}, want ${v}`)
+  }
+  if (o.value !== undefined) { const got = await loc.first().inputValue(); if (got !== o.value) throw new Error(`${sel}: value ${JSON.stringify(got)}, want ${JSON.stringify(o.value)}`) }
+  if (o.clear) {
+    // Unobstructed: the point a user would click on the first match hits the match itself, not an overlay.
+    const why = await loc.first().evaluate(el => {
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+      const r = el.getBoundingClientRect()
+      const x = r.left + Math.min(r.width / 2, 48), y = r.top + Math.min(r.height / 2, 16)
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return `outside the window at ${Math.round(x)},${Math.round(y)}`
+      const hit = document.elementFromPoint(x, y)
+      return hit && (hit === el || el.contains(hit)) ? '' : `covered by <${hit?.tagName.toLowerCase()} ${[...(hit?.attributes ?? [])].map(a => a.name).join(' ').slice(0, 120)}>`
+    })
+    if (why) throw new Error(`${sel}: ${why}`)
+  }
+  return `${sel} x${n} visible${o.text ? ` with ${JSON.stringify(o.text)}` : ''}${o.attr ? ` ${JSON.stringify(o.attr)}` : ''}${o.value !== undefined ? ` value=${JSON.stringify(o.value)}` : ''}${o.clear ? ' unobstructed' : ''}`
+}, o.ms ?? CHECK_MS)
+/** none(sel): no visible match (hidden or absent). */
+const none = (sel, o = {}) => poll(async () => {
+  const loc = visible(sel), n = await loc.count()
+  if (n) {
+    // Say where the stray match is, so a failure can be traced to a surface.
+    const at = await loc.first().evaluate(el => { const r = el.getBoundingClientRect(); return `${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)} in ${el.closest('[data-ops-root]') ? 'the active Ops root' : el.closest('[data-ops-native]') ? 'an inactive Ops instance' : 'the app'}` }).catch(() => '?')
+    throw new Error(`${sel}: ${n} visible, want 0 (first at ${at})`)
+  }
+  return `no visible ${sel}`
+}, o.ms ?? CHECK_MS)
+/** served(rule): the named mock rule answered at least once since it was installed. */
+const served = (rule, o = {}) => poll(async () => {
+  const hits = await app.evaluate((_, p) => (globalThis.__opsHits ?? []).filter(h => h.rule === p.rule && (!p.method || h.method === p.method)).length, { rule, method: o.method ?? null })
+  if (!hits) throw new Error(`mock ${o.method ?? ''} ${rule} never served`)
+  return `mock ${o.method ?? ''} ${rule} served x${hits}`
+}, o.ms ?? CHECK_MS)
+/** Click the first VISIBLE match; throws when there is none (an interaction that cannot happen is a failure). */
+const tap = async (sel, ms = 8000) => { const l = visible(sel).first(); await l.waitFor({ state: 'visible', timeout: ms }); await l.scrollIntoViewIfNeeded().catch(() => {}); await l.click({ timeout: 4000 }) }
+const type = async (sel, v, ms = 8000) => { const l = visible(sel).first(); await l.waitFor({ state: 'visible', timeout: ms }); await l.fill(v) }
+
+const matrix = []
+const MATRIX = SELFTEST ? 'selftest-matrix.json' : 'state-matrix.json'
+const within = (pr, ms, what) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error(`watchdog: ${what} > ${ms} ms`)), ms))])
+/** Run labelled checks; every check runs (no short-circuit) so a negative control shows exactly which ones failed. */
+const runChecks = async (checks, ms) => {
+  const out = []
+  for (const [label, fn] of Object.entries(checks)) {
+    try { out.push({ label, pass: true, detail: await within(fn(ms), ms + 5000, label) }) } catch (e) { out.push({ label, pass: false, detail: String(e?.message ?? e).slice(0, 240) }) }
+  }
+  return out
+}
+/**
+ * state(screen, st, spec)
+ *   spec.mocks: rules installed before act (default: none); spec.act(): the interaction; spec.checks: { label: ms => Promise };
+ *   spec.neg: { mocks?, act?, fails?: [labels] } the same checks with the precondition removed (default: same mocks, act
+ *   = spec.open only). Normal run: ok = every check passes after act AND again after the screenshot.
+ *   OPS_HARD_SELFTEST=1: ok = every label in neg.fails (default: all) FAILS. spec.after(): cleanup in both modes.
+ * Legacy form state(screen, st, fn) is kept: fn's return is the note (it should throw when its state is not shown).
+ */
+const state = async (screen, st, spec) => {
+  if (ONLY && !ONLY.test(`${screen}-${st}`)) return
+  const name = `${SELFTEST ? 's' : 'h'}-${screen}-${st}`.replace(/[^a-z0-9-]/gi, '_')
+  let ok = true, note = '', checks = []
+  if (typeof spec === 'function') {
+    if (SELFTEST) return
+    try { note = (await within(Promise.resolve().then(spec), 45000, 'state')) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 200) }
+    await sleep(1200); await within(shot(name), 20000, 'shot').catch(e => { ok = false; note += ` ${e}` })
+  } else {
+    const neg = spec.neg ?? {}
+    const mocks = SELFTEST && 'mocks' in neg ? neg.mocks : spec.mocks ?? []
+    const act = SELFTEST ? neg.act ?? spec.open : spec.act
+    try {
+      await mock(mocks)
+      await within(Promise.resolve().then(act), 60000, 'act')
+      checks = await runChecks(spec.checks, CHECK_MS)
+      await sleep(600)
+      await within(shot(name), 20000, 'shot').catch(e => { note += ` ${e}` })
+      if (!SELFTEST) {
+        // The screenshot must show the asserted state: re-check right after it, briefly.
+        const again = await runChecks(spec.checks, 1500)
+        for (const [i, c] of again.entries()) if (!c.pass && checks[i].pass) checks[i] = { ...c, detail: `changed before the shot: ${c.detail}` }
+      }
+    } catch (e) { note += ` act failed: ${String(e?.message ?? e).slice(0, 200)}`; ok = false }
+    if (SELFTEST) {
+      const must = neg.fails ?? Object.keys(spec.checks)
+      const held = checks.filter(c => must.includes(c.label) && !c.pass).map(c => c.label)
+      const leaked = must.filter(l => !held.includes(l))
+      if (ok) ok = checks.length > 0 && leaked.length === 0
+      note = (note + (leaked.length ? ` FALSE POSITIVE: passed without precondition: ${leaked.join(', ')}` : ` negative control held: ${held.join(', ')} failed`)).trim()
+    } else if (ok) {
+      ok = checks.length > 0 && checks.every(c => c.pass)
+      note = (note + ' ' + (ok ? 'verified' : `failed: ${checks.filter(c => !c.pass).map(c => c.label).join(', ')}`)).trim()
+    }
+    await Promise.resolve().then(spec.after).catch(() => {})
+  }
+  matrix.push({ screen, state: st, shot: `${name}.png`, ok, note, checks })
+  writeFileSync(join(OUT, MATRIX), JSON.stringify({ mode: SELFTEST ? 'selftest' : 'states', tag: TAG || null, mockErr, ok: matrix.filter(x => x.ok).length, total: matrix.length, matrix }, null, 2))
+}
+// Legacy helper (kept): now visibility-based, never a node count.
+const need = async (...sels) => { for (const sel of sels) await see(sel); return `verified: ${sels.join(' + ')}` }
 const reload = async () => { await page.reload(); await sleep(3000) }
 const narrow = w => app.evaluate(({ BrowserWindow }, w) => { for (const x of BrowserWindow.getAllWindows()) x.setSize(w, 1000) }, w)
 
@@ -212,7 +336,7 @@ if (want('discover')) {
 
 if (existsSync(join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs'))) {
   const mod = await import('file://' + join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs').replace(/\\/g, '/'))
-  await mod.default({ page, app, go, goApp, lens, state, mock, narrow, sleep, shot, want, offscreen, need, reload })
+  await mod.default({ page, app, go, goApp, lens, state, mock, narrow, sleep, shot, want, offscreen, need, reload, see, none, served, tap, type, visible, selftest: SELFTEST })
 }
 save()
 await app.close().catch(() => {})

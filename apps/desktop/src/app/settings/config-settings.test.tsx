@@ -151,6 +151,90 @@ describe('ConfigSettings autosave', () => {
     }
   })
 
+  // P24 (judge pass 18 must-fix): recovery is local to the field it is announced on.
+  const fieldSwitch = (key: string) => document.getElementById(`setting-field-${key}`)!.querySelector('[role="switch"]') as HTMLButtonElement
+  const fieldError = (key: string) => document.querySelector(`[data-settings-field-error="${key}"]`)
+
+  it('P24: Revert restores the saved value and clears that field error, without saving an empty patch', async () => {
+    getHermesConfigRecord.mockResolvedValue({ checkpoints: { enabled: false } })
+    saveHermesConfig.mockResolvedValue({ ok: false })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+
+    try {
+      renderConfigSettings()
+      ;(await screen.findByRole('switch')).click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('checkpoints.enabled')).not.toBeNull())
+      expect(saveHermesConfig).toHaveBeenCalledTimes(1)
+      ;(document.querySelector('[data-settings-field-revert="checkpoints.enabled"]') as HTMLButtonElement).click()
+      await vi.advanceTimersByTimeAsync(700)
+      // The API still refuses: Revert must not depend on a save to clear the error.
+      await vi.waitFor(() => expect(fieldError('checkpoints.enabled')).toBeNull())
+      expect(fieldSwitch('checkpoints.enabled').getAttribute('aria-checked')).toBe('false')
+      expect(document.querySelector('[data-settings-field-status="checkpoints.enabled"]')).toBeNull()
+      expect(saveHermesConfig).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('P24: Retry resends only its own field; Revert leaves the other failed draft and its error intact', async () => {
+    getHermesConfigRecord.mockResolvedValue({ checkpoints: { enabled: false }, security: { redact_secrets: false } })
+    saveHermesConfig.mockResolvedValue({ ok: false })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+
+    try {
+      renderConfigSettings()
+      await screen.findAllByRole('switch')
+      fieldSwitch('checkpoints.enabled').click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('checkpoints.enabled')).not.toBeNull())
+      fieldSwitch('security.redact_secrets').click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('security.redact_secrets')).not.toBeNull())
+      const calls = saveHermesConfig.mock.calls.length
+
+      saveHermesConfig.mockResolvedValue({ ok: true })
+      ;(document.querySelector('[data-settings-field-retry="security.redact_secrets"]') as HTMLButtonElement).click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('security.redact_secrets')).toBeNull())
+      expect(saveHermesConfig).toHaveBeenCalledTimes(calls + 1)
+      expect(saveHermesConfig.mock.calls[calls][0]).toEqual({ security: { redact_secrets: true } })
+      // The other field's draft and its error are untouched.
+      expect(fieldError('checkpoints.enabled')).not.toBeNull()
+      expect(fieldSwitch('checkpoints.enabled').getAttribute('aria-checked')).toBe('true')
+
+      ;(document.querySelector('[data-settings-field-revert="checkpoints.enabled"]') as HTMLButtonElement).click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('checkpoints.enabled')).toBeNull())
+      expect(fieldSwitch('checkpoints.enabled').getAttribute('aria-checked')).toBe('false')
+      // The retried field stays saved; nothing else was sent.
+      expect(fieldSwitch('security.redact_secrets').getAttribute('aria-checked')).toBe('true')
+      expect(saveHermesConfig).toHaveBeenCalledTimes(calls + 1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('P24: inline Retry and Revert are 40px targets', async () => {
+    getHermesConfigRecord.mockResolvedValue({ checkpoints: { enabled: false } })
+    saveHermesConfig.mockResolvedValue({ ok: false })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+
+    try {
+      renderConfigSettings()
+      ;(await screen.findByRole('switch')).click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('checkpoints.enabled')).not.toBeNull())
+
+      for (const sel of ['[data-settings-field-retry]', '[data-settings-field-revert]']) {
+        expect(document.querySelector(sel)?.className).toMatch(/\bmin-h-10\b/)
+      }
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('threads the "Applies to" request scope into both the config read and the autosave write', async () => {
     // #118432: the request scope is the concrete profile the page displays
     // (see settings-scope.test.ts). The page must carry it into the read AND

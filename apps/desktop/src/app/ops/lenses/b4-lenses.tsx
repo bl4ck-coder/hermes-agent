@@ -296,11 +296,14 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
                   ))}
                 </ul>
               ) : null}
-              <p aria-label={T('Members:')} data-ops-team-members="">
+              {/* P24 (judge pass 18): the expansion keeps reading the work; who and where follow on quiet labelled lines. */}
+              <p data-ops-team-members="">
+                <span data-ops-team-label="">{T('Members:')}</span>
                 {t.members.length ? t.members.map(m => <span data-ops-team-member={m} key={m}><Sigil name={m} size={20} /> {m}</span>) : <span data-ops-team-none="">{T('No members')}</span>}
               </p>
               {t.projects.length ? (
                 <p data-ops-team-projects="">
+                  <span data-ops-team-label="">{T('Projects:')}</span>
                   {t.projects.map(pr => (
                     <button data-ops-team-project={pr} disabled={!onOpenRoute} key={pr} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(pr)}`)} type="button">
                       {pr}
@@ -356,16 +359,17 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
 /** P14 (judge consult): one list, each agent once. Attention first, then running, then no run observed.
  * name → work/problem → status and last activity → open profile; infrastructure in Details. */
 function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; now: number; onOpen?: (name: string) => void }) {
-  const hot = (r: (typeof rows)[number]) => r.status === 'failing' || r.status === 'unknown' || (r.failed7d ?? 0) > 0
+  // P23c (judge pass 17): a failure in the last 7 days is history, not a current incident. Attention is what is failing
+  // or unreadable now; recent failures get their own quieter group below it.
+  const hot = (r: (typeof rows)[number]) => r.status === 'failing' || r.status === 'unknown'
+  const recentFail = (r: (typeof rows)[number]) => !hot(r) && r.status !== 'running' && (r.failed7d ?? 0) > 0
 
-  const attention = rows
-    .filter(hot)
-    .sort((a, b) => Number(b.status === 'failing') - Number(a.status === 'failing') || Number(a.status === 'unknown') - Number(b.status === 'unknown') || (b.failed7d ?? 0) - (a.failed7d ?? 0))
-
+  const attention = rows.filter(hot).sort((a, b) => Number(b.status === 'failing') - Number(a.status === 'failing') || (b.failed7d ?? 0) - (a.failed7d ?? 0))
+  const recent = rows.filter(recentFail).sort((a, b) => (b.failed7d ?? 0) - (a.failed7d ?? 0))
   const running = rows.filter(r => !hot(r) && r.status === 'running')
   // P15 (judge): inactive now is not the same as never observed.
-  const idleNow = rows.filter(r => !hot(r) && r.status !== 'running' && (r.lastActive || (r.runs7d ?? 0) > 0))
-  const quiet = rows.filter(r => !hot(r) && r.status !== 'running' && !(r.lastActive || (r.runs7d ?? 0) > 0))
+  const idleNow = rows.filter(r => !hot(r) && !recentFail(r) && r.status !== 'running' && (r.lastActive || (r.runs7d ?? 0) > 0))
+  const quiet = rows.filter(r => !hot(r) && !recentFail(r) && r.status !== 'running' && !(r.lastActive || (r.runs7d ?? 0) > 0))
 
   const context = (r: (typeof rows)[number]) =>
     r.failingTask
@@ -380,7 +384,7 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
 
   const row = (r: (typeof rows)[number]) => (
     <EntityRow
-      attrs={{ 'data-ops-fleet-row': r.name, 'data-ops-fleet-attention-row': hot(r) ? r.name : undefined }}
+      attrs={{ 'data-ops-fleet-row': r.name, 'data-ops-fleet-attention-row': hot(r) ? r.name : undefined, 'data-ops-fleet-recent-fail': recentFail(r) ? r.name : undefined }}
       context={context(r)}
       key={r.name}
       lead={<Sigil name={r.name} size={32} />}
@@ -392,13 +396,26 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
       }
       more={
         <Disclosure label={T('Details')}>
+          {/* P23c: only facts that are known; unknown infrastructure does not take rows of height. */}
           <dl data-ops-fleet-details="">
-            <dt>{T('Model')}</dt>
-            <dd>{r.model ?? T('unknown')}</dd>
-            <dt>{T('Lane')}</dt>
-            <dd>{r.lane ?? '\u2014'}</dd>
-            <dt>{T('Active tasks')}</dt>
-            <dd>{String(r.active)}</dd>
+            {r.model ? (
+              <>
+                <dt>{T('Model')}</dt>
+                <dd>{r.model}</dd>
+              </>
+            ) : null}
+            {r.lane ? (
+              <>
+                <dt>{T('Lane')}</dt>
+                <dd>{r.lane}</dd>
+              </>
+            ) : null}
+            {r.active ? (
+              <>
+                <dt>{T('Active tasks')}</dt>
+                <dd>{String(r.active)}</dd>
+              </>
+            ) : null}
             <dt>{T('Runs 7d')}</dt>
             <dd data-ops-runs-source={r.runsSource}>
               {r.runs7d}
@@ -436,6 +453,7 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
       {attention.length === 0 ? <p data-ops-fleet-attention="clear">{T('Nothing needs attention.')}</p> : null}
       {group('attention', T('Needs attention'), attention)}
       {group('running', T('Running'), running)}
+      {group('recent', T('Failed in the last 7 days'), recent)}
       {group('idle', T('No active run'), idleNow)}
       {group('quiet', T('No run observed'), quiet)}
     </div>
@@ -488,21 +506,22 @@ function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: Retur
       }
       more={
         <Disclosure label={T('Details and profiles')}>
+          {/* P24 (judge pass 18): the detail is two compact lines (facts, then profiles), not a stack of paragraphs. */}
           <div data-ops-skill-detail="">
-            {(r as { provenance?: string }).provenance ? <p data-ops-skill-provenance="">{T('Source')}: {(r as { provenance?: string }).provenance}</p> : null}
-            <p>{typeof r.usage === 'number' ? P(r.usage, 'Used {n} times') : T('Usage not available')}</p>
-            <p>{T('Profiles with this skill enabled')}</p>
-            {r.agents.length ? (
-              <p data-ops-skill-agents="">
-                {r.agents.map(a => (
-                  <button data-ops-skill-agent={a} disabled={!onOpenAgent} key={a} onClick={() => onOpenAgent?.(a)} type="button">
-                    {a}
-                  </button>
-                ))}
-              </p>
-            ) : (
-              <p>{T('None observed')}</p>
-            )}
+            <p data-ops-skill-facts="">
+              {(r as { provenance?: string }).provenance ? <span data-ops-skill-provenance="">{T('Source')}: {(r as { provenance?: string }).provenance}</span> : null}
+              <span>{typeof r.usage === 'number' ? P(r.usage, 'Used {n} times') : T('Usage not available')}</span>
+            </p>
+            <p data-ops-skill-agents="">
+              <span data-ops-team-label="">{T('Profiles with this skill enabled')}:</span>
+              {r.agents.length
+                ? r.agents.map(a => (
+                    <button data-ops-skill-agent={a} disabled={!onOpenAgent} key={a} onClick={() => onOpenAgent?.(a)} type="button">
+                      {a}
+                    </button>
+                  ))
+                : <span>{T('None observed')}</span>}
+            </p>
             {scanCapped ? <p>{T('Among the first {n} profiles checked').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}</p> : null}
           </div>
         </Disclosure>
@@ -835,6 +854,12 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
   }
 
   const missing = (['catalog', 'servers', 'platforms', 'providers'] as const).filter(k => r.value![k] === null)
+
+  // P24d (judge pass 18): a category fed by a source that failed has an unknown count, never a 0 that reads as "none".
+  const unknownCats = new Set(
+    [missing.includes('catalog') || missing.includes('servers') ? APP_CATEGORIES.mcp : null, missing.includes('platforms') ? APP_CATEGORIES.messaging : null, missing.includes('providers') ? APP_CATEGORIES.model : null].filter(Boolean)
+  )
+
   const base = filter === 'connected' ? cards.filter(x => x.connected) : cards
   // P16c: configured apps lead under every filter, and each group is in stable alphabetical order.
   const shown = searchRows(base, q, x => [x.name, x.description]).filter(x => !cat || x.category === cat).sort((a, b) => a.name.localeCompare(b.name))
@@ -860,7 +885,11 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
       {/* P22b: name the failed source in plain words and say what is still shown. */}
       {missing.length ? (
         <p data-ops-partial="" role="status">
-          {T("Couldn't load {sources}. Showing everything else.").replace('{sources}', missing.map(k => T(SOURCE_NAMES[k])).join(', '))}
+          {T("Couldn't load {sources}. Showing everything else.").replace('{sources}', missing.map(k => T(SOURCE_NAMES[k])).join(', '))}{' '}
+          {/* P24d: retry right where the failure is named; reuses the lens's own load. */}
+          <button data-ops-partial-retry="" onClick={r.reload} type="button">
+            {T('Retry')}
+          </button>
         </p>
       ) : null}
       {quick ? <QuickConnect cards={cards} onClose={() => setQuick(false)} onOpenRoute={onOpenRoute} /> : null}
@@ -870,7 +899,8 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
             {T("All")}</button>
           {cats.map(x => (
             <button aria-pressed={cat === x} data-ops-app-cat={x} key={x} onClick={() => setCat(x)} type="button">
-              {x} <span>{base.filter(c => c.category === x).length}</span>
+              {x}{' '}
+              {unknownCats.has(x) ? <span data-ops-count-unknown="">{T('unknown')}</span> : <span>{base.filter(c => c.category === x).length}</span>}
             </button>
           ))}
           {/* G15: the rail's footer is the library entry. */}
@@ -929,7 +959,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
           </div>
           {shown.length === 0 ? (
         <p data-ops-empty="apps">
-          {filter === 'connected' && !cat && !q.trim() ? T('Nothing connected yet.') : T('No app matches.')}{' '}
+          {cat && unknownCats.has(cat) ? T('This category could not be loaded.') : filter === 'connected' && !cat && !q.trim() ? T('Nothing connected yet.') : T('No app matches.')}{' '}
           <button data-ops-empty-reset="" onClick={() => (setFilter('all'), setQ(''), setCat(null))} type="button">
             {T('Show all apps')}
           </button>
