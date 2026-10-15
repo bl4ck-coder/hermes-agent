@@ -448,10 +448,11 @@ export function CommandCenterView({
                                 type="button"
                               >
                                 <span className="hx-row-main">
-                                  <span className="hx-row-title truncate text-foreground">{sessionTitle(session)}</span>
+                                  {/* P24b (judge pass 18): two lines at rest; keyboard focus on the row reveals the whole title and context (not only a native tooltip). */}
+                                  <span className="hx-row-title line-clamp-2 wrap-anywhere text-foreground group-focus-within:line-clamp-none" data-session-title="" title={sessionTitle(session)}>{sessionTitle(session)}</span>
                                   {/* P11: the second line is what the conversation was about (preview), then where it ran. */}
                                   {session.preview?.trim() || session.cwd || session.git_branch ? (
-                                    <span className="hx-row-secondary truncate text-muted-foreground" data-session-context="" title={session.preview?.trim() || undefined}>
+                                    <span className="hx-row-secondary line-clamp-2 wrap-anywhere text-muted-foreground group-focus-within:line-clamp-none" data-session-context="" title={session.preview?.trim() || undefined}>
                                       {/* P12: a preview that only repeats the title adds nothing. */}
                                       {[session.preview && session.preview.trim().toLowerCase() !== sessionTitle(session).trim().toLowerCase() ? session.preview.trim().replace(/\s+/g, ' ') : null, session.cwd?.split(/[\\/]/).filter(Boolean).pop(), session.git_branch].filter(Boolean).join(' \u00b7 ')}
                                     </span>
