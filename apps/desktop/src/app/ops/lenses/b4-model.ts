@@ -111,10 +111,8 @@ export interface Team {
   projects: string[]
   open: number
   members: string[]
-  /** P7: what the lane is working on now: up to 3 open task titles, blocked first, then newest. */
-  focus: string[]
-  /** P8: titles among `focus` that are blocked. */
-  blockedFocus: string[]
+  /** P7/P9: what the lane is working on now: up to 3 open tasks, blocked first, then newest. Status is per task, not per title. */
+  focus: { id: string; title: string; blocked: boolean }[]
   blocked: number
 }
 
@@ -139,8 +137,7 @@ export function teams(tasks: BoardTask[]): Team[] {
       projects: [...new Set(ts.map(t => t.project_id).filter((x): x is string => !!x))].sort(),
       open: ts.filter(t => OPEN.has(t.status)).length,
       members: [...new Set(ts.map(t => t.assignee).filter((x): x is string => !!x))].sort(),
-      focus: focusOf(ts).map(t => String(t.title)),
-      blockedFocus: focusOf(ts).filter(t => t.status === 'blocked').map(t => String(t.title)),
+      focus: focusOf(ts).map(t => ({ id: t.id, title: String(t.title), blocked: t.status === 'blocked' })),
       blocked: ts.filter(t => t.status === 'blocked').length
     }))
     .sort((a, b) => (a.lane === 'No lane' ? 1 : b.lane === 'No lane' ? -1 : b.open - a.open || a.lane.localeCompare(b.lane)))

@@ -253,10 +253,10 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
           </header>
           {t.focus.length ? (
             <ul aria-label={T('Working on')} data-ops-team-purpose="">
-              {t.focus.map((f, k) => (
-                <li data-ops-team-task-blocked={t.blockedFocus.includes(f) ? '' : undefined} key={k} title={f}>
-                  {t.blockedFocus.includes(f) ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
-                  {f}
+              {t.focus.map(f => (
+                <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.blocked ? '' : undefined} key={f.id} title={f.title}>
+                  {f.blocked ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
+                  {f.title}
                 </li>
               ))}
             </ul>
