@@ -231,7 +231,7 @@ function ProfileDetail({ profile }: { profile: ProfileInfo }) {
   return (
     <PanelDetail>
       {/* P7: one work column (reading width) holds identity, meta, SOUL and its actions. */}
-      <div className="mx-0 flex w-full max-w-(--width-reading) flex-col gap-6" data-profile-column="">
+      <div className="mx-auto flex w-full max-w-(--width-reading) flex-col gap-6" data-profile-column="">
       <header className="space-y-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3" data-profile-hero="">
@@ -341,19 +341,12 @@ function SoulEditor({ profileName }: { profileName: string }) {
           <PanelSectionLabel className="text-(length:--type-section) leading-(--type-section-lh) tracking-normal normal-case">SOUL.md</PanelSectionLabel>
           <p className="max-w-(--width-reading) text-(length:--type-meta) leading-(--type-meta-lh) text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
         </div>
-        <div className="flex items-center gap-3" data-profile-soul-actions="">
-          {dirty && <span className="text-sm text-muted-foreground">{p.unsavedChanges}</span>}
-          <Button disabled={!dirty || saving || loading} onClick={() => void handleSave()} size="sm">
-            <Save />
-            {saving ? p.saving : p.saveSoul}
-          </Button>
-        </div>
       </div>
 
       {loading ? (
         <PageLoader className="min-h-44" label={p.loadingSoul} />
       ) : (
-        <div className="min-h-[min(55vh,30rem)] [&>*]:min-h-[inherit] [&_.cm-content]:font-sans [&_.cm-content]:text-(length:--type-body) [&_.cm-content]:leading-(--type-reading-lh) [&_.cm-content]:px-4 [&_.cm-content]:py-3 [&_.cm-editor]:min-h-[inherit] [&_.cm-gutters]:hidden [&_.cm-line]:font-sans" data-profile-soul-editor="">
+        <div className="min-h-[min(62vh,36rem)] [&>*]:min-h-[inherit] [&_.cm-content]:font-sans [&_.cm-content]:text-(length:--type-body) [&_.cm-content]:leading-(--type-reading-lh) [&_.cm-content]:px-4 [&_.cm-content]:py-3 [&_.cm-editor]:min-h-[inherit] [&_.cm-gutters]:hidden [&_.cm-line]:font-sans" data-profile-soul-editor="">
           <CodeEditor
             filePath="SOUL.md"
             framed
@@ -365,6 +358,15 @@ function SoulEditor({ profileName }: { profileName: string }) {
           />
         </div>
       )}
+
+      {/* P9: Save sits under the instructions it saves, in the same column. */}
+      <div className="sticky bottom-0 flex items-center justify-end gap-3 bg-background/80 py-3 backdrop-blur" data-profile-soul-actions="">
+        {dirty && <span className="text-sm text-muted-foreground">{p.unsavedChanges}</span>}
+        <Button disabled={!dirty || saving || loading} onClick={() => void handleSave()} size="sm">
+          <Save />
+          {saving ? p.saving : p.saveSoul}
+        </Button>
+      </div>
 
       {error && (
         <div className="flex items-start gap-2 rounded bg-destructive/10 px-3 py-2 text-xs text-gn-destructive-copy">
