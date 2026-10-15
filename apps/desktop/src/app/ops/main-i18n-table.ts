@@ -2,6 +2,7 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "More actions": "Más acciones",
      "More filters": "Más filtros",
      "Checked": "Comprobado",
      "Blocked": "Bloqueada",
@@ -640,6 +641,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "More actions": "Plus d’actions",
      "More filters": "Plus de filtres",
      "Checked": "Vérifié",
      "Blocked": "Bloquée",
@@ -1277,6 +1279,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "More actions": "Weitere Aktionen",
      "More filters": "Weitere Filter",
      "Checked": "Geprüft",
      "Blocked": "Blockiert",
@@ -1914,6 +1917,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "More actions": "Другие действия",
      "More filters": "Другие фильтры",
      "Checked": "Проверено",
      "Blocked": "Заблокирована",
@@ -2551,6 +2555,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "More actions": "その他の操作",
      "More filters": "その他のフィルター",
      "Checked": "確認済み",
      "Blocked": "ブロック中",
@@ -3188,6 +3193,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "More actions": "更多操作",
      "More filters": "更多筛选",
      "Checked": "已检查",
      "Blocked": "受阻",
@@ -3825,6 +3831,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "More actions": "更多操作",
      "More filters": "更多篩選",
      "Checked": "已檢查",
      "Blocked": "受阻",
@@ -4462,6 +4469,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "More actions": "مزيد من الإجراءات",
      "More filters": "مزيد من عوامل التصفية",
      "Checked": "تم التحقق",
      "Blocked": "محظورة",

@@ -186,6 +186,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                       <button data-ops-approve={key} data-ops-write="" disabled={sending} onClick={() => void run(key, () => p.onKanban?.({ kind: 'approve_review', taskId: item.id }))} type="button">
                         {label(key, 'Approve', 'Approved')}
                       </button>
+                      {/* P12: one primary action per row; the rest fold behind a disclosure. */}
+                      <details data-ops-row-more=""><summary aria-label={T("More actions")}>{T("More actions")}</summary>
                       <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("What to change")} value={note} />
                       <button data-ops-write=""
                         disabled={sending || !note.trim()}
@@ -193,11 +195,13 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                         type="button"
                       >
                         {T("Request changes")}</button>
+                      </details>
                     </>
                   ) : item.origin === 'kanban_blocked' ? (
                     <>
                       <button onClick={() => p.onOpenTask?.(item.id)} type="button">
                         {T("Open")}</button>
+                      <details data-ops-row-more=""><summary aria-label={T("More actions")}>{T("More actions")}</summary>
                       <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("Unblock note")} value={note} />
                       <button data-ops-unblock={key}
                         data-ops-write=""
@@ -207,12 +211,13 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                       >
                         {label(key, 'Unblock', 'Unblocked')}
                       </button>
+                      </details>
                     </>
                   ) : (
                     <span data-ops-review={key}>{T("Not routable from this connection")}</span>
                   )}
                   {!p.readOnly && (item.origin === 'kanban_review' || item.origin === 'kanban_blocked') ? (
-                    <>
+                    <details data-ops-row-more="comment"><summary>{T("Comment")}</summary>
                       <input
                         aria-label={`comment for ${item.id}`}
                         onChange={e => setNotes(n => ({ ...n, [`c:${key}`]: e.target.value }))}
@@ -230,7 +235,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
                         type="button"
                       >
                         {T("Comment")}</button>
-                    </>
+                    </details>
                   ) : null}
                   {errors[key] && busy[key] === 'failed' ? <span role="alert">{errors[key]}</span> : null}
                   {errors[`d:${key}`] && busy[`d:${key}`] === 'failed' ? <span role="alert">{errors[`d:${key}`]}</span> : null}
