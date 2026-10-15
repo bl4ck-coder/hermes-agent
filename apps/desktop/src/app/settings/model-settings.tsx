@@ -971,7 +971,9 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
               <>
                 <SettingsFormRow id="settings-main-modelsel" label={m.model}>
                   <ModelSelect
+                    aria-labelledby="settings-main-modelsel-label"
                     className="min-w-60"
+                    id="settings-main-modelsel"
                     models={selectedProviderModels}
                     onValueChange={setSelectedModel}
                     provider={selectedProviderRow}
