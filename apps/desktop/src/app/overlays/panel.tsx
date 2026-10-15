@@ -303,7 +303,7 @@ export function PanelEmpty({ action, align = 'center', description, icon = 'inbo
   // P10: `start` reads as a page: a top-aligned reading column, next step as the content, art last and quiet.
   if (align === 'start') {
     return (
-      <div className="px-6 pt-8 pb-10" data-panel-empty={id ?? ''} data-panel-empty-align="start">
+      <div className="w-full self-stretch px-6 pt-8 pb-10" data-panel-empty={id ?? ''} data-panel-empty-align="start">
         <div className="flex max-w-(--width-reading) flex-col items-start gap-2 text-left" data-panel-empty-card="">
           {title ? <p className="text-[length:var(--type-section)] leading-(--type-section-lh) font-semibold text-foreground">{title}</p> : null}
           {description ? <p className="text-[length:var(--type-body)] leading-(--type-reading-lh) text-muted-foreground">{description}</p> : null}
