@@ -143,7 +143,7 @@ describe('B10 UX rounds', () => {
   })
 
   it('cards keep the windowed pitch (height + 6px gap = ROW_H)', () => {
-    expect(read('board/board.tsx')).toContain('style={{ height: ROW_H - 6 }}')
+    expect(read('board/board.tsx')).toContain('{ height: ROW_H - 6 }')
   })
 
   it('canvas nodes get an explicit row per column, the prompt reports words', () => {

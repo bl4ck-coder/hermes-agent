@@ -1,7 +1,6 @@
 import type * as React from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
 
 import { TitlebarIcon } from '@/app/shell/titlebar-icon'
 import { ZoomableImage } from '@/components/chat/zoomable-image'
@@ -40,12 +39,10 @@ import { $activeProfile } from '@/store/profile'
 
 import { useRefreshHotkey } from '../hooks/use-refresh-hotkey'
 import { useRouteEnumParam } from '../hooks/use-route-enum-param'
-
-import { T } from '../ops/main-i18n'
-
-import { useCachedThumb } from './thumb-cache'
 import { openSessionFromPicker } from '../open-session'
+import { T } from '../ops/main-i18n'
 import { PageSearchShell } from '../page-search-shell'
+import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
 import type { SetStatusbarItemGroup } from '../shell/statusbar-controls'
 
 import {
@@ -55,6 +52,7 @@ import {
   type ArtifactRecord,
   loadArtifactsForSessions
 } from './artifact-utils'
+import { useCachedThumb } from './thumb-cache'
 
 function formatArtifactTime(timestamp: number): string {
   return fmtDayTime.format(new Date(timestamp))
@@ -100,6 +98,52 @@ function paginationItems(page: number, pageCount: number): Array<number | 'ellip
 type CellCtx = {
   onOpen: (artifact: ArtifactRecord) => void | Promise<void>
   onOpenChat: (sessionId: string) => void
+  /** P24c: the shortest parent folder that tells same-named files apart (absent when the name is unique). */
+  pathHints: ReadonlyMap<string, string>
+}
+
+/**
+ * P24c (judge pass 18, Artifacts): two files called report.md must not look identical. For every file name shared by
+ * different paths, return the fewest trailing parent folders that make each one unique (the whole parent at worst).
+ */
+export function artifactPathHints(records: readonly Pick<ArtifactRecord, 'id' | 'kind' | 'label' | 'value'>[]): Map<string, string> {
+  const hints = new Map<string, string>()
+  const byName = new Map<string, Pick<ArtifactRecord, 'id' | 'kind' | 'label' | 'value'>[]>()
+
+  for (const r of records) {
+    if (r.kind === 'link') {
+      continue
+    }
+
+    const key = r.label.toLowerCase()
+    byName.set(key, [...(byName.get(key) ?? []), r])
+  }
+
+  for (const group of byName.values()) {
+    const paths = [...new Set(group.map(r => r.value))]
+
+    if (paths.length < 2) {
+      continue
+    }
+
+    const parents = new Map(paths.map(v => [v, v.split(/[\\/]/).filter(Boolean).slice(0, -1)]))
+    const deepest = Math.max(...[...parents.values()].map(x => x.length))
+    let depth = 1
+
+    while (depth < deepest && new Set([...parents.values()].map(x => x.slice(-depth).join('/'))).size < paths.length) {
+      depth += 1
+    }
+
+    for (const r of group) {
+      const hint = (parents.get(r.value) ?? []).slice(-depth).join('/')
+
+      if (hint) {
+        hints.set(r.id, hint)
+      }
+    }
+  }
+
+  return hints
 }
 
 interface ArtifactColumn {
@@ -165,6 +209,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
       const here = $activeProfile.get() || 'default'
       const away = (s: (typeof sessions)[number]) => Number((s.profile || 'default') !== here)
       const ordered = [...sessions].sort((l, r) => away(l) - away(r))
+
       const first = await loadArtifactsForSessions(ordered, loadPage, {
         onSession: found => {
           if (streaming && found.length) {
@@ -172,19 +217,25 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
           }
         }
       })
+
       const transient = first.failures.filter(({ error }) => isSlotWaitTimeout(error))
+
       // Give the pool a beat to drain before the single retry.
-      if (transient.length) await new Promise(resolve => setTimeout(resolve, 1500))
+      if (transient.length) {await new Promise(resolve => setTimeout(resolve, 1500))}
+
       const retry = transient.length
         ? await loadArtifactsForSessions(
             transient.map(f => f.session),
             loadPage
           )
         : null
+
       const nextArtifacts = retry ? [...first.artifacts, ...retry.artifacts] : first.artifacts
+
       const allFailures = retry
         ? [...first.failures.filter(f => !isSlotWaitTimeout(f.error)), ...retry.failures]
         : first.failures
+
       // A retired profile backend is the pool's normal idle state, not a read error: those
       // sessions are skipped quietly (opening the profile reconnects it) instead of warning on every boot.
       // Pool states (retired, saturated, still waiting after the retry) mean "that profile is not up right now",
@@ -371,7 +422,8 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
   // async title fetch re-rendered the page repeatedly. openArtifact is already
   // a useCallback; navigate is stable, so onOpenChat can be too.
   const openChat = useCallback((sessionId: string) => openSessionFromPicker(sessionId, navigate), [navigate])
-  const cellCtx: CellCtx = useMemo(() => ({ onOpen: openArtifact, onOpenChat: openChat }), [openArtifact, openChat])
+  const pathHints = useMemo(() => artifactPathHints(artifacts ?? []), [artifacts])
+  const cellCtx: CellCtx = useMemo(() => ({ onOpen: openArtifact, onOpenChat: openChat, pathHints }), [openArtifact, openChat, pathHints])
 
   return (
     <PageSearchShell
@@ -415,8 +467,18 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
       )}
       {!artifacts ? (
         <PageLoader label={a.indexing} />
+      ) : visibleArtifacts.length === 0 && counts.all > 0 ? (
+        // P24c (judge pass 18): a search or tab with no hits is not an empty library; its way out is to clear it.
+        <div className="grid h-full place-items-center px-6 text-center" data-artifacts-empty="filtered">
+          <div>
+            <div className="text-sm font-medium">{T('No artifacts match')}</div>
+            <Button className="mt-3" data-artifacts-empty-reset="" onClick={() => (query ? setQuery('') : setKindFilter('all'))} size="sm" variant="outline">
+              {query ? T('Clear search') : T('Show all')}
+            </Button>
+          </div>
+        </div>
       ) : visibleArtifacts.length === 0 ? (
-        <div className="grid h-full place-items-center px-6 text-center">
+        <div className="grid h-full place-items-center px-6 text-center" data-artifacts-empty="library">
           <div>
             <div className="text-sm font-medium">{a.noArtifactsTitle}</div>
             <div className="mt-1 text-xs text-muted-foreground">{a.noArtifactsDesc}</div>
@@ -449,6 +511,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                       key={artifact.id}
                       onImageError={markImageFailed}
                       onOpenChat={sessionId => openSessionFromPicker(sessionId, navigate)}
+                      pathHint={pathHints.get(artifact.id)}
                     />
                   ))}
                 </div>
@@ -472,7 +535,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                   // B40 (judge pass 5): Recent is a one-row summary; the full list stays in view right below.
                   <div className="grid grid-cols-3 gap-3 pb-3 pt-1" data-artifact-cards="" data-label={T('Recent')}>
                     {pagedFileArtifacts.slice(0, 3).map(artifact => (
-                      <ArtifactPreviewCard artifact={artifact} key={artifact.id} onOpen={openArtifact} />
+                      <ArtifactPreviewCard artifact={artifact} key={artifact.id} onOpen={openArtifact} pathHint={pathHints.get(artifact.id)} />
                     ))}
                   </div>
                 )}
@@ -532,7 +595,7 @@ export function artifactThumbnail(artifact: Pick<ArtifactRecord, 'href' | 'kind'
 }
 
 /** B33: a lit preview card for a file or link — type badge, name, where it came from, when. */
-function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; onOpen: (artifact: ArtifactRecord) => void }) {
+function ArtifactPreviewCard({ artifact, onOpen, pathHint }: { artifact: ArtifactRecord; onOpen: (artifact: ArtifactRecord) => void; pathHint?: string }) {
   const thumb = artifactThumbnail(artifact)
   const [thumbFailed, setThumbFailed] = useState(false)
   // B35: served from the local thumbnail cache; pending or failed keeps the monogram.
@@ -566,6 +629,7 @@ function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; o
       </span>
       <span className="truncate text-sm font-medium text-foreground">{artifact.label}</span>
       <span className="truncate text-xs text-muted-foreground tabular-nums" data-artifact-badge="">
+        {pathHint ? <span className="font-mono" data-artifact-path-hint="">{pathHint} · </span> : null}
         {artifactBadge(artifact)} ·{' '}
         {new Date(artifact.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
       </span>
@@ -631,9 +695,10 @@ interface ArtifactImageCardProps {
   failedImage: boolean
   onImageError: (id: string) => void
   onOpenChat: (sessionId: string) => void
+  pathHint?: string
 }
 
-function ArtifactImageCard({ artifact, failedImage, onImageError, onOpenChat }: ArtifactImageCardProps) {
+function ArtifactImageCard({ artifact, failedImage, onImageError, onOpenChat, pathHint }: ArtifactImageCardProps) {
   const { t } = useI18n()
   const a = t.artifacts
   const kindLabel = artifact.kind === 'image' ? a.kindImage : artifact.kind === 'file' ? a.kindFile : a.kindLink
@@ -665,13 +730,19 @@ function ArtifactImageCard({ artifact, failedImage, onImageError, onOpenChat }: 
       className="group/artifact overflow-hidden rounded-lg border border-(--ui-stroke-tertiary) bg-(--ui-chat-bubble-background)"
       data-tour="artifact-card"
     >
+      {failedImage ? (
+        // P24c (judge pass 18): a preview that failed collapses to a 32px mark with words, not a large empty image box.
+        <div className="flex items-center gap-3 px-2 pt-2" data-artifact-thumb="failed">
+          <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-md bg-(--ui-bg-tertiary) font-mono text-xs text-(--ui-text-tertiary)">
+            {artifactBadge(artifact).slice(0, 2)}
+          </span>
+          <span className="text-xs text-(--ui-text-tertiary)">{T('Preview unavailable')}</span>
+        </div>
+      ) : (
       <div
-        className={cn(
-          'relative flex h-40 w-full items-center justify-center overflow-hidden border-b border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) p-1.5',
-          failedImage && 'cursor-default'
-        )}
+        className="relative flex h-40 w-full items-center justify-center overflow-hidden border-b border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) p-1.5"
       >
-        {!failedImage && src && (
+        {src && (
           <ZoomableImage
             alt={artifact.label}
             className="max-h-40 max-w-full cursor-zoom-in rounded-md object-contain"
@@ -684,6 +755,7 @@ function ArtifactImageCard({ artifact, failedImage, onImageError, onOpenChat }: 
           />
         )}
       </div>
+      )}
 
       <div className="space-y-1.5 p-2">
         <div className="min-w-0">
@@ -694,7 +766,8 @@ function ArtifactImageCard({ artifact, failedImage, onImageError, onOpenChat }: 
           <div className="truncate text-[length:var(--conversation-caption-font-size)] font-medium">
             {artifact.label}
           </div>
-          <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">{artifact.value}</div>
+          {pathHint ? <div className="mt-0.5 truncate font-mono text-xs text-(--ui-text-secondary)" data-artifact-path-hint="">{pathHint}</div> : null}
+          <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)" title={artifact.value}>{artifact.value}</div>
         </div>
 
         <div className="truncate text-xs text-(--ui-text-tertiary)">
@@ -755,6 +828,7 @@ const PrimaryCell = memo(function PrimaryCell({ artifact, ctx }: { artifact: Art
   const Icon = brand ?? (isLink ? Link2 : FileText)
   const fetchedTitle = useLinkTitle(isLink ? artifact.href : null)
   const label = isLink ? fetchedTitle || urlSlugTitleLabel(artifact.href) : artifact.label
+  const pathHint = isLink ? undefined : ctx.pathHints.get(artifact.id)
 
   return (
     <ArtifactCellAction
@@ -769,6 +843,11 @@ const PrimaryCell = memo(function PrimaryCell({ artifact, ctx }: { artifact: Art
         {label}
         {isLink && <ExternalLinkIcon />}
       </span>
+      {pathHint ? (
+        <span className="max-w-[50%] shrink-0 truncate font-mono text-xs text-(--ui-text-tertiary)" data-artifact-path-hint="">
+          {pathHint}
+        </span>
+      ) : null}
     </ArtifactCellAction>
   )
 })
