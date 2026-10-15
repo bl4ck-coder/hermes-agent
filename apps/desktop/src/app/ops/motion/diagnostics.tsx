@@ -126,9 +126,6 @@ export function DiagnosticsPanel({
         <h4>
           {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
         </h4>
-        {errors.length === 0 ? (
-          <p data-ops-empty="errors">{T("No Ops request has failed this session.")}</p>
-        ) : (
           <>
             <ol data-ops-errors="">
               {errors.map((e, i) => (
@@ -140,7 +137,6 @@ export function DiagnosticsPanel({
             <button onClick={clearOpsErrors} type="button">
               {T("Clear errors")}</button>
           </>
-        )}
       </section>
       ) : null}
       {/* P10: the action follows the evidence, not the headline. */}
