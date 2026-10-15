@@ -3,9 +3,8 @@
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import type { BoardTask } from './office/control-room'
-
 import { AgentsLens, type B4Client } from './lenses/b4-lenses'
+import type { BoardTask } from './office/control-room'
 import { NeedsYouQueue } from './office/needs-you'
 
 const NOW = 1_800_000_000
