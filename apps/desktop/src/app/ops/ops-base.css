@@ -801,3 +801,9 @@
 :where([data-ops-channels-count]) :where(small) { font-size: var(--type-meta, 14px); color: var(--ops-muted); }
 :where([data-ops-team-projects]) { font-size: var(--type-body, 16px); line-height: var(--type-body-lh, 24px); }
 :where([data-ops-team-members]) { font-size: var(--type-meta, 14px); color: var(--ops-muted); }
+
+/* P7: the button paints the purpose text, so it carries the body scale (judge pass 7 defect). */
+:where([data-ops-team-projects]) :where([data-ops-team-project]) { font-size: var(--type-body, 16px); line-height: var(--type-body-lh, 24px); }
+:where([data-ops-app-grid]) { gap: var(--space-4, 16px); }
+:where([data-ops-app-grid]) :where(li > p) { font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); }
+
