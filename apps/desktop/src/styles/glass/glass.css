@@ -376,7 +376,7 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='gar
   color: rgb(var(--glass-gold-hi));
   text-shadow: 0 0 28px rgb(var(--glass-gold) / 0.28);
 }
-:where(html[data-hermes-theme^='gold-night']) :where([data-ops-greeting] > h2) { font-size: 2.25rem; }
+:where(html[data-hermes-theme^='gold-night']) :where([data-ops-greeting] > h2) { font-size: var(--type-section); line-height: var(--type-section-lh); } /* B41c: greeting demoted under the work (hierarchy spec) */
 :where(html[data-hermes-theme^='gold-night']) :where([data-ops-greeting] > p) { margin-top: 0.35rem; opacity: 0.8; }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   :where([data-ops-greeting] > h2, [data-ops-lens] > header > h2) { text-shadow: none; }
