@@ -164,7 +164,7 @@ if (want('probe')) {
   })
   save()
 }
-if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) } return await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr') })
+if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) }; await page.waitForFunction(() => { const v = [...document.querySelectorAll('[data-ops-stat-value]')]; return v.length > 0 && v.every(e => e.textContent !== 'unknown') }, null, { timeout: 25000 }).catch(() => {}); return await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr') })
 if (want('fps')) await sampleFps('office-motion', async () => {}, 6000)
 if (want('board')) await section('02-board', async () => {
   await go('/ops/board')
@@ -223,7 +223,7 @@ if (want('drag')) await section('02c-board-drag-over', async () => {
   await page.evaluate(() => document.querySelector('[data-ops-card][data-ops-dragging]')?.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__opsDt })))
   return `${r}; highlighted=${lit}`
 })
-if (want('canvas')) await section('03-canvas', async () => { await go('/ops/canvas'); return `nodes=${await page.locator('[data-ops-node-title]').count()}` })
+if (want('canvas')) await section('03-canvas', async () => { await go('/ops/canvas'); await page.evaluate(() => document.querySelector('[data-ops-canvas-hero]')?.scrollIntoView({ block: 'start' })); await sleep(300); return `nodes=${await page.locator('[data-ops-node-title]').count()}` })
 if (want('fps')) await sampleFps('canvas-pan-zoom', async end => {
   const c = page.locator('[data-ops-canvas], svg').first()
   const b = await c.boundingBox().catch(() => null)

@@ -430,3 +430,7 @@ html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] > div:first-child:
   background: radial-gradient(circle, rgb(var(--glass-gold-hi) / 0.95) 0 7px, rgb(var(--glass-gold) / 0.35) 8px 14px, transparent 15px), radial-gradient(circle, transparent 0 30px, rgb(var(--glass-gold-hi) / 0.4) 31px 32px, transparent 33px), radial-gradient(circle, transparent 0 46px, rgb(var(--glass-gold) / 0.28) 47px 48px, transparent 49px), radial-gradient(circle, transparent 0 58px, rgb(var(--glass-gold) / 0.14) 59px 60px, transparent 61px);
   box-shadow: 0 0 60px -12px rgb(var(--glass-gold) / 0.55);
 }
+
+/* -- Glass p12 (B35b): Profiles hero row as a lit identity card. */
+html[data-hermes-theme^='gold-night'] [data-profile-hero] { background: var(--glass-spot-top), radial-gradient(120% 160% at 0% 0%, rgb(var(--glass-gold) / 0.18), transparent 60%), linear-gradient(165deg, rgb(var(--glass-raised) / 0.6), rgb(var(--glass-panel) / 0.5)); border: 1px solid rgb(var(--glass-gold-hi) / 0.18); border-radius: 18px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07); padding: 14px 18px; }
+html[data-hermes-theme^='gold-night'] [data-profile-hero-name] { font-family: var(--glass-display-font, inherit); }

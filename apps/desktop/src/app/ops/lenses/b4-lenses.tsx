@@ -386,6 +386,28 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         <button data-ops-browse-library="" disabled={!onOpenRoute} onClick={() => onOpenRoute?.('/capabilities?tab=skills&hub=1')} type="button">
           {T("Browse library")}</button>
       </header>
+      {rows ? (
+        /* B35b: Skills hero: how much is on, and where it clusters. */
+        <div data-ops-skills-hero="">
+          <span data-ops-diag-ring="" style={{ '--ops-pct': String(rows.length ? rows.filter(r => r.enabled).length / rows.length : 0) } as CSSProperties}>
+            {rows.filter(r => r.enabled).length}/{rows.length}
+          </span>
+          <div>
+            <span data-ops-now-label="">{T('Skills')}</span>
+            <p data-ops-channels-hero-list="">
+              {types
+                .map(t => [t, rows.filter(r => (r.category || 'general') === t).length] as const)
+                .sort((x, y) => y[1] - x[1])
+                .slice(0, 6)
+                .map(([t, n]) => (
+                  <button aria-pressed={type === t} data-ops-chip="" key={t} onClick={() => setType(type === t ? '' : t)} type="button">
+                    {t} {n}
+                  </button>
+                ))}
+            </p>
+          </div>
+        </div>
+      ) : null}
       {progress ? (
         <p aria-live="polite" data-ops-install-progress={`${progress.done}/${progress.total}`} role="status">
           {T("Installing")}{' '}{progress.done} of {progress.total}…

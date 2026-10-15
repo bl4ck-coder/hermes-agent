@@ -98,6 +98,8 @@ export function AgentsView({ onClose }: AgentsViewProps) {
 
   return (
     <Panel closeLabel={t.agents.close} onClose={onClose}>
+      {/* B35b: the spawn tree always opens on its hero, empty or not. */}
+      <PanelHeader icon={<Codicon name="hubot" />} stats={agentHeroStats(subagentsForPanel(subagentsBySession, activeSessionId), t.agents)} subtitle={t.agents.subtitle} title={t.agents.title} />
       {tree.length === 0 ? (
         <PanelEmpty
           action={
@@ -111,7 +113,6 @@ export function AgentsView({ onClose }: AgentsViewProps) {
         />
       ) : (
         <>
-          <PanelHeader subtitle={t.agents.subtitle} title={t.agents.title} />
           <SubagentTree tree={tree} />
         </>
       )}
@@ -444,4 +445,19 @@ export function SubagentRow({ node, depth = 0, nowMs }: { node: SubagentNode; de
       ) : null}
     </div>
   )
+}
+
+function agentHeroStats(list: readonly unknown[], a: Translations['agents']) {
+  const n = { done: 0, failed: 0, running: 0 }
+  for (const x of list) {
+    const st = String((x as { status?: unknown }).status ?? '')
+    if (/fail|error/i.test(st)) n.failed++
+    else if (/done|complete|success/i.test(st)) n.done++
+    else n.running++
+  }
+  return [
+    { label: a.running, tone: n.running ? ('good' as const) : ('muted' as const), value: n.running },
+    { label: a.done, value: n.done },
+    { label: a.failed, tone: n.failed ? ('bad' as const) : undefined, value: n.failed }
+  ]
 }
