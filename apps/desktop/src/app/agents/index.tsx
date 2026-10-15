@@ -307,7 +307,7 @@ function DelegationGroup({ group, nowMs }: { group: RootGroup; nowMs: number }) 
 
   return (
     <section className="grid min-w-0 gap-3">
-      <p className="text-[0.66rem] font-medium uppercase tracking-wider text-muted-foreground/70">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
         {group.delegationIndex > 0 ? t.agents.delegation(group.delegationIndex) : ''}{' '}
         <span className="text-muted-foreground/50">·</span> {t.agents.workers(group.nodes.length)}
         {activeWorkers > 0 ? <span className="text-primary/85"> · {t.agents.workersActive(activeWorkers)}</span> : null}
@@ -339,9 +339,9 @@ function StreamLine({
   const glyph = streamGlyph(entry)
 
   return (
-    <div className="flex min-w-0 items-baseline gap-2 text-[0.72rem] leading-relaxed" ref={enterRef}>
+    <div className="flex min-w-0 items-baseline gap-2 text-xs leading-relaxed" ref={enterRef}>
       {glyph ? <span className="flex h-[0.95rem] shrink-0 items-center">{glyph}</span> : null}
-      <span className={cn('min-w-0 flex-1 wrap-anywhere', tone, isMono && 'font-mono text-[0.69rem]')}>
+      <span className={cn('min-w-0 flex-1 wrap-anywhere', tone, isMono && 'font-mono text-xs')}>
         {entry.text}
         {active ? (
           <GlyphSpinner
@@ -402,12 +402,12 @@ export function SubagentRow({ node, depth = 0, nowMs }: { node: SubagentNode; de
             {node.goal}
           </span>
           {subtitle.length > 0 ? (
-            <FadeText className="text-[0.66rem] leading-[1.05rem] text-muted-foreground/65">
+            <FadeText className="text-xs leading-[1.05rem] text-muted-foreground/65">
               {subtitle.join(' · ')}
             </FadeText>
           ) : null}
         </span>
-        {running ? <ActivityTimerText className="mt-1 shrink-0 text-[0.6rem]" seconds={durationSeconds} /> : null}
+        {running ? <ActivityTimerText className="mt-1 shrink-0 text-xs" seconds={durationSeconds} /> : null}
       </button>
 
       {visibleRows.length > 0 ? (
@@ -426,16 +426,16 @@ export function SubagentRow({ node, depth = 0, nowMs }: { node: SubagentNode; de
 
       {open && fileLines.length > 0 ? (
         <div className="grid min-w-0 gap-0.5 pl-6" data-selectable-text="true">
-          <p className="text-[0.58rem] font-medium tracking-wider text-muted-foreground/60 uppercase">
+          <p className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
             {t.agents.files}
           </p>
           {fileLines.slice(0, 8).map(line => (
-            <p className="wrap-break-word font-mono text-[0.67rem] leading-relaxed text-muted-foreground/80" key={line}>
+            <p className="wrap-break-word font-mono text-xs leading-relaxed text-muted-foreground/80" key={line}>
               {line}
             </p>
           ))}
           {fileLines.length > 8 ? (
-            <p className="font-mono text-[0.67rem] leading-relaxed text-muted-foreground/65">
+            <p className="font-mono text-xs leading-relaxed text-muted-foreground/65">
               {t.agents.moreFiles(fileLines.length - 8)}
             </p>
           ) : null}

@@ -1537,7 +1537,7 @@ export function ChatBar({
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <Button
-                          className="h-6 rounded-md px-2 text-[0.68rem]"
+                          className="h-6 rounded-md px-2 text-xs"
                           onClick={() => exitQueuedEdit('cancel')}
                           type="button"
                           variant="ghost"
@@ -1545,7 +1545,7 @@ export function ChatBar({
                           {t.common.cancel}
                         </Button>
                         <Button
-                          className="h-6 rounded-md px-2 text-[0.68rem]"
+                          className="h-6 rounded-md px-2 text-xs"
                           onClick={() => exitQueuedEdit('save')}
                           type="button"
                         >

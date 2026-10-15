@@ -450,7 +450,7 @@ html[data-hermes-theme^='gold-night'] [data-settings-row] :where(.text-muted-for
 html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select, button[role='combobox']) { min-height: 2.25rem; }
 html[data-hermes-theme^='gold-night'] [data-overlay-surface] nav :where(button, a) { font-size: 0.84rem; }
 /* Artifacts: the preview strip is labelled "Recent". */
-html[data-hermes-theme^='gold-night'] [data-artifact-cards]::before { color: rgb(var(--glass-gold-hi) / 0.8); content: attr(data-label); font-size: 0.66rem; grid-column: 1 / -1; letter-spacing: 0.1em; text-transform: uppercase; }
+html[data-hermes-theme^='gold-night'] [data-artifact-cards]::before { color: rgb(var(--glass-gold-hi) / 0.8); content: attr(data-label); font-size: var(--type-caption); grid-column: 1 / -1; letter-spacing: 0.1em; text-transform: uppercase; }
 
 /* B36b: settings pages without SettingsSection (Model, etc.) still read as one deliberate card, not a form floating on the void. */
 html[data-hermes-theme^='gold-night'] [data-settings-body] > :not(:has([data-settings-section])) { background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.45), rgb(var(--glass-panel) / 0.35)); border: 1px solid rgb(var(--glass-gold-hi) / 0.12); border-radius: 18px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); margin-inline: 1rem; padding: 1.1rem 1.4rem; }
@@ -468,7 +468,7 @@ html[data-hermes-theme^='gold-night'] [data-ops-roster] dd[data-ops-roster-desc]
 /* -- B38 (judge top-5): App Settings decision blocks; Profiles SOUL at reading scale; Capabilities mode switch; Cron glance tiles. */
 html[data-hermes-theme^='gold-night'] [data-settings-decisions] { display: grid; gap: 14px; }
 html[data-hermes-theme^='gold-night'] [data-settings-block] { background: rgb(var(--glass-ink, 20 17 12) / 0.35); border: 1px solid rgb(var(--glass-gold-hi, 230 190 110) / 0.14); border-radius: 14px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05); padding: 16px 18px; }
-html[data-hermes-theme^='gold-night'] [data-settings-block-title] { color: rgb(var(--glass-gold-hi, 230 190 110) / 0.9); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; margin: 0 0 6px; text-transform: uppercase; }
+html[data-hermes-theme^='gold-night'] [data-settings-block-title] { color: rgb(var(--glass-gold-hi, 230 190 110) / 0.9); font-size: var(--type-caption); font-weight: 600; letter-spacing: 0.12em; margin: 0 0 6px; text-transform: uppercase; }
 html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-scroller, html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-content { font-family: var(--font-sans, ui-sans-serif, system-ui); font-size: 14px; line-height: 1.7; }
 html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-content { padding: 18px 22px; }
 html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-line { max-width: 84ch; }
@@ -485,3 +485,24 @@ html[data-hermes-theme^='gold-night'] [data-settings-block-title] { font-size: 0
 html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-empty-card] { max-width: 52rem; padding: 3rem 3.5rem; width: 100%; }
 html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] [data-agents-empty-hint] { font-size: 1.05rem; }
 html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] :where(svg) { max-width: none; }
+
+/* -- B41 (hierarchy spec, section 6): frames go, hierarchy comes from the type scale and space. Gold stays on selection, primary action and focus. */
+html[data-hermes-theme^='gold-night'] [data-hero-band] { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-hx='page-header'] .hx-page-title { font-family: var(--glass-display-font, inherit); }
+html[data-hermes-theme^='gold-night'] [data-hx='metric'][data-tone='good'] [data-hx-metric-value] { color: rgb(126 231 135); }
+html[data-hermes-theme^='gold-night'] [data-hx='metric'][data-tone='warn'] [data-hx-metric-value] { color: rgb(var(--glass-gold-hi)); }
+html[data-hermes-theme^='gold-night'] [data-hx='metric'][data-tone='bad'] [data-hx-metric-value] { color: rgb(255 123 114); }
+html[data-hermes-theme^='gold-night'] [data-settings-body] > * { max-width: var(--width-form); }
+html[data-hermes-theme^='gold-night'] [data-settings-body] > :not(:has([data-settings-section])) { background: none; border: 0; box-shadow: none; padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-settings-section] { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-settings-section] + [data-settings-section] { margin-top: var(--space-6); }
+html[data-hermes-theme^='gold-night'] [data-settings-block] { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-settings-block] + [data-settings-block] { border-top: 1px solid rgb(var(--glass-gold-hi) / 0.1); margin-top: var(--space-5); padding-top: var(--space-5); }
+html[data-hermes-theme^='gold-night'] [data-settings-block-title] { color: inherit; font-size: var(--type-section); letter-spacing: -0.01em; line-height: var(--type-section-lh); text-transform: none; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(label, h3, h4) { font-size: var(--type-meta); }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(p) { font-size: var(--type-meta); line-height: var(--type-meta-lh); max-width: 68ch; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select, button[role='combobox']) { font-size: var(--type-meta); max-width: var(--width-field); min-height: var(--control-min); }
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-empty-card] { background: none; border: 0; box-shadow: none; max-width: var(--width-reading); padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-profile-soul-editor]:focus-within { box-shadow: 0 0 0 1px rgb(var(--glass-gold-hi) / 0.45); }
+html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-scroller, html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-content { font-size: var(--type-body); line-height: var(--type-reading-lh); }
+html[data-hermes-theme^='gold-night'] [data-cron-glance-tile] { background: none; box-shadow: none; }

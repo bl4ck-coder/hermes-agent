@@ -58,7 +58,7 @@ export function ReviewShipBar() {
     // it's a deliberate read-only view, not a broken pane.
     return (
       <div
-        className="shrink-0 px-2 pb-1.5 text-center text-[0.64rem] text-(--ui-text-tertiary)"
+        className="shrink-0 px-2 pb-1.5 text-center text-xs text-(--ui-text-tertiary)"
         data-suppress-pane-reveal-side=""
       >
         {c.readOnlyScope}

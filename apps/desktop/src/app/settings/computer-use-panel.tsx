@@ -172,14 +172,14 @@ export function ComputerUsePanel({ onConfiguredChange }: ComputerUsePanelProps) 
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="min-w-0">
           {status.can_grant ? (
-            <p className="text-[0.72rem] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Grants attach to CuaDriver&apos;s own identity (com.trycua.driver), not Hermes — so the dialog is
               attributed to the process that drives your Mac.
             </p>
           ) : (
-            <p className="text-[0.72rem] text-muted-foreground">{PLATFORM_NOTE[status.platform] ?? ''}</p>
+            <p className="text-xs text-muted-foreground">{PLATFORM_NOTE[status.platform] ?? ''}</p>
           )}
-          {status.version && <p className="text-[0.68rem] text-muted-foreground/80">{status.version}</p>}
+          {status.version && <p className="text-xs text-muted-foreground/80">{status.version}</p>}
         </div>
         <Button onClick={() => void refresh()} size="sm" variant="text">
           <RefreshCw className="size-3.5" />

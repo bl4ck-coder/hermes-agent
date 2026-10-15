@@ -289,7 +289,7 @@ export function LocalModelsBrowseSection(): ReactElement {
                           <>
                             <ProgressBar paused={dJob.status === 'paused'} percent={dJob.percent} />
 
-                            <span className="text-[0.68rem] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               {downloadStatusText(dJob, copy)}
                             </span>
 

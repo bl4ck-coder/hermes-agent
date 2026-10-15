@@ -122,7 +122,7 @@ function Header({ card, titleRef, ...rest }: PartProps & { titleRef: RefObject<H
             {card.name}
           </DialogTitle>
 
-          <span className="shrink-0 text-[0.6875rem] text-(--ui-text-tertiary)">{connectorKindWord(card, copy)}</span>
+          <span className="shrink-0 text-xs text-(--ui-text-tertiary)">{connectorKindWord(card, copy)}</span>
 
           {showsCatalogMark(card) ? <CatalogMark /> : null}
 
@@ -131,7 +131,7 @@ function Header({ card, titleRef, ...rest }: PartProps & { titleRef: RefObject<H
           </Badge>
         </div>
 
-        <DialogDescription className="truncate text-[0.72rem] text-(--ui-text-secondary)">
+        <DialogDescription className="truncate text-xs text-(--ui-text-secondary)">
           {card.description ?? localTarget(card) ?? copy.state[card.stateWord]}
         </DialogDescription>
       </div>
@@ -297,7 +297,7 @@ function HostedLead({
 
       {showsReason ? (
         <div className="flex items-center gap-3">
-          <p className="min-w-0 flex-1 text-[0.72rem] text-(--ui-text-secondary)">{reason}</p>
+          <p className="min-w-0 flex-1 text-xs text-(--ui-text-secondary)">{reason}</p>
           {waiting ? (
             <Button onClick={waiting} size="inline" variant="textStrong">
               {t.connectorsPage.card.verb.stopWaiting}

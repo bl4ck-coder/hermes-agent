@@ -1394,7 +1394,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                 }
                 className={cn(slot.enabled === false && 'opacity-60')}
                 description={
-                  <span className="font-mono text-[0.68rem]">
+                  <span className="font-mono text-xs">
                     {slot.provider} · {slot.model || m.model}
                   </span>
                 }
@@ -1466,7 +1466,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                 </div>
               }
               description={
-                <span className="font-mono text-[0.68rem]">
+                <span className="font-mono text-xs">
                   {currentMoaPreset.aggregator.provider} · {currentMoaPreset.aggregator.model}
                 </span>
               }

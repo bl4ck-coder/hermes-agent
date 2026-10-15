@@ -180,7 +180,7 @@ export function Intro({ personality, seed }: IntroProps) {
 
         <p className="m-0 text-center leading-normal tracking-tight">{body}</p>
       </div>
-      <div className="m-0 mt-3 text-center text-[0.72rem] text-muted-foreground/60" data-intro-hint="">
+      <div className="m-0 mt-3 text-center text-xs text-muted-foreground/60" data-intro-hint="">
         {t.teach.chatIntroHint}
       </div>
     </div>

@@ -262,7 +262,7 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
               title={h.pickerTitle}
             />
           </div>
-          <p className="shrink-0 px-1 text-[0.65rem] leading-4 text-(--ui-text-quaternary)">{h.pickerHint}</p>
+          <p className="shrink-0 px-1 text-xs leading-4 text-(--ui-text-quaternary)">{h.pickerHint}</p>
         </div>
       )}
     </section>

@@ -1167,7 +1167,7 @@ function CronJobRuns({
                 <Codicon name="loading" size="0.75rem" spinning />
                 <span className="truncate">{c.queuedRun}</span>
               </span>
-              <span className="shrink-0 text-[0.62rem] text-muted-foreground/55 tabular-nums">
+              <span className="shrink-0 text-xs text-muted-foreground/55 tabular-nums">
                 {formatRunTime(pendingRunAt / 1000)}
               </span>
             </div>
@@ -1181,7 +1181,7 @@ function CronJobRuns({
                 <span className="truncate text-foreground/85">
                   <CronRunText text={run.title?.trim() || run.preview?.trim() || run.id} />
                 </span>
-                <span className="shrink-0 text-[0.62rem] text-muted-foreground/55 tabular-nums">
+                <span className="shrink-0 text-xs text-muted-foreground/55 tabular-nums">
                   {formatRunTime(run.last_active || run.started_at)}
                 </span>
               </div>
@@ -1197,7 +1197,7 @@ function CronJobRuns({
                 <span className="truncate text-foreground/85">
                   <CronRunText text={run.title?.trim() || run.preview?.trim() || run.id} />
                 </span>
-                <span className="shrink-0 text-[0.62rem] text-muted-foreground/55 tabular-nums">
+                <span className="shrink-0 text-xs text-muted-foreground/55 tabular-nums">
                   {formatRunTime(run.last_active || run.started_at)}
                 </span>
               </button>
@@ -1215,7 +1215,7 @@ function CronJobRuns({
               <div data-cron-run-group="" key={`group-${head.id}`}>
                 {renderRun(head)}
                 <details data-cron-run-group-more="">
-                  <summary className="cursor-pointer px-2 py-0.5 text-[0.62rem] text-muted-foreground">
+                  <summary className="cursor-pointer px-2 py-0.5 text-xs text-muted-foreground">
                     {`×${group.length} · ${c.runHistory}`}
                   </summary>
                   <div className="flex flex-col gap-px">{rest.map(renderRun)}</div>
@@ -1761,7 +1761,7 @@ function CronRunText({ text }: { text: string }) {
   return (
     <>
       <span
-        className="mr-2 inline-block rounded-full border px-1.5 py-px text-[0.6rem] font-medium uppercase tracking-wide"
+        className="mr-2 inline-block rounded-full border px-1.5 py-px text-xs font-medium uppercase tracking-wide"
         data-cron-run-status={status}
       >
         {label.slice(0, status.length)}

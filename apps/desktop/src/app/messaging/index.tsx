@@ -700,7 +700,7 @@ function PlatformRow({
             <span
               aria-label={t.messaging.pendingAria(pendingCount)}
               className={cn(
-                'inline-flex min-w-4 items-center justify-center rounded-full px-1 text-[0.66rem] font-medium tabular-nums',
+                'inline-flex min-w-4 items-center justify-center rounded-full px-1 text-xs font-medium tabular-nums',
                 PILL_TONE.warn
               )}
             >
@@ -1102,7 +1102,7 @@ function MessagingField({
       title={
         <span className="flex flex-wrap items-center gap-2">
           <label htmlFor={fieldId}>{copy.label}</label>
-          {field.is_set && <span className="text-[0.66rem] font-medium text-primary">{m.saved}</span>}
+          {field.is_set && <span className="text-xs font-medium text-primary">{m.saved}</span>}
         </span>
       }
     />
@@ -1147,7 +1147,7 @@ function StatePill({ children, tone }: { children: string; tone: StatusTone }) {
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.66rem] font-medium',
+        'inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium',
         PILL_TONE[tone]
       )}
     >
@@ -1161,7 +1161,7 @@ function SetupPill({ active, children }: { active: boolean; children: string }) 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[0.66rem] font-medium',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
         PILL_TONE[active ? 'good' : 'muted']
       )}
     >

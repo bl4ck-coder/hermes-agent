@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { PageHeader } from '@/components/layout/hierarchy'
 import { cn } from '@/lib/utils'
 
 /** B35: one lit hero band for app pages (Cron, Sessions, Settings, Capabilities): icon tile, title, stats, optional sparkline. */
@@ -20,17 +21,17 @@ export function HeroSpark({ label, srSummary, values }: { label?: ReactNode; srS
         ))}
       </span>
       <span className="sr-only">{srSummary ?? values.join(', ')}</span>
-      {label ? <figcaption className="text-[0.62rem] uppercase tracking-wider text-muted-foreground">{label}</figcaption> : null}
+      {label ? <figcaption className="text-xs uppercase tracking-wider text-muted-foreground">{label}</figcaption> : null}
     </figure>
   )
 }
 
+/** B41: HeroBand is now a PageHeader (hierarchy spec): the first stat becomes the view's ONE PrimaryMetric,
+ *  the rest render inline as secondary metrics, and the icon tile / decorative sparkline are dropped. */
 export function HeroBand({
   actions,
   className,
-  icon,
   id,
-  spark,
   stats,
   subtitle,
   title
@@ -44,36 +45,18 @@ export function HeroBand({
   subtitle?: ReactNode
   title: ReactNode
 }) {
+  const [first, ...rest] = stats ?? []
+
   return (
-    <section
-      className={cn('mb-3 flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-(--ui-stroke-tertiary) px-4 py-3', className)}
-      data-hero-band={id}
-    >
-      {icon ? (
-        <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-xl text-lg" data-hero-band-icon="">
-          {icon}
-        </span>
-      ) : null}
-      <div className="min-w-0 flex-1">
-        <h2 className="truncate text-lg font-medium leading-tight text-foreground" data-hero-band-title="">
-          {title}
-        </h2>
-        {subtitle ? <p className="truncate text-xs text-muted-foreground/80">{subtitle}</p> : null}
-      </div>
-      {stats?.length ? (
-        <dl className="m-0 flex gap-5" data-hero-band-stats="">
-          {stats.map((s, i) => (
-            <div className="min-w-0" data-tone={s.tone} key={i}>
-              <dt className="text-[0.62rem] uppercase tracking-wider text-muted-foreground">{s.label}</dt>
-              <dd className="m-0 text-xl font-semibold tabular-nums leading-tight text-foreground" data-hero-band-value="">
-                {s.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      ) : null}
-      {spark}
-      {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
-    </section>
+    <div className={className} data-hero-band={id}>
+      <PageHeader
+        actions={actions}
+        context={subtitle}
+        id={id}
+        metric={first ? { label: first.label, tone: first.tone, value: first.value } : undefined}
+        secondary={rest.map(s => ({ label: s.label, tone: s.tone, value: s.value }))}
+        title={title}
+      />
+    </div>
   )
 }

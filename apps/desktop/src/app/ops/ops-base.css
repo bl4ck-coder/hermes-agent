@@ -50,7 +50,7 @@
 }
 :where([data-ops-root]) :where(textarea) { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; min-height: 8em; width: 100%; }
 :where([data-ops-root]) :where(:focus-visible) { outline: 2px solid var(--ops-gold); outline-offset: 1px; }
-:where([data-ops-root]) :where(kbd) { border: 1px solid var(--ops-line); border-radius: 4px; font-size: 10px; margin-left: 4px; opacity: 0.75; padding: 0 4px; }
+:where([data-ops-root]) :where(kbd) { border: 1px solid var(--ops-line); border-radius: 4px; font-size: 12px; margin-left: 4px; opacity: 0.75; padding: 0 4px; }
 :where([data-ops-root]) :where(label) { align-items: center; display: inline-flex; gap: 6px; }
 :where([data-ops-root]) :where(form) { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -58,7 +58,7 @@
 :where([data-ops-root]) :where(h1, h2, h3, h4) { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; margin: 0 0 6px; }
 :where([data-ops-root]) :where(h2) { font-size: 14px; }
 :where([data-ops-root]) :where(p) { margin: 0 0 6px; }
-:where([data-ops-root]) :where(small) { color: var(--ops-muted); font-size: 11px; }
+:where([data-ops-root]) :where(small) { color: var(--ops-muted); font-size: 12px; }
 :where([data-ops-root]) :where(pre, code) { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
 :where([data-ops-root]) :where(pre) { background: var(--ops-surface); border-radius: 6px; max-height: 320px; overflow: auto; padding: 8px; white-space: pre-wrap; }
 
@@ -77,7 +77,7 @@
 
 /* Tables */
 :where([data-ops-root]) :where(table) { border-collapse: collapse; font-variant-numeric: tabular-nums; width: 100%; }
-:where([data-ops-root]) :where(th) { color: var(--ops-muted); font-size: 11px; font-weight: 600; text-align: left; text-transform: uppercase; }
+:where([data-ops-root]) :where(th) { color: var(--ops-muted); font-size: 12px; font-weight: 600; text-align: left; text-transform: uppercase; }
 :where([data-ops-root]) :where(th, td) { border-bottom: 1px solid var(--ops-line); padding: 5px 8px; vertical-align: middle; }
 
 /* Definition lists: two-column key/value */
@@ -125,7 +125,7 @@
 }
 :where([data-ops-rail-list]) :where(button) { background: transparent; border-color: transparent; justify-content: flex-start; width: 100%; }
 :where([data-ops-rail-list]) :where(button:hover:not(:disabled)) { background: var(--ops-surface-2); }
-:where([data-ops-rail-list]) :where(h2, h3, h4, [role='heading']) { color: var(--ops-muted); font-size: 10px; letter-spacing: 0.08em; margin: 10px 0 2px; text-transform: uppercase; }
+:where([data-ops-rail-list]) :where(h2, h3, h4, [role='heading']) { color: var(--ops-muted); font-size: 12px; letter-spacing: 0.08em; margin: 10px 0 2px; text-transform: uppercase; }
 :where([data-ops-rail-item], button[data-ops-lens]) { align-items: center; display: flex; gap: 4px; justify-content: space-between; }
 :where([data-ops-rail-footer]) { border-top: 1px solid var(--ops-line); display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; padding-top: 8px; }
 
@@ -134,7 +134,7 @@
 :where([data-ops-stats]) { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); margin-bottom: 12px; }
 :where([data-ops-stats]) :where([data-ops-stat]) { align-items: flex-start; flex-direction: column; gap: 2px; padding: 10px 12px; text-align: left; white-space: normal; }
 :where([data-ops-stat-value]) { font-size: 22px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 1.1; }
-:where([data-ops-stat-sub]) { color: var(--ops-muted); font-size: 11px; }
+:where([data-ops-stat-sub]) { color: var(--ops-muted); font-size: 12px; }
 :where([data-ops-stat][data-ops-alarm='garnet']) { border-color: color-mix(in srgb, #b4434b 60%, transparent); }
 :where([data-ops-orrery]) { background: var(--ops-surface); border: 1px solid var(--ops-line); border-radius: var(--ops-radius); margin-bottom: 10px; }
 :where([data-ops-queue], [data-ops-project-overview], [data-ops-needs-you]) { margin-bottom: 10px; }
@@ -190,7 +190,7 @@
 :where([data-ops-inspector-body]) { display: flex; flex-direction: column; gap: 10px; margin: 0 12px; overflow: auto; padding: 4px 0 12px; }
 :where([data-ops-inspector-head]) { align-items: baseline; display: flex; gap: 8px; justify-content: space-between; min-width: 0; }
 :where([data-ops-inspector-title]) { font-size: 14px; font-weight: 600; line-height: 1.3; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:where([data-ops-inspector-badge]) { border: 1px solid var(--ops-line-strong); border-radius: 999px; color: var(--ops-muted); flex: none; font-size: 11px; padding: 1px 8px; }
+:where([data-ops-inspector-badge]) { border: 1px solid var(--ops-line-strong); border-radius: 999px; color: var(--ops-muted); flex: none; font-size: 12px; padding: 1px 8px; }
 :where([data-ops-inspector-rows]) { display: grid; gap: 0; margin: 0; }
 :where([data-ops-inspector-row]) { border-bottom: 1px solid var(--ops-line); display: grid; gap: 8px; grid-template-columns: minmax(84px, 40%) 1fr; padding: 6px 0; }
 :where([data-ops-inspector-row]) :where(dt) { color: var(--ops-muted); font-size: 12px; }
@@ -198,7 +198,7 @@
 :where([data-ops-inspector-text]) { color: var(--ops-muted); font-size: 12px; line-height: 1.5; margin: 0; white-space: pre-wrap; }
 :where([data-ops-inspector-hint], [data-ops-inspector-empty]) { color: var(--ops-muted); font-size: 12px; font-style: italic; margin: 0; }
 :where([data-ops-inspector-history]) { display: grid; font-size: 12px; gap: 6px; margin: 0; padding-left: 18px; }
-:where([data-ops-rail-list] [data-ops-section]) { color: var(--ops-muted); font-size: 10px; letter-spacing: 0.08em; margin: 10px 0 2px; text-transform: uppercase; }
+:where([data-ops-rail-list] [data-ops-section]) { color: var(--ops-muted); font-size: 12px; letter-spacing: 0.08em; margin: 10px 0 2px; text-transform: uppercase; }
 
 /* Icon rail: one glyph per row; long labels clip instead of wrapping into the next row. */
 :where([data-ops-rail-list][data-ops-rail='icons']) { align-items: stretch; overflow-x: hidden; }
@@ -220,14 +220,14 @@
 :where([data-ops-card]) > :where([data-ops-open-task]) {
   -webkit-box-orient: vertical; -webkit-line-clamp: 2; display: -webkit-box; font-size: 12.5px; font-weight: 500; grid-area: title; line-height: 1.35; overflow: hidden;
 }
-:where([data-ops-card]) > :where([data-ops-assignee]) { color: var(--ops-muted); font-size: 11px; grid-area: meta; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; align-self: end; max-width: 55%; }
-:where([data-ops-card]) > :where([data-ops-card-signals]) { align-self: end; display: flex; font-size: 11px; gap: 6px; grid-area: meta; justify-self: end; overflow: hidden; white-space: nowrap; color: var(--ops-muted); }
+:where([data-ops-card]) > :where([data-ops-assignee]) { color: var(--ops-muted); font-size: 12px; grid-area: meta; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; align-self: end; max-width: 55%; }
+:where([data-ops-card]) > :where([data-ops-card-signals]) { align-self: end; display: flex; font-size: 12px; gap: 6px; grid-area: meta; justify-self: end; overflow: hidden; white-space: nowrap; color: var(--ops-muted); }
 :where([data-ops-card]) > :where([data-ops-quick]) {
   align-items: center; background: var(--ops-surface-2); border-radius: 6px; display: flex; gap: 4px; opacity: 0; padding: 2px; pointer-events: none; position: absolute; right: 4px; top: 4px;
   transition: opacity 120ms ease; z-index: 2;
 }
 :where([data-ops-card]:hover, [data-ops-card]:focus-within) > :where([data-ops-quick]) { opacity: 1; pointer-events: auto; }
-:where([data-ops-card]) :where([data-ops-quick]) :where(button, select) { font-size: 11px; padding: 1px 6px; }
+:where([data-ops-card]) :where([data-ops-quick]) :where(button, select) { font-size: 12px; padding: 1px 6px; }
 :where([data-ops-card]) > :where([data-ops-card-menu]) { position: absolute; right: 4px; top: calc(100% - 4px); z-index: 5; }
 
 /* Checkbox labels sit on one line with breathing room. */
@@ -258,7 +258,7 @@
 
 /* Office strips: each count is a quiet chip. */
 :where([data-ops-strip]) { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
-:where([data-ops-count]) { background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 999px; color: var(--ops-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; padding: 2px 10px; white-space: nowrap; }
+:where([data-ops-count]) { background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 999px; color: var(--ops-muted); font-size: 12px; font-variant-numeric: tabular-nums; padding: 2px 10px; white-space: nowrap; }
 
 /* Canvas inline node detail: one key/value row per line, like the Inspector. */
 :where([data-ops-node-detail]) :where(dl) { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0 0 8px; row-gap: 0; }
@@ -277,13 +277,13 @@
    (the presence word is already the group header; the glyph keeps it as its accessible name). */
 :where([data-ops-fleet-count]) { font-weight: 600; letter-spacing: 0.02em; }
 :where([data-ops-needs-you-count]) { color: var(--ops-muted); font-size: 12px; margin-bottom: 6px; }
-:where([data-ops-fleet-group]) { align-items: flex-end; color: var(--ops-muted); display: flex; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+:where([data-ops-fleet-group]) { align-items: flex-end; color: var(--ops-muted); display: flex; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 :where([data-ops-fleet-row]) :where(.ops-presence__label) { display: none; }
 :where([data-ops-fleet-row]) { border-bottom: 0; gap: 8px; }
 :where([data-ops-fleet-folded]) { background: transparent; border: 1px dashed var(--ops-line-strong); color: var(--ops-muted); font-size: 12px; justify-content: flex-start; }
 
 /* B11: honest unknown explanation under the fleet group header. */
-:where([data-ops-fleet-hint]) { color: var(--ops-muted); font-size: 11px; font-style: italic; line-height: 18px; overflow: hidden; padding-left: 2px; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-fleet-hint]) { color: var(--ops-muted); font-size: 12px; font-style: italic; line-height: 18px; overflow: hidden; padding-left: 2px; text-overflow: ellipsis; white-space: nowrap; }
 
 
 /* B11: lens sections stack (header row, search, table); the rail-button flex rule no longer leaks here. */
@@ -328,7 +328,7 @@
 :where([data-ops-card][draggable='true']:active) { cursor: grabbing; }
 :where([data-ops-card][data-ops-dragging]) { opacity: 0.55; }
 /* B14: fleet status reads at a glance (Gr8r status chips): failing garnet, running gold, idle muted. */
-:where([data-ops-fleet-status]) { border-radius: 999px; font-size: 11.5px; padding: 1px 8px; }
+:where([data-ops-fleet-status]) { border-radius: 999px; font-size: 12px; padding: 1px 8px; }
 :where([data-ops-fleet-status='failing']) { background: color-mix(in srgb, #b4474b 18%, transparent); color: #e08a8d; }
 :where([data-ops-fleet-status='running']) { background: color-mix(in srgb, var(--ops-gold, #c9a227) 16%, transparent); color: var(--ops-gold, #c9a227); }
 :where([data-ops-fleet-status='idle'], [data-ops-fleet-status='unknown']) { color: var(--ops-muted); }
@@ -369,7 +369,7 @@
 @keyframes ops-glow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 :where([data-ops-orrery] [data-ops-orb]) { box-shadow: 0 1px 3px rgb(0 0 0 / 40%); }
 :where([data-ops-orrery] [data-ops-orb]:hover) { border-color: color-mix(in srgb, var(--ops-gold) 70%, transparent); z-index: 2; }
-:where([data-ops-orrery] [data-ops-orrery-overflow]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 11px; left: 8px; position: absolute; top: 8px; }
+:where([data-ops-orrery] [data-ops-orrery-overflow]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 12px; left: 8px; position: absolute; top: 8px; }
 @media (prefers-reduced-motion: reduce) { :where([data-ops-orrery-centre])::before { animation: none; } :where([data-ops-root]) :where(button:active:not(:disabled)) { transform: none; } }
 :where([data-ops-motion='reduced'] [data-ops-orrery-centre])::before { animation: none; }
 
@@ -377,7 +377,7 @@
 /* Scale: greeting 20 > lens title 16 > section label 11 caps > body 13 > meta 11. */
 :where([data-ops-greeting] h2) { font-size: 20px; }
 :where(section[data-ops-lens] > header > h2) { font-size: 16px; letter-spacing: -0.005em; }
-:where([data-ops-root]) :where(section > h2:first-child, section > h3:first-child, fieldset > legend) { color: var(--ops-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.07em; margin: 0 0 8px; text-transform: uppercase; }
+:where([data-ops-root]) :where(section > h2:first-child, section > h3:first-child, fieldset > legend) { color: var(--ops-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.07em; margin: 0 0 8px; text-transform: uppercase; }
 :where([data-ops-root]) :where(section, fieldset) { margin: 0 0 12px; padding: 12px 14px; }
 /* Office: the three count strips flow as one wrapping line, separated by hairlines, not three stacked rows. */
 :where([data-ops-strip]) { display: inline-flex; margin: 0 10px 10px 0; padding-right: 10px; vertical-align: top; border-right: 1px solid var(--ops-line); }
@@ -387,7 +387,7 @@
 :where([data-ops-card]) { transition: border-color 120ms ease, background-color 120ms ease, transform 120ms var(--ease, ease), box-shadow 120ms ease; }
 :where([data-ops-card]:hover) { box-shadow: 0 4px 12px rgb(0 0 0 / 30%); transform: translateY(-1px); }
 :where([data-ops-card]:active) { box-shadow: none; transform: none; }
-:where([data-ops-column] > h3 [data-ops-count]) { background: var(--ops-surface-2); border-radius: 999px; font-size: 11px; padding: 0 7px; }
+:where([data-ops-column] > h3 [data-ops-count]) { background: var(--ops-surface-2); border-radius: 999px; font-size: 12px; padding: 0 7px; }
 /* Tables: the row under the pointer is findable. */
 :where([data-ops-root]) :where(tbody tr) { transition: background-color 120ms ease; }
 :where([data-ops-root]) :where(tbody tr:hover) { background: var(--ops-surface); }
@@ -443,28 +443,28 @@
 :where([data-ops-app-grid]) :where(li > [data-ops-app-action]) { align-self: flex-start; margin-top: auto; }
 :where([data-ops-app-grid]) :where([data-ops-app-action='connect']) { background: transparent; color: var(--ops-muted); }
 :where([data-ops-app-grid]) :where(li:hover [data-ops-app-action='connect']) { border-color: var(--ops-line-strong); color: var(--ops-fg); }
-:where([data-ops-app-glyph]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 8px; color: var(--ops-muted); display: inline-flex; font-size: 11px; font-weight: 600; height: 28px; justify-content: center; width: 28px; }
+:where([data-ops-app-glyph]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 8px; color: var(--ops-muted); display: inline-flex; font-size: 12px; font-weight: 600; height: 28px; justify-content: center; width: 28px; }
 :where([data-ops-app][data-ops-app-connected]) { border-color: color-mix(in srgb, var(--ops-gold) 45%, transparent); order: -1; }
 :where([data-ops-app][data-ops-app-connected] [data-ops-app-glyph]) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); border-color: color-mix(in srgb, var(--ops-gold) 40%, transparent); color: var(--ops-gold); }
-:where([data-ops-app-state='connected']) { color: var(--ops-gold); font-size: 11px; }
+:where([data-ops-app-state='connected']) { color: var(--ops-gold); font-size: 12px; }
 /* Teams: a card per lane: name and open count up top, member avatars, projects as chips. */
 :where([data-ops-teams]) { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); list-style: none; margin: 0; padding: 0; }
 :where([data-ops-teams] > li) { background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: var(--ops-radius); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; transition: border-color 140ms ease; }
 :where([data-ops-teams] > li:hover) { border-color: var(--ops-line-strong); }
 :where([data-ops-team-head]) { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
 :where([data-ops-team-head] h3) { font-size: 13px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:where([data-ops-team-open]) { background: var(--ops-surface); border-radius: 999px; color: var(--ops-muted); flex: none; font-size: 11px; font-variant-numeric: tabular-nums; padding: 1px 8px; }
+:where([data-ops-team-open]) { background: var(--ops-surface); border-radius: 999px; color: var(--ops-muted); flex: none; font-size: 12px; font-variant-numeric: tabular-nums; padding: 1px 8px; }
 :where([data-ops-teams] > li[data-ops-team-busy] [data-ops-team-open]) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); color: var(--ops-gold); }
 :where([data-ops-team-members]) { display: flex; flex-wrap: wrap; gap: 6px; }
 :where([data-ops-team-member]) { align-items: center; background: var(--ops-surface); border: 1px solid var(--ops-line); border-radius: 999px; display: inline-flex; font-size: 12px; gap: 5px; padding: 1px 8px 1px 3px; }
 :where([data-ops-team-projects]) { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
-:where([data-ops-team-projects]) :where(button) { font-size: 11px; padding: 1px 7px; }
-:where([data-ops-team-none]) { color: var(--ops-muted); font-size: 11px; font-style: italic; }
+:where([data-ops-team-projects]) :where(button) { font-size: 12px; padding: 1px 7px; }
+:where([data-ops-team-none]) { color: var(--ops-muted); font-size: 12px; font-style: italic; }
 /* Skills starter packs: a grid of kit cards with an install progress bar. */
 :where([data-ops-packs] > ul) { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); list-style: none; margin: 0; padding: 0; }
 :where([data-ops-packs] li[data-ops-pack]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: var(--ops-radius); display: grid; gap: 6px 8px; grid-template-areas: 'title action' 'meta action' 'bar bar'; grid-template-columns: minmax(0, 1fr) auto; padding: 10px 12px; }
 :where([data-ops-packs] li[data-ops-pack] > strong) { grid-area: title; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:where([data-ops-pack-meta]) { color: var(--ops-muted); font-size: 11px; grid-area: meta; }
+:where([data-ops-pack-meta]) { color: var(--ops-muted); font-size: 12px; grid-area: meta; }
 :where([data-ops-packs] li[data-ops-pack] > button) { grid-area: action; }
 :where([data-ops-pack-bar]) { background: var(--ops-surface); border-radius: 999px; grid-area: bar; height: 4px; overflow: hidden; position: relative; }
 :where([data-ops-pack-bar])::after { background: var(--ops-gold); border-radius: inherit; content: ''; inset: 0 auto 0 0; position: absolute; transition: width 320ms var(--ease, ease); width: var(--ops-pct, 0%); }
@@ -478,7 +478,7 @@
 :where([data-ops-motion='reduced'] [data-ops-panel]:not([hidden]) > [data-ops-panel-body]) { animation: none; }
 /* Needs you: who (avatar), what kind (tinted pill), how long (right-aligned numerals); row actions stay compact. */
 :where([data-ops-needs-you]) :where(td[data-ops-agent]) { align-items: center; display: flex; gap: 6px; white-space: nowrap; }
-:where([data-ops-kind]) { background: var(--ops-surface-2); border-radius: 999px; font-size: 11px; padding: 1px 8px; white-space: nowrap; }
+:where([data-ops-kind]) { background: var(--ops-surface-2); border-radius: 999px; font-size: 12px; padding: 1px 8px; white-space: nowrap; }
 :where([data-ops-kind='kanban_blocked'], [data-ops-kind='cron_failure'], [data-ops-kind='policy']) { background: color-mix(in srgb, #b4434b 18%, transparent); color: #e0989b; }
 :where([data-ops-kind='jsonrpc'], [data-ops-kind='gateway_run'], [data-ops-kind='kanban_review']) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); color: var(--ops-gold); }
 :where([data-ops-needs-you]) :where(td[data-ops-age]) { color: var(--ops-muted); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
@@ -487,7 +487,7 @@
 :where([data-ops-needs-you]) :where(tbody tr:hover input) { background: color-mix(in srgb, var(--ops-fg) 3%, transparent); }
 /* Board cards: title leads (13/600), id whispers in mono, column state tints the card edge. */
 :where([data-ops-card]) > :where([data-ops-open-task]) { color: var(--ops-fg); font-size: 13px; font-weight: 600; }
-:where([data-ops-card-id]) { background: var(--ops-surface); border-radius: 4px; color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; margin-right: 4px; opacity: 0.8; padding: 0 4px; }
+:where([data-ops-card-id]) { background: var(--ops-surface); border-radius: 4px; color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; margin-right: 4px; opacity: 0.8; padding: 0 4px; }
 :where([data-ops-column='blocked'] [data-ops-card]) { box-shadow: inset 2px 0 0 #b4434b; }
 :where([data-ops-column='running'] [data-ops-card]) { box-shadow: inset 2px 0 0 var(--ops-gold); }
 :where([data-ops-column='done'] [data-ops-card]) { opacity: 0.78; }
@@ -499,7 +499,7 @@
 /* ---- B23: tables (Fleet, Skills), Diagnostics as a status board ---- */
 /* Sortable headers are labels, not buttons: quiet caps, the active sort is gold with an arrow. */
 :where(.ops-data-table th) { border-bottom: 1px solid var(--ops-line-strong); }
-:where(.ops-data-table th) :where(button[data-sort-column]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; padding: 2px 4px; text-transform: uppercase; }
+:where(.ops-data-table th) :where(button[data-sort-column]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.05em; padding: 2px 4px; text-transform: uppercase; }
 :where(.ops-data-table th) :where(button[data-sort-column]:hover) { background: transparent; border-color: transparent; color: var(--ops-fg); }
 :where(.ops-data-table th[aria-sort='ascending'], .ops-data-table th[aria-sort='descending']) :where(button[data-sort-column]) { color: var(--ops-gold); }
 :where(.ops-data-table th[aria-sort='ascending']) :where(button[data-sort-column])::after { content: '↑'; margin-left: 4px; }
@@ -525,7 +525,7 @@
 /* ---- B24: Settings secrets, Board view switcher, Canvas detail placement, Office live cards, Skills kit titles ---- */
 /* Settings: secret presence reads as a grid of mono chips with a light, not a run-on list. */
 :where([data-ops-secret-list]) { display: grid; gap: 4px 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); list-style: none; margin: 6px 0; padding: 0; }
-:where([data-ops-secret]) { align-items: center; display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-secret]) { align-items: center; display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :where([data-ops-secret])::before { background: var(--ops-muted); border-radius: 50%; content: ''; flex: none; height: 6px; opacity: 0.5; width: 6px; }
 :where([data-ops-secret][data-ops-set='yes'])::before { background: #6fbf73; opacity: 1; }
 :where([data-ops-secret-summary]) { color: var(--ops-muted); font-size: 12px; margin: 0; }
@@ -551,12 +551,12 @@
 :where([data-ops-run-panel]) { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 :where([data-ops-run-panel] > textarea) { flex-basis: 100%; min-height: 64px; resize: vertical; }
 :where([data-ops-run-panel] > pre) { flex-basis: 100%; }
-:where([data-ops-run-status]) { align-items: center; background: var(--ops-surface-2); border-radius: 999px; display: inline-flex; font-size: 11px; gap: 6px; padding: 1px 10px 1px 8px; text-transform: capitalize; }
+:where([data-ops-run-status]) { align-items: center; background: var(--ops-surface-2); border-radius: 999px; display: inline-flex; font-size: 12px; gap: 6px; padding: 1px 10px 1px 8px; text-transform: capitalize; }
 :where([data-ops-run-status])::before { background: var(--ops-muted); border-radius: 50%; content: ''; height: 6px; width: 6px; }
 :where([data-ops-run-status='running'], [data-ops-run-status='streaming'])::before { animation: ops-glow 1.2s ease-in-out infinite; background: var(--ops-gold); }
 :where([data-ops-run-status='done'], [data-ops-run-status='completed'])::before { background: #6fbf73; }
 :where([data-ops-run-status='error'], [data-ops-run-status='failed'])::before { background: #b4434b; }
-:where([data-ops-run-elapsed], [data-ops-run-tokens]) { color: var(--ops-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+:where([data-ops-run-elapsed], [data-ops-run-tokens]) { color: var(--ops-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 :where([data-ops-run-text]:empty) { display: none; }
 @media (prefers-reduced-motion: reduce) { :where([data-ops-run-status])::before { animation: none; } }
 :where([data-ops-motion='reduced'] [data-ops-run-status])::before { animation: none; }
@@ -596,12 +596,12 @@
 
 /* ---- B29: Skills table chips, first-column names, Office thresholds as a tidy control row ---- */
 :where([data-ops-skill-agents]) { display: inline-flex; flex-wrap: wrap; gap: 4px; }
-:where([data-ops-skill-agents]) :where(button) { background: transparent; border-color: var(--ops-line); border-radius: 999px; color: var(--ops-muted); font-size: 11px; gap: 4px; padding: 0 7px 0 3px; }
+:where([data-ops-skill-agents]) :where(button) { background: transparent; border-color: var(--ops-line); border-radius: 999px; color: var(--ops-muted); font-size: 12px; gap: 4px; padding: 0 7px 0 3px; }
 :where([data-ops-skill-agents]) :where(button:hover:not(:disabled)) { border-color: var(--ops-line-strong); color: var(--ops-fg); }
 :where([data-ops-skill-agents]) :where([data-ops-agents-more]) { padding: 0 7px; }
 :where(.ops-data-table td:first-child > button) { background: transparent; border-color: transparent; font-weight: 600; padding: 1px 4px; }
 :where(.ops-data-table td:first-child > button:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; color: var(--ops-gold); }
-:where(.ops-data-table td) :where(button:not(:first-child)) { font-size: 11px; padding: 0 6px; }
+:where(.ops-data-table td) :where(button:not(:first-child)) { font-size: 12px; padding: 0 6px; }
 :where([data-ops-thresholds]) { align-items: end; display: flex; flex-wrap: wrap; gap: 10px 20px; }
 :where([data-ops-thresholds] > legend) { flex-basis: 100%; }
 :where([data-ops-thresholds] > label) { color: var(--ops-muted); display: inline-flex; flex-direction: column; font-size: 12px; gap: 4px; }
@@ -614,7 +614,7 @@
 
 /* Fleet columns by id: model reads as a quiet mono tag, lane as a chip, numbers right-aligned. */
 :where(.ops-data-table td[data-tabular='true']) { font-variant-numeric: tabular-nums; }
-:where(.ops-data-table td[data-col='model']) { color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+:where(.ops-data-table td[data-col='model']) { color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 :where(.ops-data-table td[data-col='lane']) { font-size: 12px; }
 :where([data-ops-fleet-status='running']) { color: var(--ops-gold); }
 :where([data-ops-fleet-status='running'])::before { animation: ops-glow 1.6s ease-in-out infinite; background: var(--ops-gold); border-radius: 50%; content: ''; display: inline-block; height: 6px; margin-right: 6px; vertical-align: middle; width: 6px; }
@@ -628,7 +628,7 @@
 /* ---- B31: probe chips drop the redundant word, secrets use the full row, channel copy clamps ---- */
 :where([data-ops-probe-ok]) { block-size: 1px; clip-path: inset(50%); inline-size: 1px; overflow: hidden; position: absolute; white-space: nowrap; }
 :where([data-ops-probe-row]) { position: relative; }
-:where([data-ops-probe-id]) { color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 500; margin-right: 4px; }
+:where([data-ops-probe-id]) { color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-weight: 500; margin-right: 4px; }
 :where([data-ops-settings-group] > dl > dd[data-ops-field='secrets']) { grid-column: 1 / -1; border-top: 0; }
 :where([data-ops-secrets]) { inline-size: 100%; }
 :where([data-ops-secret-list]) { column-gap: 24px; columns: 3 220px; }
@@ -663,7 +663,7 @@
 :where([data-ops-roster-title]) { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
 :where([data-ops-roster]) :where(dl) { display: grid; gap: 4px 10px; grid-template-columns: auto 1fr; margin: 0; }
 :where([data-ops-roster]) :where(dl > div) { display: contents; }
-:where([data-ops-roster]) :where(dt) { color: var(--ops-muted); font-size: 11px; }
+:where([data-ops-roster]) :where(dt) { color: var(--ops-muted); font-size: 12px; }
 :where([data-ops-roster]) :where(dd) { font-size: 12px; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :where([data-ops-column]) { background: linear-gradient(180deg, color-mix(in srgb, var(--ops-gold, #c9a227) 6%, var(--ops-surface)) 0, var(--ops-surface) 140px); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 10%, var(--ops-line)); border-radius: 14px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent), inset 0 -24px 40px -30px black, 0 14px 30px -24px black; }
 :where([data-ops-dispatch]) { border-radius: 12px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 18%, transparent), 0 12px 30px -22px color-mix(in srgb, var(--ops-gold, #c9a227) 60%, transparent); }
@@ -689,7 +689,7 @@
 :where([data-ops-now-pulse]) { background: #3fb950; border-radius: 999px; box-shadow: 0 0 0 4px color-mix(in srgb, #3fb950 22%, transparent), 0 0 18px #3fb950; flex: none; height: 10px; width: 10px; }
 :where([data-ops-now-running='quiet'] [data-ops-now-pulse]) { background: var(--ops-muted); box-shadow: none; }
 @media (prefers-reduced-motion: no-preference) { :where([data-ops-now-running='live'] [data-ops-now-pulse]) { animation: ops-now-pulse 2.4s ease-in-out infinite; } }
-:where([data-ops-now-label]) { color: var(--ops-muted); display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+:where([data-ops-now-label]) { color: var(--ops-muted); display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 :where([data-ops-now-running]) :where(ul) { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; margin: 4px 0 0; padding: 0; }
 :where([data-ops-now-running]) :where(li > button:first-child) { background: none; border: 0; font-size: 16px; font-weight: 500; padding: 0; text-align: left; }
 :where([data-ops-now-agent]) { background: none; border: 0; color: var(--ops-gold, #c9a227); font-size: 13px; margin-left: 6px; padding: 0; }
@@ -700,7 +700,7 @@
 :where([data-ops-roster-avatar='failing'], [data-ops-roster-avatar='blocked']) { box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px #f85149; }
 :where([data-ops-roster-avatar='idle']) { box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px color-mix(in srgb, var(--ops-gold, #c9a227) 70%, transparent); }
 :where([data-ops-roster-name]) { display: grid; font-size: 15px; font-weight: 600; }
-:where([data-ops-roster-name]) :where(small) { color: var(--ops-muted); font-size: 11px; font-weight: 400; }
+:where([data-ops-roster-name]) :where(small) { color: var(--ops-muted); font-size: 12px; font-weight: 400; }
 :where([data-ops-diag-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, #3fb950 14%, transparent), transparent 60%), var(--ops-surface); border: 1px solid var(--ops-line); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; gap: 16px; margin: 0 0 12px; padding: 14px 18px; }
 :where([data-ops-diag-hero='warn']) { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 18%, transparent), transparent 60%), var(--ops-surface); }
 :where([data-ops-diag-hero='idle']) { background: var(--ops-surface); }
@@ -719,7 +719,7 @@
 :where([data-ops-teams-stack]) > :where(*) { border-radius: 999px; box-shadow: 0 0 0 2px #15120d; margin-left: -8px; }
 :where([data-ops-teams-more]) { background: var(--ops-surface); border-radius: 999px; color: var(--ops-muted); font-size: 12px; padding: 6px 9px; }
 :where([data-ops-teams-hero]) :where(dl), :where([data-ops-teams-hero]) :where(dl) :where(dd) { display: flex; gap: 22px; margin: 0; }
-:where([data-ops-teams-hero]) :where(dt) { color: var(--ops-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+:where([data-ops-teams-hero]) :where(dt) { color: var(--ops-muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 :where([data-ops-teams-hero]) :where(dd) { font-size: 22px; font-variant-numeric: tabular-nums; font-weight: 600; }
 :where([data-ops-channels-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, #3fb950 12%, transparent), transparent 60%), var(--ops-surface); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 18%, var(--ops-line)); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; gap: 16px; margin: 0 0 12px; padding: 12px 18px; }
 :where([data-ops-channels-hero-list]) { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
@@ -748,7 +748,7 @@
 :where([data-ops-roster]) :where(dl > div[data-desc]) { flex-basis: 100%; order: -1; margin-bottom: 4px; }
 :where([data-ops-roster]) :where(dl > div[data-desc] > dt) { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; width: 1px; }
 :where([data-ops-roster]) :where(dl > div[data-desc] > dd) { color: var(--ops-text, inherit); font-size: 13px; }
-:where([data-ops-roster]) :where(dt) { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; }
+:where([data-ops-roster]) :where(dt) { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
 
 /* B39 (judge pass 4): three readable cards per row instead of five micro-cards; name and purpose lead, facts sit on a stable footer. */
 :where([data-ops-roster]) { gap: 14px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
@@ -757,3 +757,27 @@
 :where([data-ops-roster]) :where(dl > div[data-desc] > dd) { font-size: 13.5px; -webkit-line-clamp: 2; }
 :where([data-ops-roster]) :where(dl > div:not([data-desc])) { order: 1; }
 :where([data-ops-roster]) :where(dl > div[data-col='agents'], dl > div[data-col='profiles']) { flex-basis: 100%; order: 2; }
+
+/* B41: hierarchy spec tokens for the Ops panel (judge-spec-hierarchy.txt). Lens title = page, section headings = section, root text = meta,
+   repeated heroes lose their frames (one editorial header per view), the greeting is demoted under the work. */
+:where([data-ops-root]) { font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); }
+:where([data-ops-root]) :where(h1, h2, h3, h4) { font-size: var(--type-body, 16px); line-height: var(--type-body-lh, 24px); }
+:where([data-ops-root]) :where(h2) { font-size: var(--type-section, 20px); line-height: var(--type-section-lh, 28px); }
+:where(section[data-ops-lens] > header > h2) { font-size: var(--type-page, 28px); font-weight: 600; letter-spacing: -0.02em; line-height: var(--type-page-lh, 36px); }
+:where(section[data-ops-lens] > header) { margin-bottom: var(--space-6, 32px); }
+:where([data-ops-root]) :where(section > h2:first-child, section > h3:first-child, fieldset > legend) { color: inherit; font-size: var(--type-section, 20px); letter-spacing: -0.01em; line-height: var(--type-section-lh, 28px); margin: 0 0 var(--space-4, 16px); text-transform: none; }
+:where([data-ops-root]) :where(section + section) { margin-top: var(--space-6, 32px); }
+:where([data-ops-greeting]) h2 { font-size: var(--type-section, 20px); font-weight: 600; }
+:where([data-ops-greeting] h2) { font-size: var(--type-section, 20px); }
+:where([data-ops-column]) > :where(header, h3:first-child) { font-size: var(--type-meta, 14px); letter-spacing: 0; }
+:where([data-ops-team-head] h3) { font-size: var(--type-body, 16px); }
+:where([data-ops-diag-hero], [data-ops-settings-hero], [data-ops-teams-hero], [data-ops-channels-hero], [data-ops-skills-hero]) { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+:where([data-ops-diag-hero], [data-ops-settings-hero], [data-ops-canvas-hero]) :where(strong) { font-size: var(--type-section, 20px); font-weight: 600; }
+:where([data-ops-teams-hero]) :where(dt) { font-size: var(--type-meta, 14px); letter-spacing: 0; text-transform: none; }
+:where([data-ops-teams-hero]) :where(dd) { font-size: var(--type-body, 16px); }
+:where([data-ops-roster-title]) { font-size: var(--type-body, 16px); font-weight: 600; }
+:where([data-ops-roster]) { grid-template-columns: repeat(auto-fill, minmax(var(--width-card-min, 280px), 1fr)); max-width: var(--width-grid, 1280px); }
+:where([data-ops-roster]) :where(dt) { font-size: var(--type-caption, 12px); }
+:where([data-ops-roster]) :where(dd) { font-size: var(--type-meta, 14px); }
+:where([data-ops-roster]) :where(dl > div[data-desc] > dd) { font-size: var(--type-body, 16px); line-height: var(--type-body-lh, 24px); }
+:where([data-ops-column]) { flex-basis: 18rem; min-width: 18rem; }

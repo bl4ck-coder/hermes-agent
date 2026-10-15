@@ -217,7 +217,7 @@ export function OverlayNav({ footer, groups }: { footer?: ReactNode; groups: Ove
               {group.gapBefore && <div aria-hidden className="h-2" />}
               {group.sectionLabel && (
                 <div
-                  className="px-2 pb-1 pt-3 text-[0.6rem] font-medium uppercase tracking-wider text-muted-foreground/60"
+                  className="px-2 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-muted-foreground/60"
                   data-nav-section=""
                 >
                   {group.sectionLabel}

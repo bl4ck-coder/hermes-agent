@@ -17,8 +17,8 @@ import { T } from '../main-i18n'
 
 /** Frozen density contract (SPEC §12.3). One gutter, 32px rows, 12–13px body. */
 export const OPS_GUTTER_PX = 24
-export const OPS_BODY_PX = 13
-export const OPS_ROW_PX = 32
+export const OPS_BODY_PX = 14
+export const OPS_ROW_PX = 44
 export const OPS_RAIL_ROW_PX = 28
 export const DESCRIPTION_PREVIEW = 48
 

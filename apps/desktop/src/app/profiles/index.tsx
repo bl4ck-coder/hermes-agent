@@ -242,7 +242,7 @@ function ProfileDetail({ profile }: { profile: ProfileInfo }) {
             {profile.has_env && <PanelPill tone="muted">.env</PanelPill>}
           </div>
           <p
-            className="mt-1 truncate font-mono text-[0.66rem] text-muted-foreground/55"
+            className="mt-1 truncate font-mono text-xs text-muted-foreground/55"
             title={displayPath(profile.path)}
           >
             {displayPath(profile.path)}

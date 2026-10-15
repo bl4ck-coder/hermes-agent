@@ -465,8 +465,8 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                 {currentFilePage === 1 && (
                   // B33: the newest files and links as preview cards; the full table stays below. B36: labelled "Recent" so the overlap with the table reads as intended.
                   // B40 (judge pass 5): Recent is a one-row summary; the full list stays in view right below.
-                  <div className="grid grid-cols-2 gap-3 pb-2 pt-1.5 xl:grid-cols-4" data-artifact-cards="" data-label={T('Recent')}>
-                    {pagedFileArtifacts.slice(0, 4).map(artifact => (
+                  <div className="grid grid-cols-3 gap-4 pb-4 pt-2" data-artifact-cards="" data-label={T('Recent')}>
+                    {pagedFileArtifacts.slice(0, 3).map(artifact => (
                       <ArtifactPreviewCard artifact={artifact} key={artifact.id} onOpen={openArtifact} />
                     ))}
                   </div>
@@ -558,12 +558,12 @@ function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; o
           </span>
         )}
       </span>
-      <span className="self-start rounded-md px-1.5 py-0.5 font-mono text-[0.62rem] tracking-wide" data-artifact-badge="">
+      <span className="self-start rounded-md px-1.5 py-0.5 font-mono text-xs tracking-wide" data-artifact-badge="">
         {artifactBadge(artifact)}
       </span>
       <span className="truncate text-sm font-medium text-foreground">{artifact.label}</span>
       <span className="truncate text-muted-foreground">{artifact.sessionTitle}</span>
-      <span className="text-[0.62rem] text-muted-foreground/70 tabular-nums">
+      <span className="text-xs text-muted-foreground/70 tabular-nums">
         {new Date(artifact.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
       </span>
     </button>
@@ -586,7 +586,7 @@ function ArtifactsPagination({ className, itemLabel, onPageChange, page, pageSiz
 
   return (
     <div className={cn('flex h-6 items-center justify-between gap-2 px-1', className)}>
-      <div className="shrink-0 text-[0.62rem] text-muted-foreground">
+      <div className="shrink-0 text-xs text-muted-foreground">
         {pageRangeLabel(total, page, pageSize, a)} {itemLabel}
       </div>
       {pageCount > 1 && (
@@ -684,17 +684,17 @@ function ArtifactImageCard({ artifact, failedImage, onImageError, onOpenChat }: 
 
       <div className="space-y-1.5 p-2">
         <div className="min-w-0">
-          <div className="mb-0.5 flex items-center gap-1 text-[0.625rem] uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
+          <div className="mb-0.5 flex items-center gap-1 text-xs uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
             <FileImage className="size-3" />
             {kindLabel}
           </div>
           <div className="truncate text-[length:var(--conversation-caption-font-size)] font-medium">
             {artifact.label}
           </div>
-          <div className="mt-0.5 truncate text-[0.625rem] text-(--ui-text-tertiary)">{artifact.value}</div>
+          <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">{artifact.value}</div>
         </div>
 
-        <div className="truncate text-[0.625rem] text-(--ui-text-tertiary)">
+        <div className="truncate text-xs text-(--ui-text-tertiary)">
           {artifact.sessionTitle} · {formatArtifactTime(artifact.timestamp)}
         </div>
 
@@ -806,7 +806,7 @@ const SessionCell = memo(function SessionCell({ artifact, ctx }: { artifact: Art
     <ArtifactCellAction onClick={() => ctx.onOpenChat(artifact.sessionId)} title={artifact.sessionTitle}>
       <span className="flex min-w-0 flex-col">
         <span className="truncate">{artifact.sessionTitle}</span>
-        <span className="truncate text-[0.6875rem] font-normal text-(--ui-text-tertiary)">
+        <span className="truncate text-xs font-normal text-(--ui-text-tertiary)">
           {formatArtifactTime(artifact.timestamp)}
         </span>
       </span>
@@ -853,7 +853,7 @@ function ArtifactTable({
 
   return (
     <table className="w-full min-w-176 table-fixed text-left text-[length:var(--conversation-caption-font-size)]">
-      <thead className="border-b border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) text-[0.625rem] uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
+      <thead className="border-b border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) text-xs uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
         <tr>
           {ARTIFACT_COLUMNS.map(col => (
             <th className={cn(col.width(filter), 'px-2.5 py-1.5 font-medium')} key={col.id}>

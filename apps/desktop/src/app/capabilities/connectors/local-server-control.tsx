@@ -27,7 +27,7 @@ export function LocalInstall({
           <p className="text-[0.7rem] text-(--ui-text-tertiary)">{t.settings.mcp.catalogEnvRequired}</p>
           {installFields.map(field => (
             <label className="grid w-full gap-1" key={field.name}>
-              <span className="text-[0.65rem] text-(--ui-text-secondary)">
+              <span className="text-xs text-(--ui-text-secondary)">
                 {field.prompt || field.name}
                 {field.required ? ' *' : ''}
               </span>

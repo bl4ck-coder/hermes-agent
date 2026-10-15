@@ -109,7 +109,7 @@ describe('data table', () => {
     expect(root.style.getPropertyValue('--ops-row')).toBe(`${OPS_ROW_PX}px`)
     expect(root.style.getPropertyValue('--ops-rail-row')).toBe(`${OPS_RAIL_ROW_PX}px`)
     expect(OPS_BODY_PX).toBeGreaterThanOrEqual(12)
-    expect(OPS_BODY_PX).toBeLessThanOrEqual(13)
+    expect(OPS_BODY_PX).toBeLessThanOrEqual(14) // B41: meta on the hierarchy scale
     expect((container.querySelector('tr') as HTMLElement).style.height).toBe(`${OPS_ROW_PX}px`)
 
     fireEvent.keyDown(nameSort, { key: 'Enter' })

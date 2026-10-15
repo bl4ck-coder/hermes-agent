@@ -220,5 +220,5 @@ function Group({
 }
 
 function Note({ children }: { children: ReactNode }) {
-  return <span className="truncate text-[0.65rem] text-(--ui-text-tertiary)">{children}</span>
+  return <span className="truncate text-xs text-(--ui-text-tertiary)">{children}</span>
 }
