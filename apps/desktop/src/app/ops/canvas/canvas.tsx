@@ -8,6 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
 import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
+import { useDockedInspector } from '../inspector-presence'
 import { opsMainLocale, P, T } from '../main-i18n'
 import { Sigil } from '../primitives/sigil'
 
@@ -368,6 +369,8 @@ export function CanvasView({
     return () => ro.disconnect()
   }, [collapsed, data])
   const [detail, setDetail] = useState<CanvasNodeId | null>(null)
+  // P7: one place for the selected node's facts: the docked Inspector when it is open, else the popover.
+  const inspectorDocked = useDockedInspector()
   usePublishInspectorDetail(
     canvasInspectorDetail(
       profile,
@@ -624,7 +627,7 @@ export function CanvasView({
                 <button data-ops-identity-cta="" data-ops-port-colour="amber" disabled={readOnly || !onOpenRoute} onClick={() => onOpenRoute?.(`/profiles?profile=${encodeURIComponent(profile)}&edit=identity`)} type="button">
                   {T("Set identity")}</button>
               ) : null}
-              {detail === id ? (
+              {detail === id && !inspectorDocked ? (
                 <div aria-label={T('{id} details').replace('{id}', nodeAria(id))} data-ops-node-detail={id} onKeyDown={e => e.key === 'Escape' && setDetail(null)} role="dialog">
                   <dl>
                     {nodeDetail(id, data).map(([k, v], i) => (

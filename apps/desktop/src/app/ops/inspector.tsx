@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n'
 
 import { detailKindForSlot, type InspectorDetail, useInspectorDetail } from './inspector-detail'
 import { localizeInspector } from './inspector-i18n'
+import { useDockedInspectorPresence } from './inspector-presence'
 import { useOpsEscapeLayer } from './keymap'
 import { opsNavLabel } from './locales'
 import {
@@ -47,6 +48,7 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
   // P6: an inspector with nothing to show collapses to its tab strip instead of holding 280px.
   const empty = !footer && active !== 'fleet' && !(detail && want && detail.kind === want && ownsTab)
   useOpsEscapeLayer(scope.inspectorOpen && overlay && !empty && Boolean(onClose), onClose)
+  useDockedInspectorPresence(scope.inspectorOpen && !overlay)
 
   // P7: an empty overlay would hide the view it covers (the side Ops panel showed only this note).
   if (!scope.inspectorOpen || (overlay && empty)) {

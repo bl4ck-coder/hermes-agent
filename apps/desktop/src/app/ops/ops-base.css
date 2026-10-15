@@ -852,3 +852,11 @@
 :where([data-ops-probe-failing]) :where(li > span) { font-size: var(--type-meta,14px); color: var(--ops-muted); }
 :where([data-ops-errors]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
 :where([data-ops-diag-details]) > :where(summary) { cursor: pointer; font-size: var(--type-meta,14px); color: var(--ops-muted); }
+
+/* P7: Canvas reads content first: quieter grid, node body at meta scale, selected node marked. */
+:where([data-ops-node-body]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
+:where([data-ops-node][data-ops-selected]) { outline: 2px solid var(--ops-accent, #d4a64a); outline-offset: 2px; }
+/* P7: the grid is texture, not structure. */
+:where([data-ops-canvas]) { background-image: radial-gradient(color-mix(in srgb, var(--ops-muted) 12%, transparent) 1px, transparent 1.2px); background-size: 24px 24px; }
+:where([data-ops-canvas-viewport]) { background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ops-gold, #c9a227) 6%, transparent) 1px, transparent 1.5px); background-size: 24px 24px; }
+
