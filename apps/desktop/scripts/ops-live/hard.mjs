@@ -41,6 +41,10 @@ mkdirSync(join(tmpdir(), 'ops-hard-home'), { recursive: true })
   }
 }
 const app = await _electron.launch({ executablePath: electronBin, args: [DESKTOP], env, cwd: DESKTOP, timeout: 120_000 })
+// P21c: never leave this test instance behind (a leftover held the single-instance lock and broke h5/h6).
+const killApp = () => { try { app.process().kill() } catch {} }
+process.on('exit', killApp)
+for (const sig of ['SIGINT', 'SIGTERM', 'uncaughtException', 'unhandledRejection']) process.on(sig, e => { if (e instanceof Error) console.error(e); killApp(); process.exit(1) })
 const page = await app.firstWindow()
 // B11: keep the test window off the user's screen and taskbar (screenshots still render via CDP).
 const offscreen = () => app.evaluate(({ BrowserWindow }) => { for (const w of BrowserWindow.getAllWindows()) { w.setSkipTaskbar(true); w.setSize(1600, 1000); w.setPosition(-20000, -20000); w.blur() } }).catch(() => {})
