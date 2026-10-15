@@ -103,6 +103,7 @@ export function AgentsView({ onClose }: AgentsViewProps) {
       <PanelHeader icon={<Codicon name="hubot" />} stats={agentHeroStats(subagentsForPanel(subagentsBySession, activeSessionId), t.agents)} subtitle={t.agents.subtitle} title={t.agents.title} />
       {tree.length === 0 ? (
         <PanelEmpty
+          align="start"
           action={
             // P9: the next step is the content: the example prompt at body size with its action in the same row.
             <div className="flex w-full max-w-(--width-reading) items-center gap-3 rounded-lg border border-(--ui-stroke-tertiary) px-4 py-3 text-left" data-agents-next-step="">

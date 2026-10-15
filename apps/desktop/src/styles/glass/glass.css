@@ -530,3 +530,7 @@ html[data-hermes-theme^='gold-night'] [data-ops-app-section]:not([data-ops-app-s
 html[data-hermes-theme^='gold-night'] [data-ops-root] fieldset[data-ops-thresholds] { background: none; border: 0; box-shadow: none; padding: 0; }
 
 html[data-hermes-theme^='gold-night'] [data-ops-root] :is([data-ops-diagnostics], [data-ops-diag-evidence], [data-ops-settings-system]) { background: none; border: 0; box-shadow: none; }
+
+/* P10: Team cards are rows of work, not framed tiles; only the busy lane keeps an inner highlight. */
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-teams] > li { background: none; border-color: transparent; box-shadow: none; }
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-teams] > li[data-ops-team-busy] { box-shadow: inset 0 0 0 1px rgb(var(--glass-gold-hi) / 0.1); }
