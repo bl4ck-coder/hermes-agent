@@ -87,6 +87,7 @@ import {
   toggleCronDeliveryTarget,
   validateCronEditor
 } from './cron-job-model'
+
 import { jobState, jobTitle, nextRunOverdueMs, STATE_DOT, truncateText } from './job-state'
 import { openCronRun, reconcileCronRunVerdicts } from './open-cron-run'
 
@@ -878,6 +879,10 @@ function CronJobDetail({
 }: CronJobDetailProps) {
   const { t } = useI18n()
   const state = jobState(job)
+  // B40 (judge pass 5): the last run's result comes from the scheduler's last_status, never inferred.
+  // delivery_failed (run ok, brief not delivered) reads as a failure; no status reads as unknown.
+  const lastStatus = String(job.last_status ?? '').trim()
+  const lastResult = job.last_error ? 'failed' : lastStatus === 'ok' ? 'ok' : lastStatus ? 'failed' : job.last_run_at ? 'unknown' : 'none'
   const isPaused = state === 'paused'
   const deliver = jobDeliver(job)
   const prompt = jobPrompt(job)
@@ -929,7 +934,7 @@ function CronJobDetail({
           <div
             className="rounded-xl border border-(--ui-stroke-secondary) px-3.5 py-3"
             data-cron-glance-tile="last"
-            data-result={job.last_error ? 'failed' : job.last_run_at ? 'ok' : 'none'}
+            data-result={lastResult}
           >
             <div className="text-[0.7rem] font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
               {c.last.replace(/:$/, '')}
@@ -938,13 +943,18 @@ function CronJobDetail({
               {job.last_run_at ? (
                 <span
                   aria-hidden="true"
-                  className={'size-2 shrink-0 rounded-full ' + (job.last_error ? 'bg-destructive' : 'bg-emerald-400')}
+                  className={
+                    'size-2 shrink-0 rounded-full ' +
+                    (lastResult === 'failed' ? 'bg-destructive' : lastResult === 'ok' ? 'bg-emerald-400' : 'bg-(--ui-text-quaternary)')
+                  }
                 />
               ) : null}
               {formatTime(job.last_run_at)}
             </div>
             <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">
-              {job.last_error ? lastErrorSummary(job.last_error) : job.last_run_at ? t.install.stageStates.succeeded : '—'}
+              {job.last_error
+                ? lastErrorSummary(job.last_error)
+                : (cronLastResultLabel(job.last_status, c, t.install.stageStates.succeeded) ?? (job.last_run_at ? t.cron.states.unknown ?? '?' : '—'))}
             </div>
           </div>
         </div>
@@ -1770,4 +1780,12 @@ export function cronHeroStats(jobs: Parameters<typeof jobState>[0][], states: Pa
     .sort((a, b) => (order.indexOf(a) + 99) % 99 - (order.indexOf(b) + 99) % 99)
     .slice(0, 4)
     .map(k => ({ label: states[k] ?? k, tone: STATE_TONE[k] === 'good' ? 'good' : STATE_TONE[k] === 'bad' ? 'bad' : STATE_TONE[k] === 'warn' ? 'warn' : 'muted', value: n[k] }))
+}
+
+/** B40: the scheduler's closed last_status set in this page's own copy; unknown literals pass through. */
+function cronLastResultLabel(status: null | string | undefined, c: Translations['cron'], ok: string): null | string {
+  const raw = String(status ?? '').trim()
+  if (!raw) return null
+  const failed = c.lastRunFailed.replace(/:\s*$/, '')
+  return ({ blocked_config: failed, delivery_failed: ` ()`, error: failed, ok } as Record<string, string>)[raw] ?? raw
 }

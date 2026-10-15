@@ -1023,6 +1023,8 @@ export interface CronJob {
   id: string
   last_error?: null | string
   last_run_at?: null | string
+  /** Scheduler result of the last run: ok | error | delivery_failed | blocked_config. */
+  last_status?: null | string
   model?: null | string
   name?: null | string
   next_run_at?: null | string
