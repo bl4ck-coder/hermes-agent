@@ -897,3 +897,6 @@
 :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-action='connect']) { opacity: 0; }
 :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where(li:hover, li:focus-within) :where([data-ops-app-action='connect']) { opacity: 1; }
 :where([data-ops-app-section='connected']) :where([data-ops-app-grid]) :where(li) { min-height: var(--row-lg,64px); }
+
+/* P10: pointers without hover always see Connect. */
+@media (hover: none) { :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-action='connect']) { opacity: 1; } }

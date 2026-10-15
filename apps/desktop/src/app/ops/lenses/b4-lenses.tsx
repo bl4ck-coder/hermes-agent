@@ -466,26 +466,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         <button data-ops-browse-library="" disabled={!onOpenRoute} onClick={() => onOpenRoute?.('/capabilities?tab=skills&hub=1')} type="button">
           {T("Browse library")}</button>
       </header>
-      {rows ? (
-        /* B35b: Skills hero: how much is on, and where it clusters. */
-        <div data-ops-skills-hero="">
-          {/* P9: no headline count; the type chips are a quiet filter row, the skills below are the content. */}
-          <div>
-            <span data-ops-now-label="">{T('Showing')} {rows.filter(r => r.enabled).length}/{rows.length}</span>
-            <p data-ops-channels-hero-list="">
-              {types
-                .map(t => [t, rows.filter(r => (r.category || 'general') === t).length] as const)
-                .sort((x, y) => y[1] - x[1])
-                .slice(0, 6)
-                .map(([t, n]) => (
-                  <button aria-pressed={type === t} data-ops-chip="" key={t} onClick={() => setType(type === t ? '' : t)} type="button">
-                    {t} {n}
-                  </button>
-                ))}
-            </p>
-          </div>
-        </div>
-      ) : null}
+      {/* P10: no hero band; one filter/count zone sits with the list (judge pass 10). */}
       {progress ? (
         <p aria-live="polite" data-ops-install-progress={`${progress.done}/${progress.total}`} role="status">
           {T("Installing")}{' '}{progress.done} of {progress.total}…
@@ -564,7 +545,6 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
               { id: 'description', header: 'Description', description: r => r.description },
               { id: 'type', header: 'Type', sortable: true, sortValue: r => r.category, cell: r => <span data-ops-skill-tag={tagTone(r.category || 'general')}>{r.category || 'general'}</span> },
               { id: 'agents', header: 'Agents', sortable: true, tabular: true, sortValue: r => r.agents.length, cell: r => <AgentLinks agents={r.agents} onOpen={onOpenRoute ? openAgent : undefined} /> },
-              { id: 'source', header: 'Source', sortable: true, sortValue: r => r.provenance ?? '', cell: r => r.provenance ?? T('unknown') },
               { id: 'usage', header: 'Uses', sortable: true, tabular: true, sortValue: r => r.usage ?? -1, cell: r => (typeof r.usage === 'number' ? String(r.usage) : '—') },
               { id: 'enabled', header: 'On', sortable: true, sortValue: r => (r.enabled ? 1 : 0), cell: r => (r.enabled ? T('on') : T('off')) }
             ]}
@@ -611,7 +591,7 @@ function AppTile({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: strin
         {card.connected ? <span data-ops-app-state="connected">{T("✓ Connected")}</span> : null}
       </span>
       {card.warning ? <small data-ops-app-warning="">{card.warning}</small> : null}
-      <p>{card.description}</p>
+      <p title={card.description}>{card.description}</p>
       <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
         {card.connected ? T('Manage') : T('Connect')}
       </button>
