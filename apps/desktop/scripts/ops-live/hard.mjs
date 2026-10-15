@@ -170,7 +170,9 @@ await app.evaluate(({ ipcMain }) => {
     globalThis.__opsSeen.push(`${method} ${path}`)
     for (const r of globalThis.__opsMocks) {
       if (new RegExp(r.path).test(path) && (!r.method || r.method === method)) {
+        if (r.delay) await new Promise(res => setTimeout(res, r.delay))
         if (r.throw) throw new Error(r.throw)
+        if (!('body' in r)) return orig(e, req)
         return JSON.parse(JSON.stringify(r.body))
       }
     }
@@ -184,11 +186,16 @@ const matrix = []
 const state = async (screen, st, fn) => {
   const name = `h-${screen}-${st}`.replace(/[^a-z0-9-]/gi, '_')
   let ok = true, note = ''
-  try { note = (await fn()) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 200) }
-  await sleep(1200); await shot(name)
+  // P21: a state that hangs is recorded as failed and the run moves on (h4/h5 froze mid-run).
+  const within = (pr, ms, what) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error(`watchdog: ${what} > ${ms} ms`)), ms))])
+  try { note = (await within(Promise.resolve().then(fn), 45000, 'state')) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 200) }
+  await sleep(1200); await within(shot(name), 20000, 'shot').catch(e => { ok = false; note += ` ${e}` })
   matrix.push({ screen, state: st, shot: `${name}.png`, ok, note })
   writeFileSync(join(OUT, 'state-matrix.json'), JSON.stringify({ mockErr, matrix }, null, 2))
 }
+// P21: semantic checks. A state counts as reached only when its evidence is on screen.
+const need = async (...sels) => { for (const sel of sels) if (!(await page.locator(sel).count())) throw new Error(`not shown: ${sel}`); return `verified: ${sels.join(' + ')}` }
+const reload = async () => { await page.reload(); await sleep(3000) }
 const narrow = w => app.evaluate(({ BrowserWindow }, w) => { for (const x of BrowserWindow.getAllWindows()) x.setSize(w, 1000) }, w)
 
 if (want('discover')) {
@@ -199,7 +206,7 @@ if (want('discover')) {
 
 if (existsSync(join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs'))) {
   const mod = await import('file://' + join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs').replace(/\\/g, '/'))
-  await mod.default({ page, app, go, goApp, lens, state, mock, narrow, sleep, shot, want, offscreen })
+  await mod.default({ page, app, go, goApp, lens, state, mock, narrow, sleep, shot, want, offscreen, need, reload })
 }
 save()
 await app.close().catch(() => {})
