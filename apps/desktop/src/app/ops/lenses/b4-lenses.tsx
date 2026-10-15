@@ -314,7 +314,7 @@ function FleetAttention({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRo
               <span data-ops-fleet-attention-name="">{r.name}</span>
               <span data-ops-fleet-status={r.status}>{T(r.status)}</span>
               <small>
-                {r.failed7d ? `${r.failed7d} ${T('failed')} · ` : ''}
+                {r.failed7d ? `${P(r.failed7d, '{n} failed')} · ` : ''}
                 {P(r.active, '{n} active')} · {r.lastActive ? fmtAge(now - r.lastActive) : T('never')}
               </small>
             </button>
