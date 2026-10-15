@@ -106,3 +106,14 @@ Legend: **Done** = landed in this pass and checked in the live screenshot. **Nex
 - B35: OG thumbnails cached locally (Cache Storage `hermes-artifact-thumbs-v1`; any failure falls back to the monogram; tested). Shared `HeroBand` for Cron, Sessions (14-day spark), App Settings and Capabilities. Teams avatar stack, Channels connected ring, Canvas profile header, Board column flow bar, Chat emblem. Diagnostics ring hole fixed; Agents single card; Settings hero captured.
 - B35b: Skills hero (enabled ring + category chips), Agents hero always shown, Profiles identity card, live run waits for Office stats and frames the Canvas hero.
 - Evidence: glass22 frames p95 15.1–15.2 ms, max 29.6 ms, 0 frames over 33 ms. Gateway untouched (restarted externally at 21:17 ART; now pid 237584).
+
+## B36–B37b (2026-10-14, glass23–glass27): independent judge passes
+
+- Score of record is now the independent judge (`judge` profile, gpt-6.1-sol), not self-scores. Pass 1 (B35b) / pass 2 (B36c) / pass 3 (B37): Office 7/7/7, Chat 7/7/7, Skills 5/6/6, Channels 5/6/6, App Settings 5/6/6, Agents 5/6/6, Capabilities 5/5/5, Cron 5/5/5, every other screen 6. Raw outputs: `kanban/workspaces/judge-reviews/judge-pass{1,2,3}-*.txt`.
+- B36: Agents status buckets (interrupted counts as failed), empty-state illustration and copyable example; Office "unknown" vs quiet; Artifacts skipped-sessions note with Retry; thumbnail opt-out, 7-day TTL, LRU; Settings hero removed, section/row hooks; Channels connected-first; Skills packs fold; roster descriptions.
+- B36b: glass card for settings pages without sections. B36c: the active profile's sessions load first (Artifacts first paint).
+- B37: skipped sessions split idle/unreachable and shown in every state; per-entry cached-at timestamp, reference-counted blob revocation; connected channels no longer repeat in the catalog; i18n/a11y fixes; live run fails when Office stats never resolve.
+- B37b: thumbnail opt-out re-checked when a pending fetch lands, same-window preference event; roster descriptions span the card (verified in glass27).
+- Evidence: glass27 p95 15.1–15.2 ms; board drag 4 paired compositor frames up to 44 ms with no main-thread cost (glass24/25 clean on the same code).
+- B38 (judge top-5 layout): Capabilities Installed/Explore modes, Cron next-run/last-result tiles, roster card geometry, App Settings decision blocks with "0 = Auto", Profiles SOUL editor at reading scale, visible "Artifact previews" toggle in Ops Settings (on by default; off makes no request).
+- Open: a few structural/unscoped glass.css selectors; the live script dismisses alerts before capture; `providers-settings.terminal-disconnect` fails on baseline too.
