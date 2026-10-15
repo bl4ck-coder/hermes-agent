@@ -41,3 +41,7 @@
 :where(.hx-row-trailing) { flex: none; font-size: var(--type-meta); font-variant-numeric: tabular-nums; max-width: 10rem; }
 :where(.hx-meta) { font-size: var(--type-meta); line-height: var(--type-meta-lh); }
 :where(.hx-reading) { font-size: var(--type-body); line-height: var(--type-reading-lh); max-width: var(--width-reading); }
+
+/* P9: one form anatomy for App and Ops Settings: a centred form column at the form width. */
+:where([data-settings-scroll]) > * { max-width: var(--width-form); margin-inline: auto; }
+:where([data-ops-settings-main], [data-ops-settings-system]) { margin-inline: auto; }

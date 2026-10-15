@@ -469,12 +469,9 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
       {rows ? (
         /* B35b: Skills hero: how much is on, and where it clusters. */
         <div data-ops-skills-hero="">
-          <strong data-ops-channels-count="">
-            {rows.filter(r => r.enabled).length}
-            <small>/{rows.length}</small>
-          </strong>
+          {/* P9: no headline count; the type chips are a quiet filter row, the skills below are the content. */}
           <div>
-            <span data-ops-now-label="">{T('Skills')}</span>
+            <span data-ops-now-label="">{T('Showing')} {rows.filter(r => r.enabled).length}/{rows.length}</span>
             <p data-ops-channels-hero-list="">
               {types
                 .map(t => [t, rows.filter(r => (r.category || 'general') === t).length] as const)
@@ -564,8 +561,8 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
                   </button>
                 )
               },
-              { id: 'type', header: 'Type', sortable: true, sortValue: r => r.category, cell: r => <span data-ops-skill-tag={tagTone(r.category || 'general')}>{r.category || 'general'}</span> },
               { id: 'description', header: 'Description', description: r => r.description },
+              { id: 'type', header: 'Type', sortable: true, sortValue: r => r.category, cell: r => <span data-ops-skill-tag={tagTone(r.category || 'general')}>{r.category || 'general'}</span> },
               { id: 'agents', header: 'Agents', sortable: true, tabular: true, sortValue: r => r.agents.length, cell: r => <AgentLinks agents={r.agents} onOpen={onOpenRoute ? openAgent : undefined} /> },
               { id: 'source', header: 'Source', sortable: true, sortValue: r => r.provenance ?? '', cell: r => r.provenance ?? T('unknown') },
               { id: 'usage', header: 'Uses', sortable: true, tabular: true, sortValue: r => r.usage ?? -1, cell: r => (typeof r.usage === 'number' ? String(r.usage) : '—') },

@@ -886,3 +886,14 @@
 :where([data-ops-teams-idle]) { margin: var(--space-4,16px) 0 0; font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); display: flex; flex-wrap: wrap; gap: var(--space-1,4px) var(--space-3,12px); }
 :where([data-ops-team-idle-lane]) { color: var(--ops-fg); }
 :where([data-ops-team-blocked-tag]) { display: inline-block; margin-right: var(--space-2,8px); padding: 0 var(--space-2,8px); border-radius: 999px; font-size: var(--type-caption,12px); line-height: var(--type-caption-lh,16px); background: color-mix(in srgb, var(--ops-warn,#e3a33b) 18%, transparent); color: var(--ops-warn,#e3a33b); vertical-align: 2px; }
+
+/* P9: Skills lead with what a skill is for; Channels catalog is compact and secondary to connected apps. */
+:where([data-ops-skills-hero]) { display: block; margin: 0 0 var(--space-4,16px); }
+:where([data-ops-skills-hero]) :where([data-ops-now-label]) { font-size: var(--type-meta,14px); color: var(--ops-muted); }
+:where([data-ops-skills-hero]) :where([data-ops-chip]) { font-size: var(--type-meta,14px); }
+:where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li) { min-height: 0; padding: var(--space-2,8px) var(--space-3,12px); border-color: transparent; background: transparent; }
+:where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li > p) { -webkit-line-clamp: 1; }
+:where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li:hover) { border-color: var(--ops-line); }
+:where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-action='connect']) { opacity: 0; }
+:where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where(li:hover, li:focus-within) :where([data-ops-app-action='connect']) { opacity: 1; }
+:where([data-ops-app-section='connected']) :where([data-ops-app-grid]) :where(li) { min-height: var(--row-lg,64px); }
