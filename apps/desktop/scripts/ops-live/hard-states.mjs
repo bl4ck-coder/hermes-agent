@@ -43,15 +43,19 @@ export default async function ({ page, go, goApp, lens, state, mock, narrow, sle
   await mock([...base, { path: '^/api/plugins/kanban/tasks/', method: 'POST', throw: '409: comment refused (mock)' }, { path: '^/api/plugins/kanban/tasks/.*/comments', throw: '409: comment refused (mock)' }])
   await state('office', 'comment-rejected', async () => {
     await open('office')
-    await click(page, '[data-ops-approval="kanban_review:t6"] [data-ops-row-more-slot] summary')
-    await fill(page, '[data-ops-approval="kanban_review:t6"] input', 'Please split section 3')
-    return String(await click(page, '[data-ops-approval="kanban_review:t6"] [data-ops-comment]'))
+    const row = page.locator('[data-ops-approval]', { hasText: 'Review the RFC' }).first()
+    await row.locator('[data-ops-row-more-slot] summary').first().click({ timeout: 4000 })
+    await sleep(300)
+    await row.locator('input').first().fill('Please split section 3', { timeout: 4000 })
+    await row.locator('[data-ops-comment]').first().click({ timeout: 4000 })
+    await sleep(800)
+    return 'sent'
   })
   await mock(base)
 
   // Board
   await state('board', 'loaded', async () => { await open('board') })
-  await state('board', 'filtered', async () => { await open('board'); return String(await fill(page, '[data-ops-root] input[type="search"]', 'web')) })
+  await state('board', 'filtered', async () => { await open('board'); return String(await fill(page, '[data-ops-root] input[placeholder="Filtrar"], [data-ops-root] input[placeholder="Filter"], [data-ops-root] input[type="search"]', 'web')) })
   await mock([{ path: '^/api/plugins/kanban/board', throw: '503: kanban plugin unavailable (mock)' }, { path: '^/api/approvals/pending', body: PENDING }])
   await state('board', 'error', async () => { await open('board') })
   await mock(base)
