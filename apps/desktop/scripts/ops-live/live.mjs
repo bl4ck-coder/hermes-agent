@@ -1,9 +1,11 @@
 // Ops live pass: launch an isolated desktop instance (own userData, own pooled backend from this checkout,
-// real HERMES_HOME so it sees the real gateway), visit every Ops section with safe reads only,
+// a SNAPSHOT of the real HERMES_HOME made by snapshot-home.py: real data, no secrets, platforms/hooks/dispatcher
+// off, cron paused), visit every Ops section with safe reads only,
 // collect console errors, page errors, failed requests and HTTP >= 400, and screenshot each section.
 import { _electron } from '@playwright/test'
+import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 
 const DESKTOP = resolve(process.argv[2] ?? '.')
@@ -14,16 +16,25 @@ const electronBin = join(DESKTOP, 'node_modules', 'electron', 'dist', 'electron.
 const log = { console: [], pageErrors: [], failed: [], http: [], sections: {}, fps: {} }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
+const LIVE_PORT = '18662'
+{
+  const home = process.env.OPS_LIVE_HERMES_HOME ? resolve(process.env.OPS_LIVE_HERMES_HOME).toLowerCase() : ''
+  const real = resolve(process.env.LOCALAPPDATA ?? '~', 'hermes').toLowerCase()
+  if (!home || home === real || home.startsWith(real + sep) || !existsSync(join(home, 'config.yaml'))) {
+    console.error('OPS_LIVE_HERMES_HOME must be a snapshot made by snapshot-home.py, outside the real Hermes home')
+    process.exit(4)
+  }
+}
 const env = {
   ...process.env,
   HERMES_DESKTOP_HERMES_ROOT: resolve(DESKTOP, '..', '..'),
   HERMES_DESKTOP_PYTHON: process.env.OPS_LIVE_PYTHON,
   HERMES_DESKTOP_ISOLATED_BACKEND: '1',
-  // Never start, stop, restart or replace a gateway from this checkout (hermes_cli/gateway_lifecycle_guard.py).
-  HERMES_OPS_NO_GATEWAY: '1',
   HERMES_DESKTOP_USER_DATA_DIR: join(tmpdir(), 'ops-live-userdata'),
-  // The real Hermes home (and so the real gateway). An explicit HERMES_HOME wins over the userData sandbox.
-  ...(process.env.OPS_LIVE_HERMES_HOME ? { HERMES_HOME: process.env.OPS_LIVE_HERMES_HOME } : {}),
+  // v0.22 needs a gateway: the snapshot home owns its own on LIVE_PORT. The lifecycle guard
+  // (hermes_cli/gateway_lifecycle_guard.py) still refuses any gateway action on the real home.
+  HERMES_HOME: process.env.OPS_LIVE_HERMES_HOME,
+  API_SERVER_PORT: LIVE_PORT,
   HERMES_DESKTOP_SKIP_QUIT_CONFIRM: '1'
 }
 delete env.HERMES_DESKTOP_DEV_SERVER
@@ -39,6 +50,11 @@ delete env.HERMES_DESKTOP_DEV_SERVER
     process.exit(2)
   }
 }
+// The snapshot's gateway (snapshot home only, LIVE_PORT) is stopped when the run ends.
+const stopSnapshotGateway = () => {
+  try { spawnSync(process.env.OPS_LIVE_PYTHON, ['-m', 'hermes_cli.main', 'gateway', 'stop'], { cwd: resolve(DESKTOP, '..', '..'), env, timeout: 60_000 }) } catch {}
+}
+process.on('exit', stopSnapshotGateway)
 const app = await _electron.launch({ executablePath: electronBin, args: [DESKTOP], env, cwd: DESKTOP, timeout: 120_000 })
 const page = await app.firstWindow()
 // B11: keep the test window off the user's screen and taskbar (screenshots still render via CDP).
