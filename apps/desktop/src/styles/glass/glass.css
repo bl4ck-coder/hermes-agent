@@ -540,3 +540,5 @@ html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-board-flow] [dat
 
 /* P11: Skills cards lose the bright fill; an inner hairline is enough on repeated elements. */
 html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-lens='skills'] [data-ops-roster] > li { background: rgb(255 255 255 / 0.015); border-color: transparent; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05); }
+
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-settings-main] > [data-ops-settings-group] { padding-bottom: 16px; }

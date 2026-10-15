@@ -948,3 +948,11 @@
 /* P11: Channels catalog descriptions are recoverable without hover: keyboard focus and touch show the full text. */
 :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li:focus-within > p) { -webkit-line-clamp: unset; display: block; }
 @media (hover: none) { :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li > p) { -webkit-line-clamp: 3; } }
+
+/* P11: one row rhythm for Ops Settings: label and control share the row height and the same rule line. */
+:where([data-ops-settings-group] > dl) { align-items: stretch; grid-template-columns: minmax(10rem, 34%) minmax(0, 1fr); }
+:where([data-ops-settings-group] > dl > dt) { display: flex; align-items: flex-start; min-height: 48px; padding: 14px 0 10px; font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-fg); }
+:where([data-ops-settings-group] > dl > dd) { min-height: 48px; padding: 8px 0; align-content: center; }
+:where([data-ops-settings-group] > dl > dd) :where(small) { font-size: var(--type-caption,12px); line-height: var(--type-caption-lh,16px); color: var(--ops-muted); max-width: var(--width-field,30rem); }
+:where([data-ops-settings-main]) { gap: var(--space-4,16px); }
+:where(fieldset[data-ops-thresholds] > legend) { font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); font-weight: 600; }
