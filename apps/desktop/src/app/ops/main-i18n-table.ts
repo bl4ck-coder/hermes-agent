@@ -2,6 +2,7 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Among the first {n} profiles checked": "Entre los primeros {n} perfiles revisados",
      "None observed": "Ninguno observado",
      "Add by category": "Agregar por categoría",
      "Skills view": "Vista de skills",
@@ -671,6 +672,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Among the first {n} profiles checked": "Parmi les {n} premiers profils vérifiés",
      "None observed": "Aucun observé",
      "Add by category": "Ajouter par catégorie",
      "Skills view": "Vue des compétences",
@@ -1339,6 +1341,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Among the first {n} profiles checked": "Unter den ersten {n} geprüften Profilen",
      "None observed": "Keine beobachtet",
      "Add by category": "Nach Kategorie hinzufügen",
      "Skills view": "Skill-Ansicht",
@@ -2007,6 +2010,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Among the first {n} profiles checked": "Среди первых {n} проверенных профилей",
      "None observed": "Не замечено",
      "Add by category": "Добавить по категории",
      "Skills view": "Вид навыков",
@@ -2675,6 +2679,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Among the first {n} profiles checked": "確認した最初の {n} 件のプロファイル内",
      "None observed": "観測なし",
      "Add by category": "カテゴリ別に追加",
      "Skills view": "スキル表示",
@@ -3343,6 +3348,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Among the first {n} profiles checked": "在检查的前 {n} 个配置文件中",
      "None observed": "未观察到",
      "Add by category": "按类别添加",
      "Skills view": "技能视图",
@@ -4011,6 +4017,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Among the first {n} profiles checked": "在檢查的前 {n} 個設定檔中",
      "None observed": "未觀察到",
      "Add by category": "依類別新增",
      "Skills view": "技能檢視",
@@ -4679,6 +4686,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Among the first {n} profiles checked": "ضمن أول {n} ملفات تم فحصها",
      "None observed": "لم يُلاحظ أي منها",
      "Add by category": "إضافة حسب الفئة",
      "Skills view": "عرض المهارات",

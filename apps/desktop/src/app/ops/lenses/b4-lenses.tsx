@@ -487,6 +487,7 @@ function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: Retur
       more={
         <Disclosure label={T('Details and profiles')}>
           <div data-ops-skill-detail="">
+            {(r as { provenance?: string }).provenance ? <p data-ops-skill-provenance="">{T('Source')}: {(r as { provenance?: string }).provenance}</p> : null}
             <p>{typeof r.usage === 'number' ? P(r.usage, 'Used {n} times') : T('Usage not available')}</p>
             <p>{T('Profiles with this skill enabled')}</p>
             {r.agents.length ? (
@@ -500,7 +501,7 @@ function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: Retur
             ) : (
               <p>{T('None observed')}</p>
             )}
-            {scanCapped ? <p>{T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}</p> : null}
+            {scanCapped ? <p>{T('Among the first {n} profiles checked').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}</p> : null}
           </div>
         </Disclosure>
       }
@@ -513,14 +514,16 @@ function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: Retur
     />
   )
 
-  const on = rows.filter(r => r.enabled)
-  const off = rows.filter(r => !r.enabled)
+  // P16b: stable alphabetical order inside each group.
+  const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name))
+  const on = sorted.filter(r => r.enabled)
+  const off = sorted.filter(r => !r.enabled)
 
   const group = (id: string, title: string, xs: typeof rows) =>
     xs.length ? (
       <div data-ops-rows-group={id} key={id}>
         <h4>
-          {title} <span data-ops-rows-count="">{xs.length}</span>
+          {title}
         </h4>
         <EntityList label={title}>{xs.map(row)}</EntityList>
       </div>
@@ -641,7 +644,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         {rows ? (
           <p data-ops-skill-shown="">
             {T('Showing')}{' '}{shown.length} {T('of')} {rows.length}
-            {scanCapped ? ` · ${T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}` : ''}
+            {scanCapped && skillView === 'table' ? ` · ${T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}` : ''}
           </p>
         ) : null}
         {rows ? (
