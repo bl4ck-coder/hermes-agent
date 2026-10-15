@@ -1055,3 +1055,8 @@
 
 :where([data-ops-board-stale]) { margin: 0 0 var(--space-2,8px); padding: var(--space-2,8px) var(--space-3,12px); border-radius: 8px; font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-warn,#e3a33b); background: color-mix(in srgb, var(--ops-warn,#e3a33b) 10%, transparent); }
 
+
+/* P22a (pass 17): on hover/focus the quick actions REPLACE the meta row as one opaque strip, instead of partly covering
+   assignee and signals. The title rows stay readable; the metadata returns when the pointer leaves. */
+:where([data-ops-card]) > :where([data-ops-quick]) { bottom: 3px; justify-content: flex-end; left: 28px; right: 4px; }
+:where([data-ops-card]:hover, [data-ops-card]:focus-within) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: hidden; }
