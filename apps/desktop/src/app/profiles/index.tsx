@@ -360,7 +360,7 @@ function SoulEditor({ profileName }: { profileName: string }) {
       )}
 
       {/* P9: Save sits under the instructions it saves, in the same column. */}
-      <div className="sticky bottom-0 flex items-center justify-end gap-3 bg-background/80 py-3 backdrop-blur" data-profile-soul-actions="">
+      <div className="flex items-center justify-end gap-3 pt-1" data-profile-soul-actions="">
         {dirty && <span className="text-sm text-muted-foreground">{p.unsavedChanges}</span>}
         <Button disabled={!dirty || saving || loading} onClick={() => void handleSave()} size="sm">
           <Save />
