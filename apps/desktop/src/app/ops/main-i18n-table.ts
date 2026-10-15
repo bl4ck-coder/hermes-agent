@@ -2,6 +2,8 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "To do": "Por hacer",
+     "No active run": "Sin ejecución activa",
      "Work not assigned to a lane": "Trabajo sin carril asignado",
      "With open work": "Con trabajo abierto",
      "With blocked work": "Con trabajo bloqueado",
@@ -652,6 +654,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "To do": "À faire",
+     "No active run": "Aucune exécution active",
      "Work not assigned to a lane": "Travail non assigné à une voie",
      "With open work": "Avec du travail ouvert",
      "With blocked work": "Avec du travail bloqué",
@@ -1301,6 +1305,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "To do": "Zu erledigen",
+     "No active run": "Keine aktive Ausführung",
      "Work not assigned to a lane": "Keiner Spur zugewiesene Arbeit",
      "With open work": "Mit offener Arbeit",
      "With blocked work": "Mit blockierter Arbeit",
@@ -1950,6 +1956,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "To do": "К выполнению",
+     "No active run": "Нет активного запуска",
      "Work not assigned to a lane": "Работа без дорожки",
      "With open work": "С открытой работой",
      "With blocked work": "С заблокированной работой",
@@ -2599,6 +2607,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "To do": "未着手",
+     "No active run": "実行中ではありません",
      "Work not assigned to a lane": "レーン未割り当ての作業",
      "With open work": "未完了の作業あり",
      "With blocked work": "ブロック中の作業あり",
@@ -3248,6 +3258,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "To do": "待办",
+     "No active run": "当前无运行",
      "Work not assigned to a lane": "未分配泳道的工作",
      "With open work": "有未完成的工作",
      "With blocked work": "有受阻的工作",
@@ -3897,6 +3909,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "To do": "待辦",
+     "No active run": "目前無執行",
      "Work not assigned to a lane": "未分配泳道的工作",
      "With open work": "有未完成的工作",
      "With blocked work": "有受阻的工作",
@@ -4546,6 +4560,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "To do": "للتنفيذ",
+     "No active run": "لا يوجد تشغيل نشط",
      "Work not assigned to a lane": "عمل غير مسند إلى مسار",
      "With open work": "بها عمل مفتوح",
      "With blocked work": "بها عمل محظور",

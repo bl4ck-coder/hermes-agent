@@ -113,14 +113,18 @@ export interface Team {
   members: string[]
   /** P7/P9: what the lane is working on now: up to 3 open tasks, blocked first, then newest. Status is per task, not per title. */
   focus: { id: string; title: string; blocked: boolean }[]
+  /** P15: every open task with its real status, blocked first then newest (focus is the first three). */
+  work: { id: string; title: string; status: string }[]
   blocked: number
 }
 
-const focusOf = (ts: BoardTask[]) =>
+const openSorted = (ts: BoardTask[]) =>
   ts
     .filter(t => OPEN.has(t.status) && t.title)
     .sort((a, b) => Number(b.status === 'blocked') - Number(a.status === 'blocked') || (Number((b as { created_at?: number }).created_at) || 0) - (Number((a as { created_at?: number }).created_at) || 0))
-    .slice(0, 3)
+
+
+const focusOf = (ts: BoardTask[]) => openSorted(ts).slice(0, 3)
 
 /** R73: a team is a tenant lane: its projects, open tasks and the profiles that work it. */
 export function teams(tasks: BoardTask[]): Team[] {
@@ -137,6 +141,7 @@ export function teams(tasks: BoardTask[]): Team[] {
       projects: [...new Set(ts.map(t => t.project_id).filter((x): x is string => !!x))].sort(),
       open: ts.filter(t => OPEN.has(t.status)).length,
       members: [...new Set(ts.map(t => t.assignee).filter((x): x is string => !!x))].sort(),
+      work: openSorted(ts).map(t => ({ id: t.id, title: String(t.title), status: String(t.status) })),
       focus: focusOf(ts).map(t => ({ id: t.id, title: String(t.title), blocked: t.status === 'blocked' })),
       blocked: ts.filter(t => t.status === 'blocked').length
     }))

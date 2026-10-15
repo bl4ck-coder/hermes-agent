@@ -209,7 +209,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                   </span>
                 )
               },
-              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('never')) }
+              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('unknown')) }
             ]}
             emptyLabel={q ? T('No agent matches.') : T('No profiles.')}
             getRowId={r => r.name}
@@ -236,6 +236,8 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
   )
 }
 
+const statusWord = (s: string) => ({ blocked: 'Blocked', running: 'Running', ready: 'Ready', todo: 'To do', triage: 'Triage', review: 'Review', scheduled: 'Scheduled' } as Record<string, string>)[s] ?? s
+
 function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | null; tasksError: unknown; onOpenRoute?: (r: string) => void }) {
   if (!tasks) {
     return <State error={tasksError} what="Teams" />
@@ -255,7 +257,8 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
 
   // P14 (judge consult): one EntityRow per lane: name → current work with its state → open/blocked and members → projects and the rest in a disclosure.
   const row = (t: (typeof list)[number]) => {
-    const [head, ...rest] = t.focus
+    const [head] = t.focus
+    const rest = t.work.filter(w => w.id !== head?.id)
 
     return (
       <EntityRow
@@ -285,9 +288,8 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
               {rest.length ? (
                 <ul aria-label={T('Working on')} data-ops-team-rest="">
                   {rest.map(f => (
-                    <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.blocked ? '' : undefined} key={f.id}>
-                      {f.blocked ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
-                      {f.title}
+                    <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.status === 'blocked' ? '' : undefined} key={f.id}>
+                      <span data-ops-team-task-status={f.status}>{T(statusWord(f.status))}</span> {f.title}
                     </li>
                   ))}
                 </ul>
@@ -359,7 +361,9 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
     .sort((a, b) => Number(b.status === 'failing') - Number(a.status === 'failing') || Number(a.status === 'unknown') - Number(b.status === 'unknown') || (b.failed7d ?? 0) - (a.failed7d ?? 0))
 
   const running = rows.filter(r => !hot(r) && r.status === 'running')
-  const quiet = rows.filter(r => !hot(r) && r.status !== 'running')
+  // P15 (judge): inactive now is not the same as never observed.
+  const idleNow = rows.filter(r => !hot(r) && r.status !== 'running' && (r.lastActive || (r.runs7d ?? 0) > 0))
+  const quiet = rows.filter(r => !hot(r) && r.status !== 'running' && !(r.lastActive || (r.runs7d ?? 0) > 0))
 
   const context = (r: (typeof rows)[number]) =>
     r.failingTask
@@ -430,6 +434,7 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
       {attention.length === 0 ? <p data-ops-fleet-attention="clear">{T('Nothing needs attention.')}</p> : null}
       {group('attention', T('Needs attention'), attention)}
       {group('running', T('Running'), running)}
+      {group('idle', T('No active run'), idleNow)}
       {group('quiet', T('No run observed'), quiet)}
     </div>
   )

@@ -117,9 +117,13 @@ export function NeedsYouQueue(p: NeedsYouProps) {
       const r = await fn()
       setResults(x => ({ ...x, [key]: r }))
       setBusy(b => ({ ...b, [key]: 'done' }))
+
+      return true
     } catch (e) {
       setBusy(b => ({ ...b, [key]: 'failed' }))
       setErrors(x => ({ ...x, [key]: e instanceof Error ? e.message : 'refused' }))
+
+      return false
     }
   }
 
@@ -147,7 +151,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
         <button data-ops-comment={key}
           data-ops-write=""
           disabled={!(notes[`c:${key}`] ?? '').trim()}
-          onClick={() => void run(`c:${key}`, () => p.onKanban?.({ kind: 'comment', taskId: item.id, note: (notes[`c:${key}`] ?? '').trim() })).then(() => setNotes(n => ({ ...n, [`c:${key}`]: '' })))}
+          onClick={() => void run(`c:${key}`, () => p.onKanban?.({ kind: 'comment', taskId: item.id, note: (notes[`c:${key}`] ?? '').trim() })).then(ok => { if (ok) {setNotes(n => ({ ...n, [`c:${key}`]: '' }))} })}
           type="button"
         >
           {T("Comment")}</button>
