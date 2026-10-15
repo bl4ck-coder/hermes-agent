@@ -145,6 +145,7 @@ export function DiagnosticsPanel({
                 {passing.map(r => (
                   <li data-ops-probe-check={r.id} data-ops-probe-state="ok" key={r.id}>
                     {T(r.label)}
+                    <span data-ops-probe-ok="">: {T('available')}</span>
                   </li>
                 ))}
               </ul>
