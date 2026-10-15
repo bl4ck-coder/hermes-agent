@@ -1,15 +1,13 @@
-import { T } from '../ops/main-i18n'
-import { useNavigate } from 'react-router'
-import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
-import { HeroBand, HeroSpark } from '@/components/hero-band'
-import { Codicon } from '@/components/ui/codicon'
 import { compactNumber } from '@hermes/shared'
-import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react'
+import { Fragment, type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
 
 import { LogSearchField, useLogSearch } from '@/components/chat/log-search'
 import { LogTail } from '@/components/chat/log-tail'
+import { HeroBand, HeroSpark } from '@/components/hero-band'
 import { PageLoader } from '@/components/page-loader'
 import { Button } from '@/components/ui/button'
+import { Codicon } from '@/components/ui/codicon'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SearchField } from '@/components/ui/search-field'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -44,9 +42,11 @@ import { SidebarLoadMoreRow } from '../chat/sidebar/load-more-row'
 import { useRefreshHotkey } from '../hooks/use-refresh-hotkey'
 import { useRouteEnumParam } from '../hooks/use-route-enum-param'
 import { PAGE_INSET_X } from '../layout-constants'
+import { T } from '../ops/main-i18n'
 import { OverlayBreadcrumbHeader } from '../overlays/overlay-breadcrumb-header'
 import { OverlayMain, OverlayNav, OverlaySplitLayout } from '../overlays/overlay-split-layout'
 import { OverlayView } from '../overlays/overlay-view'
+import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
 
 import { MaintenancePanel } from './maintenance'
 
@@ -425,8 +425,10 @@ export function CommandCenterView({
                       {filteredSessions.map((session, index) => {
                         const group = sessionDateGroup(session.last_active || session.started_at, locale)
                         const prev = index > 0 ? filteredSessions[index - 1] : undefined
+
                         const showGroup =
                           !prev || sessionDateGroup(prev.last_active || prev.started_at, locale) !== group
+
                         const pinId = sessionPinId(session)
                         const pinned = pinnedSessionIds.includes(pinId)
 
@@ -802,16 +804,20 @@ function UsageStat({ hint, label, value }: { hint?: string; label: string; value
 
 /** IA: date headers for the sessions list (Today, This week, then month and year), locale-aware with no new copy. */
 export function sessionDateGroup(ts: number | undefined, locale: string, now = Date.now()): string {
-  if (!ts) return ''
+  if (!ts) {return ''}
   const ms = ts > 1e12 ? ts : ts * 1000
   const day = new Date(ms)
   const today = new Date(now)
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
   const cap = (v: string) => v.charAt(0).toLocaleUpperCase(locale) + v.slice(1)
+
   try {
     const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
-    if (ms >= startOfToday) return cap(rtf.format(0, 'day'))
-    if (ms >= startOfToday - 6 * 86_400_000) return cap(rtf.format(0, 'week'))
+
+    if (ms >= startOfToday) {return cap(rtf.format(0, 'day'))}
+
+    if (ms >= startOfToday - 6 * 86_400_000) {return cap(rtf.format(0, 'week'))}
+
     return cap(new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(day))
   } catch {
     return day.toDateString()
@@ -824,14 +830,19 @@ export function SessionsHero({ label, locale, sessions, span }: { label: string;
   const todayKey = sessionDateGroup(now, locale, now)
   const days = Array.from({ length: 14 }, () => 0)
   let today = 0
+
   for (const s of sessions) {
     const raw = s.last_active || s.started_at || 0
     const t = raw && raw < 1e12 ? raw * 1000 : raw
-    if (!t) continue
+
+    if (!t) {continue}
     const d = Math.floor((now - t) / 86_400_000)
-    if (d >= 0 && d < 14) days[13 - d]++
-    if (sessionDateGroup(t, locale, now) === todayKey) today++
+
+    if (d >= 0 && d < 14) {days[13 - d]++}
+
+    if (sessionDateGroup(t, locale, now) === todayKey) {today++}
   }
+
   return (
     <HeroBand
       className="mt-1"

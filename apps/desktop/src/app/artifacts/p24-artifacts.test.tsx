@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type * as ArtifactUtils from './artifact-utils'
+
 import { artifactPathHints, ArtifactsView } from './index'
 
 const getSessionMessages = vi.hoisted(() => vi.fn())

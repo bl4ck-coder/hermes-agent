@@ -1,7 +1,6 @@
 import type * as React from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
 
 import { TitlebarIcon } from '@/app/shell/titlebar-icon'
 import { ZoomableImage } from '@/components/chat/zoomable-image'
@@ -40,12 +39,10 @@ import { $activeProfile } from '@/store/profile'
 
 import { useRefreshHotkey } from '../hooks/use-refresh-hotkey'
 import { useRouteEnumParam } from '../hooks/use-route-enum-param'
-
-import { T } from '../ops/main-i18n'
-
-import { useCachedThumb } from './thumb-cache'
 import { openSessionFromPicker } from '../open-session'
+import { T } from '../ops/main-i18n'
 import { PageSearchShell } from '../page-search-shell'
+import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
 import type { SetStatusbarItemGroup } from '../shell/statusbar-controls'
 
 import {
@@ -55,6 +52,7 @@ import {
   type ArtifactRecord,
   loadArtifactsForSessions
 } from './artifact-utils'
+import { useCachedThumb } from './thumb-cache'
 
 function formatArtifactTime(timestamp: number): string {
   return fmtDayTime.format(new Date(timestamp))
