@@ -179,6 +179,8 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                   </button>
                 )
               },
+              // P6: attention leads the card, right after the name.
+              { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{T(r.status)}</span> },
               { id: 'model', header: 'Model', sortable: true, sortValue: r => r.model, cell: r => r.model ?? T('unknown') },
               { id: 'lane', header: 'Lane', sortable: true, sortValue: r => r.lane, cell: r => r.lane ?? '—' },
               { id: 'active', header: 'Active tasks', sortable: true, tabular: true, sortValue: r => r.active, cell: r => <span data-ops-zero={r.active ? undefined : ''}>{String(r.active)}</span> },
@@ -195,8 +197,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                   </span>
                 )
               },
-              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('never')) },
-              { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{T(r.status)}</span> }
+              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('never')) }
             ]}
             emptyLabel={q ? T('No agent matches.') : T('No profiles.')}
             getRowId={r => r.name}
@@ -256,6 +257,15 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
             <h3>{t.lane === 'No lane' ? T('No lane') : t.lane}</h3>
             <span data-ops-team-open="">{P(t.open, '{n} open')}</span>
           </header>
+          <p data-ops-team-projects="">
+            {t.projects.length
+              ? t.projects.map(p => (
+                  <button data-ops-team-project={p} disabled={!onOpenRoute} key={p} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(p)}`)} type="button">
+                    {p}
+                  </button>
+                ))
+              : <span data-ops-team-none="">{T('No projects')}</span>}
+          </p>
           <div aria-label={T('Members:')} data-ops-team-members="" role="list">
             {t.members.length
               ? t.members.map(m => (
@@ -266,15 +276,6 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
                 ))
               : <span data-ops-team-none="">{T('No members')}</span>}
           </div>
-          <p data-ops-team-projects="">
-            {t.projects.length
-              ? t.projects.map(p => (
-                  <button data-ops-team-project={p} disabled={!onOpenRoute} key={p} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(p)}`)} type="button">
-                    {p}
-                  </button>
-                ))
-              : <span data-ops-team-none="">{T('No projects')}</span>}
-          </p>
         </li>
       ))}
     </ul>
@@ -525,13 +526,15 @@ type Filter = 'all' | 'connected'
 function AppTile({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: string) => void }) {
   return (
     <li data-ops-app={card.key} data-ops-app-connected={card.connected ? '' : undefined}>
-      <span aria-hidden data-ops-app-glyph="">
-        {appGlyph(card.name)}
+      <span data-ops-app-head="">
+        <span aria-hidden data-ops-app-glyph="">
+          {appGlyph(card.name)}
+        </span>
+        <strong>{card.name}</strong>
+        {card.connected ? <span data-ops-app-state="connected">{T("✓ Connected")}</span> : null}
       </span>
-      <strong>{card.name}</strong>
-      <p>{card.description}</p>
       {card.warning ? <small data-ops-app-warning="">{card.warning}</small> : null}
-      {card.connected ? <span data-ops-app-state="connected">{T("✓ Connected")}</span> : null}
+      <p>{card.description}</p>
       <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
         {card.connected ? T('Manage') : T('Connect')}
       </button>
@@ -612,9 +615,11 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
       </header>
       {/* B35: Channels hero: how much is wired up, and what. */}
       <div data-ops-channels-hero="">
-        <span data-ops-diag-ring="" style={{ '--ops-pct': String(cards.length ? cards.filter(x => x.connected).length / cards.length : 0) } as CSSProperties}>
-          {cards.filter(x => x.connected).length}/{cards.length}
-        </span>
+        {/* P6: a plain count, not a ring: the connected list is the content. */}
+        <strong data-ops-channels-count="">
+          {cards.filter(x => x.connected).length}
+          <small>/{cards.length}</small>
+        </strong>
         <div>
           <span data-ops-now-label="">{T('Connected apps')}</span>
           <p data-ops-channels-hero-list="">
