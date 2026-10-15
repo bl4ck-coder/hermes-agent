@@ -1029,3 +1029,11 @@
 @container ops-rows (max-width: 40rem) { :where([data-ops-row]) { grid-template-columns: auto minmax(0, 1fr); } :where([data-ops-row-actions]) { grid-column: 2; max-width: none; justify-content: flex-start; padding-top: var(--space-2,8px); } :where([data-ops-row-more-slot]) { grid-column: 2; grid-row: auto; justify-content: flex-start; } }
 :where([data-ops-team-task-status]) { color: var(--ops-muted); }
 :where([data-ops-team-task-status='blocked']) { color: var(--ops-warn,#e3a33b); }
+
+/* P15: Channels rows on EntityRow; the old tile chrome no longer applies. */
+:where(li[data-ops-row][data-ops-app]) { order: initial; border: 0; border-bottom: 1px solid var(--ops-line, rgba(255,255,255,.08)); border-radius: 0; box-shadow: none; transform: none; background: none; }
+:where(li[data-ops-row][data-ops-app]:hover) { box-shadow: none; transform: none; background: color-mix(in srgb, white 3%, transparent); }
+:where(li[data-ops-row][data-ops-app]) :where([data-ops-app-glyph]) { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; font-size: var(--type-meta,14px); }
+:where([data-ops-app-warning]) { color: var(--ops-warn,#e3a33b); }
+:where([data-ops-app-catalog-title]) { margin-top: var(--space-8,32px); font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); }
+:where([data-ops-app-section] > h4) { margin: var(--space-4,16px) 0 var(--space-1,4px); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); font-weight: 600; }

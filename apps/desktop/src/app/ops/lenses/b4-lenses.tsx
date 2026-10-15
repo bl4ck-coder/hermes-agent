@@ -656,22 +656,47 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
 
 type Filter = 'all' | 'connected'
 
-function AppTile({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: string) => void }) {
+/** P15 (judge consult): what "connected" means depends on the source; say that, not a health claim. */
+const appState = (card: AppCard) => (card.kind === 'messaging' ? T('Configured') : card.kind === 'model' ? T('Signed in') : T('Installed'))
+
+/** P15: one EntityRow per app: glyph → name → warning (or what it does) → category and state → Manage / Connect. */
+function AppRow({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: string) => void }) {
   return (
-    <li data-ops-app={card.key} data-ops-app-connected={card.connected ? '' : undefined}>
-      <span data-ops-app-head="">
+    <EntityRow
+      attrs={{ 'data-ops-app': card.key, 'data-ops-app-connected': card.connected ? '' : undefined }}
+      context={
+        card.warning ? (
+          <span data-ops-app-warning="">{card.warning}</span>
+        ) : card.description ? (
+          <span data-ops-app-desc="">{card.description}</span>
+        ) : undefined
+      }
+      lead={
         <span aria-hidden data-ops-app-glyph="">
           {appGlyph(card.name)}
         </span>
-        <strong>{card.name}</strong>
-        {card.connected ? <span data-ops-app-state="connected">{T("✓ Connected")}</span> : null}
-      </span>
-      {card.warning ? <small data-ops-app-warning="">{card.warning}</small> : null}
-      <p title={card.description}>{card.description}</p>
-      <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
-        {card.connected ? T('Manage') : T('Connect')}
-      </button>
-    </li>
+      }
+      meta={
+        <>
+          <span>{T(card.category)}</span>
+          {card.connected ? <span data-ops-app-state={card.kind}>{appState(card)}</span> : null}
+        </>
+      }
+      more={
+        card.warning && card.description ? (
+          <Disclosure label={T('Details')}>
+            <span data-ops-app-desc="">{card.description}</span>
+          </Disclosure>
+        ) : undefined
+      }
+      primary={
+        <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
+          {card.connected ? T('Manage') : T('Connect')}
+        </button>
+      }
+      title={card.name}
+      tone={card.warning ? 'warn' : undefined}
+    />
   )
 }
 
@@ -724,7 +749,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
     return <State error={r.error} what="Channels & MCP" />
   }
 
-  const missing = (['catalog', 'platforms', 'providers'] as const).filter(k => r.value![k] === null)
+  const missing = (['catalog', 'servers', 'platforms', 'providers'] as const).filter(k => r.value![k] === null)
   const base = filter === 'connected' ? cards.filter(x => x.connected) : cards
   const shown = searchRows(base, q, x => [x.name, x.description]).filter(x => !cat || x.category === cat)
   const connectedFirst = filter === 'all' && !cat && !q && shown.some(x => x.connected)
@@ -746,20 +771,6 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
           +
         </button>
       </header>
-      {/* B35: Channels hero: how much is wired up, and what. */}
-      <div data-ops-channels-hero="">
-        {/* P6: a plain count, not a ring: the connected list is the content. */}
-        <strong data-ops-channels-count="">
-          {cards.filter(x => x.connected).length}
-          <small>/{cards.length}</small>
-        </strong>
-        <div>
-          <span data-ops-now-label="">{T('Connected apps')}</span>
-          <p data-ops-channels-hero-list="">
-            {cards.filter(x => x.connected).slice(0, 8).map(x => <span data-ops-chip="" key={x.key}>{x.name}</span>)}
-          </p>
-        </div>
-      </div>
       {missing.length ? <p data-ops-partial="">{T("Not answering:")}{' '}{missing.join(', ')}.</p> : null}
       {quick ? <QuickConnect cards={cards} onClose={() => setQuick(false)} onOpenRoute={onOpenRoute} /> : null}
       <div data-ops-channels-body="">
@@ -777,32 +788,54 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
         </nav>
         <div>
           {connectedFirst ? (
-            <section aria-label={T('Connected apps')} data-ops-app-section="connected">
-              <h3>{T('Connected apps')}</h3>
-              <ul data-ops-app-grid="">
-                {shown.filter(x => x.connected).map(card => (
-                  <AppTile card={card} key={`c-${card.key}`} onOpenRoute={onOpenRoute} />
-                ))}
-              </ul>
-            </section>
-          ) : null}
-          {cats
-            .filter(x => !cat || x === cat)
-            .map(x => {
-              // B37: when connected apps lead in their own section, the catalog below lists only the rest.
-              const xs = shown.filter(c => c.category === x && !(connectedFirst && c.connected))
-
-              return xs.length ? (
-                <section aria-label={x} data-ops-app-section={x} key={x}>
-                  <h3>{x}</h3>
-                  <ul data-ops-app-grid="">
-                    {xs.map(card => (
-                      <AppTile card={card} key={card.key} onOpenRoute={onOpenRoute} />
+            <>
+              {/* P15: configured apps with a warning lead; the warning reads with the row closed. */}
+              {shown.some(x => x.connected && x.warning) ? (
+                <section aria-label={T('Configured with warnings')} data-ops-app-section="warn">
+                  <h3>
+                    {T('Configured with warnings')} <span data-ops-rows-count="">{shown.filter(x => x.connected && x.warning).length}</span>
+                  </h3>
+                  <EntityList label={T('Configured with warnings')}>
+                    {shown.filter(x => x.connected && x.warning).map(card => (
+                      <AppRow card={card} key={`w-${card.key}`} onOpenRoute={onOpenRoute} />
                     ))}
-                  </ul>
+                  </EntityList>
                 </section>
-              ) : null
-            })}
+              ) : null}
+              {shown.some(x => x.connected && !x.warning) ? (
+                <section aria-label={T('Other configured')} data-ops-app-section="connected">
+                  <h3>
+                    {T('Other configured')} <span data-ops-rows-count="">{shown.filter(x => x.connected && !x.warning).length}</span>
+                  </h3>
+                  <EntityList label={T('Other configured')}>
+                    {shown.filter(x => x.connected && !x.warning).map(card => (
+                      <AppRow card={card} key={`c-${card.key}`} onOpenRoute={onOpenRoute} />
+                    ))}
+                  </EntityList>
+                </section>
+              ) : null}
+            </>
+          ) : null}
+          <div data-ops-app-catalog={connectedFirst ? '' : undefined}>
+            {connectedFirst && shown.some(x => !x.connected) ? <h3 data-ops-app-catalog-title="">{T('Add connections')}</h3> : null}
+            {cats
+              .filter(x => !cat || x === cat)
+              .map(x => {
+                // B37: when configured apps lead in their own sections, the catalog lists only the rest.
+                const xs = shown.filter(c => c.category === x && !(connectedFirst && c.connected))
+
+                return xs.length ? (
+                  <section aria-label={x} data-ops-app-section={x} key={x}>
+                    <h4>{T(x)}</h4>
+                    <EntityList label={x}>
+                      {xs.map(card => (
+                        <AppRow card={card} key={card.key} onOpenRoute={onOpenRoute} />
+                      ))}
+                    </EntityList>
+                  </section>
+                ) : null
+              })}
+          </div>
           {shown.length === 0 ? (
         <p data-ops-empty="apps">
           {filter === 'connected' ? T('Nothing connected yet.') : T('No app matches.')}{' '}

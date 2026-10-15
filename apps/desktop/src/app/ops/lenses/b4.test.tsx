@@ -200,10 +200,10 @@ describe('Channels lens', () => {
     const open = vi.fn()
     render(<ChannelsLens client={client()} onOpenRoute={open} profile="builder" />)
     await waitFor(() => expect(document.querySelector('[data-ops-app="mcp:github"]')).toBeTruthy())
-    expect([...document.querySelectorAll('[data-ops-app-section]')].map(s => s.getAttribute('data-ops-app-section'))).toEqual(['connected', 'Messaging', 'Tools (MCP)', 'Models']) // B36: connected apps lead, in their own section
+    expect([...document.querySelectorAll('[data-ops-app-section]')].map(s => s.getAttribute('data-ops-app-section'))).toEqual(['warn', 'connected', 'Messaging', 'Tools (MCP)', 'Models']) // P15: configured apps lead, the ones with a warning first
     expect(document.querySelector('[data-ops-app-filter="connected"]')?.textContent).toBe('Connected 4')
     const tg = document.querySelector('[data-ops-app="messaging:telegram"]') as HTMLElement
-    expect(tg.querySelector('[data-ops-app-state]')?.textContent).toBe('✓ Connected')
+    expect(tg.querySelector('[data-ops-app-state]')?.textContent).toBe('Configured') // P15: messaging says configured, not a health claim
     expect(tg.querySelector('[data-ops-app-warning]')?.textContent).toBe('gateway stopped')
     fireEvent.click(tg.querySelector('[data-ops-app-action="manage"]')!)
     expect(open).toHaveBeenLastCalledWith('/messaging?platform=telegram')
@@ -243,7 +243,7 @@ describe('Channels lens', () => {
 
   it('a source that does not answer is named, the rest still render; all down = reason', async () => {
     render(<ChannelsLens client={client({ channels: vi.fn().mockResolvedValue({ catalog: null, servers: null, platforms: [], providers: [] }) })} profile="p" />)
-    await screen.findByText('Not answering: catalog.')
+    await screen.findByText('Not answering: catalog, servers.') // P15: a missing MCP server list is named too
     cleanup()
     render(<ChannelsLens client={client({ channels: vi.fn().mockRejectedValue(new Error('no channel source answered')) })} profile="p" />)
     await screen.findByText('Channels & MCP unavailable: no channel source answered')
