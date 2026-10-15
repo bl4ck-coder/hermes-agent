@@ -38,6 +38,8 @@ import { notify, notifyError } from '@/store/notifications'
 
 import { useRefreshHotkey } from '../hooks/use-refresh-hotkey'
 import { useRouteEnumParam } from '../hooks/use-route-enum-param'
+
+import { useCachedThumb } from './thumb-cache'
 import { openSessionFromPicker } from '../open-session'
 import { PageSearchShell } from '../page-search-shell'
 import type { SetStatusbarItemGroup } from '../shell/statusbar-controls'
@@ -503,6 +505,9 @@ export function artifactThumbnail(artifact: Pick<ArtifactRecord, 'href' | 'kind'
 function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; onOpen: (artifact: ArtifactRecord) => void }) {
   const thumb = artifactThumbnail(artifact)
   const [thumbFailed, setThumbFailed] = useState(false)
+  // B35: served from the local thumbnail cache; pending or failed keeps the monogram.
+  const cached = useCachedThumb(thumb)
+  const showImg = typeof cached === 'string' && cached !== 'pending' && !thumbFailed
 
   return (
     <button
@@ -511,8 +516,8 @@ function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; o
       onClick={() => onOpen(artifact)}
       type="button"
     >
-      <span aria-hidden className="relative -mx-3 -mt-3 mb-1 block h-24 overflow-hidden rounded-t-xl" data-artifact-thumb={thumb && !thumbFailed ? 'image' : 'monogram'}>
-        {thumb && !thumbFailed ? (
+      <span aria-hidden className="relative -mx-3 -mt-3 mb-1 block h-24 overflow-hidden rounded-t-xl" data-artifact-thumb={showImg ? 'image' : 'monogram'} data-artifact-thumb-cache={cached === 'pending' ? 'pending' : cached ? 'hit' : 'none'}>
+        {showImg ? (
           <img
             alt=""
             className="size-full object-cover"
@@ -520,7 +525,7 @@ function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; o
             loading="lazy"
             onError={() => setThumbFailed(true)}
             referrerPolicy="no-referrer"
-            src={thumb}
+            src={cached as string}
           />
         ) : (
           <span className="grid size-full place-items-center font-mono text-2xl tracking-widest" data-artifact-monogram="">

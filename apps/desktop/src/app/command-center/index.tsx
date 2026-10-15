@@ -1,3 +1,5 @@
+import { HeroBand, HeroSpark } from '@/components/hero-band'
+import { Codicon } from '@/components/ui/codicon'
 import { compactNumber } from '@hermes/shared'
 import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react'
 
@@ -399,6 +401,7 @@ export function CommandCenterView({
             {section === 'sessions' ? (
               <div className="flex min-h-0 flex-1 flex-col">
                 {/* IA: search sits on top of the list it filters, not in the far header corner. */}
+                <SessionsHero label={cc.statSessions} locale={locale} sessions={sessions} span={cc.days(14)} />
                 <div className="shrink-0 pb-3 pt-1" data-sessions-search="">
                   <SearchField onChange={next => setQuery(next)} placeholder={cc.searchPlaceholder} value={query} />
                 </div>
@@ -795,4 +798,30 @@ export function sessionDateGroup(ts: number | undefined, locale: string, now = D
   } catch {
     return day.toDateString()
   }
+}
+
+/** B35: Sessions hero: totals, today, and a 14-day activity spark. */
+function SessionsHero({ label, locale, sessions, span }: { label: string; locale: string; sessions: readonly { last_active?: number | null; started_at?: number | null }[]; span: string }) {
+  const now = Date.now()
+  const todayKey = sessionDateGroup(now, locale, now)
+  const days = Array.from({ length: 14 }, () => 0)
+  let today = 0
+  for (const s of sessions) {
+    const raw = s.last_active || s.started_at || 0
+    const t = raw && raw < 1e12 ? raw * 1000 : raw
+    if (!t) continue
+    const d = Math.floor((now - t) / 86_400_000)
+    if (d >= 0 && d < 14) days[13 - d]++
+    if (sessionDateGroup(t, locale, now) === todayKey) today++
+  }
+  return (
+    <HeroBand
+      className="mt-1"
+      icon={<Codicon name="history" />}
+      id="sessions"
+      spark={<HeroSpark label={span} values={days} />}
+      stats={[{ label, value: sessions.length }, { label: todayKey, tone: today ? 'good' : 'muted', value: today }]}
+      title={label}
+    />
+  )
 }

@@ -9,6 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
 import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
 import { opsMainLocale, P, T } from '../main-i18n'
+import { Sigil } from '../primitives/sigil'
 
 import { ComposePanel } from './compose-view'
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
@@ -533,7 +534,8 @@ export function CanvasView({
 
   return (
     <div data-ops-canvas={profile} data-ops-readonly={readOnly ? '' : undefined}>
-      <header>
+      <header data-ops-canvas-hero="">
+        <Sigil name={profile} size={30} />
         <strong>{T("Canvas ·")}{' '}{profile}</strong>
         {readOnly ? <span data-ops-badge="remote">{T("remote: read-only")}</span> : null}
         {/* G57: one header save for every dirty node; disabled at 0. */}

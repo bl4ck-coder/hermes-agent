@@ -7,6 +7,7 @@ import { RowButton } from '@/components/ui/row-button'
 import { SearchField } from '@/components/ui/search-field'
 import { Tip } from '@/components/ui/tooltip'
 import { translateNow } from '@/i18n'
+import { HeroBand, type HeroStat } from '@/components/hero-band'
 import { cn } from '@/lib/utils'
 
 import { OVERLAY_TOP_CLEARANCE, OverlayView } from './overlay-view'
@@ -61,11 +62,18 @@ export function Panel({
 interface PanelHeaderProps {
   // Right-aligned controls (search, "+ New", segmented control, …).
   actions?: ReactNode
+  /** B35: icon + stats turn the header into a lit hero band. */
+  icon?: ReactNode
+  stats?: HeroStat[]
   subtitle?: ReactNode
   title: ReactNode
 }
 
-export function PanelHeader({ actions, subtitle, title }: PanelHeaderProps) {
+export function PanelHeader({ actions, icon, stats, subtitle, title }: PanelHeaderProps) {
+  if (icon || stats) {
+    return <HeroBand actions={actions} className={actions ? 'pr-10' : undefined} icon={icon} id="panel" stats={stats} subtitle={subtitle} title={title} />
+  }
+
   return (
     // The overlay's close (X) is absolutely positioned at right-3 and costs no
     // layout space, so header actions would otherwise slide right up against it.

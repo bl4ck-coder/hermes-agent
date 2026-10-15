@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PageLoader } from '@/components/page-loader'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { type HeroStat } from '@/components/hero-band'
 import { Codicon } from '@/components/ui/codicon'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
@@ -680,7 +681,12 @@ export function CronView({ onClose, onOpenSession, setStatusbarItemGroup: _setSt
 
   return (
     <Panel closeLabel={c.close} onClose={onClose}>
-      <PanelHeader subtitle={c.count(totalCount)} title={c.title} />
+      <PanelHeader
+        icon={<Codicon name="watch" />}
+        stats={totalCount ? cronHeroStats(jobs, c.states) : undefined}
+        subtitle={c.count(totalCount)}
+        title={c.title}
+      />
 
       {loading && jobs.length === 0 ? (
         <PageLoader label={c.loading} />
@@ -1719,4 +1725,15 @@ function CronRunText({ text }: { text: string }) {
       {rest}
     </>
   )
+}
+
+/** B35: Cron hero stats, one per state that has jobs, healthy first. */
+export function cronHeroStats(jobs: Parameters<typeof jobState>[0][], states: Partial<Record<string, string>>): HeroStat[] {
+  const order = ['running', 'scheduled', 'enabled', 'paused', 'error', 'disabled', 'completed']
+  const n: Record<string, number> = {}
+  for (const j of jobs) n[jobState(j)] = (n[jobState(j)] ?? 0) + 1
+  return Object.keys(n)
+    .sort((a, b) => (order.indexOf(a) + 99) % 99 - (order.indexOf(b) + 99) % 99)
+    .slice(0, 4)
+    .map(k => ({ label: states[k] ?? k, tone: STATE_TONE[k] === 'good' ? 'good' : STATE_TONE[k] === 'bad' ? 'bad' : STATE_TONE[k] === 'warn' ? 'warn' : 'muted', value: n[k] }))
 }
