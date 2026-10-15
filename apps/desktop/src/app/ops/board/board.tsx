@@ -6,7 +6,7 @@
  * (R71/R58), favourites (R74), card menu (R20), New-task modal (R40), inline rename (R47), Markdown body (R17).
  */
 
-import { type KeyboardEvent, type ReactNode, useMemo, useState, useRef } from 'react'
+import { type KeyboardEvent, type ReactNode, useMemo, useRef, useState } from 'react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -132,12 +132,14 @@ export function BoardView(props: BoardViewProps) {
   // B30: the drop highlight is a DOM attribute on the hovered column, not React state: dragover fires every frame
   // and re-rendering the whole board per frame caused the 40-53 ms drag spikes.
   const dropRef = useRef<HTMLElement | null>(null)
+
   const markDrop = (el: HTMLElement | null) => {
-    if (dropRef.current === el) return
+    if (dropRef.current === el) {return}
     dropRef.current?.removeAttribute('data-ops-drop')
     el?.setAttribute('data-ops-drop', 'over')
     dropRef.current = el
   }
+
   const [announce, setAnnounce] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<BoardTask | null>(null)
@@ -324,7 +326,7 @@ export function BoardView(props: BoardViewProps) {
       {/* B35: the board's shape at a glance, one segment per column sized by its tasks. */}
       <div aria-hidden data-ops-board-flow="">
         {shown.columns.map(col => (
-          <span data-ops-board-flow-seg={col.name} data-ops-board-flow-empty={col.tasks.length ? undefined : ''} key={col.name} style={{ flexGrow: col.tasks.length }}>
+          <span data-ops-board-flow-empty={col.tasks.length ? undefined : ''} data-ops-board-flow-seg={col.name} key={col.name} style={{ flexGrow: col.tasks.length }}>
             <b>{col.tasks.length}</b> {T(col.name)}
           </span>
         ))}
@@ -340,6 +342,10 @@ export function BoardView(props: BoardViewProps) {
             {T("New task")}</button>
         ) : null}
         <input aria-label={T("filter")} onChange={e => (setFilter(f => ({ ...f, text: e.target.value })), setActiveView(null))} placeholder={T("Filter")} value={filter.text ?? ''} />
+        {/* P10: secondary filters, grouping and saved views fold into one quiet menu; the work keeps the page. */}
+        <details data-ops-board-more="">
+          <summary>{T("More filters")}</summary>
+          <div data-ops-board-more-body="">
         <select aria-label={T("tenant")} onChange={e => (setFilter(f => ({ ...f, tenant: e.target.value || null })), setActiveView(null))} value={filter.tenant ?? ''}>
           <option value="">{T("all tenants")}</option>
           {(board.tenants ?? []).map(t => (
@@ -386,6 +392,24 @@ export function BoardView(props: BoardViewProps) {
           >
             {T("Archived")}</button>
         ) : null}
+            <form
+              onSubmit={e => {
+                e.preventDefault()
+                const name = viewName.trim()
+    
+                if (name) {
+                  const v = saveView(scope, { name, filter: { ...filter, mine: filter.mine ? 'me' : null }, layout, groupBy, sortBy })
+                  setActiveView(v.id)
+                  setViewName('')
+                }
+              }}
+            >
+              <input aria-label={T("view name")} onChange={e => setViewName(e.target.value)} placeholder={T("Save current view as…")} value={viewName} />
+              <button data-ops-save-view="" disabled={!viewName.trim()} type="submit">
+                {T("Save view")}</button>
+            </form>
+          </div>
+        </details>
       </div>
 
       <div aria-label={T("Saved views")} data-ops-views="" role="tablist">
@@ -399,22 +423,6 @@ export function BoardView(props: BoardViewProps) {
             </button>
           </span>
         ))}
-        <form
-          onSubmit={e => {
-            e.preventDefault()
-            const name = viewName.trim()
-
-            if (name) {
-              const v = saveView(scope, { name, filter: { ...filter, mine: filter.mine ? 'me' : null }, layout, groupBy, sortBy })
-              setActiveView(v.id)
-              setViewName('')
-            }
-          }}
-        >
-          <input aria-label={T("view name")} onChange={e => setViewName(e.target.value)} placeholder={T("Save current view as…")} value={viewName} />
-          <button data-ops-save-view="" disabled={!viewName.trim()} type="submit">
-            {T("Save view")}</button>
-        </form>
       </div>
 
       {showArchived ? (
@@ -478,10 +486,11 @@ export function BoardView(props: BoardViewProps) {
             <section
               aria-label={col.name}
               data-ops-column={col.name}
+              data-ops-column-empty={col.tasks.length ? undefined : ''}
               key={col.name}
               onDragLeave={e => {
                 if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  if (dropRef.current === e.currentTarget) markDrop(null)
+                  if (dropRef.current === e.currentTarget) {markDrop(null)}
                 }
               }}
               onDragOver={e => {

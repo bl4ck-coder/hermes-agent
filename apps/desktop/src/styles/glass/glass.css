@@ -534,3 +534,6 @@ html[data-hermes-theme^='gold-night'] [data-ops-root] :is([data-ops-diagnostics]
 /* P10: Team cards are rows of work, not framed tiles; only the busy lane keeps an inner highlight. */
 html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-teams] > li { background: none; border-color: transparent; box-shadow: none; }
 html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-teams] > li[data-ops-team-busy] { box-shadow: inset 0 0 0 1px rgb(var(--glass-gold-hi) / 0.1); }
+
+/* P10: the flow line is a quiet summary; color lives on the cards. */
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-board-flow] [data-ops-board-flow-seg] { background: transparent; color: rgb(var(--glass-ink-dim, 200 190 170) / 0.85); font-size: 12px; }

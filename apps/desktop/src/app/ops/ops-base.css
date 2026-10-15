@@ -921,3 +921,13 @@
 :where([data-ops-team-purpose] > li + li) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); }
 :where([data-ops-team-foot]) { opacity: 0.7; }
 :where([data-ops-team-foot]) :where([data-ops-team-member]) { transform: scale(0.85); transform-origin: left center; }
+
+/* P10: Board chrome steps back: quiet flow line, one toolbar row, empty columns narrow. */
+:where([data-ops-board-flow]) { opacity: 0.7; }
+:where([data-ops-board-more]) { position: relative; }
+:where([data-ops-board-more] > summary) { cursor: pointer; list-style: none; padding: 2px 8px; border-radius: 6px; color: var(--ops-muted); font-size: var(--type-meta,14px); }
+:where([data-ops-board-more][open] > [data-ops-board-more-body]) { position: absolute; z-index: 20; top: calc(100% + 4px); right: 0; display: grid; gap: var(--space-2,8px); min-width: 16rem; padding: var(--space-3,12px); border-radius: 10px; background: var(--ops-surface-2, #1b1712); border: 1px solid var(--ops-line, rgba(255,255,255,.08)); box-shadow: 0 12px 32px -12px black; }
+:where([data-ops-board]) :where([data-ops-columns]) { display: flex; align-items: flex-start; }
+:where([data-ops-board]) :where([data-ops-columns]) > :where([data-ops-column]) { flex: 0 0 18rem; min-width: 0; }
+:where([data-ops-board]) :where([data-ops-columns]) > :where([data-ops-column-empty]) { flex-basis: 9rem; opacity: 0.75; }
+:where([data-ops-push]) { font-size: var(--type-caption,12px); color: var(--ops-muted); }

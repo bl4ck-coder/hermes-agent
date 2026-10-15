@@ -2,6 +2,7 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "More filters": "Más filtros",
      "Checked": "Comprobado",
      "Blocked": "Bloqueada",
      "Show all": "Mostrar todo",
@@ -639,6 +640,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "More filters": "Plus de filtres",
      "Checked": "Vérifié",
      "Blocked": "Bloquée",
      "Show all": "Tout afficher",
@@ -1275,6 +1277,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "More filters": "Weitere Filter",
      "Checked": "Geprüft",
      "Blocked": "Blockiert",
      "Show all": "Alle anzeigen",
@@ -1911,6 +1914,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "More filters": "Другие фильтры",
      "Checked": "Проверено",
      "Blocked": "Заблокирована",
      "Show all": "Показать все",
@@ -2547,6 +2551,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "More filters": "その他のフィルター",
      "Checked": "確認済み",
      "Blocked": "ブロック中",
      "Show all": "すべて表示",
@@ -3183,6 +3188,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "More filters": "更多筛选",
      "Checked": "已检查",
      "Blocked": "受阻",
      "Show all": "显示全部",
@@ -3819,6 +3825,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "More filters": "更多篩選",
      "Checked": "已檢查",
      "Blocked": "受阻",
      "Show all": "顯示全部",
@@ -4455,6 +4462,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "More filters": "مزيد من عوامل التصفية",
      "Checked": "تم التحقق",
      "Blocked": "محظورة",
      "Show all": "عرض الكل",
