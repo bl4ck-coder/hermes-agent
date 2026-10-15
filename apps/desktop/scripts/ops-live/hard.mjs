@@ -279,6 +279,16 @@ const tap = async (sel, ms = 8000) => { const l = visible(sel).first(); await l.
 const type = async (sel, v, ms = 8000) => { const l = visible(sel).first(); await l.waitFor({ state: 'visible', timeout: ms }); await l.fill(v) }
 
 const matrix = []
+/** Fails when a modal dialog or the boot-failure overlay is shown; returns the dialog's heading otherwise. */
+const noBlockingModal = async () => {
+  const hit = await page.evaluate(() => {
+    const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' }
+    const d = [...document.querySelectorAll('[role="alertdialog"], [role="dialog"][aria-modal="true"], dialog[open]')].find(vis)
+    return d ? (d.querySelector('h1,h2,h3,[id$="title"]')?.textContent || d.textContent || '').trim().slice(0, 80) : null
+  })
+  if (hit !== null) throw new Error(`blocking modal: ${hit}`)
+  return 'no modal over the app'
+}
 const MATRIX = SELFTEST ? 'selftest-matrix.json' : 'state-matrix.json'
 const within = (pr, ms, what) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error(`watchdog: ${what} > ${ms} ms`)), ms))])
 /** Run labelled checks; every check runs (no short-circuit) so a negative control shows exactly which ones failed. */
@@ -309,15 +319,18 @@ const state = async (screen, st, spec) => {
     const neg = spec.neg ?? {}
     const mocks = SELFTEST && 'mocks' in neg ? neg.mocks : spec.mocks ?? []
     const act = SELFTEST ? neg.act ?? spec.open : spec.act
+    // A modal over the app (boot failure, any open dialog) makes every visibility check meaningless: Playwright's
+    // visible() ignores occlusion. It is a check of every state, so a covered screen can never be 'verified'.
+    const allChecks = { ...spec.checks, 'no-blocking-modal': noBlockingModal }
     try {
       await mock(mocks)
       await within(Promise.resolve().then(act), 60000, 'act')
-      checks = await runChecks(spec.checks, CHECK_MS)
+      checks = await runChecks(allChecks, CHECK_MS)
       await sleep(600)
       await within(shot(name), 20000, 'shot').catch(e => { note += ` ${e}` })
       if (!SELFTEST) {
         // The screenshot must show the asserted state: re-check right after it, briefly.
-        const again = await runChecks(spec.checks, 1500)
+        const again = await runChecks(allChecks, 1500)
         for (const [i, c] of again.entries()) if (!c.pass && checks[i].pass) checks[i] = { ...c, detail: `changed before the shot: ${c.detail}` }
       }
     } catch (e) { note += ` act failed: ${String(e?.message ?? e).slice(0, 200)}`; ok = false }
