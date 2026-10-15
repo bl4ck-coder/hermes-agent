@@ -2,7 +2,8 @@
 // plus a mock layer on the test instance's hermes:api IPC handler, to capture opened sections, filters, editing,
 // rejected saves, errors, narrow panels and loaded lists. Writes state-matrix.json next to the screenshots.
 import { _electron } from '@playwright/test'
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { spawnSync as spawnStop } from 'node:child_process'
+import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -21,13 +22,15 @@ const SELFTEST = process.env.OPS_HARD_SELFTEST === '1'
 // Optional: OPS_HARD_ONLY=<regex on "screen-state"> runs a subset (e.g. "narrow").
 const ONLY = process.env.OPS_HARD_ONLY ? new RegExp(process.env.OPS_HARD_ONLY) : null
 const HOME = join(tmpdir(), TAG ? `ops-hard-home-${TAG}` : 'ops-hard-home')
+const SANDBOX_PORT = TAG ? '18652' : '18642'
 const env = {
   ...process.env,
   HERMES_DESKTOP_HERMES_ROOT: resolve(DESKTOP, '..', '..'),
   HERMES_DESKTOP_PYTHON: process.env.OPS_LIVE_PYTHON,
   HERMES_DESKTOP_ISOLATED_BACKEND: '1',
-  // Never start, stop, restart or replace a gateway from this checkout (hermes_cli/gateway_lifecycle_guard.py).
-  HERMES_OPS_NO_GATEWAY: '1',
+  // v0.22 needs a gateway. The sandbox home owns its own, on its own port, never 8642 (the user's): the lifecycle
+  // guard (hermes_cli/gateway_lifecycle_guard.py) only blocks gateway actions on the real Hermes home.
+  API_SERVER_PORT: SANDBOX_PORT,
   HERMES_DESKTOP_USER_DATA_DIR: join(tmpdir(), TAG ? `ops-hard-userdata-${TAG}` : 'ops-hard-userdata'),
   // P19: sandbox home only. Refuse to run if a real home is forced.
   HERMES_HOME: HOME,
@@ -40,8 +43,12 @@ mkdirSync(HOME, { recursive: true })
 // provider keys leaking in from the parent shell). A placeholder key keeps setup closed; nothing is ever sent.
 {
   const envFile = join(HOME, '.env')
-  if (!existsSync(envFile)) writeFileSync(envFile, 'ANTHROPIC_API_KEY=ops-hard-placeholder-not-a-real-key\n')
+  let text = existsSync(envFile) ? readFileSync(envFile, 'utf8') : ''
+  if (!/^ANTHROPIC_API_KEY=/m.test(text)) text += 'ANTHROPIC_API_KEY=ops-hard-placeholder-not-a-real-key\n'
+  if (!/^API_SERVER_PORT=/m.test(text)) text += `API_SERVER_PORT=${SANDBOX_PORT}\n`
+  writeFileSync(envFile, text)
 }
+if (resolve(HOME).toLowerCase().startsWith(resolve(process.env.LOCALAPPDATA ?? '~', 'hermes').toLowerCase())) { console.error('sandbox home is inside the real Hermes home'); process.exit(4) }
 
 
 // B11 safety: never launch a test window whose backend cannot start (a wrong interpreter makes the
@@ -57,7 +64,13 @@ mkdirSync(HOME, { recursive: true })
 }
 const app = await _electron.launch({ executablePath: electronBin, args: [DESKTOP], env, cwd: DESKTOP, timeout: 120_000 })
 // P21c: never leave this test instance behind (a leftover held the single-instance lock and broke h5/h6).
-const killApp = () => { try { app.process().kill() } catch {} }
+// The sandbox gateway (sandbox home only, port SANDBOX_PORT) is stopped when the run ends.
+const stopSandboxGateway = () => {
+  try {
+    spawnStop(process.env.OPS_LIVE_PYTHON, ['-m', 'hermes_cli.main', 'gateway', 'stop'], { cwd: resolve(DESKTOP, '..', '..'), env, timeout: 60_000 })
+  } catch {}
+}
+const killApp = () => { try { app.process().kill() } catch {} stopSandboxGateway() }
 process.on('exit', killApp)
 for (const sig of ['SIGINT', 'SIGTERM', 'uncaughtException', 'unhandledRejection']) process.on(sig, e => { if (e instanceof Error) console.error(e); killApp(); process.exit(1) })
 const page = await app.firstWindow()

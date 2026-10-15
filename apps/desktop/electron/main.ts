@@ -1968,8 +1968,26 @@ let softRehomeInProgress = false
 const backendPool = new Map() // scope key -> { connectionPromise, remoteBaseUrl }
 // Escape hatch: a dedicated, private backend for this app instead of the host's.
 const ISOLATED_BACKEND = process.env.HERMES_DESKTOP_ISOLATED_BACKEND === '1'
-// Mirrors hermes_cli/gateway_lifecycle_guard.py: test/capture runs never restart a gateway.
-const GATEWAY_LIFECYCLE_DISABLED = ISOLATED_BACKEND || process.env.HERMES_OPS_NO_GATEWAY === '1'
+// Mirrors hermes_cli/gateway_lifecycle_guard.py: test/capture runs never restart the user's gateway.
+// HERMES_OPS_NO_GATEWAY=1 always disables; an isolated backend is only kept off the gateway when it
+// targets the real Hermes home (a sandbox home elsewhere owns its own gateway on its own port).
+function targetsNativeHermesHome(): boolean {
+  const raw = (process.env.HERMES_HOME ?? '').trim()
+
+  if (!raw) {
+    return true
+  }
+
+  const native =
+    process.platform === 'win32' && process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'hermes') : path.join(os.homedir(), '.hermes')
+
+  const norm = (p: string) => (process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p))
+  const rel = path.relative(norm(native), norm(raw))
+
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))
+}
+
+const GATEWAY_LIFECYCLE_DISABLED = process.env.HERMES_OPS_NO_GATEWAY === '1' || (ISOLATED_BACKEND && targetsNativeHermesHome())
 const profileDeletionGate = new ProfileDeletionGate()
 
 // rememberLog() state. Declared before any top-level caller that logs during

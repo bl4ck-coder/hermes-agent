@@ -31,17 +31,26 @@ def clean_env(monkeypatch):
     return monkeypatch
 
 
+def _arm(env, var):
+    """Set *var*; the isolated flag only guards the native home, so point HERMES_HOME there."""
+    env.setenv(var, "1")
+    if var == "HERMES_DESKTOP_ISOLATED_BACKEND":
+        from hermes_constants import _get_platform_default_hermes_home
+
+        env.setenv("HERMES_HOME", str(_get_platform_default_hermes_home()))
+
+
 @pytest.mark.parametrize("var", GUARD_VARS)
 def test_guard_reads_either_variable(clean_env, var):
     assert guard.gateway_lifecycle_disabled() is None
-    clean_env.setenv(var, "1")
+    _arm(clean_env, var)
     assert guard.gateway_lifecycle_disabled() == var
     assert guard.gateway_lifecycle_disabled({var: "0"}) is None
 
 
 @pytest.mark.parametrize("var", GUARD_VARS)
 def test_ensure_never_spawns_an_absent_owner(clean_env, tmp_path, var):
-    clean_env.setenv(var, "1")
+    _arm(clean_env, var)
     _forbid_lifecycle(clean_env)
     clean_env.setattr(runtime, "discover_gateway_endpoint", lambda home, timeout: GatewayDiscovery("absent"))
     result = runtime.ensure_gateway_runtime(tmp_path, timeout=5)
@@ -93,3 +102,18 @@ def test_gateway_cli_keeps_read_only_verbs_and_unguarded_runs(clean_env):
     gw._gateway_command_inner(SimpleNamespace(gateway_command="status"))
     gw._gateway_command_inner(SimpleNamespace(gateway_command="list"))
     assert called == ["restart", "status", "list"]
+
+
+def test_isolated_backend_only_guards_the_native_home(clean_env, tmp_path):
+    """A sandbox home outside the user's Hermes root may own its gateway (hard-state captures);
+    the native home stays guarded, and HERMES_OPS_NO_GATEWAY guards everything."""
+    from hermes_constants import _get_platform_default_hermes_home
+
+    native = _get_platform_default_hermes_home()
+    sandbox = tmp_path / "ops-hard-home"
+    iso = {"HERMES_DESKTOP_ISOLATED_BACKEND": "1"}
+    assert guard.gateway_lifecycle_disabled({**iso, "HERMES_HOME": str(sandbox)}) is None
+    assert guard.gateway_lifecycle_disabled({**iso, "HERMES_HOME": str(native)}) == "HERMES_DESKTOP_ISOLATED_BACKEND"
+    assert guard.gateway_lifecycle_disabled({**iso, "HERMES_HOME": str(native / "profiles" / "x")}) == "HERMES_DESKTOP_ISOLATED_BACKEND"
+    assert guard.gateway_lifecycle_disabled(iso) == "HERMES_DESKTOP_ISOLATED_BACKEND"
+    assert guard.gateway_lifecycle_disabled({"HERMES_OPS_NO_GATEWAY": "1", "HERMES_HOME": str(sandbox)}) == "HERMES_OPS_NO_GATEWAY"
