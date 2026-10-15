@@ -788,3 +788,7 @@
 
 /* P6: settings content sits on the form width instead of the full pane. */
 :where([data-settings-scroll]) > * { max-width: var(--width-form, 760px); }
+
+/* P6: Settings choices read as a form; Diagnostics/Security sit below a rule as a separate region. */
+:where([data-ops-settings-main]) { max-width: var(--width-form, 760px); display: grid; gap: var(--space-6, 24px); }
+:where([data-ops-settings-system]) { margin-top: var(--space-8, 32px); padding-top: var(--space-6, 24px); border-top: 1px solid var(--ops-line, rgba(255,255,255,.08)); display: grid; gap: var(--space-6, 24px); }

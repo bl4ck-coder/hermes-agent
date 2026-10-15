@@ -214,6 +214,7 @@ export function SettingsView({
           <span data-ops-chip="">{T('Secrets set')}: {secrets ? `${secrets.filter(x => x.set).length}/${secrets.length}` : '…'}</span>
         </span>
       </header>
+      <div data-ops-settings-main="">
       <Group id="general" title={T("General")}>
         <dl>
           <dt>{T("Theme")}</dt>
@@ -318,6 +319,9 @@ export function SettingsView({
         <button onClick={() => setSheet(true)} type="button">
           {T("Shortcut sheet")}</button>
       </Group>
+      </div>
+      {/* P6: system health is its own region, not a settings group. */}
+      <section aria-label={T("Diagnostics")} data-ops-settings-system="">
       <Group id="diagnostics" title={T("Diagnostics")}>
         <DiagnosticsPanel policySource={policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null} />
       </Group>
@@ -371,6 +375,7 @@ export function SettingsView({
           </dd>
         </dl>
       </Group>
+      </section>
       {sheet ? <OpsShortcutSheet onClose={() => setSheet(false)} /> : null}
     </section>
   )
