@@ -513,3 +513,10 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-settings-main] > [data-op
 /* P9: the profile identity is a heading, not a card. */
 html[data-hermes-theme^='gold-night'] [data-profile-hero] { background: none; border: 0; box-shadow: none; padding: 0; }
 
+
+/* P9: the invitation is the content (page title by the composer); emblem and wordmark are a small signature. */
+html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] > div:first-child::before { height: 40px; width: 40px; margin-bottom: 8px; background: radial-gradient(circle, rgb(var(--glass-gold-hi) / 0.9) 0 4px, rgb(var(--glass-gold) / 0.3) 5px 8px, transparent 9px), radial-gradient(circle, transparent 0 15px, rgb(var(--glass-gold) / 0.35) 16px 17px, transparent 18px); box-shadow: none; }
+html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] .wordmark { opacity: 0.45; }
+html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] p:last-child { max-width: var(--width-reading, 45rem); font-size: var(--type-page, 1.75rem); line-height: var(--type-page-lh, 2.25rem); color: var(--ui-text-primary, var(--foreground)); font-weight: 500; letter-spacing: -0.01em; }
+html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] [data-intro-hint] { color: var(--ui-text-secondary); }
+

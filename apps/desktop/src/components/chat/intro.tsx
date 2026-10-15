@@ -176,7 +176,7 @@ export function Intro({ personality, seed }: IntroProps) {
       data-slot="aui_intro"
     >
       <div className="w-full min-w-0">
-        <Wordmark className="mb-3 opacity-70" fitMin="1.5rem" text={WORDMARK} width="min(calc(100% - 1rem), 15rem)" />
+        <Wordmark className="mb-3 opacity-70" fitMin="0.875rem" text={WORDMARK} width="min(calc(100% - 1rem), 9rem)" />
 
         <p className="m-0 mx-auto max-w-(--width-reading) text-center text-(length:--type-body) leading-(--type-body-lh) text-foreground/85">{body}</p>
       </div>

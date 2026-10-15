@@ -104,11 +104,12 @@ export function AgentsView({ onClose }: AgentsViewProps) {
       {tree.length === 0 ? (
         <PanelEmpty
           action={
-            <div className="flex flex-col items-center gap-2">
-              <p className="rounded-lg px-3 py-2 text-[0.95rem] text-foreground/90" data-agents-empty-hint="">
+            // P9: the next step is the content: the example prompt at body size with its action in the same row.
+            <div className="flex w-full max-w-(--width-reading) items-center gap-3 rounded-lg border border-(--ui-stroke-tertiary) px-4 py-3 text-left" data-agents-next-step="">
+              <p className="m-0 min-w-0 flex-1 text-(length:--type-body) leading-(--type-body-lh) text-foreground" data-agents-empty-hint="">
                 {t.teach.agentsEmptyHint}
               </p>
-              <CopyButton appearance="button" buttonVariant="outline" label={t.common.copy} showLabel text={agentsHintExample(t.teach.agentsEmptyHint)} />
+              <CopyButton appearance="button" buttonVariant="default" label={t.common.copy} showLabel text={agentsHintExample(t.teach.agentsEmptyHint)} />
             </div>
           }
           id="agents"
@@ -482,7 +483,7 @@ export function agentHeroStats(list: readonly { status: SubagentStatus }[], a: T
 /** B36: one meaningful picture of delegation: a parent turn fanning out to child agents. */
 function DelegationIllustration() {
   return (
-    <svg aria-hidden className="mb-3 h-[120px] w-60" data-agents-illustration="" fill="none" viewBox="0 0 224 112">
+    <svg aria-hidden className="mb-2 h-16 w-32" data-agents-illustration="" fill="none" viewBox="0 0 224 112">
       <path d="M112 30 C112 58 40 52 40 84 M112 30 V84 M112 30 C112 58 184 52 184 84" stroke="currentColor" strokeDasharray="3 4" strokeOpacity="0.45" strokeWidth="1.5" />
       <circle cx="112" cy="22" fill="currentColor" fillOpacity="0.18" r="14" stroke="currentColor" strokeWidth="1.5" />
       <circle cx="112" cy="22" fill="currentColor" r="4" />
