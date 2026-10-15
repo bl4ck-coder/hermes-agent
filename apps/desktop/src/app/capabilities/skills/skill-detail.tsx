@@ -46,7 +46,7 @@ export function SkillDetail({
   )
 
   return (
-    <>
+    <div className="flex w-full max-w-(--width-reading) flex-col gap-4" data-skill-column="">
       <DetailHeader
         description={asText(skill.description) || t.skills.noDescription}
         pills={
@@ -63,34 +63,34 @@ export function SkillDetail({
       />
       {editable && (
         <div className="flex items-center gap-2">
-          <Button onClick={onEdit} size="xs" variant="text">
+          <Button onClick={onEdit} size="sm" variant="outline">
             {t.skills.edit}
           </Button>
-          <Button className="text-destructive hover:text-destructive" onClick={onArchive} size="xs" variant="text">
+          <Button className="text-destructive hover:text-destructive" onClick={onArchive} size="sm" variant="text">
             {t.skills.archive}
           </Button>
         </div>
       )}
       {parsed && parsed.meta.length > 0 && (
-        <div className="grid gap-1 rounded-lg border border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) p-3">
+        <dl className="grid gap-1 border-y border-(--ui-stroke-tertiary) py-3" data-skill-meta="">
           {parsed.meta.map(([key, value]) => (
-            <div className="flex gap-2 text-xs leading-4" key={key}>
-              <span className="w-24 shrink-0 font-medium text-(--ui-text-tertiary)">{key}</span>
-              <span className="min-w-0 whitespace-pre-wrap break-words text-(--ui-text-secondary)">{value}</span>
+            <div className="flex gap-3 text-(length:--type-meta) leading-(--type-meta-lh)" key={key}>
+              <dt className="w-28 shrink-0 font-medium text-(--ui-text-tertiary)">{key}</dt>
+              <dd className="m-0 min-w-0 whitespace-pre-wrap break-words text-(--ui-text-secondary)">{value}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       )}
       {contentQuery.isLoading ? (
         <CountSkeleton />
       ) : parsed ? (
         <pre
-          className="overflow-auto whitespace-pre-wrap wrap-break-word rounded-lg border border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) p-3 font-mono text-xs leading-relaxed"
+          className="overflow-auto whitespace-pre-wrap wrap-break-word font-sans text-(length:--type-body) leading-(--type-reading-lh) text-foreground"
           data-selectable-text="true"
         >
           {parsed.body.trim() || t.skills.noDescription}
         </pre>
       ) : null}
-    </>
+    </div>
   )
 }
