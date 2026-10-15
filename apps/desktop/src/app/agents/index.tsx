@@ -6,6 +6,7 @@ import { useElapsedSeconds } from '@/components/chat/activity-timer'
 import { ActivityTimerText } from '@/components/chat/activity-timer-text'
 import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
 import { Codicon } from '@/components/ui/codicon'
+import { CopyButton } from '@/components/ui/copy-button'
 import { FadeText } from '@/components/ui/fade-text'
 import { GlyphSpinner } from '@/components/ui/glyph-spinner'
 import { type Translations, useI18n } from '@/i18n'
@@ -68,7 +69,7 @@ function streamGlyph(entry: SubagentStreamEntry): ReactNode {
 
   if (entry.kind === 'thinking') {
     return (
-      <span aria-hidden className="font-mono text-[0.7rem] leading-none text-muted-foreground/70">
+      <span aria-hidden className="font-mono text-xs leading-none text-muted-foreground/70">
         …
       </span>
     )
@@ -98,20 +99,28 @@ export function AgentsView({ onClose }: AgentsViewProps) {
 
   return (
     <Panel closeLabel={t.agents.close} onClose={onClose}>
+      {/* B35b: the spawn tree always opens on its hero, empty or not. */}
+      <PanelHeader icon={<Codicon name="hubot" />} stats={agentHeroStats(subagentsForPanel(subagentsBySession, activeSessionId), t.agents)} subtitle={t.agents.subtitle} title={t.agents.title} />
       {tree.length === 0 ? (
         <PanelEmpty
+          align="start"
           action={
-            <p className="text-xs italic text-muted-foreground/80" data-agents-empty-hint="">
-              {t.teach.agentsEmptyHint}
-            </p>
+            // P9: the next step is the content: the example prompt at body size with its action in the same row.
+            <div className="flex w-full max-w-(--width-reading) items-center gap-3 rounded-lg border border-(--ui-stroke-tertiary) px-4 py-3 text-left" data-agents-next-step="">
+              <p className="m-0 min-w-0 flex-1 text-(length:--type-body) leading-(--type-body-lh) text-foreground" data-agents-empty-hint="">
+                {t.teach.agentsEmptyHint}
+              </p>
+              <CopyButton appearance="button" buttonVariant="default" label={t.common.copy} showLabel text={agentsHintExample(t.teach.agentsEmptyHint)} />
+            </div>
           }
+          id="agents"
+          illustration={<DelegationIllustration />}
           description={t.agents.emptyDesc}
           icon="hubot"
           title={t.agents.emptyTitle}
         />
       ) : (
         <>
-          <PanelHeader subtitle={t.agents.subtitle} title={t.agents.title} />
           <SubagentTree tree={tree} />
         </>
       )}
@@ -270,7 +279,7 @@ function SubagentTree({ tree }: { tree: SubagentNode[] }) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <p className="shrink-0 text-[0.7rem] text-muted-foreground/70">
+      <p className="shrink-0 text-xs text-muted-foreground/70">
         {summary.map((part, index) => (
           <Fragment key={part}>
             {index > 0 ? ' · ' : null}
@@ -300,7 +309,7 @@ function DelegationGroup({ group, nowMs }: { group: RootGroup; nowMs: number }) 
 
   return (
     <section className="grid min-w-0 gap-3">
-      <p className="text-[0.66rem] font-medium uppercase tracking-wider text-muted-foreground/70">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
         {group.delegationIndex > 0 ? t.agents.delegation(group.delegationIndex) : ''}{' '}
         <span className="text-muted-foreground/50">·</span> {t.agents.workers(group.nodes.length)}
         {activeWorkers > 0 ? <span className="text-primary/85"> · {t.agents.workersActive(activeWorkers)}</span> : null}
@@ -332,9 +341,9 @@ function StreamLine({
   const glyph = streamGlyph(entry)
 
   return (
-    <div className="flex min-w-0 items-baseline gap-2 text-[0.72rem] leading-relaxed" ref={enterRef}>
+    <div className="flex min-w-0 items-baseline gap-2 text-xs leading-relaxed" ref={enterRef}>
       {glyph ? <span className="flex h-[0.95rem] shrink-0 items-center">{glyph}</span> : null}
-      <span className={cn('min-w-0 flex-1 wrap-anywhere', tone, isMono && 'font-mono text-[0.69rem]')}>
+      <span className={cn('min-w-0 flex-1 wrap-anywhere', tone, isMono && 'font-mono text-xs')}>
         {entry.text}
         {active ? (
           <GlyphSpinner
@@ -395,12 +404,12 @@ export function SubagentRow({ node, depth = 0, nowMs }: { node: SubagentNode; de
             {node.goal}
           </span>
           {subtitle.length > 0 ? (
-            <FadeText className="text-[0.66rem] leading-[1.05rem] text-muted-foreground/65">
+            <FadeText className="text-xs leading-[1.05rem] text-muted-foreground/65">
               {subtitle.join(' · ')}
             </FadeText>
           ) : null}
         </span>
-        {running ? <ActivityTimerText className="mt-1 shrink-0 text-[0.6rem]" seconds={durationSeconds} /> : null}
+        {running ? <ActivityTimerText className="mt-1 shrink-0 text-xs" seconds={durationSeconds} /> : null}
       </button>
 
       {visibleRows.length > 0 ? (
@@ -419,16 +428,16 @@ export function SubagentRow({ node, depth = 0, nowMs }: { node: SubagentNode; de
 
       {open && fileLines.length > 0 ? (
         <div className="grid min-w-0 gap-0.5 pl-6" data-selectable-text="true">
-          <p className="text-[0.58rem] font-medium tracking-wider text-muted-foreground/60 uppercase">
+          <p className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
             {t.agents.files}
           </p>
           {fileLines.slice(0, 8).map(line => (
-            <p className="wrap-break-word font-mono text-[0.67rem] leading-relaxed text-muted-foreground/80" key={line}>
+            <p className="wrap-break-word font-mono text-xs leading-relaxed text-muted-foreground/80" key={line}>
               {line}
             </p>
           ))}
           {fileLines.length > 8 ? (
-            <p className="font-mono text-[0.67rem] leading-relaxed text-muted-foreground/65">
+            <p className="font-mono text-xs leading-relaxed text-muted-foreground/65">
               {t.agents.moreFiles(fileLines.length - 8)}
             </p>
           ) : null}
@@ -444,4 +453,53 @@ export function SubagentRow({ node, depth = 0, nowMs }: { node: SubagentNode; de
       ) : null}
     </div>
   )
+}
+
+/** B36: the same buckets the rows use (statusGlyph): interrupted counts as failed, queued as running. */
+export function agentStatusBucket(status: SubagentStatus): 'done' | 'failed' | 'running' {
+  switch (status) {
+    case 'failed':
+    case 'interrupted':
+      return 'failed'
+    case 'completed':
+      return 'done'
+    case 'queued':
+    case 'running':
+      return 'running'
+  }
+}
+
+export function agentHeroStats(list: readonly { status: SubagentStatus }[], a: Translations['agents']) {
+  const n = { done: 0, failed: 0, running: 0 }
+  for (const x of list) n[agentStatusBucket(x.status)]++
+  // Empty metrics read as broken; the hero shows numbers only once a turn delegated.
+  if (n.done + n.failed + n.running === 0) return undefined
+  return [
+    { label: a.running, primary: true, tone: n.running ? ('good' as const) : ('muted' as const), value: n.running },
+    { label: a.done, value: n.done },
+    { label: a.failed, tone: n.failed ? ('bad' as const) : undefined, value: n.failed }
+  ]
+}
+
+/** B36: one meaningful picture of delegation: a parent turn fanning out to child agents. */
+function DelegationIllustration() {
+  return (
+    <svg aria-hidden className="mb-2 h-16 w-32" data-agents-illustration="" fill="none" viewBox="0 0 224 112">
+      <path d="M112 30 C112 58 40 52 40 84 M112 30 V84 M112 30 C112 58 184 52 184 84" stroke="currentColor" strokeDasharray="3 4" strokeOpacity="0.45" strokeWidth="1.5" />
+      <circle cx="112" cy="22" fill="currentColor" fillOpacity="0.18" r="14" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="112" cy="22" fill="currentColor" r="4" />
+      {[40, 112, 184].map(x => (
+        <g key={x}>
+          <rect fill="currentColor" fillOpacity="0.1" height="20" rx="10" stroke="currentColor" strokeOpacity="0.6" width="44" x={x - 22} y="84" />
+          <circle cx={x - 10} cy="94" fill="currentColor" fillOpacity="0.7" r="3" />
+          <rect fill="currentColor" fillOpacity="0.45" height="3" rx="1.5" width="18" x={x - 3} y="92.5" />
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+/** The example inside the hint ("Try: “…”"), so it can be copied into the composer by hand. */
+export function agentsHintExample(hint: string): string {
+  return /[“"«]([^”"»]+)[”"»]/.exec(hint)?.[1] ?? hint
 }

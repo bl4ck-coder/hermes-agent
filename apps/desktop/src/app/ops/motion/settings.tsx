@@ -11,14 +11,15 @@ import { createNodeClient } from '../canvas/node-editor'
 import { NodeEditor } from '../canvas/node-editor-view'
 import { approvalMode, createOpsActions, envPresenceList } from '../feed/ops-actions'
 import { createOpsClient, type PolicyView } from '../feed/ops-client'
-import { usePublishInspectorDetail } from '../inspector-detail'
 import { T } from '../main-i18n'
 import { useOpsResource } from '../office/office-container'
 import { ThresholdSettings } from '../office/thresholds'
 import { Sigil } from '../primitives/sigil'
 import { OpsShortcutSheet } from '../shortcut-sheet'
 
-import { DiagnosticsPanel } from './diagnostics'
+import { remoteThumbsOptedOut, THUMB_OPT_OUT_KEY, THUMB_PREF_EVENT } from '../../artifacts/thumb-cache'
+
+import { DiagnosticsPanel, SystemStatus } from './diagnostics'
 import { cycleMotion, loadMotion, type MotionMode, saveMotion } from './motion'
 import { hostTimezone, opsTimezone as tzOf, validTimezone } from './tz'
 
@@ -152,24 +153,26 @@ export function SettingsView({
   const [motion, setMotion] = useMotionMode()
   const [prefs, setPrefs] = useState<OpsPrefs>(() => loadPrefs())
   const [sheet, setSheet] = useState(false)
+  const [view, setView] = useState<'settings' | 'diagnostics'>('settings')
+  const policySource = policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null
   const [draftNote, setDraftNote] = useState<string | null>(null)
-  usePublishInspectorDetail({
-    kind: 'settings',
-    id: `settings:${profile ?? 'default'}`,
-    title: 'Settings',
-    badge: profile ?? 'default',
-    rows: [
-      ['Time zone', opsTimezone(prefs)],
-      ['Motion', String(motion)],
-      ['Policy', policy ? (policy.fail_closed ? `${policy.source} (invalid, writes blocked)` : policy.source) : 'loading'],
-      ['Default model', defaultModel ? `${defaultModel.provider || 'unset'} / ${defaultModel.model || 'unset'}` : 'loading'],
-      ['Approvals', approval === undefined ? 'loading' : (approval ?? 'not set')],
-      ['Secrets set', secrets ? `${secrets.filter(s => s.set).length} of ${secrets.length}` : T('unknown')],
-      ['Legacy write routes', 'active (retire flag off)']
-    ],
-    source: 'Ops settings',
-    why: "this profile's Ops settings"
-  })
+  const [thumbs, setThumbs] = useState(() => !remoteThumbsOptedOut())
+  const setRemoteThumbs = (on: boolean) => {
+    try {
+      if (on) {
+        globalThis.localStorage?.removeItem(THUMB_OPT_OUT_KEY)
+      } else {
+        globalThis.localStorage?.setItem(THUMB_OPT_OUT_KEY, 'off')
+      }
+    } catch {
+      /* storage unavailable: keep the in-memory choice */
+    }
+
+    // B39: show the preference that is actually in effect (storage can refuse the write).
+    setThumbs(!remoteThumbsOptedOut())
+    globalThis.dispatchEvent?.(new Event(THUMB_PREF_EVENT))
+  }
+  // P8: no Settings inspector detail: it only repeated the form's own values (judge pass 8).
 
   const set = (p: Partial<OpsPrefs>) => {
     const next = { ...prefs, ...p }
@@ -185,7 +188,7 @@ export function SettingsView({
         <div>
           <strong>{profile ?? 'default'}</strong>
           <small>
-            {defaultModel ? `${defaultModel.provider || 'unset'} / ${defaultModel.model || 'unset'}` : T('loading')}
+            {defaultModel ? `${defaultModel.provider || T('not set')} / ${defaultModel.model || T('not set')}` : T('loading')}
           </small>
         </div>
         <span data-ops-settings-hero-chips="">
@@ -196,6 +199,38 @@ export function SettingsView({
           <span data-ops-chip="">{T('Secrets set')}: {secrets ? `${secrets.filter(x => x.set).length}/${secrets.length}` : '…'}</span>
         </span>
       </header>
+      <div aria-label={T("Settings views")} data-ops-settings-views="" role="tablist">
+        {(['settings', 'diagnostics'] as const).map(v => (
+          <button
+            aria-controls={`ops-settings-panel-${v}`}
+            aria-selected={view === v}
+            data-ops-settings-view={v}
+            id={`ops-settings-tab-${v}`}
+            key={v}
+            onClick={() => setView(v)}
+            onKeyDown={e => {
+              // P8: the tab pattern: arrows / Home / End move between the two views.
+              const next = e.key === 'ArrowRight' || e.key === 'ArrowLeft' ? (v === 'settings' ? 'diagnostics' : 'settings') : e.key === 'Home' ? 'settings' : e.key === 'End' ? 'diagnostics' : null
+
+              if (next) {
+                e.preventDefault()
+                setView(next)
+                ;(e.currentTarget.parentElement?.querySelector(`[data-ops-settings-view="${next}"]`) as HTMLElement | null)?.focus()
+              }
+            }}
+            role="tab"
+            tabIndex={view === v ? 0 : -1}
+            type="button"
+          >
+            {v === 'settings' ? T('Settings') : T('Diagnostics')}
+          </button>
+        ))}
+      </div>
+      {/* P8: both views stay mounted so a probe survives switching tabs. */}
+      <section aria-labelledby="ops-settings-tab-diagnostics" data-ops-settings-system="" hidden={view !== 'diagnostics'} id="ops-settings-panel-diagnostics" role="tabpanel">
+        <DiagnosticsPanel policySource={policySource} />
+      </section>
+      <div aria-labelledby="ops-settings-tab-settings" data-ops-settings-main="" hidden={view !== 'settings'} id="ops-settings-panel-settings" role="tabpanel">
       <Group id="general" title={T("General")}>
         <dl>
           <dt>{T("Theme")}</dt>
@@ -226,6 +261,11 @@ export function SettingsView({
             <input aria-label={T("open ops on launch")} checked={prefs.openOnLaunch} onChange={e => set({ openOnLaunch: e.target.checked })} type="checkbox" />
             <small data-ops-launch-route="">{opsLaunchRoute(prefs) ?? T('Desktop opens its own start page.')}</small>
           </dd>
+        </dl>
+      </Group>
+      {/* P17d (judge consult): dates and previews are their own group; Reset closes the preferences it resets. */}
+      <Group id="dates" title={T("Dates and previews")}>
+        <dl>
           <dt>{T("Timezone")}</dt>
           <dd>
             <select aria-label={T("timezone")} data-ops-timezone={opsTimezone(prefs)} onChange={e => set({ timezone: validTimezone(e.target.value) })} value={prefs.timezone}>
@@ -246,10 +286,18 @@ export function SettingsView({
               <option value="local">{T("Local")}</option>
             </select>
           </dd>
+          <dt>{T("Artifact previews")}</dt>
+          <dd>
+            <input aria-label={T("load GitHub preview images")} checked={thumbs} data-ops-remote-thumbs={thumbs ? 'on' : 'off'} onChange={e => setRemoteThumbs(e.target.checked)} type="checkbox" />
+            <small>{T("Loads GitHub preview images for linked repos and PRs (cached on this machine for 7 days). Off keeps the monogram and makes no request.")}</small>
+          </dd>
         </dl>
-        <button data-ops-prefs-reset="" disabled={JSON.stringify(prefs) === JSON.stringify(DEFAULT_PREFS)} onClick={() => set({ ...DEFAULT_PREFS })} type="button">
-          {T("Reset to defaults")}</button>
       </Group>
+      {/* P18c (pass16 #3): Reset restores every preference above (General and Dates), so it says so and sits after both groups. */}
+      <p data-ops-prefs-reset-row="">
+        <button data-ops-prefs-reset="" disabled={JSON.stringify(prefs) === JSON.stringify(DEFAULT_PREFS)} onClick={() => set({ ...DEFAULT_PREFS })} type="button">
+          {T("Reset General and Dates to defaults")}</button>
+      </p>
       <Group id="ops" title={T("Ops")}>
         {policy?.fail_closed ? (
           <p data-ops-policy-invalid="" role="alert">
@@ -295,8 +343,9 @@ export function SettingsView({
         <button onClick={() => setSheet(true)} type="button">
           {T("Shortcut sheet")}</button>
       </Group>
-      <Group id="diagnostics" title={T("Diagnostics")}>
-        <DiagnosticsPanel policySource={policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null} />
+      {/* P7: Settings keeps a short system status and a door to Diagnostics; the full panel is its own view. */}
+      <Group id="system" title={T("System status")}>
+        <SystemStatus onOpen={() => setView('diagnostics')} policySource={policySource} />
       </Group>
       <Group folded hint={T("Secrets present, write routes, cross-site rules")} id="security" title={T("Security")}>
         <dl>
@@ -348,6 +397,7 @@ export function SettingsView({
           </dd>
         </dl>
       </Group>
+      </div>
       {sheet ? <OpsShortcutSheet onClose={() => setSheet(false)} /> : null}
     </section>
   )

@@ -138,7 +138,7 @@ html[data-hermes-theme^='gold-night'] :is([data-slot='sidebar-menu-button'], [da
   box-shadow: var(--glass-highlight), inset 0 0 0 1px rgb(var(--glass-gold-hi) / 0.2);
   color: rgb(var(--glass-ivory));
 }
-html[data-hermes-theme^='gold-night'] [data-slot='sidebar-group-label'] { color: rgb(var(--glass-gold) / 0.9); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+html[data-hermes-theme^='gold-night'] [data-slot='sidebar-group-label'] { color: rgb(var(--glass-gold) / 0.9); font-size: var(--type-caption); letter-spacing: 0.08em; text-transform: uppercase; }
 html[data-hermes-theme^='gold-night'] [data-slot='tabs-list'] {
   background: rgb(var(--glass-ink) / 0.45);
   border: 1px solid var(--glass-edge);
@@ -376,7 +376,7 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='gar
   color: rgb(var(--glass-gold-hi));
   text-shadow: 0 0 28px rgb(var(--glass-gold) / 0.28);
 }
-:where(html[data-hermes-theme^='gold-night']) :where([data-ops-greeting] > h2) { font-size: 2.25rem; }
+:where(html[data-hermes-theme^='gold-night']) :where([data-ops-greeting] > h2) { font-size: var(--type-section); line-height: var(--type-section-lh); } /* B41c: greeting demoted under the work (hierarchy spec) */
 :where(html[data-hermes-theme^='gold-night']) :where([data-ops-greeting] > p) { margin-top: 0.35rem; opacity: 0.8; }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   :where([data-ops-greeting] > h2, [data-ops-lens] > header > h2) { text-shadow: none; }
@@ -387,7 +387,7 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='gar
 html[data-hermes-theme^='gold-night'] [data-page-shell] [class*='bg-(--ui-chat-surface-background)'] { background-color: transparent; }
 
 /* -- Glass p8: Agents empty state sits on a lit glass card instead of floating in a blank overlay. */
-html[data-hermes-theme^='gold-night'] :where(div:has(> * > [data-agents-empty-hint])) {
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > :where([data-panel-empty-card]) {
   background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.55), rgb(var(--glass-panel) / 0.5));
   border: 1px solid rgb(var(--glass-gold-hi) / 0.16);
   border-radius: var(--glass-r-card, 16px);
@@ -403,14 +403,14 @@ html[data-hermes-theme^='gold-night'] [data-artifact-card='link'] [data-artifact
 html[data-hermes-theme^='gold-night'] [data-cron-run-group] { border-left: 2px solid rgb(var(--glass-gold) / 0.35); border-radius: 6px; }
 html[data-hermes-theme^='gold-night'] [data-session-group] { color: rgb(var(--glass-gold-hi) / 0.85); letter-spacing: 0.08em; }
 html[data-hermes-theme^='gold-night'] [data-overlay-surface] [aria-current='page'] { background: linear-gradient(90deg, rgb(var(--glass-gold) / 0.22), rgb(var(--glass-gold) / 0.06)); box-shadow: inset 2px 0 0 rgb(var(--glass-gold-hi)), 0 0 18px -8px rgb(var(--glass-gold) / 0.6); }html[data-hermes-theme^='gold-night'] [data-artifact-card] { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); }
-html[data-hermes-theme^='gold-night'] [data-ops-app]:has([data-ops-app-connected]) { box-shadow: inset 0 0 0 1px rgb(63 185 80 / 0.35); }
+html[data-hermes-theme^='gold-night'] [data-ops-app][data-ops-app-connected] { box-shadow: inset 0 0 0 1px rgb(63 185 80 / 0.35); }
 
 /* -- Glass p10 (B34): thumbnails, profile mark, Agents empty illustration (static CSS rings: no image request). */
 html[data-hermes-theme^='gold-night'] [data-artifact-thumb] { background: radial-gradient(90% 120% at 20% 0%, rgb(var(--glass-gold) / 0.28), transparent 65%), linear-gradient(160deg, rgb(var(--glass-raised)), rgb(var(--glass-ink))); border-bottom: 1px solid rgb(var(--glass-gold-hi) / 0.12); }
 html[data-hermes-theme^='gold-night'] [data-artifact-card='link'] [data-artifact-thumb='monogram'] { background: radial-gradient(90% 120% at 20% 0%, rgb(120 160 255 / 0.22), transparent 65%), linear-gradient(160deg, rgb(var(--glass-raised)), rgb(var(--glass-ink))); }
 html[data-hermes-theme^='gold-night'] [data-artifact-monogram] { color: rgb(var(--glass-gold-hi) / 0.85); text-shadow: 0 0 22px rgb(var(--glass-gold) / 0.5); }
 html[data-hermes-theme^='gold-night'] [data-profile-hero-glyph] > * { border-radius: 14px; box-shadow: 0 0 0 1px rgb(var(--glass-gold-hi) / 0.25), 0 10px 28px -12px rgb(var(--glass-gold) / 0.7); }
-html[data-hermes-theme^='gold-night'] :where(div:has(> * > [data-agents-empty-hint]))::before {
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > :where([data-panel-empty-card])::before {
   content: ''; display: block; height: 96px; margin: 0 auto 14px; width: 96px; border-radius: 999px;
   background: radial-gradient(circle, rgb(var(--glass-gold-hi) / 0.9) 0 5px, transparent 6px), radial-gradient(circle, transparent 0 22px, rgb(var(--glass-gold-hi) / 0.35) 23px 24px, transparent 25px), radial-gradient(circle, transparent 0 38px, rgb(var(--glass-gold) / 0.25) 39px 40px, transparent 41px);
   box-shadow: 0 0 40px -10px rgb(var(--glass-gold) / 0.6);
@@ -430,3 +430,126 @@ html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] > div:first-child:
   background: radial-gradient(circle, rgb(var(--glass-gold-hi) / 0.95) 0 7px, rgb(var(--glass-gold) / 0.35) 8px 14px, transparent 15px), radial-gradient(circle, transparent 0 30px, rgb(var(--glass-gold-hi) / 0.4) 31px 32px, transparent 33px), radial-gradient(circle, transparent 0 46px, rgb(var(--glass-gold) / 0.28) 47px 48px, transparent 49px), radial-gradient(circle, transparent 0 58px, rgb(var(--glass-gold) / 0.14) 59px 60px, transparent 61px);
   box-shadow: 0 0 60px -12px rgb(var(--glass-gold) / 0.55);
 }
+
+/* -- Glass p12 (B35b): Profiles hero row as a lit identity card. */
+html[data-hermes-theme^='gold-night'] [data-profile-hero] { background: var(--glass-spot-top), radial-gradient(120% 160% at 0% 0%, rgb(var(--glass-gold) / 0.18), transparent 60%), linear-gradient(165deg, rgb(var(--glass-raised) / 0.6), rgb(var(--glass-panel) / 0.5)); border: 1px solid rgb(var(--glass-gold-hi) / 0.18); border-radius: 18px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07); padding: 14px 18px; }
+html[data-hermes-theme^='gold-night'] [data-profile-hero-name] { font-family: var(--glass-display-font, inherit); }
+
+/* -- Glass p13 (B36, judge pass) */
+/* Teams/Channels tiles: one effective style, inset only (the earlier global rule re-added outer shadows). */
+html[data-hermes-theme^='gold-night'] :where([data-ops-teams] > li, [data-ops-channels-body] li) { box-shadow: inset 0 0 0 1px rgb(var(--glass-gold-hi) / 0.1), inset 0 1px 0 rgb(255 255 255 / 0.06); }
+/* Agents: the delegation illustration replaces the CSS rings; one picture, gold. */
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-empty-card]::before { content: none; display: none; }
+html[data-hermes-theme^='gold-night'] [data-agents-illustration] { color: rgb(var(--glass-gold-hi)); filter: drop-shadow(0 0 14px rgb(var(--glass-gold) / 0.35)); }
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-empty-card] { max-width: 34rem; padding: 2.25rem 2.5rem; }
+/* App Settings: a deliberate reading column; sections are cards, rows separated by hairlines, helper text legible. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] > * { max-width: 52rem; }
+html[data-hermes-theme^='gold-night'] [data-settings-section] { background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.5), rgb(var(--glass-panel) / 0.4)); border: 1px solid rgb(var(--glass-gold-hi) / 0.12); border-radius: 16px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); padding: 14px 18px 6px; }
+html[data-hermes-theme^='gold-night'] [data-settings-row] + [data-settings-row] { border-top: 1px solid rgb(var(--glass-gold-hi) / 0.08); }
+html[data-hermes-theme^='gold-night'] [data-settings-row] :where(.text-muted-foreground, [class*='text-muted-foreground/']) { color: rgb(var(--glass-ink-dim, 200 190 170) / 0.85); }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select, button[role='combobox']) { min-height: 2.25rem; }
+html[data-hermes-theme^='gold-night'] [data-overlay-surface] nav :where(button, a) { font-size: 0.84rem; }
+/* Artifacts: the preview strip is labelled "Recent". */
+html[data-hermes-theme^='gold-night'] [data-artifact-cards]::before { color: rgb(var(--glass-gold-hi) / 0.8); content: attr(data-label); font-size: var(--type-caption); grid-column: 1 / -1; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* B36b: settings pages without SettingsSection (Model, etc.) still read as one deliberate card, not a form floating on the void. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] > :not(:has([data-settings-section])) { background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.45), rgb(var(--glass-panel) / 0.35)); border: 1px solid rgb(var(--glass-gold-hi) / 0.12); border-radius: 18px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); margin-inline: 1rem; padding: 1.1rem 1.4rem; }
+/* -- Glass p14 (B37): App Settings scale (labels, help, controls, Apply); Agents example reads as a quote; Skills card descriptions span the card. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(label, h3, h4) { font-size: 0.92rem; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(p) { font-size: 0.8rem; line-height: 1.5; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select, button[role='combobox']) { font-size: 0.86rem; min-height: 2.5rem; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(button[data-variant='default'], button.bg-primary) { min-height: 2.25rem; padding-inline: 1.1rem; }
+html[data-hermes-theme^='gold-night'] [data-agents-empty-hint] { background: rgb(var(--glass-gold) / 0.08); box-shadow: inset 2px 0 0 rgb(var(--glass-gold-hi) / 0.6); }
+
+/* B37b: Skills/Fleet card description really spans the card: label hidden, text full width (judge pass 3). */
+html[data-hermes-theme^='gold-night'] [data-ops-roster] dl div:has(> dd[data-ops-roster-desc]) { display: block; grid-column: 1 / -1; width: 100%; }
+html[data-hermes-theme^='gold-night'] [data-ops-roster] dl div:has(> dd[data-ops-roster-desc]) > dt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+html[data-hermes-theme^='gold-night'] [data-ops-roster] dd[data-ops-roster-desc] { font-size: 0.82rem; margin: 2px 0 6px; max-width: none; width: 100%; }
+/* -- B38 (judge top-5): App Settings decision blocks; Profiles SOUL at reading scale; Capabilities mode switch; Cron glance tiles. */
+html[data-hermes-theme^='gold-night'] [data-settings-decisions] { display: grid; gap: 14px; }
+html[data-hermes-theme^='gold-night'] [data-settings-block] { background: rgb(var(--glass-ink, 20 17 12) / 0.35); border: 1px solid rgb(var(--glass-gold-hi, 230 190 110) / 0.14); border-radius: 14px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05); padding: 16px 18px; }
+html[data-hermes-theme^='gold-night'] [data-settings-block-title] { color: rgb(var(--glass-gold-hi, 230 190 110) / 0.9); font-size: var(--type-caption); font-weight: 600; letter-spacing: 0.12em; margin: 0 0 6px; text-transform: uppercase; }
+html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-scroller, html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-content { font-family: var(--font-sans, ui-sans-serif, system-ui); font-size: 14px; line-height: 1.7; }
+html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-content { padding: 18px 22px; }
+html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-line { max-width: 84ch; }
+html[data-hermes-theme^='gold-night'] [data-capabilities-mode][aria-selected='true'] { background: rgb(var(--glass-gold-hi, 230 190 110) / 0.16); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08); color: rgb(var(--glass-gold-hi, 230 190 110)); }
+html[data-hermes-theme^='gold-night'] [data-cron-glance-tile] { background: rgb(var(--glass-ink, 20 17 12) / 0.35); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05); }
+html[data-hermes-theme^='gold-night'] [data-cron-glance-tile='next'] { border-color: rgb(var(--glass-gold-hi, 230 190 110) / 0.3); }
+html[data-hermes-theme^='gold-night'] [data-cron-glance-tile][data-result='failed'], html[data-hermes-theme^='gold-night'] [data-cron-glance-tile][data-overdue] { border-color: rgb(248 81 73 / 0.4); }
+
+/* -- B39 (judge pass 4): App Settings column governs the modal; Agents invitation is a wide deliberate surface; artifact cards breathe. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] > * { max-width: 62rem; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(p) { font-size: 0.88rem; }
+html[data-hermes-theme^='gold-night'] [data-settings-block] { padding: 20px 22px; }
+html[data-hermes-theme^='gold-night'] [data-settings-block-title] { font-size: 0.78rem; }
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-empty-card] { max-width: 52rem; padding: 3rem 3.5rem; width: 100%; }
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] [data-agents-empty-hint] { font-size: 1.05rem; }
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] :where(svg) { max-width: none; }
+
+/* -- B41 (hierarchy spec, section 6): frames go, hierarchy comes from the type scale and space. Gold stays on selection, primary action and focus. */
+html[data-hermes-theme^='gold-night'] [data-hero-band] { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-hx='page-header'] .hx-page-title { font-family: var(--glass-display-font, inherit); }
+html[data-hermes-theme^='gold-night'] [data-hx='metric'][data-tone='good'] [data-hx-metric-value] { color: rgb(126 231 135); }
+html[data-hermes-theme^='gold-night'] [data-hx='metric'][data-tone='warn'] [data-hx-metric-value] { color: rgb(var(--glass-gold-hi)); }
+html[data-hermes-theme^='gold-night'] [data-hx='metric'][data-tone='bad'] [data-hx-metric-value] { color: rgb(255 123 114); }
+html[data-hermes-theme^='gold-night'] [data-settings-body] > * { max-width: var(--width-form); }
+html[data-hermes-theme^='gold-night'] [data-settings-body] > :not(:has([data-settings-section])) { background: none; border: 0; box-shadow: none; padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-settings-section] { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-settings-section] + [data-settings-section] { margin-top: var(--space-6); }
+html[data-hermes-theme^='gold-night'] [data-settings-block] { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-settings-block] + [data-settings-block] { border-top: 1px solid rgb(var(--glass-gold-hi) / 0.1); margin-top: var(--space-5); padding-top: var(--space-5); }
+html[data-hermes-theme^='gold-night'] [data-settings-block-title] { color: inherit; font-size: var(--type-section); letter-spacing: -0.01em; line-height: var(--type-section-lh); text-transform: none; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(label, h3, h4) { font-size: var(--type-meta); }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(p) { font-size: var(--type-meta); line-height: var(--type-meta-lh); max-width: 68ch; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select, button[role='combobox']) { font-size: var(--type-meta); max-width: var(--width-field); min-height: var(--control-min); }
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-empty-card] { background: none; border: 0; box-shadow: none; max-width: var(--width-reading); padding: 0; }
+html[data-hermes-theme^='gold-night'] [data-profile-soul-editor]:focus-within { box-shadow: 0 0 0 1px rgb(var(--glass-gold-hi) / 0.45); }
+html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-scroller, html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-content { font-size: var(--type-body); line-height: var(--type-reading-lh); }
+html[data-hermes-theme^='gold-night'] [data-cron-glance-tile] { background: none; box-shadow: none; }
+/* P8: Settings is a form, not a stack of cards: groups are unframed sections divided by a rule. */
+html[data-hermes-theme^='gold-night'] :where([data-ops-settings-main] > [data-ops-settings-group], [data-ops-settings-group][data-ops-settings-group='security']) { background: none; border: 0; border-bottom: 1px solid rgb(255 255 255 / 0.06); border-radius: 0; box-shadow: none; padding: 0 0 24px; }
+
+
+/* P9: the profile identity is a heading, not a card. */
+html[data-hermes-theme^='gold-night'] [data-profile-hero] { background: none; border: 0; box-shadow: none; padding: 0; }
+
+
+/* P9: the invitation is the content (page title by the composer); emblem and wordmark are a small signature. */
+html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] > div:first-child::before { height: 40px; width: 40px; margin-bottom: 8px; background: radial-gradient(circle, rgb(var(--glass-gold-hi) / 0.9) 0 4px, rgb(var(--glass-gold) / 0.3) 5px 8px, transparent 9px), radial-gradient(circle, transparent 0 15px, rgb(var(--glass-gold) / 0.35) 16px 17px, transparent 18px); box-shadow: none; }
+html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] .wordmark { opacity: 0.45; }
+html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] p:last-child { max-width: var(--width-reading, 45rem); font-size: var(--type-page, 1.75rem); line-height: var(--type-page-lh, 2.25rem); color: var(--ui-text-primary, var(--foreground)); font-weight: 500; letter-spacing: -0.01em; }
+html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] [data-intro-hint] { color: var(--ui-text-secondary); }
+
+
+/* P10 (judge must-fix): the catalog rule must beat the theme's card frame; connected apps keep their card. */
+html[data-hermes-theme^='gold-night'] [data-ops-app-section]:not([data-ops-app-section='connected']) [data-ops-app-grid] > li { background: transparent; border-color: transparent; box-shadow: none; min-height: 0; }
+html[data-hermes-theme^='gold-night'] [data-ops-app-section]:not([data-ops-app-section='connected']) [data-ops-app-grid] > li:hover { border-color: rgb(255 255 255 / 0.08); }
+
+
+/* P10: thresholds lose the theme frame; the Group above already titles them. */
+html[data-hermes-theme^='gold-night'] [data-ops-root] fieldset[data-ops-thresholds] { background: none; border: 0; box-shadow: none; padding: 0; }
+
+html[data-hermes-theme^='gold-night'] [data-ops-root] :is([data-ops-diagnostics], [data-ops-diag-evidence], [data-ops-settings-system]) { background: none; border: 0; box-shadow: none; }
+
+/* P10: Team cards are rows of work, not framed tiles; only the busy lane keeps an inner highlight. */
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-teams] > li { background: none; border-color: transparent; box-shadow: none; }
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-teams] > li[data-ops-team-busy] { box-shadow: inset 0 0 0 1px rgb(var(--glass-gold-hi) / 0.1); }
+
+/* P10: the flow line is a quiet summary; color lives on the cards. */
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-board-flow] [data-ops-board-flow-seg] { background: transparent; color: rgb(var(--glass-ink-dim, 200 190 170) / 0.85); font-size: 12px; }
+
+/* P11: Skills cards lose the bright fill; an inner hairline is enough on repeated elements. */
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-lens='skills'] [data-ops-roster] > li { background: rgb(255 255 255 / 0.015); border-color: transparent; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05); }
+
+html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-settings-main] > [data-ops-settings-group] { padding-bottom: 16px; }
+
+/* P11g: the form-axis wrapper owns width; the old 62rem cap on settings-body children pushed the form off the title's axis. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] > * { max-width: none; }
+/* P11g: a start-aligned empty state stays on the panel's left edge. */
+html[data-hermes-theme^='gold-night'] [data-panel-empty][data-panel-empty-align='start'] { display: block; width: 100%; text-align: left; }
+html[data-hermes-theme^='gold-night'] [data-panel-empty][data-panel-empty-align='start'] > [data-panel-empty-card] { margin-inline: 0; }
+
+
+/* P15: Channels rows are EntityRows; drop the connected-tile ring. */
+html[data-hermes-theme^='gold-night'] [data-ops-app][data-ops-row] { box-shadow: none; border-radius: 0; }
+

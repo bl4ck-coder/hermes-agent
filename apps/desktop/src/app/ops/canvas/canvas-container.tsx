@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 
 import { createOpsActions } from '../feed/ops-actions'
 import { createOpsClient, type OpsClient } from '../feed/ops-client'
+import { T } from '../main-i18n'
 import { useOpsResource } from '../office/office-container'
 
 import { CanvasView } from './canvas'
@@ -59,7 +60,11 @@ export function CanvasContainer({
       runs={runsBridge() as never}
     />
     {/* P5: writable nodes; a remote connection is refused server-side (D11) and renders read-only. */}
-    <NodeEditors policy={policy.value} profile={profile} readOnly={readOnly} />
+    {/* P10: documents fold under the flow so they do not compete with the connections. */}
+    <details data-ops-canvas-docs="">
+      <summary>{T("Edit nodes")}</summary>
+      <NodeEditors policy={policy.value} profile={profile} readOnly={readOnly} />
+    </details>
     </>
   )
 }

@@ -939,6 +939,7 @@ export const ruOverrides = {
       emptyDesc: 'В этом разделе нет настраиваемых параметров.',
       failedLoad: 'Не удалось загрузить настройки',
       autosaveFailed: 'Не удалось сохранить автоматически',
+      autosaveRevert: 'Вернуть сохранённое значение',
       imported: 'Конфигурация импортирована',
       invalidJson: 'Неверный JSON конфигурации',
       toolsetsWipeConfirm:
@@ -2378,6 +2379,7 @@ export const ruOverrides = {
     promptPlaceholder: 'Суммируй мои непрочитанные треды Slack и пришли топ-5 на почту...',
     frequencyLabel: 'Частота',
     deliverLabel: 'Доставить в',
+    lastDeliveryFailed: 'Выполнено, но доставка не удалась',
     deliverNeedsHomeChannel: 'сначала задайте домашний канал',
     modelLabel: 'Модель',
     modelDefault: 'По умолчанию (глобальная модель)',

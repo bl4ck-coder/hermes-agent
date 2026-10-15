@@ -38,7 +38,7 @@ export function connCopy(s: string): string {
   for (const [re, key, names] of CONN_PATTERNS) {
     const m = re.exec(s)
 
-    if (m) return names.reduce((out, name, i) => out.replace(`{${name}}`, m[i + 1]), T(key))
+    if (m) {return names.reduce((out, name, i) => out.replace(`{${name}}`, m[i + 1]), T(key))}
   }
 
   return T(s)
@@ -81,85 +81,123 @@ export function DiagnosticsPanel({
 
   const text = () => diagnosticsText({ probe: results, stream: { mode: stream.mode, reason: stream.reason }, policySource, errors })
 
+  const ok = results ? results.filter(r => r.state === 'ok').length : 0
+  const total = results?.length ?? 0
+  const failing = results ? results.filter(r => r.state !== 'ok') : []
+  const tone = !results ? 'idle' : failing.length === 0 && errors.length === 0 ? 'good' : 'warn'
+
+  // P7: confirmed state, then the evidence for it, then the next action. Details fold away.
   return (
     <div data-ops-diagnostics="">
-      {/* B34: one-glance health. A ring for the probe score, a plain headline, the stream and error count. */}
-      {(() => {
-        const ok = results ? results.filter(r => r.state === 'ok').length : 0
-        const total = results?.length ?? 0
-        const tone = !results ? 'idle' : ok === total && errors.length === 0 ? 'good' : 'warn'
-
-        return (
-          <div data-ops-diag-hero={tone}>
-            <span data-ops-diag-ring="" style={{ '--ops-pct': total ? ok / total : 0 } as React.CSSProperties}>
-              {results ? `${ok}/${total}` : '–'}
-            </span>
-            <div>
-              <strong>{!results ? T('Not probed yet') : tone === 'good' ? T('All systems go') : T('Some capabilities need attention')}</strong>
-              <small>
-                {stream.mode} · {T('Recent errors')} {errors.length}
-              </small>
-            </div>
-          </div>
-        )
-      })()}
-      <dl>
-        <dt>{T("Stream")}</dt>
-        <dd data-ops-diag-stream={stream.mode}>
-          {stream.mode}
+      <header data-ops-diag-hero={tone}>
+        <h3 data-ops-diag-state="">
+          {!results ? T('Not probed yet') : tone === 'good' ? T('All systems go') : T('Some capabilities need attention')}
+        </h3>
+        <p data-ops-diag-summary="">
+          {results ? `${ok}/${total} ${T('available')} · ` : ''}
+          {T('Recent errors')} {errors.length} · {stream.mode}
           {stream.reason ? ` (${stream.reason})` : ''}
-        </dd>
-        <dt>{T("Connection")}</dt>
-        <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
-          {conn ? connCopy(conn.copy) : T('Run the probe to check the Hermes version and capabilities.')}
-        </dd>
-        <dt>{T("Stream generation")}</dt>
-        <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
-        <dt>{T("Policy source")}</dt>
-        <dd data-ops-diag-policy="">{policySource ?? T('unknown')}</dd>
-      </dl>
-      <button data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
-        {probing ? T('Probing…') : T('Run capability probe')}
-      </button>
-      {results ? (
-        <ul aria-label={T("Capability probe")} data-ops-probe-results="">
-          {results.map(r => (
-            <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
-              <b data-ops-probe-id="">{r.id}</b> {T(r.label)}{r.state === 'ok' ? <span data-ops-probe-ok="">: {T('available')}</span> : <>: {r.detail}</>}
-            </li>
-          ))}
-        </ul>
+        </p>
+      </header>
+      {failing.length ? (
+        <section aria-label={T('Needs attention')} data-ops-diag-evidence="probe">
+          <h4>{T('Needs attention')}</h4>
+          <ul data-ops-probe-failing="">
+            {failing.map(r => (
+              <li data-ops-probe-fail={r.state} key={r.id}>
+                <strong>{T(r.label)}</strong>
+                <span>{r.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : results ? (
+        <section aria-label={T('Checked')} data-ops-diag-evidence="checked">
+          <h4>{T('Checked')}</h4>
+          <ul data-ops-diag-checked="">
+            {results.map(r => (
+              <li key={r.id}>{T(r.label)}</li>
+            ))}
+          </ul>
+        </section>
       ) : null}
-      <h4>
-        {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
-      </h4>
-      {errors.length === 0 ? (
-        <p data-ops-empty="errors">{T("No Ops request has failed this session.")}</p>
-      ) : (
-        <ol data-ops-errors="">
-          {errors.map((e, i) => (
-            <li key={`${e.at}-${i}`}>
-              <time>{new Date(e.at).toLocaleTimeString()}</time> {e.method} {e.path}: {e.message}
-            </li>
-          ))}
-        </ol>
-      )}
-      <button
-        data-ops-copy-diagnostics=""
-        onClick={async () => {
-          try {
-            await (copy ?? (t => navigator.clipboard.writeText(t)))(text())
-            setNote('Diagnostics copied (redacted).')
-          } catch (e) {
-            setNote(`Copy failed: ${e instanceof Error ? e.message : String(e)}`)
-          }
-        }}
-        type="button"
-      >
-        {T("Copy diagnostics")}</button>
-      <button disabled={errors.length === 0} onClick={clearOpsErrors} type="button">
-        {T("Clear errors")}</button>
-      {note ? <p role="status">{note}</p> : null}
+      {/* P20c: the next step sits right after the summary, before the error evidence. */}
+      <div data-ops-diag-next="">
+          <span data-ops-diag-actions="">
+            <button data-ops-primary="" data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
+              {probing ? T('Probing…') : results ? T('Probe again') : T('Run capability probe')}
+            </button>
+            <button
+              data-ops-copy-diagnostics=""
+              onClick={async () => {
+                try {
+                  await (copy ?? (t => navigator.clipboard.writeText(t)))(text())
+                  setNote('Diagnostics copied (redacted).')
+                } catch (e) {
+                  setNote(`Copy failed: ${e instanceof Error ? e.message : String(e)}`)
+                }
+              }}
+              type="button"
+            >
+              {T("Copy diagnostics")}</button>
+          </span>
+        {note ? <p role="status">{note}</p> : null}
+      </div>
+      {errors.length > 0 ? (
+        <section aria-label={T('Recent errors')} data-ops-diag-evidence="errors">
+          <h4>
+            {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
+          </h4>
+          {/* P20c: one line per failing endpoint (latest message, repeat count); the raw log is secondary. */}
+          <ul data-ops-error-groups="">
+            {groupOpsErrors(errors).map(g => (
+              <li data-ops-error-group="" key={g.key}>
+                <strong>{g.key}</strong> <span>{g.message}</span>
+                {g.count > 1 ? <span data-ops-error-repeat="">{' \u00d7'}{g.count}</span> : null}
+              </li>
+            ))}
+          </ul>
+          <details data-ops-errors-log="">
+            <summary>{T('Full error log')}</summary>
+            <ol data-ops-errors="">
+              {errors.map((e, i) => (
+                <li key={`${e.at}-${i}`}>
+                  <time>{new Date(e.at).toLocaleTimeString()}</time> {e.method} {e.path}: {e.message}
+                </li>
+              ))}
+            </ol>
+            <button onClick={clearOpsErrors} type="button">
+              {T("Clear errors")}</button>
+          </details>
+        </section>
+      ) : null}
+      <details data-ops-diag-details="">
+        <summary>{T('Details')}</summary>
+        <dl>
+          <dt>{T("Stream")}</dt>
+          <dd data-ops-diag-stream={stream.mode}>
+            {stream.mode}
+            {stream.reason ? ` (${stream.reason})` : ''}
+          </dd>
+          <dt>{T("Connection")}</dt>
+          <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
+            {conn ? connCopy(conn.copy) : T('Run the probe to check the Hermes version and capabilities.')}
+          </dd>
+          <dt>{T("Stream generation")}</dt>
+          <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
+          <dt>{T("Policy source")}</dt>
+          <dd data-ops-diag-policy="">{policySource ?? T('unknown')}</dd>
+        </dl>
+        {results ? (
+          <ul aria-label={T("Capability probe")} data-ops-probe-results="">
+            {results.map(r => (
+              <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
+                <b data-ops-probe-id="">{r.id}</b> {T(r.label)}{r.state === 'ok' ? <span data-ops-probe-ok="">: {T('available')}</span> : <>: {r.detail}</>}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </details>
       {simAllowed() ? (
         <label data-ops-simulate="">
           {T("Simulate (dev only)")}<select aria-label={T("simulate")} onChange={e => setSimMode(e.target.value as SimMode)} value={sim}>
@@ -172,4 +210,32 @@ export function DiagnosticsPanel({
       ) : null}
     </div>
   )
+}
+
+/** P7: the one-line system status Settings shows; the full panel lives in the Diagnostics view. */
+export function SystemStatus({ policySource, onOpen }: { policySource: string | null; onOpen: () => void }) {
+  const stream = useKanbanStream()
+  const errors = useSyncExternalStore(subscribeOpsErrors, opsErrors, opsErrors)
+
+  return (
+    <p data-ops-system-status={errors.length ? 'warn' : 'ok'}>
+      <span>
+        {errors.length ? `${T('Recent errors')} ${errors.length}` : T('No Ops request has failed this session.')} · {stream.mode} · {T('Policy source')}{' '}
+        {policySource ?? T('unknown')}
+      </span>
+      <button data-ops-open-diagnostics="" onClick={onOpen} type="button">
+        {T('Open Diagnostics')}
+      </button>
+    </p>
+  )
+}
+
+export function groupOpsErrors(errors: readonly { at: number | string; message: string; method?: string; path?: string }[]) {
+  const m = new Map<string, { count: number; key: string; message: string }>()
+  for (const e of errors) {
+    const key = `${e.method ?? ''} ${e.path ?? ''}`.trim() || '?'
+    const g = m.get(key)
+    if (g) { g.count += 1; g.message = e.message } else m.set(key, { count: 1, key, message: e.message })
+  }
+  return [...m.values()]
 }

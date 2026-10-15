@@ -1,3 +1,6 @@
+import { T } from '../ops/main-i18n'
+import { useNavigate } from 'react-router'
+import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
 import { HeroBand, HeroSpark } from '@/components/hero-band'
 import { Codicon } from '@/components/ui/codicon'
 import { compactNumber } from '@hermes/shared'
@@ -154,6 +157,7 @@ export function CommandCenterView({
   onOpenSession
 }: CommandCenterViewProps) {
   const { locale, t } = useI18n()
+  const navigate = useNavigate()
   const cc = t.commandCenter
   // $sessions ticks on every streaming token (title updates, new sessions),
   // but we only need the data on the Sessions tab. Subscribe conditionally so
@@ -401,13 +405,21 @@ export function CommandCenterView({
             {section === 'sessions' ? (
               <div className="flex min-h-0 flex-1 flex-col">
                 {/* IA: search sits on top of the list it filters, not in the far header corner. */}
-                <SessionsHero label={cc.statSessions} locale={locale} sessions={sessions} span={cc.days(14)} />
+                {/* B41 (hierarchy spec): no stat hero over the list; the conversation to resume is the signal. */}
                 <div className="shrink-0 pb-3 pt-1" data-sessions-search="">
                   <SearchField onChange={next => setQuery(next)} placeholder={cc.searchPlaceholder} value={query} />
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {!sessionListHasResults ? (
-                    <EmptyPanel description={debouncedQuery ? cc.noResults : cc.noSessions} />
+                    <EmptyPanel
+                      // P20e: an empty list still offers the next step.
+                      action={
+                        <Button data-sessions-empty-action="" onClick={() => (debouncedQuery ? setQuery('') : (navigateToWorkspacePage(navigate, NEW_CHAT_ROUTE), onClose?.()))} size="sm" variant="outline">
+                          {debouncedQuery ? T('Clear search') : cc.nav.newChat.title}
+                        </Button>
+                      }
+                      description={debouncedQuery ? cc.noResults : cc.noSessions}
+                    />
                   ) : (
                     <ul>
                       {filteredSessions.map((session, index) => {
@@ -422,25 +434,30 @@ export function CommandCenterView({
                           <Fragment key={session.id}>
                             {showGroup && (
                               <li
-                                className="pb-1 pt-4 text-[0.62rem] font-medium uppercase tracking-wider text-muted-foreground/60 first:pt-1"
+                                className="pb-2 pt-6 text-[length:var(--type-meta)] font-semibold text-muted-foreground first:pt-1"
                                 data-session-group=""
                                 role="presentation"
                               >
                                 {group}
                               </li>
                             )}
-                            <li className="group flex items-center gap-2 py-2">
+                            <li className="hx-row group rounded-lg hover:bg-(--ui-row-hover-background,rgb(255_255_255/0.04))" data-hx="row" data-session-row="" data-two-line="">
                               <button
-                                className="min-w-0 flex-1 text-left"
+                                className="flex min-w-0 flex-1 items-center gap-3 text-left"
                                 onClick={() => onOpenSession(session.id, session)}
                                 type="button"
                               >
-                                <div className="truncate text-[length:var(--conversation-text-font-size)] font-medium text-foreground">
-                                  {sessionTitle(session)}
-                                </div>
-                                <div className="truncate text-[length:var(--conversation-caption-font-size)] text-(--ui-text-tertiary)">
-                                  {formatTimestamp(session.last_active || session.started_at)}
-                                </div>
+                                <span className="hx-row-main">
+                                  <span className="hx-row-title truncate text-foreground">{sessionTitle(session)}</span>
+                                  {/* P11: the second line is what the conversation was about (preview), then where it ran. */}
+                                  {session.preview?.trim() || session.cwd || session.git_branch ? (
+                                    <span className="hx-row-secondary truncate text-muted-foreground" data-session-context="" title={session.preview?.trim() || undefined}>
+                                      {/* P12: a preview that only repeats the title adds nothing. */}
+                                      {[session.preview && session.preview.trim().toLowerCase() !== sessionTitle(session).trim().toLowerCase() ? session.preview.trim().replace(/\s+/g, ' ') : null, session.cwd?.split(/[\\/]/).filter(Boolean).pop(), session.git_branch].filter(Boolean).join(' \u00b7 ')}
+                                    </span>
+                                  ) : null}
+                                </span>
+                                <span className="hx-row-trailing text-(length:--type-caption) text-muted-foreground/70">{formatTimestamp(session.last_active || session.started_at)}</span>
                               </button>
                               <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                                 <RowIconButton
@@ -541,7 +558,7 @@ export function CommandCenterView({
 
                 <div className="flex min-h-0 flex-col pt-2">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                    <span className="text-[0.625rem] font-medium uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
+                    <span className="text-xs font-medium uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
                       {cc.recentLogs}
                     </span>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -667,10 +684,10 @@ function UsagePanel({ error, loading, onRefresh, period, usage }: UsagePanelProp
 
       <section>
         <div className="mb-2 flex items-baseline justify-between">
-          <span className="text-[0.625rem] font-medium uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
+          <span className="text-xs font-medium uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
             {cc.dailyTokens}
           </span>
-          <span className="flex items-center gap-3 text-[0.65rem] text-(--ui-text-tertiary)">
+          <span className="flex items-center gap-3 text-xs text-(--ui-text-tertiary)">
             <span className="inline-flex items-center gap-1">
               <span className="size-2 rounded-[1px] bg-[color:var(--dt-primary)]/60" /> {cc.input}
             </span>
@@ -708,7 +725,7 @@ function UsagePanel({ error, loading, onRefresh, period, usage }: UsagePanelProp
                 )
               })}
             </div>
-            <div className="mt-1 flex justify-between text-[0.6rem] text-(--ui-text-tertiary)">
+            <div className="mt-1 flex justify-between text-xs text-(--ui-text-tertiary)">
               <span>{daily[0]?.day}</span>
               <span>{daily[daily.length - 1]?.day}</span>
             </div>
@@ -751,7 +768,7 @@ function UsageList({
 }) {
   return (
     <section className="min-w-0">
-      <div className="mb-1.5 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
+      <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.08em] text-(--ui-text-tertiary)">
         {title}
       </div>
       {rows.length === 0 ? (
@@ -762,8 +779,8 @@ function UsageList({
         <ul>
           {rows.map(row => (
             <li className="flex items-center justify-between gap-2 py-1.5" key={row.key}>
-              <span className="min-w-0 truncate font-mono text-[0.7rem] text-foreground">{row.label}</span>
-              <span className="shrink-0 text-[0.65rem] text-(--ui-text-tertiary)">{row.value}</span>
+              <span className="min-w-0 truncate font-mono text-xs text-foreground">{row.label}</span>
+              <span className="shrink-0 text-xs text-(--ui-text-tertiary)">{row.value}</span>
             </li>
           ))}
         </ul>
@@ -775,9 +792,9 @@ function UsageList({
 function UsageStat({ hint, label, value }: { hint?: string; label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <div className="text-[0.625rem] font-medium uppercase tracking-[0.12em] text-(--ui-text-tertiary)">{label}</div>
+      <div className="text-xs font-medium uppercase tracking-[0.12em] text-(--ui-text-tertiary)">{label}</div>
       <div className="mt-1 truncate text-base font-semibold tracking-tight text-foreground">{value}</div>
-      {hint && <div className="mt-0.5 truncate text-[0.62rem] text-(--ui-text-tertiary)">{hint}</div>}
+      {hint && <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">{hint}</div>}
     </div>
   )
 }
@@ -801,7 +818,7 @@ export function sessionDateGroup(ts: number | undefined, locale: string, now = D
 }
 
 /** B35: Sessions hero: totals, today, and a 14-day activity spark. */
-function SessionsHero({ label, locale, sessions, span }: { label: string; locale: string; sessions: readonly { last_active?: number | null; started_at?: number | null }[]; span: string }) {
+export function SessionsHero({ label, locale, sessions, span }: { label: string; locale: string; sessions: readonly { last_active?: number | null; started_at?: number | null }[]; span: string }) {
   const now = Date.now()
   const todayKey = sessionDateGroup(now, locale, now)
   const days = Array.from({ length: 14 }, () => 0)
@@ -819,7 +836,7 @@ function SessionsHero({ label, locale, sessions, span }: { label: string; locale
       className="mt-1"
       icon={<Codicon name="history" />}
       id="sessions"
-      spark={<HeroSpark label={span} values={days} />}
+      spark={<HeroSpark label={span} srSummary={T('{label}: {sum} total, peak {max}').replace('{label}', span).replace('{sum}', String(days.reduce((a, b) => a + b, 0))).replace('{max}', String(Math.max(0, ...days)))} values={days} />}
       stats={[{ label, value: sessions.length }, { label: todayKey, tone: today ? 'good' : 'muted', value: today }]}
       title={label}
     />

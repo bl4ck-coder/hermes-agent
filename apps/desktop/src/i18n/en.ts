@@ -1218,6 +1218,7 @@ export const en: Translations = {
       emptyDesc: 'This section has no adjustable settings.',
       failedLoad: 'Settings failed to load',
       autosaveFailed: 'Autosave failed',
+      autosaveRevert: 'Revert to saved value',
       imported: 'Config imported',
       invalidJson: 'Invalid config JSON',
       toolsetsWipeConfirm:
@@ -3135,6 +3136,7 @@ export const en: Translations = {
     promptPlaceholder: 'Summarize my unread Slack threads and email me the top 5...',
     frequencyLabel: 'Frequency',
     deliverLabel: 'Deliver to',
+    lastDeliveryFailed: 'Ran, but delivery failed',
     deliverNeedsHomeChannel: 'set a home channel first',
     modelLabel: 'Model',
     modelDefault: 'Default (global model)',

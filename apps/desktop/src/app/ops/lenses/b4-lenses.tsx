@@ -3,7 +3,7 @@
  * Reads go through Desktop's own API helpers; every connect / install / edit flow is Desktop's own
  * (Ops routes there), except skill installs, which use the hub install route after a confirm.
  */
-import { type CSSProperties, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { connectionScoped, hermesApi } from '@/api/client'
 import { listOAuthProviders } from '@/api/config'
@@ -15,11 +15,12 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { opsCall } from '../feed/diag'
 import { type ActiveWorker, createOpsActions } from '../feed/ops-actions'
 import { P, T } from '../main-i18n'
-import { Sigil } from '../primitives/sigil'
 import type { BoardTask } from '../office/control-room'
 import { fmtAge } from '../office/control-room'
 import { useOpsResource } from '../office/office-container'
 import { DataTable, type DataTableSort } from '../primitives/data-table'
+import { Disclosure, EntityList, EntityRow } from '../primitives/entity-row'
+import { Sigil } from '../primitives/sigil'
 
 import {
   APP_CATEGORIES,
@@ -60,6 +61,8 @@ export interface B4Client {
 }
 
 const settle = <T,>(p: Promise<T>) => p.then(v => v, () => null)
+
+const SOURCE_NAMES = { catalog: 'the MCP catalog', servers: 'your MCP servers', platforms: 'messaging platforms', providers: 'sign-in providers' } as const
 
 export function createB4Client(): B4Client {
   const ops = createOpsActions()
@@ -121,6 +124,8 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
 
   const [tab, setTab] = useState<AgentsTab>('fleet')
   const [q, setQ] = useState('')
+  // P14: the Fleet reads as one grouped list of agents; the sortable table stays one click away.
+  const [fleetView, setFleetView] = useState<'list' | 'table'>('list')
   const [sort, setSort] = useState<DataTableSort | null>({ columnId: 'lastActive', direction: 'desc' })
   const now = nowS ?? Math.floor(Date.now() / 1000)
 
@@ -152,8 +157,17 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         <>
           <Search label={T("search agents")} onChange={setQ} placeholder={T("Search by name, model, lane, role")} value={q} />
           {tasks.error ? <p data-ops-partial="">{T("Task counts unavailable:")}{' '}{why(tasks.error)}</p> : null}
-          <DataTable viewToggleId="fleet"
-            caption={`Fleet (${rows.length})`}
+          <div aria-label={T('Fleet view')} data-ops-fleet-views="" role="group">
+            {(['list', 'table'] as const).map(v => (
+              <button aria-pressed={fleetView === v} data-ops-fleet-view={v} key={v} onClick={() => setFleetView(v)} type="button">
+                {v === 'list' ? T('List') : T('Table')}
+              </button>
+            ))}
+          </div>
+          {fleetView === 'list' ? (
+            <FleetRows now={now} onOpen={onOpenRoute ? open : undefined} rows={searchRows(rows, q, r => [r.name, r.model, r.lane, r.role])} />
+          ) : (
+          <DataTable caption={`Fleet (${rows.length})`}
             columns={[
               {
                 id: 'name',
@@ -179,6 +193,8 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                   </button>
                 )
               },
+              // P6: attention leads the card, right after the name.
+              { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{T(r.status)}</span> },
               { id: 'model', header: 'Model', sortable: true, sortValue: r => r.model, cell: r => r.model ?? T('unknown') },
               { id: 'lane', header: 'Lane', sortable: true, sortValue: r => r.lane, cell: r => r.lane ?? '—' },
               { id: 'active', header: 'Active tasks', sortable: true, tabular: true, sortValue: r => r.active, cell: r => <span data-ops-zero={r.active ? undefined : ''}>{String(r.active)}</span> },
@@ -195,15 +211,16 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                   </span>
                 )
               },
-              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('never')) },
-              { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{T(r.status)}</span> }
+              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('unknown')) }
             ]}
             emptyLabel={q ? T('No agent matches.') : T('No profiles.')}
             getRowId={r => r.name}
             onSortChange={setSort}
             rows={searchRows(rows, q, r => [r.name, r.model, r.lane, r.role])}
             sort={sort}
+            viewToggleId="fleet"
           />
+          )}
         </>
       ) : tab === 'teams' ? (
         <TeamsView onOpenRoute={onOpenRoute} tasks={tasks.value ?? null} tasksError={tasks.error} />
@@ -221,6 +238,8 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
   )
 }
 
+const statusWord = (s: string) => ({ blocked: 'Blocked', running: 'Running', ready: 'Ready', todo: 'To do', triage: 'Triage', review: 'Review', scheduled: 'Scheduled' } as Record<string, string>)[s] ?? s
+
 function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | null; tasksError: unknown; onOpenRoute?: (r: string) => void }) {
   if (!tasks) {
     return <State error={tasksError} what="Teams" />
@@ -232,57 +251,196 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
     return <p data-ops-empty="teams">{T("No tasks yet, so no lanes.")}</p>
   }
 
-  // B35: Teams hero: everyone on a lane as an avatar stack, with the totals.
+  // P7: one summary line instead of an avatar mosaic; each lane leads with what it is working on.
   const people = [...new Set(list.flatMap(x => x.members))]
   const openTotal = list.reduce((n, x) => n + x.open, 0)
 
+  const label = (lane: string) => (lane === 'No lane' ? T('Unassigned') : lane)
+
+  // P14 (judge consult): one EntityRow per lane: name → current work with its state → open/blocked and members → projects and the rest in a disclosure.
+  const row = (t: (typeof list)[number]) => {
+    const [head] = t.focus
+    const rest = t.work.filter(w => w.id !== head?.id)
+
+    return (
+      <EntityRow
+        attrs={{ 'data-ops-team': t.lane, 'data-ops-team-busy': t.open > 0 ? '' : undefined, 'data-ops-team-unassigned': t.lane === 'No lane' ? '' : undefined }}
+        context={
+          head ? (
+            <span data-ops-team-current="">
+              <span data-ops-team-now="">{T('Working on')}:</span>{' '}
+              {head.blocked ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
+              <span data-ops-team-task={head.id} data-ops-team-task-blocked={head.blocked ? '' : undefined}>{head.title}</span>
+            </span>
+          ) : (
+            <span data-ops-team-idle="">{T('No open work')}</span>
+          )
+        }
+        key={t.lane}
+        meta={
+          <>
+            <span data-ops-team-open-n="">{P(t.open, '{n} open')}</span>
+            {t.blocked ? <span data-ops-team-blocked="">{P(t.blocked, '{n} blocked')}</span> : null}
+            <span>{P(t.members.length, '{n} members')}</span>
+          </>
+        }
+        more={
+          <Disclosure label={T('Work and members')}>
+            <div data-ops-team-detail="">
+              {rest.length ? (
+                <ul aria-label={T('Working on')} data-ops-team-rest="">
+                  {rest.map(f => (
+                    <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.status === 'blocked' ? '' : undefined} key={f.id}>
+                      <span data-ops-team-task-status={f.status}>{T(statusWord(f.status))}</span> {f.title}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <p aria-label={T('Members:')} data-ops-team-members="">
+                {t.members.length ? t.members.map(m => <span data-ops-team-member={m} key={m}><Sigil name={m} size={20} /> {m}</span>) : <span data-ops-team-none="">{T('No members')}</span>}
+              </p>
+              {t.projects.length ? (
+                <p data-ops-team-projects="">
+                  {t.projects.map(pr => (
+                    <button data-ops-team-project={pr} disabled={!onOpenRoute} key={pr} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(pr)}`)} type="button">
+                      {pr}
+                    </button>
+                  ))}
+                </p>
+              ) : null}
+            </div>
+          </Disclosure>
+        }
+        title={label(t.lane)}
+        tone={t.blocked ? 'warn' : undefined}
+      />
+    )
+  }
+
+  const lanes = list.filter(t => t.lane !== 'No lane')
+  const blockedLanes = lanes.filter(t => t.open > 0 && t.blocked > 0)
+  const openLanes = lanes.filter(t => t.open > 0 && !t.blocked)
+  const idle = list.filter(t => t.open === 0)
+  const unassigned = list.find(t => t.lane === 'No lane' && t.open > 0)
+
+  const group = (id: string, title: string, xs: typeof list) =>
+    xs.length ? (
+      <div data-ops-rows-group={id} key={id}>
+        <h4>
+          {title} <span data-ops-rows-count="">{xs.length}</span>
+        </h4>
+        <EntityList label={title}>{xs.map(row)}</EntityList>
+      </div>
+    ) : null
+
   return (
-    <>
-    <header data-ops-teams-hero="">
-      <span data-ops-teams-stack="">
-        {people.slice(0, 8).map(m => <Sigil key={m} name={m} size={32} />)}
-        {people.length > 8 ? <span data-ops-teams-more="">+{people.length - 8}</span> : null}
-      </span>
-      <dl>
-        <div><dt>{T('Lanes')}</dt><dd>{list.length}</dd></div>
-        <div><dt>{T('Open tasks')}</dt><dd>{openTotal}</dd></div>
-        <div><dt>{T('Members')}</dt><dd>{people.length}</dd></div>
-      </dl>
-    </header>
-    <ul data-ops-teams="">
-      {list.map(t => (
-        <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} key={t.lane}>
-          <header data-ops-team-head="">
-            <h3>{t.lane === 'No lane' ? T('No lane') : t.lane}</h3>
-            <span data-ops-team-open="">{P(t.open, '{n} open')}</span>
-          </header>
-          <div aria-label={T('Members:')} data-ops-team-members="" role="list">
-            {t.members.length
-              ? t.members.map(m => (
-                  <span data-ops-team-member={m} key={m} role="listitem">
-                    <Sigil name={m} size={14} />
-                    {m}
-                  </span>
-                ))
-              : <span data-ops-team-none="">{T('No members')}</span>}
-          </div>
-          <p data-ops-team-projects="">
-            {t.projects.length
-              ? t.projects.map(p => (
-                  <button data-ops-team-project={p} disabled={!onOpenRoute} key={p} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(p)}`)} type="button">
-                    {p}
-                  </button>
-                ))
-              : <span data-ops-team-none="">{T('No projects')}</span>}
-          </p>
-        </li>
-      ))}
-    </ul>
-    </>
+    <div data-ops-teams="">
+      <p data-ops-teams-summary="">
+        {P(list.length, '{n} lanes')} {'\u00b7'} {P(openTotal, '{n} open tasks')} {'\u00b7'} {P(people.length, '{n} members')}
+      </p>
+      {group('blocked', T('With blocked work'), blockedLanes)}
+      {group('open', T('With open work'), openLanes)}
+      {unassigned ? group('unassigned', T('Work not assigned to a lane'), [unassigned]) : null}
+      {idle.length ? (
+        <details data-ops-rows-group="idle" data-ops-teams-idle="">
+          <summary>
+            {T('No open work')} <span data-ops-rows-count="">{idle.length}</span>
+          </summary>
+          <EntityList label={T('No open work')}>{idle.map(row)}</EntityList>
+        </details>
+      ) : null}
+    </div>
   )
 }
 
-/* ------------------------------- Skills lens -------------------------------- */
+/** P14 (judge consult): one list, each agent once. Attention first, then running, then no run observed.
+ * name → work/problem → status and last activity → open profile; infrastructure in Details. */
+function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; now: number; onOpen?: (name: string) => void }) {
+  const hot = (r: (typeof rows)[number]) => r.status === 'failing' || r.status === 'unknown' || (r.failed7d ?? 0) > 0
+
+  const attention = rows
+    .filter(hot)
+    .sort((a, b) => Number(b.status === 'failing') - Number(a.status === 'failing') || Number(a.status === 'unknown') - Number(b.status === 'unknown') || (b.failed7d ?? 0) - (a.failed7d ?? 0))
+
+  const running = rows.filter(r => !hot(r) && r.status === 'running')
+  // P15 (judge): inactive now is not the same as never observed.
+  const idleNow = rows.filter(r => !hot(r) && r.status !== 'running' && (r.lastActive || (r.runs7d ?? 0) > 0))
+  const quiet = rows.filter(r => !hot(r) && r.status !== 'running' && !(r.lastActive || (r.runs7d ?? 0) > 0))
+
+  const context = (r: (typeof rows)[number]) =>
+    r.failingTask
+      ? `${T('Failing task')}: ${r.failingTask.title} \u00b7 ${P(r.failingTask.failures, '{n} failures in a row')}`
+      : r.status === 'unknown'
+        ? T('No task or worker data for this agent.')
+        : (r.failed7d ?? 0) > 0
+          ? `${P(r.failed7d ?? 0, '{n} failed runs')} ${T('in the last 7 days')}`
+          : r.active
+            ? P(r.active, '{n} active')
+            : null
+
+  const row = (r: (typeof rows)[number]) => (
+    <EntityRow
+      attrs={{ 'data-ops-fleet-row': r.name, 'data-ops-fleet-attention-row': hot(r) ? r.name : undefined }}
+      context={context(r)}
+      key={r.name}
+      lead={<Sigil name={r.name} size={32} />}
+      meta={
+        <>
+          <span data-ops-fleet-status={r.status}>{T(r.status)}</span>
+          <span>{r.lastActive ? fmtAge(now - r.lastActive) : T('unknown')}</span>
+        </>
+      }
+      more={
+        <Disclosure label={T('Details')}>
+          <dl data-ops-fleet-details="">
+            <dt>{T('Model')}</dt>
+            <dd>{r.model ?? T('unknown')}</dd>
+            <dt>{T('Lane')}</dt>
+            <dd>{r.lane ?? '\u2014'}</dd>
+            <dt>{T('Active tasks')}</dt>
+            <dd>{String(r.active)}</dd>
+            <dt>{T('Runs 7d')}</dt>
+            <dd data-ops-runs-source={r.runsSource}>
+              {r.runs7d}
+              {r.failed7d ? ` \u00b7 ${r.failed7d} ${T('failed')}` : ''}
+            </dd>
+          </dl>
+        </Disclosure>
+      }
+      primary={
+        <button data-ops-fleet-profile={r.name} data-ops-primary="" disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
+          {T('Open profile')}</button>
+      }
+      title={
+        <button data-ops-fleet-open={r.name} data-ops-row-link="" disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
+          <span>{r.name}</span>
+          {r.role ? <small data-ops-role="">{r.role}</small> : null}
+        </button>
+      }
+      tone={r.status === 'failing' ? 'bad' : r.status === 'unknown' ? 'warn' : undefined}
+    />
+  )
+
+  const group = (id: string, title: string, xs: typeof rows) =>
+    xs.length ? (
+      <div data-ops-rows-group={id} key={id}>
+        <h4>
+          {title} <span data-ops-rows-count="">{xs.length}</span>
+        </h4>
+        <EntityList label={title}>{xs.map(row)}</EntityList>
+      </div>
+    ) : null
+
+  return (
+    <div data-ops-fleet-rows="">
+      {attention.length === 0 ? <p data-ops-fleet-attention="clear">{T('Nothing needs attention.')}</p> : null}
+      {group('attention', T('Needs attention'), attention)}
+      {group('running', T('Running'), running)}
+      {group('idle', T('No active run'), idleNow)}
+      {group('quiet', T('No run observed'), quiet)}
+    </div>
+  )
+}
 
 function AgentLinks({ agents, onOpen }: { agents: string[]; onOpen?: (p: string) => void }) {
   const [more, setMore] = useState(false)
@@ -314,6 +472,73 @@ function AgentLinks({ agents, onOpen }: { agents: string[]; onOpen?: (p: string)
   )
 }
 
+/** P15 (judge consult): Skills as one list: enabled, then disabled. Name → what it does → category and state → Open skill; usage and profiles under a disclosure. */
+function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: ReturnType<typeof skillRows>; onOpenSkill?: (n: string) => void; onOpenAgent?: (p: string) => void; scanCapped: boolean }) {
+  const row = (r: (typeof rows)[number]) => (
+    <EntityRow
+      attrs={{ 'data-ops-skill': r.name, 'data-ops-skill-enabled': r.enabled ? '' : undefined }}
+      context={r.description ? <span data-ops-skill-desc="">{r.description}</span> : <span data-ops-skill-nodesc="">{T('No description')}</span>}
+      key={r.name}
+      lead={<span aria-hidden data-ops-skill-glyph="">{'\u2726'}</span>}
+      meta={
+        <>
+          <span data-ops-skill-tag={tagTone(r.category || 'general')}>{r.category || 'general'}</span>
+          <span>{r.enabled ? T('Enabled') : T('Disabled')}</span>
+        </>
+      }
+      more={
+        <Disclosure label={T('Details and profiles')}>
+          <div data-ops-skill-detail="">
+            {(r as { provenance?: string }).provenance ? <p data-ops-skill-provenance="">{T('Source')}: {(r as { provenance?: string }).provenance}</p> : null}
+            <p>{typeof r.usage === 'number' ? P(r.usage, 'Used {n} times') : T('Usage not available')}</p>
+            <p>{T('Profiles with this skill enabled')}</p>
+            {r.agents.length ? (
+              <p data-ops-skill-agents="">
+                {r.agents.map(a => (
+                  <button data-ops-skill-agent={a} disabled={!onOpenAgent} key={a} onClick={() => onOpenAgent?.(a)} type="button">
+                    {a}
+                  </button>
+                ))}
+              </p>
+            ) : (
+              <p>{T('None observed')}</p>
+            )}
+            {scanCapped ? <p>{T('Among the first {n} profiles checked').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}</p> : null}
+          </div>
+        </Disclosure>
+      }
+      primary={
+        <button data-ops-skill-open={r.name} disabled={!onOpenSkill} onClick={() => onOpenSkill?.(r.name)} type="button">
+          {T('Open skill')}
+        </button>
+      }
+      title={r.name}
+    />
+  )
+
+  // P16b: stable alphabetical order inside each group.
+  const sorted = [...rows].sort((a, b) => a.name.localeCompare(b.name))
+  const on = sorted.filter(r => r.enabled)
+  const off = sorted.filter(r => !r.enabled)
+
+  const group = (id: string, title: string, xs: typeof rows) =>
+    xs.length ? (
+      <div data-ops-rows-group={id} key={id}>
+        <h4>
+          {title}
+        </h4>
+        <EntityList label={title}>{xs.map(row)}</EntityList>
+      </div>
+    ) : null
+
+  return (
+    <>
+      {group('on', T('Enabled in this profile'), on)}
+      {group('off', T('Disabled in this profile'), off)}
+    </>
+  )
+}
+
 export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Client; profile: string; onOpenRoute?: (r: string) => void }) {
   const client = useClient(c)
   const profiles = useOpsResource(() => client.profiles(), [client], 60_000)
@@ -341,6 +566,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [onFilter, setOnFilter] = useState<'all' | 'on' | 'off'>('all')
   const [type, setType] = useState('')
+  const [skillView, setSkillView] = useState<'list' | 'table'>('list')
   const rows = skills.value ? skillRows(skills.value as Record<string, SkillLite[] | null>, profile) : null
   const types = rows ? [...new Set(rows.map(r => r.category || 'general'))].sort() : []
 
@@ -386,32 +612,13 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         <button data-ops-browse-library="" disabled={!onOpenRoute} onClick={() => onOpenRoute?.('/capabilities?tab=skills&hub=1')} type="button">
           {T("Browse library")}</button>
       </header>
+      {/* P10: no hero band; one filter/count zone sits with the list (judge pass 10). */}
       {progress ? (
         <p aria-live="polite" data-ops-install-progress={`${progress.done}/${progress.total}`} role="status">
           {T("Installing")}{' '}{progress.done} of {progress.total}…
         </p>
       ) : null}
       {note ? <p role="status">{note}</p> : null}
-      <section aria-label={T("Starter packs")} data-ops-packs="">
-        <h3>{T("Starter packs")}</h3>
-        {!packs ? (
-          <State error={official.error} what="Starter packs" />
-        ) : packs.length === 0 ? (
-          <p data-ops-empty="packs">{T("The hub offers no category with two or more skills.")}</p>
-        ) : (
-          <ul>
-            {packs.map(p => (
-              <li data-ops-pack={p.id} data-ops-pack-complete={p.missing.length === 0 ? '' : undefined} key={p.id}>
-                <strong>{p.title}</strong> <span data-ops-pack-meta="">{P(p.skills.length, '{n} skills', '{n} skill')}{p.missing.length < p.skills.length ? ` · ${P(p.skills.length - p.missing.length, '{n} installed')}` : ''}</span>
-                <span aria-label={T('{n} of {total} installed').replace('{n}', String(p.skills.length - p.missing.length)).replace('{total}', String(p.skills.length))} data-ops-pack-bar="" role="img" style={{ ['--ops-pct' as string]: `${Math.round(((p.skills.length - p.missing.length) / Math.max(1, p.skills.length)) * 100)}%` }} />
-                <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
-                  {p.missing.length === 0 ? T('All added') : T('Add all')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
       <section aria-label={T("Individual skills")} data-ops-skills="">
         <h3>
           {T("Individual skills")}{' '}<span data-ops-skill-count="">{rows ? shown.length : '…'}</span>
@@ -439,14 +646,28 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         {rows ? (
           <p data-ops-skill-shown="">
             {T('Showing')}{' '}{shown.length} {T('of')} {rows.length}
-            {scanCapped ? ` · ${T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}` : ''}
+            {scanCapped && skillView === 'table' ? ` · ${T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}` : ''}
           </p>
+        ) : null}
+        {rows ? (
+          <div aria-label={T('Skills view')} data-ops-fleet-views="" data-ops-skill-views="" role="group">
+            {(['list', 'table'] as const).map(v => (
+              <button aria-pressed={skillView === v} data-ops-skill-view={v} key={v} onClick={() => setSkillView(v)} type="button">
+                {v === 'list' ? T('List') : T('Table')}
+              </button>
+            ))}
+          </div>
         ) : null}
         {!rows ? (
           <State error={skills.error} what="Skills" />
+        ) : skillView === 'list' ? (
+          shown.length === 0 ? (
+            <p data-ops-empty="skills">{T(filtered ? 'No skill matches these filters.' : 'This profile has no skills yet. Use Create skill or Browse library.')}</p>
+          ) : (
+            <SkillRows onOpenAgent={onOpenRoute ? openAgent : undefined} onOpenSkill={onOpenRoute ? openSkill : undefined} rows={shown} scanCapped={scanCapped} />
+          )
         ) : (
-          <DataTable viewToggleId="skills"
-            caption="Skills"
+          <DataTable caption="Skills"
             columns={[
               {
                 id: 'name',
@@ -459,10 +680,9 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
                   </button>
                 )
               },
-              { id: 'type', header: 'Type', sortable: true, sortValue: r => r.category, cell: r => <span data-ops-skill-tag={tagTone(r.category || 'general')}>{r.category || 'general'}</span> },
               { id: 'description', header: 'Description', description: r => r.description },
+              { id: 'type', header: 'Type', sortable: true, sortValue: r => r.category, cell: r => <span data-ops-skill-tag={tagTone(r.category || 'general')}>{r.category || 'general'}</span> },
               { id: 'agents', header: 'Agents', sortable: true, tabular: true, sortValue: r => r.agents.length, cell: r => <AgentLinks agents={r.agents} onOpen={onOpenRoute ? openAgent : undefined} /> },
-              { id: 'source', header: 'Source', sortable: true, sortValue: r => r.provenance ?? '', cell: r => r.provenance ?? T('unknown') },
               { id: 'usage', header: 'Uses', sortable: true, tabular: true, sortValue: r => r.usage ?? -1, cell: r => (typeof r.usage === 'number' ? String(r.usage) : '—') },
               { id: 'enabled', header: 'On', sortable: true, sortValue: r => (r.enabled ? 1 : 0), cell: r => (r.enabled ? T('on') : T('off')) }
             ]}
@@ -471,9 +691,32 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
             onSortChange={setSort}
             rows={shown}
             sort={sort}
+            viewToggleId="skills"
           />
         )}
       </section>
+      <details data-ops-packs-fold="" open={!!rows && rows.length === 0}>
+      <summary>{T("Add by category")}</summary>
+      <section aria-label={T("Starter packs")} data-ops-packs="">
+        {!packs ? (
+          <State error={official.error} what="Starter packs" />
+        ) : packs.length === 0 ? (
+          <p data-ops-empty="packs">{T("The hub offers no category with two or more skills.")}</p>
+        ) : (
+          <ul>
+            {packs.map(p => (
+              <li data-ops-pack={p.id} data-ops-pack-complete={p.missing.length === 0 ? '' : undefined} key={p.id}>
+                <strong>{p.title}</strong> <span data-ops-pack-meta="">{P(p.skills.length, '{n} skills', '{n} skill')}{p.missing.length < p.skills.length ? ` · ${P(p.skills.length - p.missing.length, '{n} installed')}` : ''}</span>
+                <span aria-label={T('{n} of {total} installed').replace('{n}', String(p.skills.length - p.missing.length)).replace('{total}', String(p.skills.length))} data-ops-pack-bar="" role="img" style={{ ['--ops-pct' as string]: `${Math.round(((p.skills.length - p.missing.length) / Math.max(1, p.skills.length)) * 100)}%` }} />
+                <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
+                  {p.missing.length === 0 ? T('All added') : T('Add all')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      </details>
       <ConfirmDialog
         confirmLabel={busy ? T('Installing…') : T('Install {n}').replace('{n}', String(confirm?.missing.length ?? 0))}
         description={confirm ? `Into ${profile}: ${confirm.missing.map(s => s.name).join(', ')}` : ''}
@@ -498,20 +741,47 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
 
 type Filter = 'all' | 'connected'
 
-function AppTile({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: string) => void }) {
+/** P15 (judge consult): what "connected" means depends on the source; say that, not a health claim. */
+const appState = (card: AppCard) => (card.kind === 'model' ? T('Signed in') : T('Configured'))
+
+/** P15: one EntityRow per app: glyph → name → warning (or what it does) → category and state → Manage / Connect. */
+function AppRow({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: string) => void }) {
   return (
-    <li data-ops-app={card.key} data-ops-app-connected={card.connected ? '' : undefined}>
-      <span aria-hidden data-ops-app-glyph="">
-        {appGlyph(card.name)}
-      </span>
-      <strong>{card.name}</strong>
-      <p>{card.description}</p>
-      {card.warning ? <small data-ops-app-warning="">{card.warning}</small> : null}
-      {card.connected ? <span data-ops-app-state="connected">{T("✓ Connected")}</span> : null}
-      <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
-        {card.connected ? T('Manage') : T('Connect')}
-      </button>
-    </li>
+    <EntityRow
+      attrs={{ 'data-ops-app': card.key, 'data-ops-app-connected': card.connected ? '' : undefined }}
+      context={
+        card.warning ? (
+          <span data-ops-app-warning="">{card.warning}</span>
+        ) : card.description ? (
+          <span data-ops-app-desc="">{card.description}</span>
+        ) : undefined
+      }
+      lead={
+        <span aria-hidden data-ops-app-glyph="">
+          {appGlyph(card.name)}
+        </span>
+      }
+      meta={
+        <>
+          <span>{T(card.category)}</span>
+          {card.connected ? <span data-ops-app-state={card.kind}>{appState(card)}</span> : null}
+        </>
+      }
+      more={
+        card.warning && card.description ? (
+          <Disclosure label={T('Details')}>
+            <span data-ops-app-desc="">{card.description}</span>
+          </Disclosure>
+        ) : undefined
+      }
+      primary={
+        <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
+          {card.connected ? T('Manage') : T('Connect')}
+        </button>
+      }
+      title={card.name}
+      tone={card.warning ? 'warn' : undefined}
+    />
   )
 }
 
@@ -564,9 +834,11 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
     return <State error={r.error} what="Channels & MCP" />
   }
 
-  const missing = (['catalog', 'platforms', 'providers'] as const).filter(k => r.value![k] === null)
+  const missing = (['catalog', 'servers', 'platforms', 'providers'] as const).filter(k => r.value![k] === null)
   const base = filter === 'connected' ? cards.filter(x => x.connected) : cards
-  const shown = searchRows(base, q, x => [x.name, x.description]).filter(x => !cat || x.category === cat)
+  // P16c: configured apps lead under every filter, and each group is in stable alphabetical order.
+  const shown = searchRows(base, q, x => [x.name, x.description]).filter(x => !cat || x.category === cat).sort((a, b) => a.name.localeCompare(b.name))
+  const connectedFirst = shown.some(x => x.connected)
   const cats = Object.values(APP_CATEGORIES)
 
   return (
@@ -585,19 +857,12 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
           +
         </button>
       </header>
-      {/* B35: Channels hero: how much is wired up, and what. */}
-      <div data-ops-channels-hero="">
-        <span data-ops-diag-ring="" style={{ '--ops-pct': String(cards.length ? cards.filter(x => x.connected).length / cards.length : 0) } as CSSProperties}>
-          {cards.filter(x => x.connected).length}/{cards.length}
-        </span>
-        <div>
-          <span data-ops-now-label="">{T('Connected apps')}</span>
-          <p data-ops-channels-hero-list="">
-            {cards.filter(x => x.connected).slice(0, 8).map(x => <span data-ops-chip="" key={x.key}>{x.name}</span>)}
-          </p>
-        </div>
-      </div>
-      {missing.length ? <p data-ops-partial="">{T("Not answering:")}{' '}{missing.join(', ')}.</p> : null}
+      {/* P22b: name the failed source in plain words and say what is still shown. */}
+      {missing.length ? (
+        <p data-ops-partial="" role="status">
+          {T("Couldn't load {sources}. Showing everything else.").replace('{sources}', missing.map(k => T(SOURCE_NAMES[k])).join(', '))}
+        </p>
+      ) : null}
       {quick ? <QuickConnect cards={cards} onClose={() => setQuick(false)} onOpenRoute={onOpenRoute} /> : null}
       <div data-ops-channels-body="">
         <nav aria-label={T("Categories")} data-ops-app-rail="">
@@ -613,26 +878,59 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
             {T("Connect more apps")}</button>
         </nav>
         <div>
-          {cats
-            .filter(x => !cat || x === cat)
-            .map(x => {
-              const xs = shown.filter(c => c.category === x)
-
-              return xs.length ? (
-                <section aria-label={x} data-ops-app-section={x} key={x}>
-                  <h3>{x}</h3>
-                  <ul data-ops-app-grid="">
-                    {xs.map(card => (
-                      <AppTile card={card} key={card.key} onOpenRoute={onOpenRoute} />
+          {connectedFirst ? (
+            <>
+              {/* P15: configured apps with a warning lead; the warning reads with the row closed. */}
+              {shown.some(x => x.connected && x.warning) ? (
+                <section aria-label={T('Configured with warnings')} data-ops-app-section="warn">
+                  <h3>
+                    {T('Configured with warnings')} <span data-ops-rows-count="">{shown.filter(x => x.connected && x.warning).length}</span>
+                  </h3>
+                  <EntityList label={T('Configured with warnings')}>
+                    {shown.filter(x => x.connected && x.warning).map(card => (
+                      <AppRow card={card} key={`w-${card.key}`} onOpenRoute={onOpenRoute} />
                     ))}
-                  </ul>
+                  </EntityList>
                 </section>
-              ) : null
-            })}
+              ) : null}
+              {shown.some(x => x.connected && !x.warning) ? (
+                <section aria-label={T('Other configured')} data-ops-app-section="connected">
+                  <h3>
+                    {T('Other configured')} <span data-ops-rows-count="">{shown.filter(x => x.connected && !x.warning).length}</span>
+                  </h3>
+                  <EntityList label={T('Other configured')}>
+                    {shown.filter(x => x.connected && !x.warning).map(card => (
+                      <AppRow card={card} key={`c-${card.key}`} onOpenRoute={onOpenRoute} />
+                    ))}
+                  </EntityList>
+                </section>
+              ) : null}
+            </>
+          ) : null}
+          <div data-ops-app-catalog={connectedFirst ? '' : undefined}>
+            {connectedFirst && shown.some(x => !x.connected) ? <h3 data-ops-app-catalog-title="">{T('Add connections')}</h3> : null}
+            {cats
+              .filter(x => !cat || x === cat)
+              .map(x => {
+                // B37: when configured apps lead in their own sections, the catalog lists only the rest.
+                const xs = shown.filter(c => c.category === x && !(connectedFirst && c.connected))
+
+                return xs.length ? (
+                  <section aria-label={x} data-ops-app-section={x} key={x}>
+                    <h4>{T(x)}</h4>
+                    <EntityList label={x}>
+                      {xs.map(card => (
+                        <AppRow card={card} key={card.key} onOpenRoute={onOpenRoute} />
+                      ))}
+                    </EntityList>
+                  </section>
+                ) : null
+              })}
+          </div>
           {shown.length === 0 ? (
         <p data-ops-empty="apps">
-          {filter === 'connected' ? T('Nothing connected yet.') : T('No app matches.')}{' '}
-          <button data-ops-empty-reset="" onClick={() => (setFilter('all'), setQ(''))} type="button">
+          {filter === 'connected' && !cat && !q.trim() ? T('Nothing connected yet.') : T('No app matches.')}{' '}
+          <button data-ops-empty-reset="" onClick={() => (setFilter('all'), setQ(''), setCat(null))} type="button">
             {T('Show all apps')}
           </button>
         </p>

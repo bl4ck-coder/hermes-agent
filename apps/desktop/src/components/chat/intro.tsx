@@ -176,11 +176,11 @@ export function Intro({ personality, seed }: IntroProps) {
       data-slot="aui_intro"
     >
       <div className="w-full min-w-0">
-        <Wordmark className="mb-1" text={WORDMARK} />
+        <Wordmark className="mb-3 opacity-70" fitMin="0.875rem" text={WORDMARK} width="min(calc(100% - 1rem), 9rem)" />
 
-        <p className="m-0 text-center leading-normal tracking-tight">{body}</p>
+        <p className="m-0 mx-auto max-w-(--width-reading) text-center text-(length:--type-body) leading-(--type-body-lh) text-foreground/85">{body}</p>
       </div>
-      <div className="m-0 mt-3 text-center text-[0.72rem] text-muted-foreground/60" data-intro-hint="">
+      <div className="m-0 mt-2 text-center text-(length:--type-meta) leading-(--type-meta-lh) text-muted-foreground/70" data-intro-hint="">
         {t.teach.chatIntroHint}
       </div>
     </div>

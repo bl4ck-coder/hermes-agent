@@ -100,6 +100,9 @@ describe('R72 Fleet / R73 Teams / O14', () => {
     render(<AgentsLens client={client()} nowS={NOW} onOpenRoute={open} />)
     await waitFor(() => expect(document.querySelector('[data-ops-fleet-open="builder"]')).toBeTruthy())
     await waitFor(() => expect(document.querySelector('[data-ops-fleet-status="running"]')).toBeTruthy())
+    // P14: the list is the default; role and status read in the row, columns live in the Table view.
+    expect(document.querySelector('[data-ops-fleet-open="builder"] [data-ops-role]')?.textContent).toBe('Orchestrator')
+    fireEvent.click(document.querySelector('[data-ops-fleet-view="table"]')!)
     const heads = [...document.querySelectorAll('th')].map(th => th.textContent)
 
     for (const h of ['Agent', 'Model', 'Lane', 'Active tasks', 'Runs 7d', 'Last active', 'Status']) {
@@ -150,9 +153,9 @@ describe('Skills lens', () => {
     expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('1')
     expect(document.querySelector('[data-ops-skill-tag]')?.getAttribute('data-ops-skill-tag')).toBe(tagTone('design'))
     const agents = document.querySelector('[data-ops-skill-agents]') as HTMLElement
-    expect(within(agents).getAllByRole('button').map(b => b.textContent)).toEqual(['a1', 'a2', 'a3', '+2'])
-    fireEvent.click(within(agents).getByText('+2'))
-    fireEvent.click(within(document.querySelector('[data-ops-agents-popover]') as HTMLElement).getByText('builder'))
+    // P15: every profile with the skill enabled is reachable from the row's disclosure (no +N popover).
+    expect(within(agents).getAllByRole('button').map(b => b.textContent).sort()).toEqual(['a1', 'a2', 'a3', 'a4', 'builder'])
+    fireEvent.click(within(agents).getByText('builder'))
     expect(open).toHaveBeenLastCalledWith('/profiles?profile=builder')
     fireEvent.change(screen.getByLabelText('search skills'), { target: { value: 'nothing' } })
     expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('0')
@@ -197,10 +200,10 @@ describe('Channels lens', () => {
     const open = vi.fn()
     render(<ChannelsLens client={client()} onOpenRoute={open} profile="builder" />)
     await waitFor(() => expect(document.querySelector('[data-ops-app="mcp:github"]')).toBeTruthy())
-    expect([...document.querySelectorAll('[data-ops-app-section]')].map(s => s.getAttribute('data-ops-app-section'))).toEqual(['Messaging', 'Tools (MCP)', 'Models'])
+    expect([...document.querySelectorAll('[data-ops-app-section]')].map(s => s.getAttribute('data-ops-app-section'))).toEqual(['warn', 'connected', 'Messaging', 'Tools (MCP)', 'Models']) // P15: configured apps lead, the ones with a warning first
     expect(document.querySelector('[data-ops-app-filter="connected"]')?.textContent).toBe('Connected 4')
     const tg = document.querySelector('[data-ops-app="messaging:telegram"]') as HTMLElement
-    expect(tg.querySelector('[data-ops-app-state]')?.textContent).toBe('✓ Connected')
+    expect(tg.querySelector('[data-ops-app-state]')?.textContent).toBe('Configured') // P15: messaging says configured, not a health claim
     expect(tg.querySelector('[data-ops-app-warning]')?.textContent).toBe('gateway stopped')
     fireEvent.click(tg.querySelector('[data-ops-app-action="manage"]')!)
     expect(open).toHaveBeenLastCalledWith('/messaging?platform=telegram')
@@ -240,7 +243,7 @@ describe('Channels lens', () => {
 
   it('a source that does not answer is named, the rest still render; all down = reason', async () => {
     render(<ChannelsLens client={client({ channels: vi.fn().mockResolvedValue({ catalog: null, servers: null, platforms: [], providers: [] }) })} profile="p" />)
-    await screen.findByText('Not answering: catalog.')
+    await screen.findByText(/Couldn't load the MCP catalog, your MCP servers/) // P22b: plain-language source failure
     cleanup()
     render(<ChannelsLens client={client({ channels: vi.fn().mockRejectedValue(new Error('no channel source answered')) })} profile="p" />)
     await screen.findByText('Channels & MCP unavailable: no channel source answered')

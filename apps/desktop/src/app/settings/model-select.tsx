@@ -32,6 +32,9 @@ export const fromItemValue = (item: string): string | null =>
 
 interface ModelSelectProps {
   'aria-label'?: string
+  /** P18: form-row association (SettingsFormRow passes `${id}` and `${id}-label`). */
+  'aria-labelledby'?: string
+  id?: string
   className?: string
   /** The provider's catalog row when known: the typed id is remembered under
    *  it and made visible in the pickers. Absent (provider not in the catalog)
@@ -52,6 +55,8 @@ interface ModelSelectProps {
  */
 export function ModelSelect({
   'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  id,
   className,
   models,
   onValueChange,
@@ -96,7 +101,9 @@ export function ModelSelect({
     return (
       <Input
         aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
         className={cn(CONTROL_TEXT, 'font-mono')}
+        id={id}
         containerClassName={className}
         onBlur={remember}
         onChange={event => onValueChange(event.target.value)}
@@ -140,7 +147,7 @@ export function ModelSelect({
       }}
       value={toItemValue(value)}
     >
-      <SelectTrigger aria-label={ariaLabel} className={cn(className, CONTROL_TEXT)}>
+      <SelectTrigger aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} className={cn(className, CONTROL_TEXT)} id={id}>
         <SelectValue placeholder={m.model} />
       </SelectTrigger>
       <SelectContent>

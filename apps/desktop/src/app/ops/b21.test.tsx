@@ -13,7 +13,7 @@ describe('B21', () => {
   it('teams render as cards with member sigils, plural open counts and empty copy', () => {
     const src = read('lenses/b4-lenses.tsx')
     expect(src).toContain("P(t.open, '{n} open')")
-    expect(src).toContain('<Sigil name={m} size={14} />')
+    expect(src).toContain('<Sigil name={m} size={20} />')
     expect(src).toContain("T('No members')")
     for (const l of Object.keys(MAIN_PLURALS)) expect(MAIN_PLURALS[l]['{n} open']?.other).toContain('{n}')
   })

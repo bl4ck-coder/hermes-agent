@@ -1264,6 +1264,7 @@ export const zhOverrides = {
       emptyDesc: '此分区没有可调整的设置。',
       failedLoad: '设置加载失败',
       autosaveFailed: '自动保存失败',
+      autosaveRevert: '恢复为已保存的值',
       imported: '配置已导入',
       invalidJson: '配置 JSON 无效',
       toolsetsWipeConfirm:
@@ -3027,6 +3028,7 @@ export const zhOverrides = {
     promptPlaceholder: '总结我未读的 Slack 话题，并把前 5 条邮件发给我…',
     frequencyLabel: '频率',
     deliverLabel: '投递至',
+    lastDeliveryFailed: '已运行，但发送失败',
     deliverNeedsHomeChannel: '请先设置主频道',
     modelLabel: '模型',
     modelDefault: '默认（全局模型）',

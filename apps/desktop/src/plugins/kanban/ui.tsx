@@ -207,7 +207,7 @@ export function StatusMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide transition-[filter] hover:brightness-105"
+          className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-[filter] hover:brightness-105"
           style={{ backgroundColor: `color-mix(in srgb, ${meta.tone} 15%, transparent)`, color: meta.tone }}
           type="button"
         >
@@ -248,7 +248,7 @@ export function PriorityGlyph({ priority }: { priority: number }) {
 
 // The board's one field/section-label style — hoisted so Section (here), the
 // create dialog's Field, and the orchestration panel all read identically.
-export const FIELD_LABEL = 'text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-(--ui-text-quaternary)'
+export const FIELD_LABEL = 'text-xs font-semibold uppercase tracking-[0.14em] text-(--ui-text-quaternary)'
 
 export function Section({ action, children, label }: { action?: ReactNode; children: ReactNode; label: string }) {
   return (

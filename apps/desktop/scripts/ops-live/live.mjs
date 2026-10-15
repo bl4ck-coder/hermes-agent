@@ -164,7 +164,7 @@ if (want('probe')) {
   })
   save()
 }
-if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) } return await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr') })
+if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) }; const ready = await page.waitForFunction(() => { const v = [...document.querySelectorAll('[data-ops-stat-value]')]; return v.length > 0 && v.every(e => e.textContent !== 'unknown') }, null, { timeout: 25000 }).then(() => '', () => ' [STATS UNRESOLVED after 25s]'); if (ready) throw new Error('office stats unresolved after 25s'); return (await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr')) + ready })
 if (want('fps')) await sampleFps('office-motion', async () => {}, 6000)
 if (want('board')) await section('02-board', async () => {
   await go('/ops/board')
@@ -223,7 +223,7 @@ if (want('drag')) await section('02c-board-drag-over', async () => {
   await page.evaluate(() => document.querySelector('[data-ops-card][data-ops-dragging]')?.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__opsDt })))
   return `${r}; highlighted=${lit}`
 })
-if (want('canvas')) await section('03-canvas', async () => { await go('/ops/canvas'); return `nodes=${await page.locator('[data-ops-node-title]').count()}` })
+if (want('canvas')) await section('03-canvas', async () => { await go('/ops/canvas'); await page.evaluate(() => document.querySelector('[data-ops-canvas-hero]')?.scrollIntoView({ block: 'start' })); await sleep(300); return `nodes=${await page.locator('[data-ops-node-title]').count()}` })
 if (want('fps')) await sampleFps('canvas-pan-zoom', async end => {
   const c = page.locator('[data-ops-canvas], svg').first()
   const b = await c.boundingBox().catch(() => null)
@@ -292,6 +292,9 @@ if (want('draft')) await section('03b-canvas-draft', async () => {
   await go('/ops/canvas')
   await page.locator('[data-ops-node-title]').first().click({ timeout: 8000 })
   await sleep(1000)
+  // P10: the documents fold under the flow; open it the way a user would.
+  const docs = page.locator('[data-ops-canvas-docs]')
+  if (await docs.count() && !(await docs.evaluate(d => d.open))) await docs.locator('summary').click({ timeout: 5000 })
   const ta = page.locator('[data-ops-node-editor] textarea').first()
   await ta.click({ timeout: 8000 }); await page.keyboard.press('End'); await page.keyboard.type(' (ops live check)')
   await sleep(500); await shot('03b-canvas-draft-dirty')
@@ -308,6 +311,7 @@ if (want('settings')) await section('08c-settings-top', async () => {
   return 'scrolled to top'
 })
 if (want('diagnostics')) await section('09-diagnostics', async () => {
+  await page.locator('[data-ops-settings-view="diagnostics"]').first().click({ timeout: 8000 }).catch(() => {})
   const d = page.locator('[data-ops-diagnostics]').first(); await d.scrollIntoViewIfNeeded({ timeout: 8000 })
   await page.locator('[data-ops-probe]').first().click({ timeout: 8000 }); await sleep(4000); await d.scrollIntoViewIfNeeded()
   return await page.evaluate(() => { const e = document.querySelector('[data-ops-diag-connection]'); return `${e?.getAttribute('data-ops-diag-connection')} writes=${e?.getAttribute('data-ops-writes')}` })
@@ -315,13 +319,13 @@ if (want('diagnostics')) await section('09-diagnostics', async () => {
 // B33: roster views. Switch to Cards, capture, switch back so the stored choice is unchanged.
 for (const [n, id, tab] of [['04b-fleet-cards', 'agents', 'fleet'], ['06b-skills-cards', 'skills']]) {
   if (!want(n.slice(4)) && !want(n.slice(4, -6))) continue
-  await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); const tg = page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(1); await tg.scrollIntoViewIfNeeded({ timeout: 8000 }); await tg.click({ timeout: 8000, force: true }); await sleep(600); return await page.evaluate(() => document.querySelectorAll('[data-ops-roster] > li').length + ' cards') })
-  await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).first().click({ timeout: 4000 }).catch(() => {})
+  await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); globalThis.__origView = await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).evaluateAll(bs => bs.findIndex(b => b.getAttribute('aria-pressed') === 'true')).catch(() => 0); const tg = page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(1); await tg.scrollIntoViewIfNeeded({ timeout: 8000 }); await tg.click({ timeout: 8000, force: true }); await sleep(600); return await page.evaluate(() => document.querySelectorAll('[data-ops-roster] > li').length + ' cards') })
+  await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(Math.max(0, globalThis.__origView ?? 0)).click({ timeout: 4000 }).catch(() => {})
 }
 // Glass/IA pass: the main Hermes screens outside Ops (read-only visits; Escape closes overlays).
 for (const [n, route] of [['20-app-chat', '/'], ['21-app-settings', '/settings'], ['22-app-profiles', '/profiles'], ['23-app-capabilities', '/capabilities'], ['24-app-messaging', '/messaging'], ['25-app-artifacts', '/artifacts'], ['26-app-cron', '/cron'], ['27-app-command-center', '/command-center'], ['28-app-agents', '/agents']]) {
   if (!want('app') && !want(n)) continue
-  await section(n, async () => { await goApp(route); if (route === '/artifacts') await page.waitForSelector('[data-artifact-card], [data-artifacts-empty], table tbody tr, img', { timeout: 15000 }).catch(() => {}); if (route === '/artifacts' || route === '/capabilities') log['stack' + route.replace('/', '-')] = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.4, innerHeight * 0.5).slice(0, 12).map(e => { const c = getComputedStyle(e); return e.tagName.toLowerCase() + ' bg=' + c.backgroundColor + ' img=' + c.backgroundImage.slice(0, 30) + ' attrs=' + [...e.attributes].filter(a => a.name.startsWith('data-')).map(a => a.name).join(',') + ' cls=' + String(e.className).slice(0, 100) })).catch(e => String(e)); if (route === '/') { await page.locator('button:has-text("Chats")').first().click({ timeout: 4000 }).catch(() => {}); await sleep(1500); log.chatStack = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.3, innerHeight * 0.3).slice(0, 14).map(e => { const c = getComputedStyle(e); return `${e.tagName.toLowerCase()}${e.getAttribute('data-slot') ? '[slot=' + e.getAttribute('data-slot') + ']' : ''}${e.hasAttribute('data-chat-surface') ? '[chat-surface]' : ''} bg=${c.backgroundColor} img=${c.backgroundImage.slice(0, 40)} cls=${(e.className && e.className.baseVal === undefined ? e.className : '').slice(0, 90)}` })).catch(e => String(e)) } return page.url() })
+  await section(n, async () => { await goApp(route); if (route === '/capabilities') log.capabilitiesState = await page.waitForSelector('[data-skill-column] [data-selectable-text], [data-skill-load-error]', { timeout: 20000 }).then(() => 'loaded', () => { console.log('CAPTURE STATE MISSING: capabilities document did not load'); return 'missing' }); if (route === '/artifacts') await page.waitForSelector('[data-artifact-card], [data-artifacts-empty], table tbody tr, img', { timeout: 15000 }).catch(() => {}); if (route === '/artifacts' || route === '/capabilities') log['stack' + route.replace('/', '-')] = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.4, innerHeight * 0.5).slice(0, 12).map(e => { const c = getComputedStyle(e); return e.tagName.toLowerCase() + ' bg=' + c.backgroundColor + ' img=' + c.backgroundImage.slice(0, 30) + ' attrs=' + [...e.attributes].filter(a => a.name.startsWith('data-')).map(a => a.name).join(',') + ' cls=' + String(e.className).slice(0, 100) })).catch(e => String(e)); if (route === '/') { await page.locator('button:has-text("Chats")').first().click({ timeout: 4000 }).catch(() => {}); await sleep(1500); log.chatStack = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.3, innerHeight * 0.3).slice(0, 14).map(e => { const c = getComputedStyle(e); return `${e.tagName.toLowerCase()}${e.getAttribute('data-slot') ? '[slot=' + e.getAttribute('data-slot') + ']' : ''}${e.hasAttribute('data-chat-surface') ? '[chat-surface]' : ''} bg=${c.backgroundColor} img=${c.backgroundImage.slice(0, 40)} cls=${(e.className && e.className.baseVal === undefined ? e.className : '').slice(0, 90)}` })).catch(e => String(e)) } return page.url() })
   if (n === '22-app-profiles') log.soulProbe = await page.evaluate(() => { const q = s => { const e = document.querySelector(s); if (!e) return null; const c = getComputedStyle(e); const r = e.getBoundingClientRect(); return { cls: String(e.className).slice(0, 120), color: c.color, bg: c.backgroundColor, outline: `  `, border: ` `, shadow: c.boxShadow.slice(0, 80), ws: c.whiteSpace, rect: [r.x, r.y, r.width, r.height].map(Math.round) } }; return { wrap: q('[data-profile-soul-editor]'), editor: q('[data-profile-soul-editor] .cm-editor'), scroller: q('[data-profile-soul-editor] .cm-scroller'), content: q('[data-profile-soul-editor] .cm-content'), line: q('[data-profile-soul-editor] .cm-line'), active: q('[data-profile-soul-editor] .cm-activeLine'), sel: q('[data-profile-soul-editor] .cm-selectionBackground') } }).catch(e => String(e))
   await page.keyboard.press('Escape').catch(() => {}); await sleep(300)
 }

@@ -37,7 +37,7 @@ export function InlineTitle({ task, readOnly, onOpen, onRename }: { task: BoardT
 
   if (!editing || readOnly || !onRename) {
     return (
-      <Tip label={readOnly || !onRename ? undefined : 'Double-click or F2 to rename'}><button
+      <Tip label={readOnly || !onRename ? undefined : T('Double-click or F2 to rename')}><button
         data-ops-open-task={task.id}
         onClick={onOpen}
         onDoubleClick={() => !readOnly && onRename && (setDraft(task.title), (done.current = false), setEditing(true))}

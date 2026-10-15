@@ -1006,6 +1006,7 @@ export interface Translations extends NoticeTranslations, OpsStatesTranslations 
       emptyDesc: string
       failedLoad: string
       autosaveFailed: string
+      autosaveRevert: string
       imported: string
       invalidJson: string
       toolsetsWipeConfirm: string
@@ -2728,6 +2729,7 @@ export interface Translations extends NoticeTranslations, OpsStatesTranslations 
     promptPlaceholder: string
     frequencyLabel: string
     deliverLabel: string
+    lastDeliveryFailed: string
     deliverNeedsHomeChannel: string
     modelLabel: string
     modelDefault: string

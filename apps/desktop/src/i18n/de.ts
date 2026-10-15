@@ -1562,6 +1562,7 @@ export const deOverrides = {
       emptyDesc: 'Dieser Bereich hat keine einstellbaren Optionen.',
       failedLoad: 'Einstellungen konnten nicht geladen werden',
       autosaveFailed: 'Autospeichern fehlgeschlagen',
+      autosaveRevert: 'Gespeicherten Wert wiederherstellen',
       imported: 'Konfiguration importiert',
       invalidJson: 'Ungültige Konfigurations-JSON',
       toolsetsWipeConfirm:
@@ -3570,6 +3571,7 @@ export const deOverrides = {
     promptPlaceholder: 'Fass meine ungelesenen Slack-Kanäle zusammen und schick mir die Top 5 per E-Mail...',
     frequencyLabel: 'Häufigkeit',
     deliverLabel: 'Zustellen an',
+    lastDeliveryFailed: 'Ausgeführt, aber Zustellung fehlgeschlagen',
     deliverNeedsHomeChannel: 'zuerst einen Home-Channel festlegen',
     modelLabel: 'Modell',
     modelDefault: 'Standard (globales Modell)',

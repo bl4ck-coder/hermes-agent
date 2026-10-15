@@ -788,6 +788,7 @@ export const zhHantSettings = {
       emptyDesc: '此區段沒有可調整的設定。',
       failedLoad: '設定載入失敗',
       autosaveFailed: '自動儲存失敗',
+      autosaveRevert: '還原為已儲存的值',
       imported: '設定已匯入',
       invalidJson: '設定 JSON 無效',
       keepAwakeTitle: '保持電腦喚醒',

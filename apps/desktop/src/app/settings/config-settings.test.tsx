@@ -97,6 +97,28 @@ function renderConfigSettings(activeSectionId = 'safety') {
 }
 
 describe('ConfigSettings autosave', () => {
+  it('P18g: a refused autosave is shown beside the edited field, and the edit stays', async () => {
+    getHermesConfigRecord.mockResolvedValue({ checkpoints: { enabled: false } })
+    saveHermesConfig.mockResolvedValue({ ok: false })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+
+    try {
+      renderConfigSettings()
+      const toggle = await screen.findByRole('switch')
+      toggle.click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(document.querySelector('[data-settings-field-error="checkpoints.enabled"]')).not.toBeNull())
+      expect(document.querySelector('[data-settings-field-error="checkpoints.enabled"]')?.getAttribute('role')).toBe('alert')
+      expect((await screen.findByRole('switch')).getAttribute('aria-checked')).toBe('true')
+      // P20d: recovery in place. Revert puts the on-disk value back in the control.
+      expect(document.querySelector('[data-settings-field-retry="checkpoints.enabled"]')).not.toBeNull()
+      ;(document.querySelector('[data-settings-field-revert="checkpoints.enabled"]') as HTMLButtonElement).click()
+      await vi.waitFor(async () => expect((await screen.findByRole('switch')).getAttribute('aria-checked')).toBe('false'))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('sends a later revert instead of diffing it away against the stale page-load baseline', async () => {
     getHermesConfigRecord.mockResolvedValue({ checkpoints: { enabled: false }, other: 'untouched' })
 

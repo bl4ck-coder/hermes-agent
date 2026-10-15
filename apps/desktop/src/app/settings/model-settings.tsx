@@ -7,6 +7,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SettingsFormGroup, SettingsFormRow } from '@/components/ui/settings-form-row'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -995,27 +996,32 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
     <div className="grid gap-6">
       {!showMain && errorNotice}
       {showMain && (
-        <section>
-          <p className="mb-3 text-xs text-muted-foreground">{m.appliesDesc}</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select onValueChange={switchProvider} value={selectedProviderRow?.slug ?? selectedProvider}>
-              <SelectTrigger className={cn('min-w-40', CONTROL_TEXT)}>
-                <SelectValue placeholder={m.provider} />
-              </SelectTrigger>
-              <SelectContent>
-                {mainProviderOptions.map(provider => (
-                  <SelectItem key={provider.slug || 'none'} value={provider.slug || 'none'}>
-                    {provider.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <section data-settings-decisions="">
+          {/* B38 (judge): one block per decision (which model; how it thinks by default). */}
+          {/* P17b (judge consult): provider and model are one decision: two form rows, one Apply below both. */}
+          <SettingsFormGroup id="settings-main-model" title={`${m.provider} · ${m.model}`}>
+            <p data-settings-group-desc="" data-sfr-help="">{m.appliesDesc}</p>
+            <SettingsFormRow id="settings-main-provider" label={m.provider}>
+              <Select onValueChange={switchProvider} value={selectedProviderRow?.slug ?? selectedProvider}>
+                <SelectTrigger aria-labelledby="settings-main-provider-label" className={cn('min-w-40', CONTROL_TEXT)} id="settings-main-provider">
+                  <SelectValue placeholder={m.provider} />
+                </SelectTrigger>
+                <SelectContent>
+                  {mainProviderOptions.map(provider => (
+                    <SelectItem key={provider.slug || 'none'} value={provider.slug || 'none'}>
+                      {provider.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsFormRow>
             {needsSetup ? (
               setupIsApiKey ? (
-                <>
+                <SettingsFormRow id="settings-main-apikey" label={selectedProviderRow?.key_env ?? 'API key'}>
                   <Input
                     autoComplete="off"
                     className={cn('min-w-60 flex-1', CONTROL_TEXT)}
+                    id="settings-main-apikey"
                     onChange={event => setApiKeyDraft(event.target.value)}
                     onKeyDown={event => {
                       if (isSubmitEnter(event)) {
@@ -1026,59 +1032,57 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                     type="password"
                     value={apiKeyDraft}
                   />
-                  <Button
-                    disabled={!apiKeyDraft.trim() || activating}
-                    onClick={() => void activateApiKeyProvider()}
-                    size="sm"
-                  >
+                  <Button disabled={!apiKeyDraft.trim() || activating} onClick={() => void activateApiKeyProvider()} size="sm">
                     {activating && <Loader2 className="size-3.5 animate-spin" />}
                     {activating ? 'Activating...' : 'Activate'}
                   </Button>
-                </>
+                </SettingsFormRow>
               ) : (
-                <Button onClick={startProviderSetup} size="sm" variant="textStrong">
-                  {m.setUpProvider(selectedProviderRow?.name ?? m.setupProviderFallback)}
-                </Button>
+                <SettingsFormRow
+                  help={
+                    selectedProviderRow
+                      ? selectedProviderRow.auth_type === 'api_key'
+                        ? `${selectedProviderRow.name} needs an API key — set it up to choose a model.`
+                        : `${selectedProviderRow.name} signs in through your browser — Hermes runs the flow for you.`
+                      : undefined
+                  }
+                  id="settings-main-setup"
+                  label={m.model}
+                >
+                  <Button onClick={startProviderSetup} size="sm" variant="textStrong">
+                    {m.setUpProvider(selectedProviderRow?.name ?? m.setupProviderFallback)}
+                  </Button>
+                </SettingsFormRow>
               )
             ) : (
               <>
-                <ModelSelect
-                  className="min-w-60"
-                  models={selectedProviderModels}
-                  onValueChange={setSelectedModel}
-                  provider={selectedProviderRow}
-                  providerSlug={selectedProvider}
-                  value={selectedModel}
-                />
-                <Button
-                  disabled={!selectedProvider || !selectedModel || applying}
-                  onClick={() => void applyMainModel()}
-                  size="sm"
-                >
-                  {applying && <Loader2 className="size-3.5 animate-spin" />}
-                  {applying ? m.applying : t.common.apply}
-                </Button>
+                <SettingsFormRow id="settings-main-modelsel" label={m.model}>
+                  <ModelSelect
+                    aria-labelledby="settings-main-modelsel-label"
+                    className="min-w-60"
+                    id="settings-main-modelsel"
+                    models={selectedProviderModels}
+                    onValueChange={setSelectedModel}
+                    provider={selectedProviderRow}
+                    providerSlug={selectedProvider}
+                    value={selectedModel}
+                  />
+                </SettingsFormRow>
+                <div data-settings-form-actions="">
+                  <Button disabled={!selectedProvider || !selectedModel || applying} onClick={() => void applyMainModel()} size="sm">
+                    {applying && <Loader2 className="size-3.5 animate-spin" />}
+                    {applying ? m.applying : t.common.apply}
+                  </Button>
+                </div>
               </>
             )}
-          </div>
-          {needsSetup && !setupIsApiKey && selectedProviderRow && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              {selectedProviderRow?.auth_type === 'api_key'
-                ? `${selectedProviderRow?.name} needs an API key — set it up to choose a model.`
-                : `${selectedProviderRow?.name} signs in through your browser — Hermes runs the flow for you.`}
-            </p>
-          )}
+          </SettingsFormGroup>
           {config && mainModel && (reasoningSupported || fastSupported || ultrafastSupported) && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
-              <span className="text-xs text-muted-foreground">{m.defaultsLabel}</span>
+            <SettingsFormGroup id="settings-defaults" title={m.defaultsLabel}>
               {reasoningSupported && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="shrink-0 whitespace-nowrap">{m.reasoning}</span>
-                  <Select
-                    onValueChange={value => void writeAgentDefault('agent.reasoning_effort', value)}
-                    value={effortValue}
-                  >
-                    <SelectTrigger className={cn('min-w-28', CONTROL_TEXT)}>
+                <SettingsFormRow id="settings-reasoning" label={m.reasoning}>
+                  <Select onValueChange={value => void writeAgentDefault('agent.reasoning_effort', value)} value={effortValue}>
+                    <SelectTrigger aria-labelledby="settings-reasoning-label" className={cn('min-w-28', CONTROL_TEXT)} id="settings-reasoning">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1089,16 +1093,12 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </SettingsFormRow>
               )}
               {ultrafastSupported ? (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="shrink-0 whitespace-nowrap">{m.speed}</span>
-                  <Select
-                    onValueChange={value => void writeAgentDefault('agent.service_tier', value)}
-                    value={speedValue}
-                  >
-                    <SelectTrigger aria-label={m.speed} className={cn('min-w-28', CONTROL_TEXT)}>
+                <SettingsFormRow id="settings-speed" label={m.speed}>
+                  <Select onValueChange={value => void writeAgentDefault('agent.service_tier', value)} value={speedValue}>
+                    <SelectTrigger aria-label={m.speed} className={cn('min-w-28', CONTROL_TEXT)} id="settings-speed">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1107,22 +1107,21 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                       <SelectItem value="ultrafast">{t.shell.modelOptions.ultrafast}</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </SettingsFormRow>
               ) : (
                 fastSupported && (
-                  <label className="flex items-center gap-2 text-xs">
-                    {t.shell.modelOptions.fast}
+                  <SettingsFormRow id="settings-fast" label={t.shell.modelOptions.fast}>
                     <Switch
+                      aria-labelledby="settings-fast-label"
                       checked={fastOn}
-                      onCheckedChange={checked =>
-                        void writeAgentDefault('agent.service_tier', checked ? 'fast' : 'normal')
-                      }
+                      id="settings-fast"
+                      onCheckedChange={checked => void writeAgentDefault('agent.service_tier', checked ? 'fast' : 'normal')}
                       size="xs"
                     />
-                  </label>
+                  </SettingsFormRow>
                 )
               )}
-            </div>
+            </SettingsFormGroup>
           )}
           {errorNotice}
           {switchStaleAux.length > 0 && (
@@ -1477,7 +1476,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                 }
                 className={cn(slot.enabled === false && 'opacity-60')}
                 description={
-                  <span className="font-mono text-[0.68rem]">
+                  <span className="font-mono text-xs">
                     {slot.provider} · {slot.model || m.model}
                   </span>
                 }
@@ -1549,7 +1548,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                 </div>
               }
               description={
-                <span className="font-mono text-[0.68rem]">
+                <span className="font-mono text-xs">
                   {currentMoaPreset.aggregator.provider} · {currentMoaPreset.aggregator.model}
                 </span>
               }

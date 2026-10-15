@@ -29,7 +29,7 @@ describe('B15', () => {
   it('the Channels empty state offers a way out', () => {
     const l = read('lenses/b4-lenses.tsx')
     expect(l).toContain('data-ops-empty-reset')
-    expect(l).toContain("(setFilter('all'), setQ(''))")
+    expect(l).toContain("(setFilter('all'), setQ(''), setCat(null))")
   })
 
   it('compose starts as one line and grows with content', () => {

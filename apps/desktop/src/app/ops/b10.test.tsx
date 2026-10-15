@@ -103,10 +103,10 @@ describe('B10 inspector rendering', () => {
     expect(src).not.toContain('no está construido en este shell')
   })
 
-  it('Board, Canvas and Settings publish their detail', () => {
+  it('Board and Canvas publish their detail; Settings does not repeat its form (P8)', () => {
     expect(read('board/board.tsx')).toContain('usePublishInspectorDetail(openTask ? taskInspectorDetail(openTask) : boardInspectorSummary(board ?? null))')
     expect(read('canvas/canvas.tsx')).toContain('usePublishInspectorDetail(')
-    expect(read('motion/settings.tsx')).toContain("kind: 'settings'")
+    expect(read('motion/settings.tsx')).not.toContain("kind: 'settings'")
     expect(getInspectorDetail()).toBeNull()
   })
 })

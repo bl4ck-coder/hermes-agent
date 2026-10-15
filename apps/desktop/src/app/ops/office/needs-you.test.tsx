@@ -14,10 +14,12 @@ const item = (origin: string, id: string, command: string | null = null): Approv
 })
 
 describe('Needs-you queue (P6 F1)', () => {
-  it('shows the O59 columns and one-click approve only for unabridged commands', async () => {
+  it('renders decisions (P14 rows, grouped) and one-click approve only for unabridged commands', async () => {
     const onApprove = vi.fn().mockResolvedValue({})
     render(<NeedsYouQueue items={[item('jsonrpc', 'a', 'rm x'), item('jsonrpc', 'b', 'x'.repeat(FULL_ARGS_MAX + 1))]} onApprove={onApprove} />)
-    expect([...document.querySelectorAll('th')].map(t => t.textContent)).toEqual(['Agent', 'Kind', 'Waiting on', 'Age', 'Why', 'Actions'])
+    expect(document.querySelector('table')).toBeNull()
+    expect(document.querySelectorAll('[data-ops-rows-group="decisions"] li[data-ops-row]').length).toBe(2)
+    expect(document.querySelector('[data-ops-approval="jsonrpc:a"] [data-ops-row-command]')?.textContent).toBe('rm x')
     expect(screen.getAllByText('2 min').length).toBe(2)
     expect(document.querySelector('[data-ops-approve="jsonrpc:b"]')).toBeNull()
     await act(async () => fireEvent.click(document.querySelector('[data-ops-approve="jsonrpc:a"]')!))
@@ -38,7 +40,7 @@ describe('Needs-you queue (P6 F1)', () => {
     const onKanban = vi.fn().mockRejectedValue(new Error('409: blocked by parent'))
     const onOpenTask = vi.fn()
     render(<NeedsYouQueue items={[item('kanban_blocked', 't2')]} onKanban={onKanban} onOpenTask={onOpenTask} />)
-    fireEvent.click(screen.getByText('Open'))
+    fireEvent.click(screen.getByText('Open task'))
     expect(onOpenTask).toHaveBeenCalledWith('t2')
     fireEvent.change(screen.getByLabelText('unblock note for t2'), { target: { value: 'creds added' } })
     await act(async () => fireEvent.click(document.querySelector('[data-ops-unblock="kanban_blocked:t2"]')!))
