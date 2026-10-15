@@ -105,6 +105,7 @@ describe('Test run (D7)', () => {
     const runs = fakeRuns()
     runs.create.mockResolvedValueOnce({ ok: false, status: 0, code: 'gateway_key_missing', message: 'x' })
     render(<CanvasView data={data} profile="judge" runs={runs as never} />)
+    fireEvent.click(document.querySelector('[data-ops-run-toggle]') as HTMLElement) // P10: the run panel opens on demand
     await act(async () => {
       fireEvent.click(document.querySelector('[data-ops-test-run]') as HTMLElement)
     })

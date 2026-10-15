@@ -292,6 +292,9 @@ if (want('draft')) await section('03b-canvas-draft', async () => {
   await go('/ops/canvas')
   await page.locator('[data-ops-node-title]').first().click({ timeout: 8000 })
   await sleep(1000)
+  // P10: the documents fold under the flow; open it the way a user would.
+  const docs = page.locator('[data-ops-canvas-docs]')
+  if (await docs.count() && !(await docs.evaluate(d => d.open))) await docs.locator('summary').click({ timeout: 5000 })
   const ta = page.locator('[data-ops-node-editor] textarea').first()
   await ta.click({ timeout: 8000 }); await page.keyboard.press('End'); await page.keyboard.type(' (ops live check)')
   await sleep(500); await shot('03b-canvas-draft-dirty')

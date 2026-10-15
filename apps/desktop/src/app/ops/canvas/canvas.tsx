@@ -335,7 +335,8 @@ export function CanvasView({
 }) {
   const [run, setRun] = useState<RunView>(initialRun)
   const [zoom, setZoom] = useState(1)
-  const [runOpen, setRunOpen] = useState(true)
+  // P10: the flow is the surface; the test run opens on demand.
+  const [runOpen, setRunOpen] = useState(false)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(null)
   const [collapsed, setCollapsed] = useState<Set<CanvasNodeId>>(() => new Set())

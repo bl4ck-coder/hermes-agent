@@ -60,10 +60,11 @@ describe('canvas P7 F4: pan, zoom placement, layout, identity/memory nodes', () 
     expect(document.querySelector('[data-ops-node="memory"] [data-ops-node-body]')?.textContent).toBe('unknown')
   })
 
-  it('run panel collapses (G26)', () => {
+  it('run panel starts collapsed and opens on demand (G26, P10)', () => {
     render(<CanvasView data={data()} profile="p" />)
-    fireEvent.click(document.querySelector('[data-ops-run-toggle]')!)
     expect((document.querySelector('[data-ops-run-panel]') as HTMLElement).hidden).toBe(true)
+    fireEvent.click(document.querySelector('[data-ops-run-toggle]')!)
+    expect((document.querySelector('[data-ops-run-panel]') as HTMLElement).hidden).toBe(false)
   })
 })
 
