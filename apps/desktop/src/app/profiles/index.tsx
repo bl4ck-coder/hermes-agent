@@ -230,14 +230,16 @@ function ProfileDetail({ profile }: { profile: ProfileInfo }) {
 
   return (
     <PanelDetail>
+      {/* P7: one work column (reading width) holds identity, meta, SOUL and its actions. */}
+      <div className="mx-0 flex w-full max-w-(--width-reading) flex-col gap-6" data-profile-column="">
       <header className="space-y-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3" data-profile-hero="">
             {/* B34: the profile's own glyph, large, as the page's identity mark. */}
-            <span className="grid size-16 shrink-0 place-items-center [&>*]:size-16! [&>*]:text-2xl!" data-profile-hero-glyph="">
+            <span className="grid size-10 shrink-0 place-items-center [&>*]:size-10! [&>*]:text-lg!" data-profile-hero-glyph="">
               <ProfileGlyph aria-hidden="true" color={resolveProfileColor(profile.name, colors)} isDefault={profile.is_default} name={profile.name} />
             </span>
-            <h3 className="text-2xl font-medium tracking-tight text-foreground" data-profile-hero-name="">{profileLabel(profile)}</h3>
+            <h3 className="text-(length:--type-page) leading-(--type-page-lh) font-semibold tracking-tight text-foreground" data-profile-hero-name="">{profileLabel(profile)}</h3>
             {profile.is_default && <PanelPill tone="good">{p.defaultBadge}</PanelPill>}
             {profile.has_env && <PanelPill tone="muted">.env</PanelPill>}
           </div>
@@ -268,6 +270,7 @@ function ProfileDetail({ profile }: { profile: ProfileInfo }) {
       </header>
 
       <SoulEditor profileName={profile.name} />
+      </div>
     </PanelDetail>
   )
 }
@@ -332,14 +335,14 @@ function SoulEditor({ profileName }: { profileName: string }) {
   }
 
   return (
-    <section className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <section className="space-y-3" data-profile-soul="">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <PanelSectionLabel className="text-(length:--type-section) leading-(--type-section-lh) tracking-normal normal-case">SOUL.md</PanelSectionLabel>
           <p className="max-w-(--width-reading) text-(length:--type-meta) leading-(--type-meta-lh) text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
         </div>
         <div className="flex items-center gap-3" data-profile-soul-actions="">
-          {dirty && <span className="text-xs text-muted-foreground">{p.unsavedChanges}</span>}
+          {dirty && <span className="text-sm text-muted-foreground">{p.unsavedChanges}</span>}
           <Button disabled={!dirty || saving || loading} onClick={() => void handleSave()} size="sm">
             <Save />
             {saving ? p.saving : p.saveSoul}
@@ -350,7 +353,7 @@ function SoulEditor({ profileName }: { profileName: string }) {
       {loading ? (
         <PageLoader className="min-h-44" label={p.loadingSoul} />
       ) : (
-        <div className="min-h-[min(55vh,30rem)] max-w-(--width-reading) [&>*]:min-h-[inherit] [&_.cm-content]:text-(length:--type-body) [&_.cm-content]:leading-(--type-reading-lh) [&_.cm-editor]:min-h-[inherit]" data-profile-soul-editor="">
+        <div className="min-h-[min(55vh,30rem)] [&>*]:min-h-[inherit] [&_.cm-content]:font-sans [&_.cm-content]:text-(length:--type-body) [&_.cm-content]:leading-(--type-reading-lh) [&_.cm-content]:px-4 [&_.cm-content]:py-3 [&_.cm-editor]:min-h-[inherit] [&_.cm-gutters]:hidden [&_.cm-line]:font-sans" data-profile-soul-editor="">
           <CodeEditor
             filePath="SOUL.md"
             framed
