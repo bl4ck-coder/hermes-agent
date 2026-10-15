@@ -3,7 +3,7 @@
  * Reads go through Desktop's own API helpers; every connect / install / edit flow is Desktop's own
  * (Ops routes there), except skill installs, which use the hub install route after a confirm.
  */
-import { type CSSProperties, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { connectionScoped, hermesApi } from '@/api/client'
 import { listOAuthProviders } from '@/api/config'
@@ -390,9 +390,10 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
       {rows ? (
         /* B35b: Skills hero: how much is on, and where it clusters. */
         <div data-ops-skills-hero="">
-          <span data-ops-diag-ring="" style={{ '--ops-pct': String(rows.length ? rows.filter(r => r.enabled).length / rows.length : 0) } as CSSProperties}>
-            {rows.filter(r => r.enabled).length}/{rows.length}
-          </span>
+          <strong data-ops-channels-count="">
+            {rows.filter(r => r.enabled).length}
+            <small>/{rows.length}</small>
+          </strong>
           <div>
             <span data-ops-now-label="">{T('Skills')}</span>
             <p data-ops-channels-hero-list="">
