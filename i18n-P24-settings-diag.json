@@ -1,0 +1,22 @@
+{
+  "Revert to saved value": {
+    "es": "Volver al valor guardado",
+    "fr": "Revenir à la valeur enregistrée",
+    "de": "Gespeicherten Wert wiederherstellen",
+    "ru": "Вернуть сохранённое значение",
+    "ja": "保存済みの値に戻す",
+    "zh": "恢复为已保存的值",
+    "zh-hant": "還原為已儲存的值",
+    "ar": "العودة إلى القيمة المحفوظة"
+  },
+  "Saved on this device": {
+    "es": "Guardado en este dispositivo",
+    "fr": "Enregistré sur cet appareil",
+    "de": "Auf diesem Gerät gespeichert",
+    "ru": "Сохранено на этом устройстве",
+    "ja": "このデバイスに保存しました",
+    "zh": "已保存在此设备上",
+    "zh-hant": "已儲存在此裝置上",
+    "ar": "تم الحفظ على هذا الجهاز"
+  }
+}
