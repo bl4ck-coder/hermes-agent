@@ -1,7 +1,7 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { bracketMatching, indentOnInput, LanguageDescription } from '@codemirror/language'
 import { languages } from '@codemirror/language-data'
-import { Compartment, EditorState } from '@codemirror/state'
+import { Compartment, EditorState, Prec } from '@codemirror/state'
 import { Decoration, drawSelection, EditorView, keymap, lineNumbers } from '@codemirror/view'
 import { type RefObject, useEffect, useRef } from 'react'
 
@@ -49,6 +49,8 @@ interface CodeEditorProps {
    * inside is identical to pane previews (no extra inset). Off by default.
    */
   framed?: boolean
+  /** P8: render the document as prose (sans, 16/26) instead of code; used for SOUL.md. */
+  prose?: boolean
   filePath: string
   /** Character range to wash with a subtle background (the "you are here" block). */
   highlight?: null | { from: number; to: number }
@@ -164,6 +166,15 @@ const LAYOUT_THEME = EditorView.theme({
 // shoved text right and made the left inset dwarf the top), and zero the line's
 // own horizontal padding so the host's uniform `p-2` is the ONLY inset — even
 // breathing room on all four sides. Long lines wrap rather than scroll.
+// P8: prose documents (SOUL.md) read as instructions, not code: the font is set on every layer
+// CodeMirror paints (.cm-scroller, .cm-content and .cm-line), at the body reading scale.
+const PROSE_FONT = 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)'
+const PROSE_THEME = EditorView.theme({
+  '.cm-scroller': { fontFamily: PROSE_FONT, fontSize: 'var(--type-body, 1rem)', lineHeight: 'var(--type-reading-lh, 1.625rem)' },
+  '.cm-content': { fontFamily: PROSE_FONT, fontSize: 'var(--type-body, 1rem)', lineHeight: 'var(--type-reading-lh, 1.625rem)', padding: '0.75rem 1rem' },
+  '.cm-line': { fontFamily: PROSE_FONT, fontSize: 'var(--type-body, 1rem)', lineHeight: 'var(--type-reading-lh, 1.625rem)', padding: '0' }
+})
+
 const FRAMED_THEME = EditorView.theme({
   '.cm-line': { padding: '0' }
 })
@@ -180,6 +191,7 @@ export function CodeEditor({
   disabled = false,
   formatJson = false,
   framed = false,
+  prose = false,
   filePath,
   highlight,
   initialValue,
@@ -283,7 +295,8 @@ export function CodeEditor({
         // Standalone edits (SOUL.md, skills, memories) are prose, not code —
         // wrap long lines instead of scrolling horizontally, and drop the gutter
         // inset. Pane previews stay flush/scrolling to mirror their SourceView.
-        ...(framed ? [EditorView.lineWrapping, FRAMED_THEME] : [])
+        ...(framed ? [EditorView.lineWrapping, FRAMED_THEME] : []),
+        ...(prose ? [Prec.highest(PROSE_THEME)] : [])
       ]
     })
 

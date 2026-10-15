@@ -358,6 +358,7 @@ function SoulEditor({ profileName }: { profileName: string }) {
             filePath="SOUL.md"
             framed
             initialValue={content}
+            prose
             key={profileName}
             onChange={setContent}
             onSave={() => void handleSave()}
