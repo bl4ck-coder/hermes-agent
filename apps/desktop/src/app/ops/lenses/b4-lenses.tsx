@@ -506,21 +506,22 @@ function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: Retur
       }
       more={
         <Disclosure label={T('Details and profiles')}>
+          {/* P24 (judge pass 18): the detail is two compact lines (facts, then profiles), not a stack of paragraphs. */}
           <div data-ops-skill-detail="">
-            {(r as { provenance?: string }).provenance ? <p data-ops-skill-provenance="">{T('Source')}: {(r as { provenance?: string }).provenance}</p> : null}
-            <p>{typeof r.usage === 'number' ? P(r.usage, 'Used {n} times') : T('Usage not available')}</p>
-            <p>{T('Profiles with this skill enabled')}</p>
-            {r.agents.length ? (
-              <p data-ops-skill-agents="">
-                {r.agents.map(a => (
-                  <button data-ops-skill-agent={a} disabled={!onOpenAgent} key={a} onClick={() => onOpenAgent?.(a)} type="button">
-                    {a}
-                  </button>
-                ))}
-              </p>
-            ) : (
-              <p>{T('None observed')}</p>
-            )}
+            <p data-ops-skill-facts="">
+              {(r as { provenance?: string }).provenance ? <span data-ops-skill-provenance="">{T('Source')}: {(r as { provenance?: string }).provenance}</span> : null}
+              <span>{typeof r.usage === 'number' ? P(r.usage, 'Used {n} times') : T('Usage not available')}</span>
+            </p>
+            <p data-ops-skill-agents="">
+              <span data-ops-team-label="">{T('Profiles with this skill enabled')}:</span>
+              {r.agents.length
+                ? r.agents.map(a => (
+                    <button data-ops-skill-agent={a} disabled={!onOpenAgent} key={a} onClick={() => onOpenAgent?.(a)} type="button">
+                      {a}
+                    </button>
+                  ))
+                : <span>{T('None observed')}</span>}
+            </p>
             {scanCapped ? <p>{T('Among the first {n} profiles checked').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}</p> : null}
           </div>
         </Disclosure>

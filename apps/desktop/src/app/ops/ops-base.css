@@ -1069,3 +1069,8 @@
 :where([data-ops-team]) :where([data-ops-row-more-slot]) { justify-content: flex-start; }
 :where([data-ops-team]) :where([data-ops-row-more-slot]) :where([data-ops-disclosure][open] > summary) { margin-left: 0; }
 :where([data-ops-team-label]) { color: var(--ops-muted); font-size: var(--type-meta,14px); margin-right: var(--space-1,4px); }
+/* P24: skill detail as two compact lines, opened under the description. */
+:where([data-ops-skill]) :where([data-ops-row-more-slot]) { justify-content: flex-start; }
+:where([data-ops-skill]) :where([data-ops-row-more-slot]) :where([data-ops-disclosure][open] > summary) { margin-left: 0; }
+:where([data-ops-skill-facts]) { display: flex; flex-wrap: wrap; column-gap: var(--space-4,16px); row-gap: var(--space-1,4px); }
+:where([data-ops-skill-detail] [data-ops-skill-agents]) { align-items: center; }
