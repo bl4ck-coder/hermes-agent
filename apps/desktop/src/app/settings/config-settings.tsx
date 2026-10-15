@@ -164,6 +164,9 @@ function ConfigSettingsInner({
   // resolve after a newer one and re-advance the baseline / cache with stale
   // data — each save's diff+request only starts once the previous one lands.
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  // P24: the draft a save sends is read when the save starts (not when it was
+  // scheduled), so a field reverted meanwhile is never resent.
+  const latestConfigRef = useRef<HermesConfigRecord | null>(null)
 
   // eslint-disable-next-line no-restricted-syntax -- legitimate non-atom ref write (see eslint rule comment)
   useEffect(() => {
@@ -184,6 +187,7 @@ function ConfigSettingsInner({
     configBaselineRef.current = null
     savedDiscoverySignatureRef.current = undefined
     setConfig(null)
+    latestConfigRef.current = null
     saveVersionRef.current = 0
     setSaveVersion(0)
     saveQueueRef.current = Promise.resolve()
@@ -212,83 +216,124 @@ function ConfigSettingsInner({
     // scopeProfile is constant per mount (the inner component is keyed on it).
   }, [scopeProfile])
 
+  // Chained onto the queue (not fired directly) so an older save that's still
+  // awaiting its response can't land after this one and undo its baseline
+  // advance — each save's diff is computed once its predecessor has resolved.
+  // `onlyKey` (P24, judge pass 18): a field's Retry sends that field's change
+  // alone; other pending drafts stay pending.
+  const enqueueSave = (v: number, onlyKey?: string) => {
+    saveQueueRef.current = saveQueueRef.current.then(async () => {
+      const snapshot = latestConfigRef.current
+
+      if (!snapshot) {
+        return
+      }
+
+      const fullPatch = diffConfig(configBaselineRef.current ?? {}, snapshot)
+      const pending = flattenKeys(fullPatch)
+      const patch = onlyKey === undefined ? fullPatch : pickField(fullPatch, onlyKey)
+      // P18g (judge consult): save state beside the edited fields, not only a toast.
+      const keys = flattenKeys(patch)
+
+      // A field edited back to its saved value has nothing left to save: its old error is stale.
+      setFieldSave(prev => onlyKeys(prev, pending))
+      setFieldReason(prev => onlyKeys(prev, pending))
+
+      // Nothing differs from disk: there is nothing to save (never send an empty patch).
+      if (keys.length === 0) {
+        return
+      }
+
+      setFieldSave(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, 'saving' as const])) }))
+
+      try {
+        const result = await saveHermesConfig(patch, writeScope ?? scopeProfile)
+
+        if (!result.ok) {
+          throw new Error(c.autosaveFailed)
+        }
+
+        // What was saved becomes the new baseline, so the next autosave diffs
+        // against what's actually on disk instead of the page-load (or
+        // last-baseline) copy — otherwise reverting a field to its pre-save
+        // value diffs to nothing and the revert never reaches disk. A scoped
+        // retry only advances its own field.
+        const saved =
+          onlyKey === undefined ? snapshot : setNested(configBaselineRef.current ?? {}, onlyKey, getNested(snapshot, onlyKey))
+
+        configBaselineRef.current = saved
+
+        // Mirror the saved record into the shared cache so MCP/model surfaces
+        // reflect the edit without their own refetch.
+        writeConfigCache(saved)
+        const savedScope = writeScope ?? scopeProfile
+
+        recordSettingsSaved(patch, schema ?? {}, typeof savedScope === 'string' ? savedScope : savedScope?.profile)
+        setFieldSave(prev => withoutKeys(prev, keys))
+        setFieldReason(prev => withoutKeys(prev, keys))
+
+        if (saveVersionRef.current === v) {
+          // The repo-discovery scan reads the ACTIVE profile's workspace
+          // policy; skip it when this page is editing another profile.
+          if (scopeProfile == null) {
+            const discoverySignature = repoDiscoveryPolicySignature(repoDiscoveryPolicyFromConfig(saved))
+
+            if (savedDiscoverySignatureRef.current !== discoverySignature) {
+              savedDiscoverySignatureRef.current = discoverySignature
+              await scanAndRecordRepos(true)
+            }
+          }
+
+          onConfigSaved?.()
+        }
+      } catch (err) {
+        setFieldSave(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, 'failed' as const])) }))
+        const reason = err instanceof Error && err.message !== c.autosaveFailed ? err.message : ''
+
+        setFieldReason(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, reason])) }))
+
+        if (saveVersionRef.current === v) {
+          notifyError(err, c.autosaveFailed)
+        }
+      }
+    })
+  }
+
   // eslint-disable-next-line no-restricted-syntax -- autosave bookkeeping refs, not an atom mirror
   useEffect(() => {
-    if (!config || saveVersion === 0) {
+    if (!latestConfigRef.current || saveVersion === 0) {
       return
     }
 
     const v = saveVersion
-    const snapshot = config
-
-    const t = window.setTimeout(() => {
-      // Chained onto the queue (not fired directly) so an older save that's
-      // still awaiting its response can't land after this one and undo its
-      // baseline advance — each save's diff is computed once its predecessor
-      // has fully resolved.
-      saveQueueRef.current = saveQueueRef.current.then(async () => {
-        // P18g (judge consult): save state beside the edited fields, not only a toast.
-        const keys = flattenKeys(diffConfig(configBaselineRef.current ?? {}, snapshot))
-
-        setFieldSave(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, 'saving' as const])) }))
-
-        try {
-          const patch = diffConfig(configBaselineRef.current ?? {}, snapshot)
-          const result = await saveHermesConfig(patch, writeScope ?? scopeProfile)
-
-          if (!result.ok) {
-            throw new Error(c.autosaveFailed)
-          }
-
-          // The saved snapshot becomes the new baseline, so the next autosave
-          // diffs against what's actually on disk instead of the page-load
-          // (or last-baseline) copy — otherwise reverting a field to its
-          // pre-save value diffs to nothing and the revert never reaches disk.
-          configBaselineRef.current = snapshot
-
-          // Mirror the saved record into the shared cache so MCP/model surfaces
-          // reflect the edit without their own refetch.
-          writeConfigCache(snapshot)
-          const savedScope = writeScope ?? scopeProfile
-
-          recordSettingsSaved(patch, schema ?? {}, typeof savedScope === 'string' ? savedScope : savedScope?.profile)
-          setFieldSave(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => !keys.includes(k))))
-
-          if (saveVersionRef.current === v) {
-            // The repo-discovery scan reads the ACTIVE profile's workspace
-            // policy; skip it when this page is editing another profile.
-            if (scopeProfile == null) {
-              const discoverySignature = repoDiscoveryPolicySignature(repoDiscoveryPolicyFromConfig(snapshot))
-
-              if (savedDiscoverySignatureRef.current !== discoverySignature) {
-                savedDiscoverySignatureRef.current = discoverySignature
-                await scanAndRecordRepos(true)
-              }
-            }
-
-            onConfigSaved?.()
-          }
-        } catch (err) {
-          setFieldSave(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, 'failed' as const])) }))
-          const reason = err instanceof Error && err.message !== c.autosaveFailed ? err.message : ''
-
-          setFieldReason(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, reason])) }))
-
-          if (saveVersionRef.current === v) {
-            notifyError(err, c.autosaveFailed)
-          }
-        }
-      })
-    }, 550)
+    const t = window.setTimeout(() => enqueueSave(v), 550)
 
     return () => window.clearTimeout(t)
+    // Keyed on saveVersion (an edit), not on config: a Revert changes the draft without scheduling a save.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- copy is stable; avoid re-scheduling autosave on locale change
-  }, [config, onConfigSaved, saveVersion, writeScope, scopeProfile])
+  }, [onConfigSaved, saveVersion, writeScope, scopeProfile])
 
   const applyConfig = (next: HermesConfigRecord) => {
     saveVersionRef.current += 1
+    latestConfigRef.current = next
     setConfig(next)
     setSaveVersion(saveVersionRef.current)
+  }
+
+  // P24 (judge pass 18): Revert is local. It puts the saved value back in the
+  // control and clears that field's error/saving state; it sends nothing and
+  // leaves every other pending draft as it is.
+  const revertField = (key: string) => {
+    if (!config) {
+      return
+    }
+
+    const next = setNested(config, key, getNested(configBaselineRef.current ?? {}, key))
+
+    latestConfigRef.current = next
+    setConfig(next)
+    setFieldSave(prev => withoutField(prev, key))
+    setFieldReason(prev => withoutField(prev, key))
   }
 
   const updateConfig = (next: HermesConfigRecord) => {
@@ -527,14 +572,19 @@ function ConfigSettingsInner({
                       <span className="mt-1 block text-(--destructive)" data-settings-field-error={key} role="alert">
                         {c.autosaveFailed}
                         {fieldReason[key] ? `: ${fieldReason[key]}` : ''}{' '}
-                        {/* P20d: recover in place: retry the same draft, or go back to what is on disk. */}
-                        <button className="underline" data-settings-field-retry={key} onClick={() => applyConfig({ ...config })} type="button">
+                        {/* P20d/P24: recover in place. Retry resends this field alone; Revert restores what is on disk and clears this error. */}
+                        <button
+                          className="min-h-10 min-w-10 px-2 underline"
+                          data-settings-field-retry={key}
+                          onClick={() => enqueueSave(saveVersionRef.current, key)}
+                          type="button"
+                        >
                           {t.common.retry}
                         </button>{' '}
                         <button
-                          className="underline"
+                          className="min-h-10 min-w-10 px-2 underline"
                           data-settings-field-revert={key}
-                          onClick={() => applyConfig(setNested(config, key, getNested(configBaselineRef.current ?? {}, key)))}
+                          onClick={() => revertField(key)}
                           type="button"
                         >
                           {c.autosaveRevert}
@@ -651,4 +701,24 @@ function flattenKeys(o: unknown, prefix = ''): string[] {
   }
 
   return Object.entries(o as Record<string, unknown>).flatMap(([k, v]) => flattenKeys(v, prefix ? `${prefix}.${k}` : k))
+}
+
+/** P24: the part of a config patch that belongs to one field (dotted key), or an empty patch. */
+function pickField(patch: HermesConfigRecord, key: string): HermesConfigRecord {
+  const value = getNested(patch, key)
+
+  return value === undefined ? {} : setNested({}, key, value)
+}
+
+function withoutKeys<T>(rec: Record<string, T>, keys: readonly string[]): Record<string, T> {
+  return Object.fromEntries(Object.entries(rec).filter(([k]) => !keys.includes(k)))
+}
+
+function onlyKeys<T>(rec: Record<string, T>, keys: readonly string[]): Record<string, T> {
+  return Object.keys(rec).every(k => keys.includes(k)) ? rec : Object.fromEntries(Object.entries(rec).filter(([k]) => keys.includes(k)))
+}
+
+/** A field's save state, including the leaves of an object-valued field. */
+function withoutField<T>(rec: Record<string, T>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(rec).filter(([k]) => k !== key && !k.startsWith(`${key}.`)))
 }
