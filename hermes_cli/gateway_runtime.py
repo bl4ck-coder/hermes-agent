@@ -270,6 +270,13 @@ def ensure_gateway_runtime(profile_home: str | Path, *, timeout: float = DEFAULT
 
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be finite and positive")
+    from hermes_cli.gateway_lifecycle_guard import REASON_CODE, gateway_lifecycle_disabled, refusal_detail
+    if guard := gateway_lifecycle_disabled():
+        # Test/capture/isolated run: read-only discovery, never replace, start or spawn an owner.
+        observed = discover_gateway_endpoint(profile_home, timeout=min(timeout, 2.0))
+        if observed.state == "ready":
+            return observed
+        return GatewayDiscovery(observed.state, reason_code=REASON_CODE, detail=refusal_detail(guard))
     deadline = time.monotonic() + timeout
     home = Path(_canonical_home(profile_home))
     requested = False

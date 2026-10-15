@@ -19,6 +19,8 @@ const env = {
   HERMES_DESKTOP_HERMES_ROOT: resolve(DESKTOP, '..', '..'),
   HERMES_DESKTOP_PYTHON: process.env.OPS_LIVE_PYTHON,
   HERMES_DESKTOP_ISOLATED_BACKEND: '1',
+  // Never start, stop, restart or replace a gateway from this checkout (hermes_cli/gateway_lifecycle_guard.py).
+  HERMES_OPS_NO_GATEWAY: '1',
   HERMES_DESKTOP_USER_DATA_DIR: join(tmpdir(), 'ops-live-userdata'),
   // The real Hermes home (and so the real gateway). An explicit HERMES_HOME wins over the userData sandbox.
   ...(process.env.OPS_LIVE_HERMES_HOME ? { HERMES_HOME: process.env.OPS_LIVE_HERMES_HOME } : {}),

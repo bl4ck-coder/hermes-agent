@@ -5697,7 +5697,12 @@ _GATEWAY_SUBCOMMANDS = {
 
 
 def _gateway_command_inner(args):
-    handler = _GATEWAY_SUBCOMMANDS.get(getattr(args, "gateway_command", None))
+    verb = getattr(args, "gateway_command", None)
+    from hermes_cli.gateway_lifecycle_guard import READ_ONLY_VERBS, gateway_lifecycle_disabled, refusal_detail
+    if verb not in READ_ONLY_VERBS and (guard := gateway_lifecycle_disabled()):
+        print_error(f"Refusing `hermes gateway {verb or 'run'}`: {refusal_detail(guard)}.")
+        sys.exit(3)
+    handler = _GATEWAY_SUBCOMMANDS.get(verb)
     if handler is not None:
         handler(args)
 

@@ -1968,6 +1968,8 @@ let softRehomeInProgress = false
 const backendPool = new Map() // scope key -> { connectionPromise, remoteBaseUrl }
 // Escape hatch: a dedicated, private backend for this app instead of the host's.
 const ISOLATED_BACKEND = process.env.HERMES_DESKTOP_ISOLATED_BACKEND === '1'
+// Mirrors hermes_cli/gateway_lifecycle_guard.py: test/capture runs never restart a gateway.
+const GATEWAY_LIFECYCLE_DISABLED = ISOLATED_BACKEND || process.env.HERMES_OPS_NO_GATEWAY === '1'
 const profileDeletionGate = new ProfileDeletionGate()
 
 // rememberLog() state. Declared before any top-level caller that logs during
@@ -11813,6 +11815,13 @@ const GATEWAY_RESTART_CLIENT_TIMEOUT_MS = 120_000
 // that owns the gateway process. A non-zero exit is logged, not thrown: the re-ensure that
 // follows reports what actually answers.
 async function restartLocalGatewayOwner(ownerProfile: string): Promise<void> {
+  if (GATEWAY_LIFECYCLE_DISABLED) {
+    // Test/capture run (ops-live, isolated backend): never restart a gateway this app does not own.
+    rememberLog(`[gateway] restart of ${ownerProfile} skipped: gateway lifecycle disabled for this run`)
+
+    return
+  }
+
   const backend = await ensureRuntime(
     await resolveHermesBackend(['--profile', ownerProfile, 'gateway', 'restart']),
     () => undefined
