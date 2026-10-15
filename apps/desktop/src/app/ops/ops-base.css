@@ -1026,6 +1026,11 @@
 :where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: var(--space-2,8px); padding-top: var(--space-2,8px); text-align: left; }
 :where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) :where(input, textarea) { min-height: 40px; flex: 1 1 14rem; min-width: 0; max-width: var(--width-field, 28rem); }
 :where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) :where(button) { min-height: 40px; padding: 0 var(--space-3,12px); font-size: var(--type-meta,14px); }
+/* P24 (judge pass 18): one intent per line inside a row expansion; secondary links stay quiet and left-aligned. */
+:where([data-ops-intent]) { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: var(--space-2,8px); min-width: 0; }
+:where([data-ops-intent="links"]) :where(button[data-ops-row-link]) { background: transparent; border-color: transparent; color: var(--ops-muted); text-decoration: underline; text-underline-offset: 3px; }
+:where([data-ops-intent]) :where([data-ops-disclosure] > summary) { margin-left: 0; }
+:where([data-ops-refused]) { flex: 1 1 100%; color: var(--ops-bad, #e5484d); font-size: var(--type-meta,14px); }
 @container ops-rows (max-width: 40rem) { :where([data-ops-row]) { grid-template-columns: auto minmax(0, 1fr); } :where([data-ops-row-actions]) { grid-column: 2; max-width: none; justify-content: flex-start; padding-top: var(--space-2,8px); } :where([data-ops-row-more-slot]) { grid-column: 2; grid-row: auto; justify-content: flex-start; } }
 :where([data-ops-team-task-status]) { color: var(--ops-muted); }
 :where([data-ops-team-task-status='blocked']) { color: var(--ops-warn,#e3a33b); }
@@ -1060,3 +1065,7 @@
    assignee and signals. The title rows stay readable; the metadata returns when the pointer leaves. */
 :where([data-ops-card]) > :where([data-ops-quick]) { bottom: 3px; justify-content: flex-end; left: 28px; right: 4px; }
 :where([data-ops-card]:hover, [data-ops-card]:focus-within) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: hidden; }
+/* P24 (judge pass 18): a lane's expansion opens under the work it continues, not at the far edge. */
+:where([data-ops-team]) :where([data-ops-row-more-slot]) { justify-content: flex-start; }
+:where([data-ops-team]) :where([data-ops-row-more-slot]) :where([data-ops-disclosure][open] > summary) { margin-left: 0; }
+:where([data-ops-team-label]) { color: var(--ops-muted); font-size: var(--type-meta,14px); margin-right: var(--space-1,4px); }

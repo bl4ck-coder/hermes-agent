@@ -1,6 +1,6 @@
 // P23 (judge pass 17): Fleet separates recent failures (history) from attention (now); Office shows a missing reason
 // before the controls, not inside More actions.
-import { cleanup, render, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { AgentsLens, type B4Client } from './lenses/b4-lenses'
@@ -46,5 +46,22 @@ describe('P23b Office reason before controls', () => {
     const row = document.querySelector('[data-ops-approval="kanban_review:t_1"]')!
     expect(row.querySelector('[data-ops-row-context] [data-ops-why-missing]')).toBeTruthy()
     expect(row.querySelector('[data-ops-disclosure-body] [data-ops-why-missing]')).toBeNull()
+  })
+})
+
+describe('P24 Office one intent per line, refusal in place', () => {
+  it('keeps the typed note and shows the refusal beside Request changes; Approve stays available', async () => {
+    const onKanban = vi.fn().mockRejectedValue(new Error('409: task moved'))
+    render(<NeedsYouQueue items={[{ id: 't_2', origin: 'kanban_review', actions: ['approve'], what_for: 'Ship it', why: 'Needs a second look', profile: 'builder', age_s: 60 } as never]} onKanban={onKanban} onOpenTask={vi.fn()} />)
+    const row = document.querySelector('[data-ops-approval="kanban_review:t_2"]')!
+    const input = row.querySelector('[data-ops-intent="request-changes"] input') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'Split the commit' } })
+    fireEvent.click(row.querySelector('[data-ops-request-changes]')!)
+    await waitFor(() => expect(row.querySelector('[data-ops-intent="request-changes"] [role="alert"]')?.textContent).toContain('409'))
+    expect(input.value).toBe('Split the commit')
+    expect((row.querySelector('[data-ops-approve]') as HTMLButtonElement).disabled).toBe(false)
+    // Comment is its own folded intent; Open task is a quiet link on the links line.
+    expect(row.querySelector('[data-ops-intent="links"] [data-ops-disclosure="comment"]')).toBeTruthy()
+    expect(row.querySelector('[data-ops-intent="links"] [data-ops-row-link]')?.textContent).toBe('Open task')
   })
 })

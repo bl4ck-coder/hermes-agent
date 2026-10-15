@@ -296,11 +296,14 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
                   ))}
                 </ul>
               ) : null}
-              <p aria-label={T('Members:')} data-ops-team-members="">
+              {/* P24 (judge pass 18): the expansion keeps reading the work; who and where follow on quiet labelled lines. */}
+              <p data-ops-team-members="">
+                <span data-ops-team-label="">{T('Members:')}</span>
                 {t.members.length ? t.members.map(m => <span data-ops-team-member={m} key={m}><Sigil name={m} size={20} /> {m}</span>) : <span data-ops-team-none="">{T('No members')}</span>}
               </p>
               {t.projects.length ? (
                 <p data-ops-team-projects="">
+                  <span data-ops-team-label="">{T('Projects:')}</span>
                   {t.projects.map(pr => (
                     <button data-ops-team-project={pr} disabled={!onOpenRoute} key={pr} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(pr)}`)} type="button">
                       {pr}

@@ -131,11 +131,13 @@ export function NeedsYouQueue(p: NeedsYouProps) {
   const policy = Array.isArray(p.policy) ? p.policy : []
   const total = p.items.length + failing.length + policy.length
 
+  // P24 (judge pass 18): a refusal is said next to the control that was refused, and the typed note stays.
+  const alertFor = (k: string) => (errors[k] && busy[k] === 'failed' ? <span data-ops-refused={k} role="alert">{errors[k]}</span> : null)
+
   const alerts = (key: string) => (
     <>
-      {errors[key] && busy[key] === 'failed' ? <span role="alert">{errors[key]}</span> : null}
-      {errors[`d:${key}`] && busy[`d:${key}`] === 'failed' ? <span role="alert">{errors[`d:${key}`]}</span> : null}
-      {errors[`c:${key}`] && busy[`c:${key}`] === 'failed' ? <span role="alert">{errors[`c:${key}`]}</span> : null}
+      {alertFor(key)}
+      {alertFor(`d:${key}`)}
     </>
   )
 
@@ -144,23 +146,36 @@ export function NeedsYouQueue(p: NeedsYouProps) {
   const decisions = p.items.filter(i => i.origin !== 'kanban_blocked').sort(byAge)
   const blocked = p.items.filter(i => i.origin === 'kanban_blocked').sort(byAge)
 
+  // P24: commenting is its own intent, folded under the row's secondary links.
   const comment = (item: ApprovalItem, key: string) =>
     !p.readOnly && (item.origin === 'kanban_review' || item.origin === 'kanban_blocked') ? (
-      <span data-ops-row-more="comment">
-        <input aria-label={`comment for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [`c:${key}`]: e.target.value }))} placeholder={T("Comment")} value={notes[`c:${key}`] ?? ''} />
-        <button data-ops-comment={key}
-          data-ops-write=""
-          disabled={!(notes[`c:${key}`] ?? '').trim()}
-          onClick={() => void run(`c:${key}`, () => p.onKanban?.({ kind: 'comment', taskId: item.id, note: (notes[`c:${key}`] ?? '').trim() })).then(ok => { if (ok) {setNotes(n => ({ ...n, [`c:${key}`]: '' }))} })}
-          type="button"
-        >
-          {T("Comment")}</button>
-      </span>
+      <Disclosure kind="comment" label={T('Add a comment')}>
+        <span data-ops-intent="comment" data-ops-row-more="comment">
+          <input aria-label={`comment for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [`c:${key}`]: e.target.value }))} placeholder={T('Comment')} value={notes[`c:${key}`] ?? ''} />
+          <button
+            data-ops-comment={key}
+            data-ops-write=""
+            disabled={busy[`c:${key}`] === 'sending' || !(notes[`c:${key}`] ?? '').trim()}
+            onClick={() =>
+              void run(`c:${key}`, () => p.onKanban?.({ kind: 'comment', taskId: item.id, note: (notes[`c:${key}`] ?? '').trim() })).then(ok => {
+                if (ok) {
+                  setNotes(n => ({ ...n, [`c:${key}`]: '' }))
+                }
+              })
+            }
+            type="button"
+          >
+            {T('Comment')}
+          </button>
+          {alertFor(`c:${key}`)}
+        </span>
+      </Disclosure>
     ) : null
 
   const row = (item: ApprovalItem) => {
     const key = `${item.origin}:${item.id}`
-    const sending = busy[key] === 'sending' || busy[key] === 'done'
+    // Approve and Request changes decide the same review: once either is in flight or done, both stop.
+    const sending = [key, `r:${key}`].some(k => busy[k] === 'sending' || busy[k] === 'done')
     const cmd = item.exact_request?.command ?? ''
     const fullFits = oneClickApprove(item)
     const note = notes[key] ?? ''
@@ -193,13 +208,24 @@ export function NeedsYouQueue(p: NeedsYouProps) {
           {label(key, 'Approve', 'Approved')}
         </button>
       )
+      // P24 (judge pass 18): one intent per line inside the expansion: request changes first, then quiet links.
       more = (
-        <Disclosure label={T("More actions")}>
-          <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("What to change")} value={note} />
-          <button data-ops-write="" disabled={sending || !note.trim()} onClick={() => void run(key, () => p.onKanban?.({ kind: 'request_changes', taskId: item.id, note: note.trim() }))} type="button">
-            {T("Request changes")}</button>
-          {p.onOpenTask ? <button onClick={() => p.onOpenTask?.(item.id)} type="button">{T("Open task")}</button> : null}
-          {comment(item, key)}
+        <Disclosure label={T('More actions')}>
+          <span data-ops-intent="request-changes">
+            <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T('What to change')} value={note} />
+            <button data-ops-request-changes={key} data-ops-write="" disabled={sending || !note.trim()} onClick={() => void run(`r:${key}`, () => p.onKanban?.({ kind: 'request_changes', taskId: item.id, note: note.trim() }))} type="button">
+              {label(`r:${key}`, 'Request changes', 'Changes requested')}
+            </button>
+            {alertFor(`r:${key}`)}
+          </span>
+          <span data-ops-intent="links">
+            {p.onOpenTask ? (
+              <button data-ops-row-link="" onClick={() => p.onOpenTask?.(item.id)} type="button">
+                {T('Open task')}
+              </button>
+            ) : null}
+            {comment(item, key)}
+          </span>
         </Disclosure>
       )
     } else if (item.origin === 'kanban_blocked') {
@@ -208,12 +234,15 @@ export function NeedsYouQueue(p: NeedsYouProps) {
           {T("Open task")}</button>
       )
       more = (
-        <Disclosure label={T("More actions")}>
-          <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("Unblock note")} value={note} />
-          <button data-ops-unblock={key} data-ops-write="" disabled={sending || !note.trim()} onClick={() => void run(key, () => p.onKanban?.({ kind: 'unblock', taskId: item.id, note: note.trim() }))} type="button">
-            {label(key, 'Unblock', 'Unblocked')}
-          </button>
-          {comment(item, key)}
+        <Disclosure label={T('More actions')}>
+          <span data-ops-intent="unblock">
+            <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T('Unblock note')} value={note} />
+            <button data-ops-unblock={key} data-ops-write="" disabled={sending || !note.trim()} onClick={() => void run(key, () => p.onKanban?.({ kind: 'unblock', taskId: item.id, note: note.trim() }))} type="button">
+              {label(key, 'Unblock', 'Unblocked')}
+            </button>
+            {alertFor(key)}
+          </span>
+          <span data-ops-intent="links">{comment(item, key)}</span>
         </Disclosure>
       )
     } else {
@@ -243,7 +272,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
         more={
           <>
             {more}
-            {alerts(key)}
+            {item.origin === 'kanban_blocked' ? null : alerts(key)}
           </>
         }
         primary={primary}
