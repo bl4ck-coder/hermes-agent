@@ -121,25 +121,7 @@ export function DiagnosticsPanel({
           </ul>
         </section>
       ) : null}
-      {errors.length > 0 ? (
-      <section aria-label={T('Recent errors')} data-ops-diag-evidence="errors">
-        <h4>
-          {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
-        </h4>
-          <>
-            <ol data-ops-errors="">
-              {errors.map((e, i) => (
-                <li key={`${e.at}-${i}`}>
-                  <time>{new Date(e.at).toLocaleTimeString()}</time> {e.method} {e.path}: {e.message}
-                </li>
-              ))}
-            </ol>
-            <button onClick={clearOpsErrors} type="button">
-              {T("Clear errors")}</button>
-          </>
-      </section>
-      ) : null}
-      {/* P10: the action follows the evidence, not the headline. */}
+      {/* P20c: the next step sits right after the summary, before the error evidence. */}
       <div data-ops-diag-next="">
           <span data-ops-diag-actions="">
             <button data-ops-primary="" data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
@@ -161,6 +143,34 @@ export function DiagnosticsPanel({
           </span>
         {note ? <p role="status">{note}</p> : null}
       </div>
+      {errors.length > 0 ? (
+        <section aria-label={T('Recent errors')} data-ops-diag-evidence="errors">
+          <h4>
+            {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
+          </h4>
+          {/* P20c: one line per failing endpoint (latest message, repeat count); the raw log is secondary. */}
+          <ul data-ops-error-groups="">
+            {groupOpsErrors(errors).map(g => (
+              <li data-ops-error-group="" key={g.key}>
+                <strong>{g.key}</strong> <span>{g.message}</span>
+                {g.count > 1 ? <span data-ops-error-repeat="">{' \u00d7'}{g.count}</span> : null}
+              </li>
+            ))}
+          </ul>
+          <details data-ops-errors-log="">
+            <summary>{T('Full error log')}</summary>
+            <ol data-ops-errors="">
+              {errors.map((e, i) => (
+                <li key={`${e.at}-${i}`}>
+                  <time>{new Date(e.at).toLocaleTimeString()}</time> {e.method} {e.path}: {e.message}
+                </li>
+              ))}
+            </ol>
+            <button onClick={clearOpsErrors} type="button">
+              {T("Clear errors")}</button>
+          </details>
+        </section>
+      ) : null}
       <details data-ops-diag-details="">
         <summary>{T('Details')}</summary>
         <dl>
@@ -218,4 +228,14 @@ export function SystemStatus({ policySource, onOpen }: { policySource: string | 
       </button>
     </p>
   )
+}
+
+export function groupOpsErrors(errors: readonly { at: number | string; message: string; method?: string; path?: string }[]) {
+  const m = new Map<string, { count: number; key: string; message: string }>()
+  for (const e of errors) {
+    const key = `${e.method ?? ''} ${e.path ?? ''}`.trim() || '?'
+    const g = m.get(key)
+    if (g) { g.count += 1; g.message = e.message } else m.set(key, { count: 1, key, message: e.message })
+  }
+  return [...m.values()]
 }

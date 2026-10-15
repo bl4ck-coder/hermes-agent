@@ -2,6 +2,7 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Full error log": "Registro completo de errores",
      "Connected, board not updated": "Conectado, tablero sin actualizar",
      "Connecting": "Conectando",
      "Polling every 5 s": "Consultando cada 5 s",
@@ -679,6 +680,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Full error log": "Journal complet des erreurs",
      "Connected, board not updated": "Connecté, tableau non mis à jour",
      "Connecting": "Connexion",
      "Polling every 5 s": "Interrogation toutes les 5 s",
@@ -1355,6 +1357,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Full error log": "Vollständiges Fehlerprotokoll",
      "Connected, board not updated": "Verbunden, Board nicht aktualisiert",
      "Connecting": "Verbindung wird hergestellt",
      "Polling every 5 s": "Abfrage alle 5 s",
@@ -2031,6 +2034,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Full error log": "Полный журнал ошибок",
      "Connected, board not updated": "Подключено, доска не обновлена",
      "Connecting": "Подключение",
      "Polling every 5 s": "Опрос каждые 5 с",
@@ -2707,6 +2711,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Full error log": "エラーログ全体",
      "Connected, board not updated": "接続済み・ボード未更新",
      "Connecting": "接続中",
      "Polling every 5 s": "5 秒ごとに確認中",
@@ -3383,6 +3388,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Full error log": "完整错误日志",
      "Connected, board not updated": "已连接，看板未更新",
      "Connecting": "正在连接",
      "Polling every 5 s": "每 5 秒轮询",
@@ -4059,6 +4065,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Full error log": "完整錯誤記錄",
      "Connected, board not updated": "已連線，看板未更新",
      "Connecting": "正在連線",
      "Polling every 5 s": "每 5 秒輪詢",
@@ -4735,6 +4742,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Full error log": "سجل الأخطاء الكامل",
      "Connected, board not updated": "متصل، اللوحة غير محدّثة",
      "Connecting": "جارٍ الاتصال",
      "Polling every 5 s": "استطلاع كل 5 ث",
