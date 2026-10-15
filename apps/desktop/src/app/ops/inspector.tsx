@@ -35,12 +35,7 @@ export interface InspectorProps {
 
 export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }: InspectorProps) {
   const copy = useI18n().t.ops
-  useOpsEscapeLayer(scope.inspectorOpen && overlay && Boolean(onClose), onClose)
-
-  if (!scope.inspectorOpen) {
-    return null
-  }
-
+  // Hooks run before any early return (P6a had put useInspectorDetail after one).
   const tab = scope.tabs.find(item => item.id === scope.selectedTabId) ?? null
   const slots = tab ? slotsForKind(tab.kind) : []
   const active = activeInspectorSlot(scope)
@@ -51,6 +46,12 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
   const ownsTab = !tab || !owner || tab.id === owner || tab.id === `lens:${owner}`
   // P6: an inspector with nothing to show collapses to its tab strip instead of holding 280px.
   const empty = !footer && active !== 'fleet' && !(detail && want && detail.kind === want && ownsTab)
+  useOpsEscapeLayer(scope.inspectorOpen && overlay && !empty && Boolean(onClose), onClose)
+
+  // P7: an empty overlay would hide the view it covers (the side Ops panel showed only this note).
+  if (!scope.inspectorOpen || (overlay && empty)) {
+    return null
+  }
 
   return (
     <aside
