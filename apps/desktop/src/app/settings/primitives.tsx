@@ -193,7 +193,7 @@ export function ListRow({
           {below}
         </div>
         {!wide && action && (
-          <div className="flex min-w-0 flex-wrap items-center gap-2 @2xl:justify-self-end @2xl:justify-end">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 justify-start" data-settings-row-control="">
             {action}
           </div>
         )}
