@@ -160,6 +160,17 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                 header: 'Agent',
                 sortable: true,
                 sortValue: r => r.name,
+                cardTitle: r => (
+                  <button data-ops-fleet-open={r.name} data-ops-roster-agent="" disabled={!onOpenRoute} onClick={() => open(r.name)} type="button">
+                    <span data-ops-roster-avatar={r.status}>
+                      <Sigil name={r.name} size={36} />
+                    </span>
+                    <span data-ops-roster-name="">
+                      <span>{r.name}</span>
+                      {r.role ? <small data-ops-role="">{r.role}</small> : null}
+                    </span>
+                  </button>
+                ),
                 cell: r => (
                   <button data-ops-fleet-open={r.name} disabled={!onOpenRoute} onClick={() => open(r.name)} type="button">
                     <Sigil name={r.name} size={16} />

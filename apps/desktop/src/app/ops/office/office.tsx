@@ -452,6 +452,62 @@ export function localDay(nowS: number): string {
 
 const localTime = (s?: number | null) => (typeof s === 'number' && s > 0 ? new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'unknown')
 
+/** B34: the Office hero. What is running right now, by whom, one click from the task; quiet when nothing is. */
+function NowRunning({
+  fleet,
+  inFlight,
+  onOpenProfile,
+  onOpenTask
+}: {
+  fleet: OfficeViewProps['fleet']
+  inFlight: OfficeViewProps['inFlight']
+  onOpenProfile?: OfficeViewProps['onOpenProfile']
+  onOpenTask?: OfficeViewProps['onOpenTask']
+}) {
+  const working = (fleet?.profiles ?? []).filter(p => String(p.presence) === 'working').map(p => p.profile)
+  const running = (inFlight ?? []).slice(0, 3)
+
+  if (inFlight === null && !fleet) {
+    return null
+  }
+
+  return (
+    <section aria-label={T('Now running')} data-ops-now-running={running.length || working.length ? 'live' : 'quiet'}>
+      <span aria-hidden data-ops-now-pulse="" />
+      <div data-ops-now-body="">
+        <span data-ops-now-label="">{T('Now running')}</span>
+        {running.length === 0 && working.length === 0 ? (
+          <p data-ops-now-quiet="">{T('Nothing running.')}</p>
+        ) : (
+          <ul>
+            {running.map(t => (
+              <li key={t.id}>
+                <button disabled={!onOpenTask} onClick={() => onOpenTask?.(t.id)} type="button">
+                  {t.title}
+                </button>
+                {t.assignee ? (
+                  <button data-ops-now-agent="" disabled={!onOpenProfile} onClick={() => onOpenProfile?.(t.assignee as string)} type="button">
+                    @{t.assignee}
+                  </button>
+                ) : null}
+              </li>
+            ))}
+            {running.length === 0
+              ? working.slice(0, 3).map(name => (
+                  <li key={name}>
+                    <button data-ops-now-agent="" disabled={!onOpenProfile} onClick={() => onOpenProfile?.(name)} type="button">
+                      @{name}
+                    </button>
+                  </li>
+                ))
+              : null}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
+
 export function OfficeView(props: OfficeViewProps) {
   const reducedMotion = props.reducedMotion ?? effectiveReduced(loadMotion(), systemPrefersReduced())
   const [localLayout, setLocalLayout] = useState<OfficeLayout>('orrery')
@@ -502,6 +558,7 @@ export function OfficeView(props: OfficeViewProps) {
         )}
       </header>
       <Greeting />
+      <NowRunning fleet={fleet} inFlight={props.inFlight} onOpenProfile={props.onOpenProfile} onOpenTask={props.onOpenTask} />
       <StatCards onFocus={focus} profile={profile} stats={stats} />
       <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} th={th} />
       <HealthStrip error={props.fleetError} fleet={fleet} nowS={nowS} />

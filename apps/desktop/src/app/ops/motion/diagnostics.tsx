@@ -83,6 +83,26 @@ export function DiagnosticsPanel({
 
   return (
     <div data-ops-diagnostics="">
+      {/* B34: one-glance health. A ring for the probe score, a plain headline, the stream and error count. */}
+      {(() => {
+        const ok = results ? results.filter(r => r.state === 'ok').length : 0
+        const total = results?.length ?? 0
+        const tone = !results ? 'idle' : ok === total && errors.length === 0 ? 'good' : 'warn'
+
+        return (
+          <div data-ops-diag-hero={tone}>
+            <span data-ops-diag-ring="" style={{ '--ops-pct': total ? ok / total : 0 } as React.CSSProperties}>
+              {results ? `${ok}/${total}` : '–'}
+            </span>
+            <div>
+              <strong>{!results ? T('Not probed yet') : tone === 'good' ? T('All systems go') : T('Some capabilities need attention')}</strong>
+              <small>
+                {stream.mode} · {T('Recent errors')} {errors.length}
+              </small>
+            </div>
+          </div>
+        )
+      })()}
       <dl>
         <dt>{T("Stream")}</dt>
         <dd data-ops-diag-stream={stream.mode}>

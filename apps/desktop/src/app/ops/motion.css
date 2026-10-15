@@ -411,3 +411,6 @@
 @media (prefers-reduced-motion: reduce) {
   [data-ops-orrery] [data-ops-orb], [data-ops-handoff-arc] { animation: none !important; }
 }
+
+/* B34: Office hero pulse (used from ops-base under prefers-reduced-motion: no-preference). */
+@keyframes ops-now-pulse { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, #3fb950 0%, transparent), 0 0 18px #3fb950; } }

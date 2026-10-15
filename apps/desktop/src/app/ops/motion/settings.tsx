@@ -15,6 +15,7 @@ import { usePublishInspectorDetail } from '../inspector-detail'
 import { T } from '../main-i18n'
 import { useOpsResource } from '../office/office-container'
 import { ThresholdSettings } from '../office/thresholds'
+import { Sigil } from '../primitives/sigil'
 import { OpsShortcutSheet } from '../shortcut-sheet'
 
 import { DiagnosticsPanel } from './diagnostics'
@@ -178,6 +179,23 @@ export function SettingsView({
 
   return (
     <section aria-label={T("Ops settings")} data-ops-settings="" data-ops-theme={prefs.theme}>
+      {/* B34: whose settings these are, at a glance: the profile mark, its model, its approval and policy posture. */}
+      <header data-ops-settings-hero="">
+        <Sigil name={profile ?? 'default'} size={44} />
+        <div>
+          <strong>{profile ?? 'default'}</strong>
+          <small>
+            {defaultModel ? `${defaultModel.provider || 'unset'} / ${defaultModel.model || 'unset'}` : T('loading')}
+          </small>
+        </div>
+        <span data-ops-settings-hero-chips="">
+          <span data-ops-chip="">{T('Approvals')}: {approval === undefined ? '…' : (approval ?? T('not set'))}</span>
+          <span data-ops-chip="" data-ops-warn={policy?.fail_closed ? 'true' : undefined}>
+            {T('Policy')}: {policy ? policy.source : '…'}
+          </span>
+          <span data-ops-chip="">{T('Secrets set')}: {secrets ? `${secrets.filter(x => x.set).length}/${secrets.length}` : '…'}</span>
+        </span>
+      </header>
       <Group id="general" title={T("General")}>
         <dl>
           <dt>{T("Theme")}</dt>

@@ -50,6 +50,8 @@ export interface DataTableColumn<T> {
   description?: (row: T) => string | null | undefined
   cell?: (row: T) => ReactNode
   sortValue?: (row: T) => string | number | null | undefined
+  /** B34: what the first column shows as a card title in the roster view (defaults to `cell`). */
+  cardTitle?: (row: T) => ReactNode
 }
 
 export interface DataTableProps<T> {
@@ -218,7 +220,7 @@ export function DataTable<T>({
           <ul aria-label={caption ?? copy.table.caption} data-ops-roster="">
             {ordered.map(row => (
               <li data-row-id={getRowId(row)} key={getRowId(row)}>
-                <div data-ops-roster-title="">{titleColumn?.cell?.(row) ?? titleColumn?.description?.(row) ?? ''}</div>
+                <div data-ops-roster-title="">{titleColumn?.cardTitle?.(row) ?? titleColumn?.cell?.(row) ?? titleColumn?.description?.(row) ?? ''}</div>
                 <dl>
                   {rest.map(column => {
                     const value = column.description?.(row) || column.cell?.(row)

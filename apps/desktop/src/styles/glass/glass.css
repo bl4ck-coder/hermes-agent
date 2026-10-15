@@ -403,3 +403,15 @@ html[data-hermes-theme^='gold-night'] [data-artifact-card='link'] [data-artifact
 html[data-hermes-theme^='gold-night'] [data-cron-run-group] { border-left: 2px solid rgb(var(--glass-gold) / 0.35); border-radius: 6px; }
 html[data-hermes-theme^='gold-night'] [data-session-group] { color: rgb(var(--glass-gold-hi) / 0.85); letter-spacing: 0.08em; }
 html[data-hermes-theme^='gold-night'] [data-overlay-surface] [aria-current='page'] { background: linear-gradient(90deg, rgb(var(--glass-gold) / 0.22), rgb(var(--glass-gold) / 0.06)); box-shadow: inset 2px 0 0 rgb(var(--glass-gold-hi)), 0 0 18px -8px rgb(var(--glass-gold) / 0.6); }html[data-hermes-theme^='gold-night'] [data-artifact-card] { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); }
+html[data-hermes-theme^='gold-night'] [data-ops-app]:has([data-ops-app-connected]) { box-shadow: inset 0 0 0 1px rgb(63 185 80 / 0.35); }
+
+/* -- Glass p10 (B34): thumbnails, profile mark, Agents empty illustration (static CSS rings: no image request). */
+html[data-hermes-theme^='gold-night'] [data-artifact-thumb] { background: radial-gradient(90% 120% at 20% 0%, rgb(var(--glass-gold) / 0.28), transparent 65%), linear-gradient(160deg, rgb(var(--glass-raised)), rgb(var(--glass-ink))); border-bottom: 1px solid rgb(var(--glass-gold-hi) / 0.12); }
+html[data-hermes-theme^='gold-night'] [data-artifact-card='link'] [data-artifact-thumb='monogram'] { background: radial-gradient(90% 120% at 20% 0%, rgb(120 160 255 / 0.22), transparent 65%), linear-gradient(160deg, rgb(var(--glass-raised)), rgb(var(--glass-ink))); }
+html[data-hermes-theme^='gold-night'] [data-artifact-monogram] { color: rgb(var(--glass-gold-hi) / 0.85); text-shadow: 0 0 22px rgb(var(--glass-gold) / 0.5); }
+html[data-hermes-theme^='gold-night'] [data-profile-hero-glyph] > * { border-radius: 14px; box-shadow: 0 0 0 1px rgb(var(--glass-gold-hi) / 0.25), 0 10px 28px -12px rgb(var(--glass-gold) / 0.7); }
+html[data-hermes-theme^='gold-night'] :where(:has(> [data-agents-empty-hint]), div:has(> * > [data-agents-empty-hint]))::before {
+  content: ''; display: block; height: 96px; margin: 0 auto 14px; width: 96px; border-radius: 999px;
+  background: radial-gradient(circle, rgb(var(--glass-gold-hi) / 0.9) 0 5px, transparent 6px), radial-gradient(circle, transparent 0 22px, rgb(var(--glass-gold-hi) / 0.35) 23px 24px, transparent 25px), radial-gradient(circle, transparent 0 38px, rgb(var(--glass-gold) / 0.25) 39px 40px, transparent 41px);
+  box-shadow: 0 0 40px -10px rgb(var(--glass-gold) / 0.6);
+}

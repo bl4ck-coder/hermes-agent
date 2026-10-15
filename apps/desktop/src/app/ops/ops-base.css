@@ -677,11 +677,39 @@
 :where([data-ops-team-busy]) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 40%, transparent), 0 0 22px -8px color-mix(in srgb, var(--ops-gold, #c9a227) 60%, transparent); }
 :where([data-ops-app]) { border-radius: 14px; transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
 :where([data-ops-app]:hover) { box-shadow: 0 14px 30px -22px black, 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 30%, transparent); transform: translateY(-1px); }
-:where([data-ops-app][data-ops-app-connected='true'], [data-ops-app]:has([data-ops-app-connected])) { box-shadow: inset 0 0 0 1px color-mix(in srgb, #3fb950 35%, transparent), 0 0 24px -12px color-mix(in srgb, #3fb950 60%, transparent); }
 :where([data-ops-probe-row]) { border-radius: 10px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent); }
 :where([data-ops-diag-connection]) :where(svg, [data-dot]) { filter: drop-shadow(0 0 5px #3fb950); }
 @media (prefers-reduced-motion: reduce) { :where([data-ops-roster] > li, [data-ops-app]) { transition: none; transform: none; } }/* B33b: frame budget. glass15 showed GPU-bound frames (long frames with ~2 ms main-thread render and no script) after the batch above.
    Repeated elements keep the inset highlight (cheap) but drop the large blurred outer shadows; only singletons (dispatch, Needs-you, selected node) keep a glow. */
 :where([data-ops-roster] > li, [data-ops-column], [data-ops-node], [data-ops-team], [data-ops-card]) { box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); }
 :where([data-ops-app]:hover) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 30%, transparent); }
-:where([data-ops-app][data-ops-app-connected='true'], [data-ops-app]:has([data-ops-app-connected])) { box-shadow: inset 0 0 0 1px color-mix(in srgb, #3fb950 35%, transparent); }
+/* -- B34: hero moves. Singletons may glow; repeated elements keep only the inner highlight. */
+:where([data-ops-now-running]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 16%, transparent), transparent 60%), var(--ops-surface); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 24%, var(--ops-line)); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent), 0 18px 40px -28px color-mix(in srgb, var(--ops-gold, #c9a227) 70%, transparent); display: flex; gap: 14px; margin: 0 0 12px; padding: 14px 18px; }
+:where([data-ops-now-running='quiet']) { background: var(--ops-surface); box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent); }
+:where([data-ops-now-pulse]) { background: #3fb950; border-radius: 999px; box-shadow: 0 0 0 4px color-mix(in srgb, #3fb950 22%, transparent), 0 0 18px #3fb950; flex: none; height: 10px; width: 10px; }
+:where([data-ops-now-running='quiet'] [data-ops-now-pulse]) { background: var(--ops-muted); box-shadow: none; }
+@media (prefers-reduced-motion: no-preference) { :where([data-ops-now-running='live'] [data-ops-now-pulse]) { animation: ops-now-pulse 2.4s ease-in-out infinite; } }
+:where([data-ops-now-label]) { color: var(--ops-muted); display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+:where([data-ops-now-running]) :where(ul) { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; margin: 4px 0 0; padding: 0; }
+:where([data-ops-now-running]) :where(li > button:first-child) { background: none; border: 0; font-size: 16px; font-weight: 500; padding: 0; text-align: left; }
+:where([data-ops-now-agent]) { background: none; border: 0; color: var(--ops-gold, #c9a227); font-size: 13px; margin-left: 6px; padding: 0; }
+:where([data-ops-now-quiet]) { font-size: 15px; margin: 2px 0 0; }
+:where([data-ops-roster-agent]) { align-items: center; background: none; border: 0; display: flex; gap: 12px; padding: 0; text-align: left; }
+:where([data-ops-roster-avatar]) { border-radius: 999px; box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px var(--ops-line); display: inline-grid; flex: none; place-items: center; }
+:where([data-ops-roster-avatar='running']) { box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px #3fb950; }
+:where([data-ops-roster-avatar='failing'], [data-ops-roster-avatar='blocked']) { box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px #f85149; }
+:where([data-ops-roster-avatar='idle']) { box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px color-mix(in srgb, var(--ops-gold, #c9a227) 70%, transparent); }
+:where([data-ops-roster-name]) { display: grid; font-size: 15px; font-weight: 600; }
+:where([data-ops-roster-name]) :where(small) { color: var(--ops-muted); font-size: 11px; font-weight: 400; }
+:where([data-ops-diag-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, #3fb950 14%, transparent), transparent 60%), var(--ops-surface); border: 1px solid var(--ops-line); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; gap: 16px; margin: 0 0 12px; padding: 14px 18px; }
+:where([data-ops-diag-hero='warn']) { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 18%, transparent), transparent 60%), var(--ops-surface); }
+:where([data-ops-diag-hero='idle']) { background: var(--ops-surface); }
+:where([data-ops-diag-ring]) { --ops-ring: #3fb950; background: radial-gradient(closest-side, var(--ops-surface) 76%, transparent 78%), conic-gradient(var(--ops-ring) calc(var(--ops-pct, 0) * 360deg), var(--ops-line) 0); border-radius: 999px; display: grid; flex: none; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 600; height: 64px; place-items: center; width: 64px; }
+:where([data-ops-diag-hero='warn'] [data-ops-diag-ring]) { --ops-ring: var(--ops-gold, #c9a227); }
+:where([data-ops-diag-hero]) :where(strong) { display: block; font-size: 18px; font-weight: 500; }
+:where([data-ops-diag-hero]) :where(small) { color: var(--ops-muted); font-size: 12px; }
+:where([data-ops-settings-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 14%, transparent), transparent 60%), var(--ops-surface); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 18%, var(--ops-line)); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 12px; padding: 14px 18px; }
+:where([data-ops-settings-hero]) :where(strong) { display: block; font-size: 20px; font-weight: 500; }
+:where([data-ops-settings-hero]) :where(small) { color: var(--ops-muted); font-size: 12px; }
+:where([data-ops-settings-hero-chips]) { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+:where([data-ops-column]) > :where(header, h3:first-child) { font-size: 13px; letter-spacing: 0.04em; }

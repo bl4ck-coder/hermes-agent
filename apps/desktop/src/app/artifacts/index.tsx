@@ -468,8 +468,42 @@ function artifactBadge(artifact: ArtifactRecord): string {
   return (/\.(\w{1,5})$/.exec(artifact.value)?.[1] ?? 'file').toUpperCase()
 }
 
+/**
+ * B34: a real thumbnail where one exists without fetching the page ourselves. GitHub publishes
+ * a social card for every repo, issue and PR at a predictable URL; other links and local files
+ * get a lit monogram tile instead.
+ */
+export function artifactThumbnail(artifact: Pick<ArtifactRecord, 'href' | 'kind'>): string | null {
+  if (artifact.kind !== 'link') {
+    return null
+  }
+
+  try {
+    const url = new URL(artifact.href)
+
+    if (url.hostname !== 'github.com') {
+      return null
+    }
+
+    const [owner, repo, kind, num] = url.pathname.split('/').filter(Boolean)
+
+    if (!owner || !repo) {
+      return null
+    }
+
+    const tail = (kind === 'pull' || kind === 'issues') && num && /^\d+$/.test(num) ? `/${kind}/${num}` : ''
+
+    return `https://opengraph.githubassets.com/1/${owner}/${repo}${tail}`
+  } catch {
+    return null
+  }
+}
+
 /** B33: a lit preview card for a file or link — type badge, name, where it came from, when. */
 function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; onOpen: (artifact: ArtifactRecord) => void }) {
+  const thumb = artifactThumbnail(artifact)
+  const [thumbFailed, setThumbFailed] = useState(false)
+
   return (
     <button
       className="group flex min-w-0 flex-col gap-1.5 rounded-xl border border-(--ui-stroke-tertiary) bg-(--ui-chat-bubble-background) p-3 text-left text-xs transition-colors hover:border-(--ui-stroke-secondary)"
@@ -477,6 +511,23 @@ function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; o
       onClick={() => onOpen(artifact)}
       type="button"
     >
+      <span aria-hidden className="relative -mx-3 -mt-3 mb-1 block h-24 overflow-hidden rounded-t-xl" data-artifact-thumb={thumb && !thumbFailed ? 'image' : 'monogram'}>
+        {thumb && !thumbFailed ? (
+          <img
+            alt=""
+            className="size-full object-cover"
+            decoding="async"
+            loading="lazy"
+            onError={() => setThumbFailed(true)}
+            referrerPolicy="no-referrer"
+            src={thumb}
+          />
+        ) : (
+          <span className="grid size-full place-items-center font-mono text-2xl tracking-widest" data-artifact-monogram="">
+            {artifactBadge(artifact).slice(0, 4)}
+          </span>
+        )}
+      </span>
       <span className="self-start rounded-md px-1.5 py-0.5 font-mono text-[0.62rem] tracking-wide" data-artifact-badge="">
         {artifactBadge(artifact)}
       </span>
