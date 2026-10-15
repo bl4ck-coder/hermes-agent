@@ -1045,3 +1045,11 @@
 :where([data-ops-skill-detail] [data-ops-skill-agents]) { display: flex; flex-wrap: wrap; gap: var(--space-2,8px); }
 :where([data-ops-skill-nodesc]) { color: var(--ops-muted); }
 :where([data-ops-row] [data-ops-skill-tag]) { background: none; border: 0; padding: 0; color: var(--ops-muted); }
+
+/* P18f (pass16 #5): Ops Settings rows on the shared settings axis (label 12-20rem, control column), stacking by container. */
+:where([data-ops-settings-group]) { container-type: inline-size; container-name: ops-settings-group; }
+:where([data-ops-settings-group] > dl) { grid-template-columns: minmax(12rem, 20rem) minmax(0, 1fr); }
+:where([data-ops-settings-group] > dl > dd) { max-width: var(--width-field, 480px); }
+@container ops-settings-group (max-width: 40rem) { :where([data-ops-settings-group] > dl) { grid-template-columns: minmax(0, 1fr); } :where([data-ops-settings-group] > dl > dt) { padding-bottom: 0; } }
+:where([data-ops-prefs-reset-row]) { margin: 0 0 var(--space-6, 2rem); }
+
