@@ -791,7 +791,7 @@
 
 /* P6: Settings choices read as a form; Diagnostics/Security sit below a rule as a separate region. */
 :where([data-ops-settings-main]) { max-width: var(--width-form, 760px); display: grid; gap: var(--space-6, 24px); }
-:where([data-ops-settings-system]) { margin-top: var(--space-8, 32px); padding-top: var(--space-6, 24px); border-top: 1px solid var(--ops-line, rgba(255,255,255,.08)); display: grid; gap: var(--space-6, 24px); }
+:where([data-ops-settings-system]) { margin-top: var(--space-6, 2rem); padding-top: var(--space-6, 24px); border-top: 1px solid var(--ops-line, rgba(255,255,255,.08)); display: grid; gap: var(--space-6, 24px); }
 
 /* P6: Channels cards lead with name + connection; card minimum from the spec. */
 :where([data-ops-app-grid]) { grid-template-columns: repeat(auto-fill, minmax(var(--width-card-min, 280px), 1fr)); gap: var(--space-3, 12px); }
@@ -996,7 +996,7 @@
 :where([data-ops-disclosure] > summary)::-webkit-details-marker { display: none; }
 :where([data-ops-disclosure] > summary):focus-visible { outline: 2px solid var(--ops-gold,#c9a227); outline-offset: 2px; }
 :where([data-ops-row-command]) { font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
-:where([data-ops-rows-group]) { margin: 0 0 var(--space-8,32px); }
+:where([data-ops-rows-group]) { margin: 0 0 var(--space-6,2rem); }
 :where([data-ops-rows-group] > h4) { font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); margin: 0 0 var(--space-4,16px); font-weight: 600; }
 
 /* P14: Fleet list: the name is the link; details are a quiet definition list. */
@@ -1035,7 +1035,7 @@
 :where(li[data-ops-row][data-ops-app]:hover) { box-shadow: none; transform: none; background: color-mix(in srgb, white 3%, transparent); }
 :where(li[data-ops-row][data-ops-app]) :where([data-ops-app-glyph]) { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; font-size: var(--type-meta,14px); }
 :where([data-ops-app-warning]) { color: var(--ops-warn,#e3a33b); }
-:where([data-ops-app-catalog-title]) { margin-top: var(--space-8,32px); font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); }
+:where([data-ops-app-catalog-title]) { margin-top: var(--space-6,2rem); font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); }
 :where([data-ops-app-section] > h4) { margin: var(--space-4,16px) 0 var(--space-1,4px); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); font-weight: 600; }
 
 /* P15: Skills rows. */
