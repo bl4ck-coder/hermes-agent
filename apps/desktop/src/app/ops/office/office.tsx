@@ -558,6 +558,22 @@ export function OfficeView(props: OfficeViewProps) {
         )}
       </header>
       <Greeting />
+      {/* P6: decisions first; KPIs and strips follow what needs the user. */}
+      <span data-ops-needs-you-anchor="" />
+      <SectionFrame error={errors.pending} focused={focused === 'needs-you'} heading={false} id="needs-you" loading={props.pending === null} title={T("Needs you")}>
+        <NeedsYouQueue
+          cron={props.cron}
+          items={props.pending}
+          onApprove={props.onApprove}
+          onCronRun={props.onCronRun}
+          onDeny={props.onDeny}
+          onKanban={props.onKanban}
+          onOpenProfile={props.onOpenProfile}
+          onOpenTask={props.onOpenTask}
+          policy={props.policy}
+          readOnly={props.readOnly}
+        />
+      </SectionFrame>
       <NowRunning fleet={fleet} inFlight={props.inFlight} onOpenProfile={props.onOpenProfile} onOpenTask={props.onOpenTask} />
       <StatCards onFocus={focus} profile={profile} stats={stats} />
       <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} th={th} />
@@ -589,21 +605,6 @@ export function OfficeView(props: OfficeViewProps) {
           onNeedsYou={() => document.querySelector('[data-ops-needs-you-anchor]')?.scrollIntoView?.({ block: 'nearest' })}
         />
       )}
-      <span data-ops-needs-you-anchor="" />
-      <SectionFrame error={errors.pending} focused={focused === 'needs-you'} heading={false} id="needs-you" loading={props.pending === null} title={T("Needs you")}>
-        <NeedsYouQueue
-          cron={props.cron}
-          items={props.pending}
-          onApprove={props.onApprove}
-          onCronRun={props.onCronRun}
-          onDeny={props.onDeny}
-          onKanban={props.onKanban}
-          onOpenProfile={props.onOpenProfile}
-          onOpenTask={props.onOpenTask}
-          policy={props.policy}
-          readOnly={props.readOnly}
-        />
-      </SectionFrame>
       <SectionFrame count={stuck?.length} error={errors.board ?? errors.cron} focused={focused === 'stuck'} id="stuck" loading={stuck === null} title={T("Stuck")}>
         {stuck ? <StuckList items={stuck} onOpenCron={openCron} onOpenTask={props.onOpenTask} /> : null}
       </SectionFrame>
