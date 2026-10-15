@@ -261,6 +261,11 @@ export function SettingsView({
             <input aria-label={T("open ops on launch")} checked={prefs.openOnLaunch} onChange={e => set({ openOnLaunch: e.target.checked })} type="checkbox" />
             <small data-ops-launch-route="">{opsLaunchRoute(prefs) ?? T('Desktop opens its own start page.')}</small>
           </dd>
+        </dl>
+      </Group>
+      {/* P17d (judge consult): dates and previews are their own group; Reset closes the preferences it resets. */}
+      <Group id="dates" title={T("Dates and previews")}>
+        <dl>
           <dt>{T("Timezone")}</dt>
           <dd>
             <select aria-label={T("timezone")} data-ops-timezone={opsTimezone(prefs)} onChange={e => set({ timezone: validTimezone(e.target.value) })} value={prefs.timezone}>
