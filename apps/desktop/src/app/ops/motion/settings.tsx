@@ -167,7 +167,8 @@ export function SettingsView({
       /* storage unavailable: keep the in-memory choice */
     }
 
-    setThumbs(on)
+    // B39: show the preference that is actually in effect (storage can refuse the write).
+    setThumbs(!remoteThumbsOptedOut())
     globalThis.dispatchEvent?.(new Event(THUMB_PREF_EVENT))
   }
   usePublishInspectorDetail({

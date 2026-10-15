@@ -116,17 +116,27 @@ export function acquireThumb(url: string): { p: Promise<string | null>; release:
 /** 'pending' while resolving, a blob: URL when cached/fetched, null on any failure or opt-out (caller shows the monogram). */
 export function useCachedThumb(url: string | null): string | null | 'pending' {
   const [src, setSrc] = useState<string | null | 'pending'>(url ? 'pending' : null)
+  // B39 (judge pass 4): the preference works in both directions; turning previews back on re-acquires.
+  const [prefEpoch, setPrefEpoch] = useState(0)
   useEffect(() => {
     if (!url) {
       setSrc(null)
       return
     }
     let live = true
-    setSrc('pending')
+    if (remoteThumbsOptedOut()) {
+      setSrc(null)
+    } else {
+      setSrc('pending')
+    }
     const { p, release } = acquireThumb(url)
     // B37b: re-check the preference when a pending request lands, so an opt-out made meanwhile is never undone.
     void p.then(s => { if (live) setSrc(remoteThumbsOptedOut() ? null : s) })
-    const onPref = (ev?: Event) => { if ((!(ev instanceof StorageEvent) || ev.key === THUMB_OPT_OUT_KEY) && remoteThumbsOptedOut()) setSrc(null) }
+    const onPref = (ev?: Event) => {
+      if (ev instanceof StorageEvent && ev.key !== THUMB_OPT_OUT_KEY) return
+      if (remoteThumbsOptedOut()) setSrc(null)
+      else setPrefEpoch(n => n + 1)
+    }
     // storage fires in other windows; THUMB_PREF_EVENT covers the window that changed it.
     window.addEventListener('storage', onPref)
     window.addEventListener(THUMB_PREF_EVENT, onPref)
@@ -136,6 +146,6 @@ export function useCachedThumb(url: string | null): string | null | 'pending' {
       window.removeEventListener(THUMB_PREF_EVENT, onPref)
       release()
     }
-  }, [url])
+  }, [url, prefEpoch])
   return src
 }

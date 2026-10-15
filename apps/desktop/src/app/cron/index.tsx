@@ -876,6 +876,7 @@ function CronJobDetail({
   pendingJobKey,
   pendingRunAt
 }: CronJobDetailProps) {
+  const { t } = useI18n()
   const state = jobState(job)
   const isPaused = state === 'paused'
   const deliver = jobDeliver(job)
@@ -943,7 +944,7 @@ function CronJobDetail({
               {formatTime(job.last_run_at)}
             </div>
             <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">
-              {job.last_error ? lastErrorSummary(job.last_error) : (c.states[state] ?? state)}
+              {job.last_error ? lastErrorSummary(job.last_error) : job.last_run_at ? t.install.stageStates.succeeded : '—'}
             </div>
           </div>
         </div>

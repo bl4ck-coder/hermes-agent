@@ -749,3 +749,11 @@
 :where([data-ops-roster]) :where(dl > div[data-desc] > dt) { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; width: 1px; }
 :where([data-ops-roster]) :where(dl > div[data-desc] > dd) { color: var(--ops-text, inherit); font-size: 13px; }
 :where([data-ops-roster]) :where(dt) { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* B39 (judge pass 4): three readable cards per row instead of five micro-cards; name and purpose lead, facts sit on a stable footer. */
+:where([data-ops-roster]) { gap: 14px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+:where([data-ops-roster]) > :where(li) { padding: 16px 18px; }
+:where([data-ops-roster-title]) { font-size: 16px; }
+:where([data-ops-roster]) :where(dl > div[data-desc] > dd) { font-size: 13.5px; -webkit-line-clamp: 2; }
+:where([data-ops-roster]) :where(dl > div:not([data-desc])) { order: 1; }
+:where([data-ops-roster]) :where(dl > div[data-col='agents'], dl > div[data-col='profiles']) { flex-basis: 100%; order: 2; }

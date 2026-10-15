@@ -464,7 +464,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                 </div>
                 {currentFilePage === 1 && (
                   // B33: the newest files and links as preview cards; the full table stays below. B36: labelled "Recent" so the overlap with the table reads as intended.
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 pb-2 pt-1.5" data-artifact-cards="" data-label={T('Recent')}>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-3 pb-2 pt-1.5" data-artifact-cards="" data-label={T('Recent')}>
                     {pagedFileArtifacts.slice(0, 8).map(artifact => (
                       <ArtifactPreviewCard artifact={artifact} key={artifact.id} onOpen={openArtifact} />
                     ))}
