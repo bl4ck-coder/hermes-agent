@@ -45,12 +45,19 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
   const slots = tab ? slotsForKind(tab.kind) : []
   const active = activeInspectorSlot(scope)
   const footer = runFooter(focusedRun)
+  const want = detailKindForSlot(active)
+  const detail = useInspectorDetail(want)
+  const owner = want ? DETAIL_TAB[want] : null
+  const ownsTab = !tab || !owner || tab.id === owner || tab.id === `lens:${owner}`
+  // P6: an inspector with nothing to show collapses to its tab strip instead of holding 280px.
+  const empty = !footer && active !== 'fleet' && !(detail && want && detail.kind === want && ownsTab)
 
   return (
     <aside
       aria-label={copy.inspector.label}
       data-ops-inspector={overlay ? 'overlay' : 'docked'}
       data-ops-inspector-slot={active}
+      data-ops-inspector-state={empty ? 'empty' : 'filled'}
       style={
         overlay
           ? {
@@ -65,7 +72,15 @@ export function Inspector({ fleet, focusedRun, onClose, onSlot, overlay, scope }
               width: '100%',
               zIndex: 1
             }
-          : { boxSizing: 'border-box', flex: '0 0 280px', maxWidth: 280, minWidth: 280, width: 280 }
+          : empty
+            ? { boxSizing: 'border-box', flex: '0 0 auto', maxWidth: 'var(--width-inspector, 320px)', minWidth: 0, width: 'auto' }
+            : {
+                boxSizing: 'border-box',
+                flex: '0 0 var(--width-inspector, 320px)',
+                maxWidth: 'var(--width-inspector, 320px)',
+                minWidth: 'var(--width-inspector, 320px)',
+                width: 'var(--width-inspector, 320px)'
+              }
       }
     >
       <div role="tablist">
