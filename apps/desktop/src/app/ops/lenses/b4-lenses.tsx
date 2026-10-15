@@ -850,6 +850,12 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
   }
 
   const missing = (['catalog', 'servers', 'platforms', 'providers'] as const).filter(k => r.value![k] === null)
+
+  // P24d (judge pass 18): a category fed by a source that failed has an unknown count, never a 0 that reads as "none".
+  const unknownCats = new Set(
+    [missing.includes('catalog') || missing.includes('servers') ? APP_CATEGORIES.mcp : null, missing.includes('platforms') ? APP_CATEGORIES.messaging : null, missing.includes('providers') ? APP_CATEGORIES.model : null].filter(Boolean)
+  )
+
   const base = filter === 'connected' ? cards.filter(x => x.connected) : cards
   // P16c: configured apps lead under every filter, and each group is in stable alphabetical order.
   const shown = searchRows(base, q, x => [x.name, x.description]).filter(x => !cat || x.category === cat).sort((a, b) => a.name.localeCompare(b.name))
@@ -875,7 +881,11 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
       {/* P22b: name the failed source in plain words and say what is still shown. */}
       {missing.length ? (
         <p data-ops-partial="" role="status">
-          {T("Couldn't load {sources}. Showing everything else.").replace('{sources}', missing.map(k => T(SOURCE_NAMES[k])).join(', '))}
+          {T("Couldn't load {sources}. Showing everything else.").replace('{sources}', missing.map(k => T(SOURCE_NAMES[k])).join(', '))}{' '}
+          {/* P24d: retry right where the failure is named; reuses the lens's own load. */}
+          <button data-ops-partial-retry="" onClick={r.reload} type="button">
+            {T('Retry')}
+          </button>
         </p>
       ) : null}
       {quick ? <QuickConnect cards={cards} onClose={() => setQuick(false)} onOpenRoute={onOpenRoute} /> : null}
@@ -885,7 +895,8 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
             {T("All")}</button>
           {cats.map(x => (
             <button aria-pressed={cat === x} data-ops-app-cat={x} key={x} onClick={() => setCat(x)} type="button">
-              {x} <span>{base.filter(c => c.category === x).length}</span>
+              {x}{' '}
+              {unknownCats.has(x) ? <span data-ops-count-unknown="">{T('unknown')}</span> : <span>{base.filter(c => c.category === x).length}</span>}
             </button>
           ))}
           {/* G15: the rail's footer is the library entry. */}
@@ -944,7 +955,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
           </div>
           {shown.length === 0 ? (
         <p data-ops-empty="apps">
-          {filter === 'connected' && !cat && !q.trim() ? T('Nothing connected yet.') : T('No app matches.')}{' '}
+          {cat && unknownCats.has(cat) ? T('This category could not be loaded.') : filter === 'connected' && !cat && !q.trim() ? T('Nothing connected yet.') : T('No app matches.')}{' '}
           <button data-ops-empty-reset="" onClick={() => (setFilter('all'), setQ(''), setCat(null))} type="button">
             {T('Show all apps')}
           </button>
