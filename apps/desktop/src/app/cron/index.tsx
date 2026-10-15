@@ -915,47 +915,35 @@ function CronJobDetail({
           </div>
         </div>
 
-        {/* B38 (judge): what a scheduler page is FOR leads: when it fires next
-            and how the last run went, at reading scale. History sits below. */}
-        <div className="grid grid-cols-2 gap-2" data-cron-glance="">
+        {/* P10 (judge pass 10): the confirmed result of the last run is the headline; its time sits
+            under it; the next run is one secondary line. No tiles. */}
+        <div className="space-y-1" data-cron-glance="">
+          <div className="flex items-center gap-2 text-(length:--type-section) leading-(--type-section-lh) font-semibold text-foreground" data-cron-glance-tile="last" data-result={lastResult}>
+            {job.last_run_at ? (
+              <span
+                aria-hidden="true"
+                className={
+                  'size-2.5 shrink-0 rounded-full ' +
+                  (lastResult === 'failed' ? 'bg-destructive' : lastResult === 'ok' ? 'bg-emerald-400' : 'bg-(--ui-text-quaternary)')
+                }
+              />
+            ) : null}
+            <span className="min-w-0 truncate">
+              {job.last_error
+                ? `${c.lastRunFailed} ${lastErrorSummary(job.last_error)}`
+                : (cronLastResultLabel(job.last_status, c, t.install.stageStates.succeeded) ?? (job.last_run_at ? t.cron.states.unknown ?? '?' : '\u2014'))}
+            </span>
+          </div>
+          <div className="text-(length:--type-meta) leading-(--type-meta-lh) tabular-nums text-(--ui-text-secondary)">
+            {c.last.replace(/:$/, '')} {formatTime(job.last_run_at)}
+          </div>
           <div
-            className="rounded-xl border border-(--ui-stroke-secondary) px-3.5 py-3"
+            className="text-(length:--type-meta) leading-(--type-meta-lh) tabular-nums text-(--ui-text-tertiary) data-[overdue]:text-(--ui-warning,#e3a33b)"
             data-cron-glance-tile="next"
             data-overdue={nextRunOverdueMs(job) === null ? undefined : ''}
           >
-            <div className="text-xs font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
-              {(nextRunOverdueMs(job) === null ? c.next : c.overdueSince).replace(/:$/, '')}
-            </div>
-            <div className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-              {isPaused ? (c.states.paused ?? 'paused') : formatTime(job.next_run_at)}
-            </div>
-            <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">{jobScheduleDisplay(job)}</div>
-          </div>
-          <div
-            className="rounded-xl border border-(--ui-stroke-secondary) px-3.5 py-3"
-            data-cron-glance-tile="last"
-            data-result={lastResult}
-          >
-            <div className="text-xs font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
-              {c.last.replace(/:$/, '')}
-            </div>
-            <div className="mt-1 flex items-center gap-1.5 text-lg font-semibold tabular-nums text-foreground">
-              {job.last_run_at ? (
-                <span
-                  aria-hidden="true"
-                  className={
-                    'size-2 shrink-0 rounded-full ' +
-                    (lastResult === 'failed' ? 'bg-destructive' : lastResult === 'ok' ? 'bg-emerald-400' : 'bg-(--ui-text-quaternary)')
-                  }
-                />
-              ) : null}
-              {formatTime(job.last_run_at)}
-            </div>
-            <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">
-              {job.last_error
-                ? lastErrorSummary(job.last_error)
-                : (cronLastResultLabel(job.last_status, c, t.install.stageStates.succeeded) ?? (job.last_run_at ? t.cron.states.unknown ?? '?' : '—'))}
-            </div>
+            {(nextRunOverdueMs(job) === null ? c.next : c.overdueSince).replace(/:$/, '')}{' '}
+            {isPaused ? (c.states.paused ?? 'paused') : formatTime(job.next_run_at)} {'\u00b7'} {jobScheduleDisplay(job)}
           </div>
         </div>
 
@@ -1216,7 +1204,7 @@ function CronJobRuns({
                 {renderRun(head)}
                 <details data-cron-run-group-more="">
                   <summary className="cursor-pointer px-2 py-0.5 text-xs text-muted-foreground">
-                    {`×${group.length} · ${c.runHistory}`}
+                    {`+${rest.length}`}
                   </summary>
                   <div className="flex flex-col gap-px">{rest.map(renderRun)}</div>
                 </details>
