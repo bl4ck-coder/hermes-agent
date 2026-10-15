@@ -943,7 +943,8 @@
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1,4px) var(--space-3,12px); margin: 0; }
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl > [data-col='description']) { flex-basis: 100%; }
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl > [data-col='description'] [data-ops-roster-desc]) { -webkit-line-clamp: 4; color: var(--ops-fg); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
-:where([data-ops-lens='skills']) :where([data-ops-roster] dl > div:not([data-col='description']) dt) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:where([data-ops-lens='skills']) :where([data-ops-roster] dl > div:not([data-col='description'])) { display: inline-flex; gap: 4px; align-items: baseline; }
+:where([data-ops-lens='skills']) :where([data-ops-roster] dl > div:not([data-col='description']) dt) { text-transform: none; letter-spacing: 0; font-size: var(--type-caption,12px); color: var(--ops-muted); opacity: 0.8; }
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl > div:not([data-col='description'])) { font-size: var(--type-caption,12px); color: var(--ops-muted); }
 /* P11: Channels catalog descriptions are recoverable without hover: keyboard focus and touch show the full text. */
 :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li:focus-within > p) { -webkit-line-clamp: unset; display: block; }
