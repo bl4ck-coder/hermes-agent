@@ -151,7 +151,7 @@ export function DiagnosticsPanel({
           </>
         )}
       </section>
-      <details data-ops-diag-details="" open={Boolean(results)}>
+      <details data-ops-diag-details="">
         <summary>{T('Details')}</summary>
         <dl>
           <dt>{T("Stream")}</dt>

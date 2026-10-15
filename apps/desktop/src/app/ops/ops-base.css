@@ -873,3 +873,6 @@
 :where([data-ops-team-head]) :where(h3) { flex: 1 1 100%; min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; }
 :where([data-ops-team]) { min-width: 0; overflow: hidden; }
 
+/* P8: hidden tab panels stay hidden even though both views are grids. */
+:where([data-ops-settings-main][hidden], [data-ops-settings-system][hidden]) { display: none; }
+

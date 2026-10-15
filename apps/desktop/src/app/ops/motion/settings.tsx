@@ -218,17 +218,36 @@ export function SettingsView({
       </header>
       <div aria-label={T("Settings views")} data-ops-settings-views="" role="tablist">
         {(['settings', 'diagnostics'] as const).map(v => (
-          <button aria-selected={view === v} data-ops-settings-view={v} key={v} onClick={() => setView(v)} role="tab" type="button">
+          <button
+            aria-controls={`ops-settings-panel-${v}`}
+            aria-selected={view === v}
+            data-ops-settings-view={v}
+            id={`ops-settings-tab-${v}`}
+            key={v}
+            onClick={() => setView(v)}
+            onKeyDown={e => {
+              // P8: the tab pattern: arrows / Home / End move between the two views.
+              const next = e.key === 'ArrowRight' || e.key === 'ArrowLeft' ? (v === 'settings' ? 'diagnostics' : 'settings') : e.key === 'Home' ? 'settings' : e.key === 'End' ? 'diagnostics' : null
+
+              if (next) {
+                e.preventDefault()
+                setView(next)
+                ;(e.currentTarget.parentElement?.querySelector(`[data-ops-settings-view="${next}"]`) as HTMLElement | null)?.focus()
+              }
+            }}
+            role="tab"
+            tabIndex={view === v ? 0 : -1}
+            type="button"
+          >
             {v === 'settings' ? T('Settings') : T('Diagnostics')}
           </button>
         ))}
       </div>
-      {view === 'diagnostics' ? (
-        <section aria-label={T("Diagnostics")} data-ops-settings-system="">
-          <DiagnosticsPanel policySource={policySource} />
-        </section>
-      ) : (
-      <div data-ops-settings-main="">
+      {/* P8: both views stay mounted so a probe survives switching tabs. */}
+      <section aria-labelledby="ops-settings-tab-diagnostics" data-ops-settings-system="" hidden={view !== 'diagnostics'} id="ops-settings-panel-diagnostics" role="tabpanel">
+        <DiagnosticsPanel policySource={policySource} />
+      </section>
+      <div aria-labelledby="ops-settings-tab-settings" data-ops-settings-main="" hidden={view !== 'settings'} id="ops-settings-panel-settings" role="tabpanel">
       <Group id="general" title={T("General")}>
         <dl>
           <dt>{T("Theme")}</dt>
@@ -388,7 +407,6 @@ export function SettingsView({
         </dl>
       </Group>
       </div>
-      )}
       {sheet ? <OpsShortcutSheet onClose={() => setSheet(false)} /> : null}
     </section>
   )
