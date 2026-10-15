@@ -11,7 +11,6 @@ import { createNodeClient } from '../canvas/node-editor'
 import { NodeEditor } from '../canvas/node-editor-view'
 import { approvalMode, createOpsActions, envPresenceList } from '../feed/ops-actions'
 import { createOpsClient, type PolicyView } from '../feed/ops-client'
-import { usePublishInspectorDetail } from '../inspector-detail'
 import { T } from '../main-i18n'
 import { useOpsResource } from '../office/office-container'
 import { ThresholdSettings } from '../office/thresholds'
@@ -173,23 +172,7 @@ export function SettingsView({
     setThumbs(!remoteThumbsOptedOut())
     globalThis.dispatchEvent?.(new Event(THUMB_PREF_EVENT))
   }
-  usePublishInspectorDetail({
-    kind: 'settings',
-    id: `settings:${profile ?? 'default'}`,
-    title: 'Settings',
-    badge: profile ?? 'default',
-    rows: [
-      ['Time zone', opsTimezone(prefs)],
-      ['Motion', String(motion)],
-      ['Policy', policy ? (policy.fail_closed ? `${policy.source} (invalid, writes blocked)` : policy.source) : 'loading'],
-      ['Default model', defaultModel ? `${defaultModel.provider || 'unset'} / ${defaultModel.model || 'unset'}` : 'loading'],
-      ['Approvals', approval === undefined ? 'loading' : (approval ?? 'not set')],
-      ['Secrets set', secrets ? `${secrets.filter(s => s.set).length} of ${secrets.length}` : T('unknown')],
-      ['Legacy write routes', 'active (retire flag off)']
-    ],
-    source: 'Ops settings',
-    why: "this profile's Ops settings"
-  })
+  // P8: no Settings inspector detail: it only repeated the form's own values (judge pass 8).
 
   const set = (p: Partial<OpsPrefs>) => {
     const next = { ...prefs, ...p }

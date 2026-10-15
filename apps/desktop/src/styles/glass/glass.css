@@ -506,3 +506,6 @@ html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-
 html[data-hermes-theme^='gold-night'] [data-profile-soul-editor]:focus-within { box-shadow: 0 0 0 1px rgb(var(--glass-gold-hi) / 0.45); }
 html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-scroller, html[data-hermes-theme^='gold-night'] [data-profile-soul-editor] .cm-content { font-size: var(--type-body); line-height: var(--type-reading-lh); }
 html[data-hermes-theme^='gold-night'] [data-cron-glance-tile] { background: none; box-shadow: none; }
+/* P8: Settings is a form, not a stack of cards: groups are unframed sections divided by a rule. */
+html[data-hermes-theme^='gold-night'] :where([data-ops-settings-main] > [data-ops-settings-group], [data-ops-settings-group][data-ops-settings-group='security']) { background: none; border: 0; border-bottom: 1px solid rgb(255 255 255 / 0.06); border-radius: 0; box-shadow: none; padding: 0 0 24px; }
+
