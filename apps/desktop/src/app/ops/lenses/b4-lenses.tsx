@@ -922,8 +922,8 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
           </div>
           {shown.length === 0 ? (
         <p data-ops-empty="apps">
-          {filter === 'connected' ? T('Nothing connected yet.') : T('No app matches.')}{' '}
-          <button data-ops-empty-reset="" onClick={() => (setFilter('all'), setQ(''))} type="button">
+          {filter === 'connected' && !cat && !q.trim() ? T('Nothing connected yet.') : T('No app matches.')}{' '}
+          <button data-ops-empty-reset="" onClick={() => (setFilter('all'), setQ(''), setCat(null))} type="button">
             {T('Show all apps')}
           </button>
         </p>
