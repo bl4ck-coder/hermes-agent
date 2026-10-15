@@ -1003,3 +1003,13 @@
 :where([data-ops-row-command]) { font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 :where([data-ops-rows-group]) { margin: 0 0 var(--space-8,32px); }
 :where([data-ops-rows-group] > h4) { font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); margin: 0 0 var(--space-4,16px); font-weight: 600; }
+
+/* P14: Fleet list: the name is the link; details are a quiet definition list. */
+:where([data-ops-row-link]) { all: unset; cursor: pointer; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2,8px); }
+:where([data-ops-row-link]):focus-visible { outline: 2px solid var(--ops-gold,#c9a227); outline-offset: 2px; border-radius: 4px; }
+:where([data-ops-row-link]) :where(small) { font-weight: 400; font-size: var(--type-meta,14px); color: var(--ops-muted); }
+:where([data-ops-fleet-details]) { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-3,12px); margin: 0; font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); text-align: left; }
+:where([data-ops-fleet-details] dt) { color: var(--ops-muted); }
+:where([data-ops-fleet-details] dd) { margin: 0; }
+:where([data-ops-fleet-views]) { display: inline-flex; gap: var(--space-1,4px); margin: var(--space-2,8px) 0 var(--space-4,16px); }
+:where([data-ops-rows-count]) { color: var(--ops-muted); font-weight: 400; }

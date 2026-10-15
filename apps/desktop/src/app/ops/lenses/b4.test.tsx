@@ -100,6 +100,9 @@ describe('R72 Fleet / R73 Teams / O14', () => {
     render(<AgentsLens client={client()} nowS={NOW} onOpenRoute={open} />)
     await waitFor(() => expect(document.querySelector('[data-ops-fleet-open="builder"]')).toBeTruthy())
     await waitFor(() => expect(document.querySelector('[data-ops-fleet-status="running"]')).toBeTruthy())
+    // P14: the list is the default; role and status read in the row, columns live in the Table view.
+    expect(document.querySelector('[data-ops-fleet-open="builder"] [data-ops-role]')?.textContent).toBe('Orchestrator')
+    fireEvent.click(document.querySelector('[data-ops-fleet-view="table"]')!)
     const heads = [...document.querySelectorAll('th')].map(th => th.textContent)
 
     for (const h of ['Agent', 'Model', 'Lane', 'Active tasks', 'Runs 7d', 'Last active', 'Status']) {

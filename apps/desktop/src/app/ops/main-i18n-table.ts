@@ -2,6 +2,9 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Fleet view": "Vista de la flota",
+     "No run observed": "Sin ejecución observada",
+     "Open profile": "Abrir perfil",
      "Open task": "Abrir tarea",
      "Configuration or run problems": "Problemas de configuración o ejecución",
      "Blocked work": "Trabajo bloqueado",
@@ -645,6 +648,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Fleet view": "Vue de la flotte",
+     "No run observed": "Aucune exécution observée",
+     "Open profile": "Ouvrir le profil",
      "Open task": "Ouvrir la tâche",
      "Configuration or run problems": "Problèmes de configuration ou d’exécution",
      "Blocked work": "Travail bloqué",
@@ -1287,6 +1293,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Fleet view": "Flottenansicht",
+     "No run observed": "Keine Ausführung beobachtet",
+     "Open profile": "Profil öffnen",
      "Open task": "Aufgabe öffnen",
      "Configuration or run problems": "Konfigurations- oder Ausführungsprobleme",
      "Blocked work": "Blockierte Arbeit",
@@ -1929,6 +1938,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Fleet view": "Вид парка",
+     "No run observed": "Запусков не замечено",
+     "Open profile": "Открыть профиль",
      "Open task": "Открыть задачу",
      "Configuration or run problems": "Проблемы конфигурации или запуска",
      "Blocked work": "Заблокированная работа",
@@ -2571,6 +2583,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Fleet view": "フリートの表示",
+     "No run observed": "実行は観測されていません",
+     "Open profile": "プロフィールを開く",
      "Open task": "タスクを開く",
      "Configuration or run problems": "設定または実行の問題",
      "Blocked work": "ブロック中の作業",
@@ -3213,6 +3228,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Fleet view": "舰队视图",
+     "No run observed": "未观察到运行",
+     "Open profile": "打开配置文件",
      "Open task": "打开任务",
      "Configuration or run problems": "配置或运行问题",
      "Blocked work": "受阻的工作",
@@ -3855,6 +3873,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Fleet view": "艦隊檢視",
+     "No run observed": "未觀察到執行",
+     "Open profile": "開啟設定檔",
      "Open task": "開啟任務",
      "Configuration or run problems": "設定或執行問題",
      "Blocked work": "受阻的工作",
@@ -4497,6 +4518,9 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Fleet view": "عرض الأسطول",
+     "No run observed": "لم يُلاحظ أي تشغيل",
+     "Open profile": "فتح الملف الشخصي",
      "Open task": "فتح المهمة",
      "Configuration or run problems": "مشكلات في الإعداد أو التشغيل",
      "Blocked work": "عمل محظور",
