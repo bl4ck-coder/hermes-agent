@@ -737,7 +737,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
 type Filter = 'all' | 'connected'
 
 /** P15 (judge consult): what "connected" means depends on the source; say that, not a health claim. */
-const appState = (card: AppCard) => (card.kind === 'messaging' ? T('Configured') : card.kind === 'model' ? T('Signed in') : T('Installed'))
+const appState = (card: AppCard) => (card.kind === 'model' ? T('Signed in') : T('Configured'))
 
 /** P15: one EntityRow per app: glyph → name → warning (or what it does) → category and state → Manage / Connect. */
 function AppRow({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: string) => void }) {
