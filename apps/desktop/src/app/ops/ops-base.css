@@ -956,3 +956,8 @@
 :where([data-ops-settings-group] > dl > dd) :where(small) { font-size: var(--type-caption,12px); line-height: var(--type-caption-lh,16px); color: var(--ops-muted); max-width: var(--width-field,30rem); }
 :where([data-ops-settings-main]) { gap: var(--space-4,16px); }
 :where(fieldset[data-ops-thresholds] > legend) { font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); font-weight: 600; }
+
+/* P11: the unassigned lane is one card among others, not a full-width band; members cap at 6. */
+:where([data-ops-teams] > li[data-ops-team='No lane']) { grid-column: auto; order: 1; }
+:where([data-ops-team-now]) { margin: 0; font-size: var(--type-caption,12px); line-height: var(--type-caption-lh,16px); color: var(--ops-muted); }
+:where([data-ops-team-more]) { font-size: var(--type-caption,12px); color: var(--ops-muted); align-self: center; }

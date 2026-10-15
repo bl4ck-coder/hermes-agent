@@ -15,11 +15,11 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { opsCall } from '../feed/diag'
 import { type ActiveWorker, createOpsActions } from '../feed/ops-actions'
 import { P, T } from '../main-i18n'
-import { Sigil } from '../primitives/sigil'
 import type { BoardTask } from '../office/control-room'
 import { fmtAge } from '../office/control-room'
 import { useOpsResource } from '../office/office-container'
 import { DataTable, type DataTableSort } from '../primitives/data-table'
+import { Sigil } from '../primitives/sigil'
 
 import {
   APP_CATEGORIES,
@@ -153,8 +153,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
           <Search label={T("search agents")} onChange={setQ} placeholder={T("Search by name, model, lane, role")} value={q} />
           {tasks.error ? <p data-ops-partial="">{T("Task counts unavailable:")}{' '}{why(tasks.error)}</p> : null}
           <FleetAttention now={now} onOpen={onOpenRoute ? open : undefined} rows={rows} />
-          <DataTable viewToggleId="fleet"
-            caption={`Fleet (${rows.length})`}
+          <DataTable caption={`Fleet (${rows.length})`}
             columns={[
               {
                 id: 'name',
@@ -205,6 +204,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
             onSortChange={setSort}
             rows={searchRows(rows, q, r => [r.name, r.model, r.lane, r.role])}
             sort={sort}
+            viewToggleId="fleet"
           />
         </>
       ) : tab === 'teams' ? (
@@ -252,6 +252,9 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
             {t.blocked ? <span data-ops-team-blocked="">{P(t.blocked, '{n} blocked')}</span> : null}
           </header>
           {t.focus.length ? (
+            <>
+            {/* P11: the headline task is current work, labeled as such, not the team's purpose. */}
+            <p data-ops-team-now="">{T('Working on')}</p>
             <ul aria-label={T('Working on')} data-ops-team-purpose="">
               {t.focus.map(f => (
                 <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.blocked ? '' : undefined} key={f.id} title={f.title}>
@@ -260,19 +263,21 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
                 </li>
               ))}
             </ul>
+            </>
           ) : (
-            <p data-ops-team-purpose="" data-ops-team-idle="">{T('No open work')}</p>
+            <p data-ops-team-idle="" data-ops-team-purpose="">{T('No open work')}</p>
           )}
           <footer data-ops-team-foot="">
             <span aria-label={T('Members:')} data-ops-team-members="" role="list">
               {t.members.length
-                ? t.members.map(m => (
+                ? t.members.slice(0, 6).map(m => (
                     <span data-ops-team-member={m} key={m} role="listitem" title={m}>
                       <Sigil name={m} size={20} />
                       <span data-ops-sr="">{m}</span>
                     </span>
                   ))
                 : <span data-ops-team-none="">{T('No members')}</span>}
+              {t.members.length > 6 ? <span data-ops-team-more="" role="listitem" title={t.members.slice(6).join(', ')}>+{t.members.length - 6}</span> : null}
             </span>
             {t.projects.length ? (
               <span data-ops-team-projects="">
@@ -314,9 +319,11 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
 /** P7/P8: agents that need a look lead the Fleet, each with the reason and what to open; the inventory follows. */
 function FleetAttention({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; now: number; onOpen?: (name: string) => void }) {
   const [all, setAll] = useState(false)
+
   const hot = rows
     .filter(r => r.status === 'failing' || r.status === 'unknown' || (r.failed7d ?? 0) > 0)
     .sort((a, b) => Number(b.status === 'failing') - Number(a.status === 'failing') || (b.failed7d ?? 0) - (a.failed7d ?? 0))
+
   const running = rows.filter(r => r.status === 'running').length
 
   if (hot.length === 0) {
@@ -328,6 +335,7 @@ function FleetAttention({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRo
   }
 
   const shown = all ? hot : hot.slice(0, 3)
+
   const reason = (r: (typeof hot)[number]) =>
     r.failingTask
       ? `${T('Failing task')}: ${r.failingTask.title} · ${P(r.failingTask.failures, '{n} failures in a row')}`
@@ -342,7 +350,7 @@ function FleetAttention({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRo
       </h3>
       <ul>
         {shown.map(r => (
-          <li data-ops-fleet-attention-row={r.name} data-ops-fleet-attention-kind={r.failingTask ? 'failing' : r.status === 'unknown' ? 'unknown' : 'failed-runs'} key={r.name}>
+          <li data-ops-fleet-attention-kind={r.failingTask ? 'failing' : r.status === 'unknown' ? 'unknown' : 'failed-runs'} data-ops-fleet-attention-row={r.name} key={r.name}>
             <button disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
               <Sigil name={r.name} size={32} />
               <span data-ops-fleet-attention-name="">{r.name}</span>
@@ -528,8 +536,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         {!rows ? (
           <State error={skills.error} what="Skills" />
         ) : (
-          <DataTable viewToggleId="skills"
-            caption="Skills"
+          <DataTable caption="Skills"
             columns={[
               {
                 id: 'name',
@@ -553,6 +560,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
             onSortChange={setSort}
             rows={shown}
             sort={sort}
+            viewToggleId="skills"
           />
         )}
       </section>
