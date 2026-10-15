@@ -785,3 +785,6 @@
 /* P6: empty docked inspector keeps only its tab strip; the unavailable note is not a panel. */
 :where([data-ops-inspector='docked'][data-ops-inspector-state='empty']) :where([data-ops-inspector-body]) { display: none; }
 :where([data-ops-inspector='docked'][data-ops-inspector-state='empty']) :where([role='tablist']) { display: flex; flex-direction: column; gap: var(--space-1,4px); padding: var(--space-2,8px); }
+
+/* P6: settings content sits on the form width instead of the full pane. */
+:where([data-settings-scroll]) > * { max-width: var(--width-form, 760px); }

@@ -335,8 +335,8 @@ function SoulEditor({ profileName }: { profileName: string }) {
     <section className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <PanelSectionLabel className="text-xs tracking-[0.14em]">SOUL.md</PanelSectionLabel>
-          <p className="text-sm text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
+          <PanelSectionLabel className="text-(length:--type-section) leading-(--type-section-lh) tracking-normal normal-case">SOUL.md</PanelSectionLabel>
+          <p className="max-w-(--width-reading) text-(length:--type-meta) leading-(--type-meta-lh) text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
         </div>
         <div className="flex items-center gap-3" data-profile-soul-actions="">
           {dirty && <span className="text-xs text-muted-foreground">{p.unsavedChanges}</span>}
@@ -350,7 +350,7 @@ function SoulEditor({ profileName }: { profileName: string }) {
       {loading ? (
         <PageLoader className="min-h-44" label={p.loadingSoul} />
       ) : (
-        <div className="min-h-[min(55vh,30rem)] [&>*]:min-h-[inherit] [&_.cm-editor]:min-h-[inherit]" data-profile-soul-editor="">
+        <div className="min-h-[min(55vh,30rem)] max-w-(--width-reading) [&>*]:min-h-[inherit] [&_.cm-content]:text-(length:--type-body) [&_.cm-content]:leading-(--type-reading-lh) [&_.cm-editor]:min-h-[inherit]" data-profile-soul-editor="">
           <CodeEditor
             filePath="SOUL.md"
             framed

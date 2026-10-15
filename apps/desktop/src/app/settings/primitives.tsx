@@ -19,7 +19,7 @@ export const SettingsBreadcrumbContext = createContext(false)
 export function SettingsContent({ children, bare = false }: { children: ReactNode; bare?: boolean }) {
   return (
     <section className="min-h-0 overflow-hidden">
-      <div className={cn('h-full min-h-0 overflow-y-auto', bare ? 'px-5 pb-6' : cn('pb-20', PAGE_INSET_X))}>
+      <div className={cn('h-full min-h-0 overflow-y-auto', bare ? 'px-5 pb-6' : cn('pb-20', PAGE_INSET_X))} data-settings-scroll="">
         {children}
       </div>
     </section>
@@ -73,7 +73,7 @@ export function SectionHeading({
   }
 
   return (
-    <div className="mb-2.5 flex items-center gap-2 pt-2 text-[length:var(--conversation-text-font-size)] font-medium">
+    <div className="mb-3 flex items-center gap-2 pt-2 text-(length:--type-section) leading-(--type-section-lh) font-semibold" data-settings-heading="">
       {showTitle && (
         <>
           <Icon className="size-4 shrink-0 text-muted-foreground" />
@@ -179,12 +179,12 @@ export function ListRow({
     <div className={cn('@container', className)} data-settings-row="" data-tour={dataTour} id={id}>
       <div className={cn('grid gap-3 py-3', !wide && [LIST_ROW_COLUMNS, '@2xl:items-center'])}>
         <div className="min-w-0">
-          <div className="flex items-center justify-between gap-3 text-[length:var(--conversation-text-font-size)] font-medium text-foreground">
+          <div className="flex items-center justify-between gap-3 text-(length:--type-body) leading-(--type-body-lh) font-medium text-foreground">
             <span className="min-w-0">{title}</span>
             {wide && action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
           </div>
           {description && (
-            <div className="mt-1 text-[length:var(--conversation-caption-font-size)] leading-(--conversation-caption-line-height) text-(--ui-text-tertiary)">
+            <div className="mt-1 max-w-(--width-field) text-(length:--type-meta) leading-(--type-meta-lh) text-(--ui-text-tertiary)">
               {description}
             </div>
           )}
