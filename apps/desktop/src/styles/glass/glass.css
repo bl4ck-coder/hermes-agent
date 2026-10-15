@@ -329,6 +329,10 @@ html[data-hermes-theme^='gold-night'] :is([data-chat-surface], [data-slot='compo
   background-image: var(--glass-noise), var(--glass-spot), var(--glass-ambient);
 }
 html[data-hermes-theme^='gold-night'] [data-slot='composer-bounds'] { background-color: transparent; }
+/* P24 (judge pass 18): in the chat the light sits behind the invitation and the composer, the next input, not in the empty top half. */
+html[data-hermes-theme^='gold-night'] [data-chat-surface] {
+  background-image: var(--glass-noise), radial-gradient(46% 30% at 50% 80%, rgb(var(--glass-gold-hi) / 0.12), rgb(var(--glass-gold) / 0.04) 55%, transparent 75%), var(--glass-ambient);
+}
 html[data-hermes-theme^='gold-night'] [data-ops-root] {
   background-image: var(--glass-noise), var(--glass-spot-top), var(--glass-ambient);
 }
