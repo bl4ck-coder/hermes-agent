@@ -9,7 +9,7 @@ const block = css.slice(css.indexOf('/* ---- B31:'))
 describe('B31 polish', () => {
   it('keeps every B31 rule zero-specificity', () => {
     expect(block.length).toBeGreaterThan(40)
-    const rules = block.split('\n').filter(l => /\{/.test(l) && !l.trim().startsWith('/*') && !l.trim().startsWith('@media'))
+    const rules = block.split('\n').filter(l => /\{/.test(l) && !l.trim().startsWith('/*') && !/^@(media|container)/.test(l.trim()))
     for (const r of rules) expect(r.trim().startsWith(':where(')).toBe(true)
     expect(block).not.toMatch(/:has\(/)
   })

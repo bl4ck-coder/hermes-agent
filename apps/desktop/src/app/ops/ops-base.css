@@ -979,8 +979,8 @@
 :where([data-ops-settings-main]) > :where(h2) { margin-top: var(--space-4,16px); }
 
 /* P14: EntityRow: one anatomy for decision and entity rows (Office, Fleet, Teams, Sessions). Zero-specificity, no :has, no keyframes. */
-:where([data-ops-rows]) { list-style: none; margin: 0; padding: 0; display: grid; }
-:where([data-ops-row]) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--space-3,12px); align-items: start; min-height: 80px; padding: var(--space-4,16px); border-bottom: 1px solid var(--ops-line, rgba(255,255,255,.08)); border-radius: 0; transition: background-color 120ms ease; }
+:where([data-ops-rows]) { list-style: none; margin: 0; padding: 0; display: grid; container-type: inline-size; container-name: ops-rows; }
+:where([data-ops-row]) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--space-3,12px); row-gap: 0; align-items: start; min-height: 80px; padding: var(--space-4,16px); border-bottom: 1px solid var(--ops-line, rgba(255,255,255,.08)); border-radius: 0; transition: background-color 120ms ease; }
 :where([data-ops-row]):hover { background: color-mix(in srgb, white 3%, transparent); }
 :where([data-ops-row-lead]) { grid-column: 1; display: inline-flex; align-items: center; justify-content: center; width: 32px; min-height: 24px; }
 :where([data-ops-row-main]) { grid-column: 2; min-width: 0; display: grid; gap: var(--space-1,4px); }
@@ -989,17 +989,12 @@
 :where([data-ops-row-meta]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); display: flex; flex-wrap: wrap; gap: 0 var(--space-2,8px); font-variant-numeric: tabular-nums; }
 :where([data-ops-row-actions]) { grid-column: 3; max-width: 160px; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-2,8px); }
 :where([data-ops-row-actions]) :where(button) { min-height: 40px; padding: 0 var(--space-3,12px); font-size: var(--type-meta,14px); font-weight: 500; }
-:where([data-ops-row-actions]:where([data-ops-row-actions-open])) { max-width: none; }
 :where([data-ops-row-tone='warn']) :where([data-ops-row-lead]) { color: var(--ops-warn,#e3a33b); }
 :where([data-ops-row-tone='bad']) :where([data-ops-row-lead]) { color: #e0898d; }
 :where([data-ops-disclosure]) { display: inline-block; }
-:where([data-ops-row-actions] [data-ops-disclosure][open]) { flex-basis: 100%; min-width: min(28rem, 100%); display: flex; flex-wrap: wrap; justify-content: flex-end; }
 :where([data-ops-disclosure] > summary) { cursor: pointer; list-style: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--space-3,12px); border-radius: 8px; color: var(--ops-muted); font-size: var(--type-meta,14px); }
 :where([data-ops-disclosure] > summary)::-webkit-details-marker { display: none; }
 :where([data-ops-disclosure] > summary):focus-visible { outline: 2px solid var(--ops-gold,#c9a227); outline-offset: 2px; }
-:where([data-ops-row-actions] [data-ops-disclosure-body]) { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2,8px); padding-top: var(--space-2,8px); }
-:where([data-ops-row-actions] [data-ops-disclosure-body]) :where(input, textarea) { min-height: 40px; min-width: 14rem; }
-@media (max-width: 40rem) { :where([data-ops-row]) { grid-template-columns: auto minmax(0, 1fr); } :where([data-ops-row-actions]) { grid-column: 1 / -1; justify-content: flex-start; padding-top: var(--space-2,8px); } }
 :where([data-ops-row-command]) { font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 :where([data-ops-rows-group]) { margin: 0 0 var(--space-8,32px); }
 :where([data-ops-rows-group] > h4) { font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); margin: 0 0 var(--space-4,16px); font-weight: 600; }
@@ -1023,3 +1018,14 @@
 :where([data-ops-team-current] [data-ops-team-now]) { color: var(--ops-muted); }
 :where(li[data-ops-row][data-ops-team]) { display: grid; flex-direction: initial; background: none; border-radius: 0; box-shadow: none; overflow: visible; padding: var(--space-4,16px); gap: var(--space-1,4px) var(--space-4,16px); }
 :where([data-ops-team-current]) { display: block; }
+
+/* P15: EntityRow disclosure on its own row; narrow by the panel (container), not the window. */
+:where([data-ops-row-more-slot]) { grid-column: 2 / -1; grid-row: 2; display: flex; justify-content: flex-end; min-width: 0; }
+:where([data-ops-row-more-slot]) :where([data-ops-disclosure][open]) { display: block; flex: 1 1 100%; }
+:where([data-ops-row-more-slot]) :where([data-ops-disclosure][open] > summary) { display: flex; width: fit-content; margin-left: auto; }
+:where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: var(--space-2,8px); padding-top: var(--space-2,8px); text-align: left; }
+:where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) :where(input, textarea) { min-height: 40px; flex: 1 1 14rem; min-width: 0; max-width: var(--width-field, 28rem); }
+:where([data-ops-row-more-slot]) :where([data-ops-disclosure-body]) :where(button) { min-height: 40px; padding: 0 var(--space-3,12px); font-size: var(--type-meta,14px); }
+@container ops-rows (max-width: 40rem) { :where([data-ops-row]) { grid-template-columns: auto minmax(0, 1fr); } :where([data-ops-row-actions]) { grid-column: 2; max-width: none; justify-content: flex-start; padding-top: var(--space-2,8px); } :where([data-ops-row-more-slot]) { grid-column: 2; grid-row: auto; justify-content: flex-start; } }
+:where([data-ops-team-task-status]) { color: var(--ops-muted); }
+:where([data-ops-team-task-status='blocked']) { color: var(--ops-warn,#e3a33b); }

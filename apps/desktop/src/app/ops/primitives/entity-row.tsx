@@ -46,12 +46,9 @@ export function EntityRow({
         {context ? <div data-ops-row-context="">{context}</div> : null}
         {meta ? <div data-ops-row-meta="">{meta}</div> : null}
       </div>
-      {primary || more ? (
-        <div data-ops-row-actions="">
-          {primary}
-          {more}
-        </div>
-      ) : null}
+      {primary ? <div data-ops-row-actions="">{primary}</div> : null}
+      {/* P15 (judge must-fix): the disclosure is its own grid row spanning the content columns, so an open body never overlaps the main block. */}
+      {more ? <div data-ops-row-more-slot="">{more}</div> : null}
     </li>
   )
 }

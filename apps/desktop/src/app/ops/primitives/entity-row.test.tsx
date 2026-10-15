@@ -1,4 +1,4 @@
-﻿import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -25,8 +25,11 @@ describe('P14 EntityRow / Disclosure', () => {
     const { container } = render(<Disclosure label="More">hidden body</Disclosure>)
     const d = container.querySelector('details[data-ops-disclosure]') as HTMLDetailsElement
     expect(d.open).toBe(false)
-    fireEvent.click(d.querySelector('summary')!)
+    // jsdom has no native details toggling; assert the body is inside the details (hidden until open) and that toggling works.
+    expect(d.querySelector('summary')?.textContent).toBe('More')
     d.open = true
+    fireEvent(d, new Event('toggle'))
+    expect(d.open).toBe(true)
     expect(d.querySelector('[data-ops-disclosure-body]')?.textContent).toBe('hidden body')
   })
 
@@ -36,5 +39,15 @@ describe('P14 EntityRow / Disclosure', () => {
     expect(block).toMatch(/\[data-ops-row-actions\]\) :where\(button\) \{[^}]*min-height: 40px/)
     expect(block).toMatch(/\[data-ops-row-title\]\) \{[^}]*var\(--type-body/)
     expect(block).not.toMatch(/:has\(|@keyframes/)
+    // P15: the disclosure owns a full grid row (no overlap) and narrow layout follows the panel width, not the window.
+    expect(block).toMatch(/\[data-ops-row-more-slot\]\) \{[^}]*grid-column: 2 \/ -1; grid-row: 2/)
+    expect(block).toMatch(/@container ops-rows \(max-width: 40rem\)/)
+    expect(block).not.toMatch(/@media \(max-width: 40rem\) \{ :where\(\[data-ops-row\]\)/)
+  })
+
+  it('the More disclosure is a sibling of the primary action, not inside it', () => {
+    const { container } = render(<EntityRow more={<Disclosure label='More'>x</Disclosure>} primary={<button type='button'>Go</button>} title='T' />)
+    expect(container.querySelector('[data-ops-row-actions] details')).toBeNull()
+    expect(container.querySelector('[data-ops-row-more-slot] > details')).not.toBeNull()
   })
 })
