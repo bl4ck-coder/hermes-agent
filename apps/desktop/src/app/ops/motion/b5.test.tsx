@@ -140,6 +140,7 @@ describe('Settings and lifecycle', () => {
     render(<SettingsView defaultModel={null} policy={null} />)
     expect([...document.querySelectorAll('[data-ops-settings-group]')].map(g => g.getAttribute('data-ops-settings-group'))).toEqual([
       'general',
+      'dates',
       'ops',
       'notifications',
       'shortcuts',
