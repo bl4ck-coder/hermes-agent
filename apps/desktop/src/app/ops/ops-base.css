@@ -932,3 +932,6 @@
 :where([data-ops-board]) :where([data-ops-columns]) > :where([data-ops-column]) { flex: 0 0 18rem; min-width: 0; }
 :where([data-ops-board]) :where([data-ops-columns]) > :where([data-ops-column-empty]) { flex-basis: 9rem; opacity: 0.75; }
 :where([data-ops-push]) { font-size: var(--type-caption,12px); color: var(--ops-muted); }
+
+:where([data-ops-board-more] > summary) { gap: var(--space-2,8px); }
+:where([data-ops-board-active-filter]) { padding: 0 8px; border-radius: 999px; font-size: var(--type-caption,12px); line-height: 20px; background: color-mix(in srgb, var(--ops-gold,#c9a227) 18%, transparent); color: var(--ops-gold,#c9a227); }

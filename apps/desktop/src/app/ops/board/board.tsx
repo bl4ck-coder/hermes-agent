@@ -344,7 +344,13 @@ export function BoardView(props: BoardViewProps) {
         <input aria-label={T("filter")} onChange={e => (setFilter(f => ({ ...f, text: e.target.value })), setActiveView(null))} placeholder={T("Filter")} value={filter.text ?? ''} />
         {/* P10: secondary filters, grouping and saved views fold into one quiet menu; the work keeps the page. */}
         <details data-ops-board-more="">
-          <summary>{T("More filters")}</summary>
+          {/* P11: active secondary filters stay visible while the menu is closed. */}
+          <summary data-ops-board-more-active={[filter.tenant, filter.profile, filter.project, filter.mine].filter(Boolean).length || undefined}>
+            {T("More filters")}
+            {[filter.tenant, filter.profile, filter.project, filter.mine ? T("Mine") : null].filter(Boolean).map(v => (
+              <span data-ops-board-active-filter="" key={String(v)}>{String(v)}</span>
+            ))}
+          </summary>
           <div data-ops-board-more-body="">
         <select aria-label={T("tenant")} onChange={e => (setFilter(f => ({ ...f, tenant: e.target.value || null })), setActiveView(null))} value={filter.tenant ?? ''}>
           <option value="">{T("all tenants")}</option>
