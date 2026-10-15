@@ -60,10 +60,10 @@ describe('P24a Board card: full title on focus, metadata back on blur', () => {
   const card = () => document.querySelector('[data-ops-card="t_long"]') as HTMLElement
   const title = () => card().querySelector('[data-ops-open-task]') as HTMLButtonElement
 
-  it('the title button carries the whole title (accessible name and hover title), not a cut copy', () => {
+  it('the title button carries the whole title as its accessible name, not a cut copy (no native title=)', () => {
     view()
     expect(title().textContent).toBe(LONG)
-    expect(title().getAttribute('title')).toBe(LONG)
+    expect(title().hasAttribute('title')).toBe(false)
   })
 
   it('focus expands the card in flow and keeps meta; blur restores the windowed card', () => {
