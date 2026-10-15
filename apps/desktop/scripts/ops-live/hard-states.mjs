@@ -31,80 +31,96 @@ const base = [
 const click = async (page, sel) => { const l = page.locator(sel).first(); if (await l.count()) { await l.scrollIntoViewIfNeeded().catch(() => {}); await l.click({ timeout: 4000 }); return true } return false }
 const fill = async (page, sel, v) => { const l = page.locator(sel).first(); if (await l.count()) { await l.fill(v); return true } return false }
 
-export default async function ({ page, go, goApp, lens, state, mock, narrow, sleep, want }) {
+// P21: populated Sessions / Artifacts fixtures (mocked hermes:api only).
+const sess = (id, title, ago, n, extra = {}) => ({ id, title, started_at: now - ago - 600, last_active: now - ago, ended_at: null, message_count: n, source: 'desktop', model: 'mock-model', preview: `${title}: preview text`, profile: 'default', ...extra })
+const SESSIONS = {
+  sessions: [
+    sess('s1', 'Draft the launch announcement for the pricing page', 300, 24),
+    sess('s2', 'Investigate the flaky login test on CI with a deliberately long title that has to wrap or truncate', 5400, 61),
+    sess('s3', 'Weekly metrics report', 90000, 12),
+    sess('s4', 'Rotate the staging API keys', 260000, 8)
+  ],
+  total: 4, limit: 40, offset: 0
+}
+const MESSAGES = {
+  messages: [
+    { id: 1, role: 'user', content: 'Make the chart and the report.', timestamp: now - 400 },
+    { id: 2, role: 'assistant', content: 'Done. ![Weekly chart](https://example.com/artifacts/weekly-chart.png)\nReport: https://example.com/artifacts/report.pdf\nSaved to C:\\work\\out\\report.md and C:\\other\\out\\report.md', timestamp: now - 380 }
+  ],
+  pagination: { limit: 50, offset: 0, total: 2, has_more: false }
+}
+
+export default async function ({ page, go, goApp, lens, state, mock, narrow, sleep, want, need, reload }) {
   if (!want('hard') && !want('all')) return
   // Office and Board are pinned routes, not rail lenses.
   const open = async id => { if (id === 'office' || id === 'board') { await go(`/ops/${id}`); await sleep(1500); return } await go('/ops'); await lens(id) }
   await mock(base)
 
   // Office
-  await state('office', 'loaded-decisions', async () => { await open('office') })
-  await state('office', 'more-actions-open', async () => { await open('office'); return String(await click(page, '[data-ops-approval] [data-ops-row-more-slot] summary')) })
-  await mock([...base, { path: '^/api/plugins/kanban/tasks/', method: 'POST', throw: '409: comment refused (mock)' }, { path: '^/api/plugins/kanban/tasks/.*/comments', throw: '409: comment refused (mock)' }])
-  await state('office', 'comment-rejected', async () => {
-    await open('office')
-    const row = page.locator('[data-ops-approval]', { hasText: 'Review the RFC' }).first()
-    await row.locator('[data-ops-row-more-slot] summary').first().click({ timeout: 4000 })
-    await sleep(300)
-    await row.locator('input').first().fill('Please split section 3', { timeout: 4000 })
-    await row.locator('[data-ops-comment]').first().click({ timeout: 4000 })
-    await sleep(800)
-    return 'sent'
-  })
-  await mock(base)
+  await state('office', 'loaded-decisions', async () => { await open('office'); return need('[data-ops-approval]') })
+  await state('office', 'more-actions-open', async () => { await open('office'); await click(page, '[data-ops-approval] [data-ops-row-more-slot] summary'); return need('[data-ops-approval] details[open]') })
 
   // Board
-  await state('board', 'loaded', async () => { await open('board') })
-  await state('board', 'filtered', async () => { await open('board'); return String(await fill(page, '[data-ops-root] input[placeholder="Filtrar"], [data-ops-root] input[placeholder="Filter"], [data-ops-root] input[type="search"]', 'web')) })
+  await state('board', 'loaded', async () => { await open('board'); return need('[data-ops-root]') })
+  await state('board', 'filtered', async () => { await open('board'); await fill(page, '[data-ops-root] input[placeholder="Filtrar"], [data-ops-root] input[placeholder="Filter"], [data-ops-root] input[type="search"]', 'web'); return 'filter=web' })
   await mock([{ path: '^/api/plugins/kanban/board', throw: '503: kanban plugin unavailable (mock)' }, { path: '^/api/approvals/pending', body: PENDING }])
-  await state('board', 'error', async () => { await open('board') })
+  await state('board', 'refresh-failed', async () => { await open('board'); await sleep(6000); return need('[data-ops-board-stale]') })
   await mock(base)
 
   // Agents: Fleet / Teams
-  await state('fleet', 'details-open', async () => { await open('agents'); return String(await click(page, 'details:has([data-ops-fleet-details]) > summary')) })
+  await state('fleet', 'details-open', async () => { await open('agents'); await click(page, 'details:has([data-ops-fleet-details]) > summary'); return need('details[open] [data-ops-fleet-details]') })
   await state('teams', 'work-and-members-open', async () => {
     await open('agents')
     await click(page, '[data-ops-lens="agents"] [role="tablist"] button:nth-child(2), [data-ops-agents-tab="teams"]')
     await sleep(800)
-    return String(await click(page, '[data-ops-team] [data-ops-row-more-slot] summary'))
+    await click(page, '[data-ops-team] [data-ops-row-more-slot] summary')
+    return need('[data-ops-team] details[open]')
   })
 
   // Skills
-  await state('skills', 'filtered', async () => { await open('skills'); return String(await fill(page, '[data-ops-skill-filters] input', 'git')) })
-  await state('skills', 'details-open', async () => { await open('skills'); return String(await click(page, '[data-ops-skill] [data-ops-row-more-slot] summary')) })
+  await state('skills', 'filtered', async () => { await open('skills'); await fill(page, '[data-ops-skill-filters] input', 'git'); return 'filter=git' })
+  await state('skills', 'details-open', async () => { await open('skills'); await click(page, '[data-ops-skill] [data-ops-row-more-slot] summary'); return need('[data-ops-skill] details[open]') })
 
   // Channels
-  await state('channels', 'connected-filter', async () => { await open('channels'); return String(await click(page, '[data-ops-app-filter="connected"]')) })
-  await state('channels', 'category-filter', async () => { await open('channels'); return String(await click(page, '[data-ops-app-cat="Tools (MCP)"]')) })
+  await state('channels', 'connected-filter', async () => { await open('channels'); await click(page, '[data-ops-app-filter="connected"]'); return 'connected' })
+  await state('channels', 'category-filter', async () => { await open('channels'); await click(page, '[data-ops-app-cat="Tools (MCP)"]'); return 'Tools (MCP)' })
+  await state('channels', 'filters-no-match', async () => { await open('channels'); await click(page, '[data-ops-app-filter="connected"]'); await click(page, '[data-ops-app-cat="Tools (MCP)"]'); return need('[data-ops-empty="apps"]') })
   await mock([...base, { path: '^/api/mcp/catalog', throw: '502: catalog unavailable (mock)' }])
-  await state('channels', 'partial-source', async () => { await open('channels') })
+  await state('channels', 'source-failed', async () => { await reload(); await open('channels'); await sleep(2000); return need('[data-ops-partial]') })
   await mock(base)
 
   // Ops Settings / Diagnostics
-  await state('ops-settings', 'loaded', async () => { await open('settings') })
-  await mock([...base, { path: '^/api/status', throw: '503: backend status unavailable (mock)' }])
-  await state('diagnostics', 'error', async () => { await open('settings'); await click(page, '#ops-settings-tab-diagnostics'); await sleep(2500) })
+  await state('ops-settings', 'loaded', async () => { await open('settings'); return need('[data-ops-prefs-reset-row]') })
+  await mock([...base, { path: '^/api/(status|version|capabilities|config/schema|model/info)', throw: '503: backend unavailable (mock)' }, { path: '^/api/plugins/kanban/board', throw: '503: kanban plugin unavailable (mock)' }])
+  await state('diagnostics', 'probe-failed', async () => {
+    await reload(); await open('settings'); await click(page, '#ops-settings-tab-diagnostics'); await sleep(1000)
+    await click(page, '[data-ops-probe]'); await sleep(5000)
+    return need('[data-ops-diag-next]', '[data-ops-error-groups], [data-ops-probe-failing]')
+  })
   await mock(base)
 
-  // App Settings: editing and rejected save
-  await state('app-settings', 'editing-pending', async () => {
-    await goApp('/settings')
-    return String(await click(page, '#settings-main-provider'))
+  // App Settings: a save in flight, then a rejected save
+  const field = '[data-tour*="context_length"] input, [data-tour*="context"] input[type="number"]'
+  await mock([...base, { path: '^/api/config', method: 'PUT', delay: 8000, throw: '422: rejected by schema (mock)' }])
+  await state('app-settings', 'save-pending', async () => {
+    await goApp('/settings'); await fill(page, field, '180000'); await page.keyboard.press('Tab').catch(() => {}); await sleep(1500)
+    return need('[data-settings-field-status]')
   })
-  await page.keyboard.press('Escape').catch(() => {})
-  await mock([...base, { path: '^/api/config', method: 'PUT', throw: '422: rejected by schema (mock)' }, { path: '^/api/config', method: 'PATCH', throw: '422: rejected by schema (mock)' }, { path: '^/api/config', method: 'POST', throw: '422: rejected by schema (mock)' }])
+  await sleep(8000)
+  await mock([...base, { path: '^/api/config', method: 'PUT', throw: '422: rejected by schema (mock)' }])
   await state('app-settings', 'save-rejected', async () => {
-    await goApp('/settings')
-    const ok = await fill(page, '[data-tour*="context_length"] input, [data-tour*="context"] input[type="number"]', '200000')
-    await page.keyboard.press('Tab').catch(() => {})
-    await sleep(1500)
-    return String(ok)
+    await goApp('/settings'); await fill(page, field, '200000'); await page.keyboard.press('Tab').catch(() => {}); await sleep(1800)
+    return need('[data-settings-field-error]', '[data-settings-field-revert]')
   })
   await mock(base)
 
-  // Artifacts and other app screens, resolved (isolated home)
-  await state('artifacts', 'loaded', async () => { await goApp('/artifacts'); await sleep(4000) })
-  await state('sessions', 'loaded', async () => { await goApp('/command-center'); await sleep(2000) })
+  // Artifacts and Sessions: empty (isolated home), then populated from fixtures
+  await state('artifacts', 'empty', async () => { await goApp('/artifacts'); await sleep(4000); return need('[data-artifacts-empty-action]') })
+  await state('sessions', 'empty', async () => { await goApp('/command-center'); await sleep(2000); return need('[data-sessions-empty-action]') })
+  await mock([...base, { path: '^/api/(profiles/)?sessions\\?', body: SESSIONS }, { path: '^/api/sessions/[^/]+/messages', body: MESSAGES }])
+  await state('sessions', 'populated', async () => { await reload(); await goApp('/command-center'); await sleep(2500); return need('[data-sessions-search]') })
+  await state('artifacts', 'populated', async () => { await goApp('/artifacts'); await sleep(6000); return 'see shot' })
+  await mock(base)
 
   // Narrow panel for the row screens
   await narrow(900)
