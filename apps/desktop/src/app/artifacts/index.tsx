@@ -158,7 +158,10 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
       // First load streams: show artifacts session by session instead of a spinner until all 30 are read.
       // A refresh keeps the current list until the new one is complete, so it never flickers.
       const streaming = !artifactsLoadedRef.current
-      const first = await loadArtifactsForSessions(sessions, loadPage, {
+      // B36c: the running (default) profile's sessions first, so first paint never waits on a cold profile backend.
+      // Order only affects arrival; the list is sorted by time either way.
+      const ordered = [...sessions].sort((l, r) => Number(Boolean(l.profile && l.profile !== 'default')) - Number(Boolean(r.profile && r.profile !== 'default')))
+      const first = await loadArtifactsForSessions(ordered, loadPage, {
         onSession: found => {
           if (streaming && found.length) {
             setArtifacts([...found].sort((left, right) => right.timestamp - left.timestamp))
