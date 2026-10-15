@@ -50,7 +50,7 @@
 :where([data-settings-form-rows]) { container-type: inline-size; container-name: settings-form; display: grid; }
 :where([data-settings-form-group]) { margin: 0 0 var(--space-6, 2rem); max-width: var(--width-form, 760px); }
 :where([data-settings-form-group-title]) { margin: 0 0 var(--space-2, 8px); font-size: var(--type-section, 20px); line-height: var(--type-section-lh, 28px); font-weight: 600; }
-:where([data-settings-form-row]) { display: grid; grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr); column-gap: var(--space-4, 16px); align-items: start; min-height: 48px; padding: var(--space-2, 8px) 0; }
+:where([data-settings-form-row]) { display: grid; grid-template-columns: minmax(12rem, 20rem) minmax(0, 1fr); column-gap: var(--space-4, 16px); align-items: start; min-height: 48px; padding: var(--space-2, 8px) 0; }
 :where([data-sfr-label]) { padding-top: 10px; font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); font-weight: 500; }
 :where([data-sfr-body]) { display: grid; gap: var(--space-2, 8px); min-width: 0; justify-items: start; }
 :where([data-sfr-control]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); max-width: var(--width-field, 480px); width: 100%; font-size: var(--type-body, 16px); line-height: var(--type-body-lh, 24px); }
@@ -59,7 +59,7 @@
 :where([data-sfr-help], [data-sfr-status]) { margin: 0; font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); color: var(--muted-foreground, #9a9a9a); }
 :where([data-sfr-error]) { margin: 0; font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); color: var(--destructive, #e0898d); }
 @container settings-form (max-width: 40rem) { :where([data-settings-form-row]) { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-2, 8px); } :where([data-sfr-label]) { padding-top: 0; } }
-:where([data-settings-form-actions]) { display: grid; grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr); column-gap: var(--space-4, 16px); padding: var(--space-2, 8px) 0 0; }
+:where([data-settings-form-actions]) { display: grid; grid-template-columns: minmax(12rem, 20rem) minmax(0, 1fr); column-gap: var(--space-4, 16px); padding: var(--space-2, 8px) 0 0; }
 :where([data-settings-form-actions]) > :where(*) { grid-column: 2; justify-self: start; }
 :where([data-settings-group-desc]) { margin: 0 0 var(--space-2, 8px); }
 @container settings-form (max-width: 40rem) { :where([data-settings-form-actions]) { grid-template-columns: minmax(0, 1fr); } :where([data-settings-form-actions]) > :where(*) { grid-column: 1; } }

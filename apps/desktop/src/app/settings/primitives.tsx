@@ -144,7 +144,8 @@ export function NavLink({
 // The label/control split every settings-style row keys on. Rows that cannot
 // be a ListRow (expandable credential cards, the billing plan card with its
 // tier art) still lay out on these exact columns so their controls line up.
-export const LIST_ROW_COLUMNS = '@2xl:grid-cols-[minmax(0,1fr)_minmax(15rem,22rem)]'
+// P18e (judge consult): one settings axis. Label column matches SettingsFormRow (12–20rem), control column takes the rest.
+export const LIST_ROW_COLUMNS = '@2xl:grid-cols-[minmax(12rem,20rem)_minmax(0,1fr)]'
 
 // The one settings row. `action` is the row's control: beside the label on a
 // wide pane, under the description on a narrow one — the row owns that
@@ -193,7 +194,7 @@ export function ListRow({
           {below}
         </div>
         {!wide && action && (
-          <div className="flex min-w-0 flex-wrap items-center gap-2 justify-start" data-settings-row-control="">
+          <div className="flex min-w-0 max-w-(--width-field) flex-wrap items-center gap-2 justify-start" data-settings-row-control="">
             {action}
           </div>
         )}
