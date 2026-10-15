@@ -1243,6 +1243,7 @@ export const en: Translations = {
       emptyDesc: 'This section has no adjustable settings.',
       failedLoad: 'Settings failed to load',
       autosaveFailed: 'Autosave failed',
+      autosaveRevert: 'Revert to saved value',
       imported: 'Config imported',
       invalidJson: 'Invalid config JSON',
       toolsetsWipeConfirm:

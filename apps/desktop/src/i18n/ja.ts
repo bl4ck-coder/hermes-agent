@@ -1005,6 +1005,7 @@ export const ja = defineLocale({
       emptyDesc: 'このセクションには調整できる設定がありません。',
       failedLoad: '設定の読み込みに失敗しました',
       autosaveFailed: '自動保存に失敗しました',
+      autosaveRevert: '保存済みの値に戻す',
       imported: '設定をインポートしました',
       invalidJson: '設定 JSON が無効です',
       keepAwakeTitle: 'コンピューターをスリープさせない',

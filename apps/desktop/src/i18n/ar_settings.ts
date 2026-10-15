@@ -527,6 +527,7 @@ export const arSettings = {
       emptyDesc: 'لا يحتوي هذا القسم على إعدادات قابلة للتعديل.',
       failedLoad: 'فشل تحميل الإعدادات',
       autosaveFailed: 'فشل الحفظ التلقائي',
+      autosaveRevert: 'العودة إلى القيمة المحفوظة',
       imported: 'تم استيراد الإعدادات',
       invalidJson: 'JSON غير صالح',
       voiceShortcutHintTitle: 'اختصار تسجيل الصوت',

@@ -1595,6 +1595,7 @@ export const frOverrides = {
       emptyDesc: 'Cette section ne contient aucun paramètre ajustable.',
       failedLoad: 'Échec du chargement des paramètres',
       autosaveFailed: "Échec de l'enregistrement automatique",
+      autosaveRevert: 'Revenir à la valeur enregistrée',
       imported: 'Configuration importée',
       invalidJson: 'JSON de configuration invalide',
       toolsetsWipeConfirm:

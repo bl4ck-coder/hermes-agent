@@ -1013,6 +1013,7 @@ export const ru = defineLocale({
       emptyDesc: 'В этом разделе нет настраиваемых параметров.',
       failedLoad: 'Не удалось загрузить настройки',
       autosaveFailed: 'Не удалось сохранить автоматически',
+      autosaveRevert: 'Вернуть сохранённое значение',
       imported: 'Конфигурация импортирована',
       invalidJson: 'Неверный JSON конфигурации',
       toolsetsWipeConfirm:

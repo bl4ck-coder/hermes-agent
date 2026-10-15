@@ -1591,6 +1591,7 @@ export const esOverrides = {
       emptyDesc: 'Esta sección no tiene ajustes configurables.',
       failedLoad: 'No se pudo cargar la configuración',
       autosaveFailed: 'Falló el autoguardado',
+      autosaveRevert: 'Volver al valor guardado',
       imported: 'Configuración importada',
       invalidJson: 'JSON de configuración no válido',
       toolsetsWipeConfirm:

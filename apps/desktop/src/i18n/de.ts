@@ -1588,6 +1588,7 @@ export const deOverrides = {
       emptyDesc: 'Dieser Bereich hat keine einstellbaren Optionen.',
       failedLoad: 'Einstellungen konnten nicht geladen werden',
       autosaveFailed: 'Autospeichern fehlgeschlagen',
+      autosaveRevert: 'Gespeicherten Wert wiederherstellen',
       imported: 'Konfiguration importiert',
       invalidJson: 'Ungültige Konfigurations-JSON',
       toolsetsWipeConfirm:

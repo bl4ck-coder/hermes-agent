@@ -1290,6 +1290,7 @@ export const zh = defineLocale({
       emptyDesc: '此分区没有可调整的设置。',
       failedLoad: '设置加载失败',
       autosaveFailed: '自动保存失败',
+      autosaveRevert: '恢复为已保存的值',
       imported: '配置已导入',
       invalidJson: '配置 JSON 无效',
       toolsetsWipeConfirm:
