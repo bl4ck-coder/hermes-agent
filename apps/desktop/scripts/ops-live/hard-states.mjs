@@ -103,8 +103,9 @@ export default async function ({ page, go, goApp, lens, state, mock, narrow, sle
       'match-shown': ms => see('[data-ops-card="t1"]', { text: 'pricing', ms }),
       'others-hidden': ms => none('[data-ops-card="t2"], [data-ops-card="t3"], [data-ops-card="t5"]', { ms })
     },
-    // The P21 bug as the negative: the same text typed into the side rail filter must not pass.
-    neg: { act: async () => { await open('board'); await type('input[data-ops-filter]', 'pricing') } },
+    // The P21 bug as the negative: the same text typed into the side rail filter must not pass. ('match-shown' only
+    // guards against over-filtering, so it holds either way.)
+    neg: { act: async () => { await open('board'); await type('input[data-ops-filter]', 'pricing') }, fails: ['board-filter-value', 'others-hidden'] },
     after: clearFilters
   })
   await state('board', 'refresh-failed', {
