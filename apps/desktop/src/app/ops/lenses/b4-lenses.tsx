@@ -3,7 +3,7 @@
  * Reads go through Desktop's own API helpers; every connect / install / edit flow is Desktop's own
  * (Ops routes there), except skill installs, which use the hub install route after a confirm.
  */
-import { useMemo, useState } from 'react'
+import { type CSSProperties, useMemo, useState } from 'react'
 
 import { connectionScoped, hermesApi } from '@/api/client'
 import { listOAuthProviders } from '@/api/config'
@@ -232,7 +232,23 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
     return <p data-ops-empty="teams">{T("No tasks yet, so no lanes.")}</p>
   }
 
+  // B35: Teams hero: everyone on a lane as an avatar stack, with the totals.
+  const people = [...new Set(list.flatMap(x => x.members))]
+  const openTotal = list.reduce((n, x) => n + x.open, 0)
+
   return (
+    <>
+    <header data-ops-teams-hero="">
+      <span data-ops-teams-stack="">
+        {people.slice(0, 8).map(m => <Sigil key={m} name={m} size={32} />)}
+        {people.length > 8 ? <span data-ops-teams-more="">+{people.length - 8}</span> : null}
+      </span>
+      <dl>
+        <div><dt>{T('Lanes')}</dt><dd>{list.length}</dd></div>
+        <div><dt>{T('Open tasks')}</dt><dd>{openTotal}</dd></div>
+        <div><dt>{T('Members')}</dt><dd>{people.length}</dd></div>
+      </dl>
+    </header>
     <ul data-ops-teams="">
       {list.map(t => (
         <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} key={t.lane}>
@@ -262,6 +278,7 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
         </li>
       ))}
     </ul>
+    </>
   )
 }
 
@@ -568,6 +585,18 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
           +
         </button>
       </header>
+      {/* B35: Channels hero: how much is wired up, and what. */}
+      <div data-ops-channels-hero="">
+        <span data-ops-diag-ring="" style={{ '--ops-pct': String(cards.length ? cards.filter(x => x.connected).length / cards.length : 0) } as CSSProperties}>
+          {cards.filter(x => x.connected).length}/{cards.length}
+        </span>
+        <div>
+          <span data-ops-now-label="">{T('Connected apps')}</span>
+          <p data-ops-channels-hero-list="">
+            {cards.filter(x => x.connected).slice(0, 8).map(x => <span data-ops-chip="" key={x.key}>{x.name}</span>)}
+          </p>
+        </div>
+      </div>
       {missing.length ? <p data-ops-partial="">{T("Not answering:")}{' '}{missing.join(', ')}.</p> : null}
       {quick ? <QuickConnect cards={cards} onClose={() => setQuick(false)} onOpenRoute={onOpenRoute} /> : null}
       <div data-ops-channels-body="">

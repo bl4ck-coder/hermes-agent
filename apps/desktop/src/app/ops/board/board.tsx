@@ -320,6 +320,14 @@ export function BoardView(props: BoardViewProps) {
         }
       }}
     >
+      {/* B35: the board's shape at a glance, one segment per column sized by its tasks. */}
+      <div aria-hidden data-ops-board-flow="">
+        {shown.columns.map(col => (
+          <span data-ops-board-flow-seg={col.name} data-ops-board-flow-empty={col.tasks.length ? undefined : ''} key={col.name} style={{ flexGrow: col.tasks.length }}>
+            <b>{col.tasks.length}</b> {T(col.name)}
+          </span>
+        ))}
+      </div>
       <div data-ops-board-toolbar="" role="toolbar">
         {LAYOUTS.map(l => (
           <button aria-pressed={l === layout} data-ops-layout={l} key={l} onClick={() => setLayout(l)} type="button">

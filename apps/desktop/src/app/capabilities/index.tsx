@@ -1,3 +1,5 @@
+import { HeroBand } from '@/components/hero-band'
+import { Codicon } from '@/components/ui/codicon'
 import type * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 
@@ -188,6 +190,18 @@ export function CapabilitiesView({
       ]}
     >
       <div className="flex h-full flex-col">
+        {/* B35: Capabilities hero: what this profile can do, at a glance. */}
+        <HeroBand
+          className="mx-4 mt-2"
+          icon={<Codicon name="extensions" />}
+          id="capabilities"
+          stats={[
+            { label: t.skills.tabSkills, value: skills?.length ?? '…' },
+            { label: t.skills.tabToolsets, value: toolsets ? visibleToolsetCount(toolsets) : '…' }
+          ]}
+          subtitle={typeof scope.profile === 'string' ? scope.profile : undefined}
+          title={{ connectors: t.connectorsPage.title, plugins: t.skills.tabPlugins, skills: t.skills.tabSkills, toolsets: t.skills.tabToolsets }[mode]}
+        />
         {mode !== 'plugins' && <CapabilityScopeSelector scope={scope} />}
         <div className="flex min-h-0 flex-1 flex-col">
           <div className={mode === 'skills' ? 'min-h-40 flex-1 overflow-hidden' : 'min-h-0 flex-1'}>

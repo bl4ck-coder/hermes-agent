@@ -704,7 +704,7 @@
 :where([data-ops-diag-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, #3fb950 14%, transparent), transparent 60%), var(--ops-surface); border: 1px solid var(--ops-line); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; gap: 16px; margin: 0 0 12px; padding: 14px 18px; }
 :where([data-ops-diag-hero='warn']) { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 18%, transparent), transparent 60%), var(--ops-surface); }
 :where([data-ops-diag-hero='idle']) { background: var(--ops-surface); }
-:where([data-ops-diag-ring]) { --ops-ring: #3fb950; background: radial-gradient(closest-side, var(--ops-surface) 76%, transparent 78%), conic-gradient(var(--ops-ring) calc(var(--ops-pct, 0) * 360deg), var(--ops-line) 0); border-radius: 999px; display: grid; flex: none; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 600; height: 64px; place-items: center; width: 64px; }
+:where([data-ops-diag-ring]) { --ops-ring: #3fb950; background: radial-gradient(closest-side, #15120d 74%, transparent 76%), conic-gradient(var(--ops-ring) calc(var(--ops-pct, 0) * 360deg), var(--ops-line) 0); border-radius: 999px; display: grid; flex: none; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 600; height: 64px; place-items: center; width: 64px; }
 :where([data-ops-diag-hero='warn'] [data-ops-diag-ring]) { --ops-ring: var(--ops-gold, #c9a227); }
 :where([data-ops-diag-hero]) :where(strong) { display: block; font-size: 18px; font-weight: 500; }
 :where([data-ops-diag-hero]) :where(small) { color: var(--ops-muted); font-size: 12px; }
@@ -713,3 +713,22 @@
 :where([data-ops-settings-hero]) :where(small) { color: var(--ops-muted); font-size: 12px; }
 :where([data-ops-settings-hero-chips]) { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 :where([data-ops-column]) > :where(header, h3:first-child) { font-size: 13px; letter-spacing: 0.04em; }
+/* B35: heroes for Teams, Channels, Canvas, and the Board flow bar. Inset highlights only; no outer glow on repeated parts. */
+:where([data-ops-teams-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 14%, transparent), transparent 60%), var(--ops-surface); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 20%, var(--ops-line)); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; flex-wrap: wrap; gap: 18px; margin: 0 0 12px; padding: 14px 18px; }
+:where([data-ops-teams-stack]) { align-items: center; display: flex; padding-left: 8px; }
+:where([data-ops-teams-stack]) > :where(*) { border-radius: 999px; box-shadow: 0 0 0 2px #15120d; margin-left: -8px; }
+:where([data-ops-teams-more]) { background: var(--ops-surface); border-radius: 999px; color: var(--ops-muted); font-size: 12px; padding: 6px 9px; }
+:where([data-ops-teams-hero]) :where(dl), :where([data-ops-teams-hero]) :where(dl) :where(dd) { display: flex; gap: 22px; margin: 0; }
+:where([data-ops-teams-hero]) :where(dt) { color: var(--ops-muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+:where([data-ops-teams-hero]) :where(dd) { font-size: 22px; font-variant-numeric: tabular-nums; font-weight: 600; }
+:where([data-ops-channels-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, #3fb950 12%, transparent), transparent 60%), var(--ops-surface); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 18%, var(--ops-line)); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; gap: 16px; margin: 0 0 12px; padding: 12px 18px; }
+:where([data-ops-channels-hero-list]) { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+:where([data-ops-canvas-hero]) { align-items: center; display: flex; gap: 10px; }
+:where([data-ops-canvas-hero]) > :where(strong) { font-size: 20px; font-weight: 500; }
+:where([data-ops-board-flow]) { border-radius: 10px; box-shadow: inset 0 0 0 1px var(--ops-line); display: flex; gap: 2px; margin: 0 0 10px; overflow: hidden; }
+:where([data-ops-board-flow-seg]) { --seg: var(--ops-gold, #c9a227); background: linear-gradient(180deg, color-mix(in srgb, var(--seg) 34%, transparent), color-mix(in srgb, var(--seg) 16%, transparent)); box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent); color: var(--ops-text); flex-basis: 0; font-size: 12px; min-width: max-content; padding: 6px 10px; white-space: nowrap; }
+:where([data-ops-board-flow-seg]) :where(b) { font-variant-numeric: tabular-nums; margin-right: 4px; }
+:where([data-ops-board-flow-empty]) { --seg: var(--ops-muted); color: var(--ops-muted); opacity: 0.6; }
+:where([data-ops-board-flow-seg='running'], [data-ops-board-flow-seg='done']) { --seg: #3fb950; }
+:where([data-ops-board-flow-seg='blocked']) { --seg: #f85149; }
+:where([data-ops-board-flow-seg='ready']) { --seg: #58a6ff; }

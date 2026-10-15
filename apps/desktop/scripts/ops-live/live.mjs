@@ -303,7 +303,7 @@ for (const [n, id, tab] of [['04-fleet', 'agents', 'fleet'], ['05-teams', 'agent
   await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); return page.url() })
 }
 if (want('settings')) await section('08c-settings-top', async () => {
-  await page.evaluate(() => document.querySelector('[data-ops-settings-group]')?.scrollIntoView({ block: 'start' }))
+  await page.evaluate(() => (document.querySelector('[data-ops-settings-hero]') ?? document.querySelector('[data-ops-settings-group]'))?.scrollIntoView({ block: 'start' }))
   await sleep(400)
   return 'scrolled to top'
 })
