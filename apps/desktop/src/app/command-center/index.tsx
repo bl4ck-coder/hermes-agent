@@ -1,4 +1,6 @@
 import { T } from '../ops/main-i18n'
+import { useNavigate } from 'react-router'
+import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
 import { HeroBand, HeroSpark } from '@/components/hero-band'
 import { Codicon } from '@/components/ui/codicon'
 import { compactNumber } from '@hermes/shared'
@@ -155,6 +157,7 @@ export function CommandCenterView({
   onOpenSession
 }: CommandCenterViewProps) {
   const { locale, t } = useI18n()
+  const navigate = useNavigate()
   const cc = t.commandCenter
   // $sessions ticks on every streaming token (title updates, new sessions),
   // but we only need the data on the Sessions tab. Subscribe conditionally so
@@ -408,7 +411,15 @@ export function CommandCenterView({
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {!sessionListHasResults ? (
-                    <EmptyPanel description={debouncedQuery ? cc.noResults : cc.noSessions} />
+                    <EmptyPanel
+                      // P20e: an empty list still offers the next step.
+                      action={
+                        <Button data-sessions-empty-action="" onClick={() => (debouncedQuery ? setQuery('') : (navigateToWorkspacePage(navigate, NEW_CHAT_ROUTE), onClose?.()))} size="sm" variant="outline">
+                          {debouncedQuery ? T('Clear search') : cc.nav.newChat.title}
+                        </Button>
+                      }
+                      description={debouncedQuery ? cc.noResults : cc.noSessions}
+                    />
                   ) : (
                     <ul>
                       {filteredSessions.map((session, index) => {

@@ -24,3 +24,10 @@ describe('P20c Diagnostics', () => {
     expect(d.indexOf('data-ops-diag-next')).toBeLessThan(d.indexOf('data-ops-diag-evidence="errors"'))
   })
 })
+
+describe('P20e empty states', () => {
+  it('Sessions and Artifacts empties offer a next step', () => {
+    expect(src('../command-center/index.tsx')).toContain('data-sessions-empty-action')
+    expect(src('../artifacts/index.tsx')).toContain('data-artifacts-empty-action')
+  })
+})

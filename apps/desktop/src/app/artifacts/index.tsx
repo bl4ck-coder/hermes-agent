@@ -1,6 +1,7 @@
 import type * as React from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { navigateToWorkspacePage, NEW_CHAT_ROUTE } from '../routes'
 
 import { TitlebarIcon } from '@/app/shell/titlebar-icon'
 import { ZoomableImage } from '@/components/chat/zoomable-image'
@@ -419,6 +420,10 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
           <div>
             <div className="text-sm font-medium">{a.noArtifactsTitle}</div>
             <div className="mt-1 text-xs text-muted-foreground">{a.noArtifactsDesc}</div>
+            {/* P20e: say how to produce the first artifact, not only where it will appear. */}
+            <Button className="mt-3" data-artifacts-empty-action="" onClick={() => navigateToWorkspacePage(navigate, NEW_CHAT_ROUTE)} size="sm" variant="outline">
+              {t.commandCenter.nav.newChat.title}
+            </Button>
           </div>
         </div>
       ) : (

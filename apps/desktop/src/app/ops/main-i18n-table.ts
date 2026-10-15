@@ -2,6 +2,7 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Clear search": "Borrar búsqueda",
      "Full error log": "Registro completo de errores",
      "Connected, board not updated": "Conectado, tablero sin actualizar",
      "Connecting": "Conectando",
@@ -680,6 +681,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Clear search": "Effacer la recherche",
      "Full error log": "Journal complet des erreurs",
      "Connected, board not updated": "Connecté, tableau non mis à jour",
      "Connecting": "Connexion",
@@ -1357,6 +1359,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Clear search": "Suche löschen",
      "Full error log": "Vollständiges Fehlerprotokoll",
      "Connected, board not updated": "Verbunden, Board nicht aktualisiert",
      "Connecting": "Verbindung wird hergestellt",
@@ -2034,6 +2037,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Clear search": "Очистить поиск",
      "Full error log": "Полный журнал ошибок",
      "Connected, board not updated": "Подключено, доска не обновлена",
      "Connecting": "Подключение",
@@ -2711,6 +2715,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Clear search": "検索をクリア",
      "Full error log": "エラーログ全体",
      "Connected, board not updated": "接続済み・ボード未更新",
      "Connecting": "接続中",
@@ -3388,6 +3393,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Clear search": "清除搜索",
      "Full error log": "完整错误日志",
      "Connected, board not updated": "已连接，看板未更新",
      "Connecting": "正在连接",
@@ -4065,6 +4071,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Clear search": "清除搜尋",
      "Full error log": "完整錯誤記錄",
      "Connected, board not updated": "已連線，看板未更新",
      "Connecting": "正在連線",
@@ -4742,6 +4749,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Clear search": "مسح البحث",
      "Full error log": "سجل الأخطاء الكامل",
      "Connected, board not updated": "متصل، اللوحة غير محدّثة",
      "Connecting": "جارٍ الاتصال",
