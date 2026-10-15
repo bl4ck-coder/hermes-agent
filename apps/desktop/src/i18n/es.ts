@@ -3588,6 +3588,7 @@ export const esOverrides = {
     promptPlaceholder: 'Resume mis hilos de Slack sin leer y envíame por email los 5 principales...',
     frequencyLabel: 'Frecuencia',
     deliverLabel: 'Entregar a',
+    lastDeliveryFailed: 'Se ejecutó, pero falló la entrega',
     deliverNeedsHomeChannel: 'configura primero un canal principal',
     modelLabel: 'Modelo',
     modelDefault: 'Predeterminado (modelo global)',

@@ -1787,5 +1787,5 @@ function cronLastResultLabel(status: null | string | undefined, c: Translations[
   const raw = String(status ?? '').trim()
   if (!raw) return null
   const failed = c.lastRunFailed.replace(/:\s*$/, '')
-  return ({ blocked_config: failed, delivery_failed: ` ()`, error: failed, ok } as Record<string, string>)[raw] ?? raw
+  return ({ blocked_config: failed, delivery_failed: c.lastDeliveryFailed, error: failed, ok } as Record<string, string>)[raw] ?? raw
 }

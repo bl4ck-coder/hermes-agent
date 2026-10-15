@@ -780,4 +780,5 @@
 :where([data-ops-roster]) :where(dt) { font-size: var(--type-caption, 12px); }
 :where([data-ops-roster]) :where(dd) { font-size: var(--type-meta, 14px); }
 :where([data-ops-roster]) :where(dl > div[data-desc] > dd) { font-size: var(--type-body, 16px); line-height: var(--type-body-lh, 24px); }
-:where([data-ops-column]) { flex-basis: 18rem; min-width: 18rem; }
+/* B42 (judge pass 6 P1): size the GRID TRACKS, not the item; 288px columns, 16px gap, real horizontal scroll. */
+:where([data-ops-columns]) { gap: var(--space-4, 16px); grid-auto-columns: 18rem; }

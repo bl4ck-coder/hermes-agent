@@ -3603,6 +3603,7 @@ export const frOverrides = {
     promptPlaceholder: 'Résumez mes fils Slack non lus et envoyez-moi les 5 principaux par email...',
     frequencyLabel: 'Fréquence',
     deliverLabel: 'Livrer vers',
+    lastDeliveryFailed: 'Exécuté, mais la livraison a échoué',
     deliverNeedsHomeChannel: "définissez d'abord un canal d'accueil",
     modelLabel: 'Modèle',
     modelDefault: 'Par défaut (modèle global)',
