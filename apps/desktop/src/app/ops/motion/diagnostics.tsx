@@ -81,85 +81,103 @@ export function DiagnosticsPanel({
 
   const text = () => diagnosticsText({ probe: results, stream: { mode: stream.mode, reason: stream.reason }, policySource, errors })
 
+  const ok = results ? results.filter(r => r.state === 'ok').length : 0
+  const total = results?.length ?? 0
+  const failing = results ? results.filter(r => r.state !== 'ok') : []
+  const tone = !results ? 'idle' : failing.length === 0 && errors.length === 0 ? 'good' : 'warn'
+
+  // P7: confirmed state, then the evidence for it, then the next action. Details fold away.
   return (
     <div data-ops-diagnostics="">
-      {/* B34: one-glance health. A ring for the probe score, a plain headline, the stream and error count. */}
-      {(() => {
-        const ok = results ? results.filter(r => r.state === 'ok').length : 0
-        const total = results?.length ?? 0
-        const tone = !results ? 'idle' : ok === total && errors.length === 0 ? 'good' : 'warn'
-
-        return (
-          <div data-ops-diag-hero={tone}>
-            <span data-ops-diag-ring="" style={{ '--ops-pct': total ? ok / total : 0 } as React.CSSProperties}>
-              {results ? `${ok}/${total}` : '–'}
-            </span>
-            <div>
-              <strong>{!results ? T('Not probed yet') : tone === 'good' ? T('All systems go') : T('Some capabilities need attention')}</strong>
-              <small>
-                {stream.mode} · {T('Recent errors')} {errors.length}
-              </small>
-            </div>
-          </div>
-        )
-      })()}
-      <dl>
-        <dt>{T("Stream")}</dt>
-        <dd data-ops-diag-stream={stream.mode}>
-          {stream.mode}
+      <header data-ops-diag-hero={tone}>
+        <h3 data-ops-diag-state="">
+          {!results ? T('Not probed yet') : tone === 'good' ? T('All systems go') : T('Some capabilities need attention')}
+        </h3>
+        <p data-ops-diag-summary="">
+          {results ? `${ok}/${total} ${T('available')} · ` : ''}
+          {T('Recent errors')} {errors.length} · {stream.mode}
           {stream.reason ? ` (${stream.reason})` : ''}
-        </dd>
-        <dt>{T("Connection")}</dt>
-        <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
-          {conn ? connCopy(conn.copy) : T('Run the probe to check the Hermes version and capabilities.')}
-        </dd>
-        <dt>{T("Stream generation")}</dt>
-        <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
-        <dt>{T("Policy source")}</dt>
-        <dd data-ops-diag-policy="">{policySource ?? T('unknown')}</dd>
-      </dl>
-      <button data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
-        {probing ? T('Probing…') : T('Run capability probe')}
-      </button>
-      {results ? (
-        <ul aria-label={T("Capability probe")} data-ops-probe-results="">
-          {results.map(r => (
-            <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
-              <b data-ops-probe-id="">{r.id}</b> {T(r.label)}{r.state === 'ok' ? <span data-ops-probe-ok="">: {T('available')}</span> : <>: {r.detail}</>}
-            </li>
-          ))}
-        </ul>
+        </p>
+        <span data-ops-diag-actions="">
+          <button data-ops-primary="" data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
+            {probing ? T('Probing…') : results ? T('Probe again') : T('Run capability probe')}
+          </button>
+          <button
+            data-ops-copy-diagnostics=""
+            onClick={async () => {
+              try {
+                await (copy ?? (t => navigator.clipboard.writeText(t)))(text())
+                setNote('Diagnostics copied (redacted).')
+              } catch (e) {
+                setNote(`Copy failed: ${e instanceof Error ? e.message : String(e)}`)
+              }
+            }}
+            type="button"
+          >
+            {T("Copy diagnostics")}</button>
+        </span>
+        {note ? <p role="status">{note}</p> : null}
+      </header>
+      {failing.length ? (
+        <section aria-label={T('Needs attention')} data-ops-diag-evidence="probe">
+          <h4>{T('Needs attention')}</h4>
+          <ul data-ops-probe-failing="">
+            {failing.map(r => (
+              <li data-ops-probe-fail={r.state} key={r.id}>
+                <strong>{T(r.label)}</strong>
+                <span>{r.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
-      <h4>
-        {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
-      </h4>
-      {errors.length === 0 ? (
-        <p data-ops-empty="errors">{T("No Ops request has failed this session.")}</p>
-      ) : (
-        <ol data-ops-errors="">
-          {errors.map((e, i) => (
-            <li key={`${e.at}-${i}`}>
-              <time>{new Date(e.at).toLocaleTimeString()}</time> {e.method} {e.path}: {e.message}
-            </li>
-          ))}
-        </ol>
-      )}
-      <button
-        data-ops-copy-diagnostics=""
-        onClick={async () => {
-          try {
-            await (copy ?? (t => navigator.clipboard.writeText(t)))(text())
-            setNote('Diagnostics copied (redacted).')
-          } catch (e) {
-            setNote(`Copy failed: ${e instanceof Error ? e.message : String(e)}`)
-          }
-        }}
-        type="button"
-      >
-        {T("Copy diagnostics")}</button>
-      <button disabled={errors.length === 0} onClick={clearOpsErrors} type="button">
-        {T("Clear errors")}</button>
-      {note ? <p role="status">{note}</p> : null}
+      <section aria-label={T('Recent errors')} data-ops-diag-evidence="errors">
+        <h4>
+          {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
+        </h4>
+        {errors.length === 0 ? (
+          <p data-ops-empty="errors">{T("No Ops request has failed this session.")}</p>
+        ) : (
+          <>
+            <ol data-ops-errors="">
+              {errors.map((e, i) => (
+                <li key={`${e.at}-${i}`}>
+                  <time>{new Date(e.at).toLocaleTimeString()}</time> {e.method} {e.path}: {e.message}
+                </li>
+              ))}
+            </ol>
+            <button onClick={clearOpsErrors} type="button">
+              {T("Clear errors")}</button>
+          </>
+        )}
+      </section>
+      <details data-ops-diag-details="" open={Boolean(results)}>
+        <summary>{T('Details')}</summary>
+        <dl>
+          <dt>{T("Stream")}</dt>
+          <dd data-ops-diag-stream={stream.mode}>
+            {stream.mode}
+            {stream.reason ? ` (${stream.reason})` : ''}
+          </dd>
+          <dt>{T("Connection")}</dt>
+          <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
+            {conn ? connCopy(conn.copy) : T('Run the probe to check the Hermes version and capabilities.')}
+          </dd>
+          <dt>{T("Stream generation")}</dt>
+          <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
+          <dt>{T("Policy source")}</dt>
+          <dd data-ops-diag-policy="">{policySource ?? T('unknown')}</dd>
+        </dl>
+        {results ? (
+          <ul aria-label={T("Capability probe")} data-ops-probe-results="">
+            {results.map(r => (
+              <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
+                <b data-ops-probe-id="">{r.id}</b> {T(r.label)}{r.state === 'ok' ? <span data-ops-probe-ok="">: {T('available')}</span> : <>: {r.detail}</>}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </details>
       {simAllowed() ? (
         <label data-ops-simulate="">
           {T("Simulate (dev only)")}<select aria-label={T("simulate")} onChange={e => setSimMode(e.target.value as SimMode)} value={sim}>
@@ -171,5 +189,23 @@ export function DiagnosticsPanel({
         </label>
       ) : null}
     </div>
+  )
+}
+
+/** P7: the one-line system status Settings shows; the full panel lives in the Diagnostics view. */
+export function SystemStatus({ policySource, onOpen }: { policySource: string | null; onOpen: () => void }) {
+  const stream = useKanbanStream()
+  const errors = useSyncExternalStore(subscribeOpsErrors, opsErrors, opsErrors)
+
+  return (
+    <p data-ops-system-status={errors.length ? 'warn' : 'ok'}>
+      <span>
+        {errors.length ? `${T('Recent errors')} ${errors.length}` : T('No Ops request has failed this session.')} · {stream.mode} · {T('Policy source')}{' '}
+        {policySource ?? T('unknown')}
+      </span>
+      <button data-ops-open-diagnostics="" onClick={onOpen} type="button">
+        {T('Open Diagnostics')}
+      </button>
+    </p>
   )
 }

@@ -20,7 +20,7 @@ import { OpsShortcutSheet } from '../shortcut-sheet'
 
 import { remoteThumbsOptedOut, THUMB_OPT_OUT_KEY, THUMB_PREF_EVENT } from '../../artifacts/thumb-cache'
 
-import { DiagnosticsPanel } from './diagnostics'
+import { DiagnosticsPanel, SystemStatus } from './diagnostics'
 import { cycleMotion, loadMotion, type MotionMode, saveMotion } from './motion'
 import { hostTimezone, opsTimezone as tzOf, validTimezone } from './tz'
 
@@ -154,6 +154,8 @@ export function SettingsView({
   const [motion, setMotion] = useMotionMode()
   const [prefs, setPrefs] = useState<OpsPrefs>(() => loadPrefs())
   const [sheet, setSheet] = useState(false)
+  const [view, setView] = useState<'settings' | 'diagnostics'>('settings')
+  const policySource = policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null
   const [draftNote, setDraftNote] = useState<string | null>(null)
   const [thumbs, setThumbs] = useState(() => !remoteThumbsOptedOut())
   const setRemoteThumbs = (on: boolean) => {
@@ -214,6 +216,18 @@ export function SettingsView({
           <span data-ops-chip="">{T('Secrets set')}: {secrets ? `${secrets.filter(x => x.set).length}/${secrets.length}` : '…'}</span>
         </span>
       </header>
+      <div aria-label={T("Settings views")} data-ops-settings-views="" role="tablist">
+        {(['settings', 'diagnostics'] as const).map(v => (
+          <button aria-selected={view === v} data-ops-settings-view={v} key={v} onClick={() => setView(v)} role="tab" type="button">
+            {v === 'settings' ? T('Settings') : T('Diagnostics')}
+          </button>
+        ))}
+      </div>
+      {view === 'diagnostics' ? (
+        <section aria-label={T("Diagnostics")} data-ops-settings-system="">
+          <DiagnosticsPanel policySource={policySource} />
+        </section>
+      ) : (
       <div data-ops-settings-main="">
       <Group id="general" title={T("General")}>
         <dl>
@@ -319,11 +333,9 @@ export function SettingsView({
         <button onClick={() => setSheet(true)} type="button">
           {T("Shortcut sheet")}</button>
       </Group>
-      </div>
-      {/* P6: system health is its own region, not a settings group. */}
-      <section aria-label={T("Diagnostics")} data-ops-settings-system="">
-      <Group id="diagnostics" title={T("Diagnostics")}>
-        <DiagnosticsPanel policySource={policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null} />
+      {/* P7: Settings keeps a short system status and a door to Diagnostics; the full panel is its own view. */}
+      <Group id="system" title={T("System status")}>
+        <SystemStatus onOpen={() => setView('diagnostics')} policySource={policySource} />
       </Group>
       <Group folded hint={T("Secrets present, write routes, cross-site rules")} id="security" title={T("Security")}>
         <dl>
@@ -375,7 +387,8 @@ export function SettingsView({
           </dd>
         </dl>
       </Group>
-      </section>
+      </div>
+      )}
       {sheet ? <OpsShortcutSheet onClose={() => setSheet(false)} /> : null}
     </section>
   )

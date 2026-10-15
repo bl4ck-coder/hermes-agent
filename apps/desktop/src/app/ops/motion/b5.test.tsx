@@ -143,7 +143,7 @@ describe('Settings and lifecycle', () => {
       'ops',
       'notifications',
       'shortcuts',
-      'diagnostics',
+      'system',
       'security'
     ])
     expect(document.querySelector('[data-ops-settings]')?.getAttribute('data-ops-theme')).toBe('gold-night')

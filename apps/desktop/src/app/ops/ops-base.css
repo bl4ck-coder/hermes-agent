@@ -833,3 +833,22 @@
 :where([data-ops-team-foot]) :where([data-ops-team-projects]) { display: inline-flex; flex-wrap: wrap; gap: var(--space-1,4px); font-size: var(--type-meta,14px); }
 :where([data-ops-team-foot]) :where([data-ops-team-project]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
 :where([data-ops-team-unassigned]) { opacity: .75; }
+
+/* P7: Settings | Diagnostics are two views; Diagnostics reads state -> evidence -> action. */
+:where([data-ops-settings-views]) { display: flex; gap: var(--space-2,8px); margin: 0 0 var(--space-6,24px); }
+:where([data-ops-settings-system]) { border-top: 0; margin-top: 0; padding-top: 0; max-width: var(--width-form,760px); }
+:where([data-ops-system-status]) { display: flex; align-items: center; gap: var(--space-4,16px); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); margin: 0; }
+:where([data-ops-system-status]) :where(button) { margin-left: auto; }
+:where([data-ops-diagnostics]) { display: grid; gap: var(--space-6,24px); }
+:where([data-ops-diag-hero]) { display: grid; gap: var(--space-2,8px); padding: 0; background: none; border: 0; }
+:where([data-ops-diag-state]) { font-size: var(--type-page,28px); line-height: var(--type-page-lh,36px); margin: 0; }
+:where([data-ops-diag-hero='good']) :where([data-ops-diag-state]) { color: var(--ops-ok, #3fb950); }
+:where([data-ops-diag-hero='warn']) :where([data-ops-diag-state]) { color: var(--ops-warn, #e3a33b); }
+:where([data-ops-diag-summary]) { font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); color: var(--ops-muted); margin: 0; }
+:where([data-ops-diag-actions]) { display: flex; gap: var(--space-2,8px); margin-top: var(--space-2,8px); }
+:where([data-ops-diag-evidence]) :where(h4) { font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); margin: 0 0 var(--space-3,12px); }
+:where([data-ops-probe-failing]) { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2,8px); }
+:where([data-ops-probe-failing]) :where(li) { display: grid; gap: var(--space-1,4px); padding: var(--space-3,12px) 0; border-bottom: 1px solid var(--ops-line); font-size: var(--type-body,16px); }
+:where([data-ops-probe-failing]) :where(li > span) { font-size: var(--type-meta,14px); color: var(--ops-muted); }
+:where([data-ops-errors]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
+:where([data-ops-diag-details]) > :where(summary) { cursor: pointer; font-size: var(--type-meta,14px); color: var(--ops-muted); }

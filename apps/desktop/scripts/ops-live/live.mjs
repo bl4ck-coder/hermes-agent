@@ -308,6 +308,7 @@ if (want('settings')) await section('08c-settings-top', async () => {
   return 'scrolled to top'
 })
 if (want('diagnostics')) await section('09-diagnostics', async () => {
+  await page.locator('[data-ops-settings-view="diagnostics"]').first().click({ timeout: 8000 }).catch(() => {})
   const d = page.locator('[data-ops-diagnostics]').first(); await d.scrollIntoViewIfNeeded({ timeout: 8000 })
   await page.locator('[data-ops-probe]').first().click({ timeout: 8000 }); await sleep(4000); await d.scrollIntoViewIfNeeded()
   return await page.evaluate(() => { const e = document.querySelector('[data-ops-diag-connection]'); return `${e?.getAttribute('data-ops-diag-connection')} writes=${e?.getAttribute('data-ops-writes')}` })
