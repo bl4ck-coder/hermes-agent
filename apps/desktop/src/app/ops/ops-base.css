@@ -964,13 +964,13 @@
 :where([data-ops-team-more]) { font-size: var(--type-caption,12px); color: var(--ops-muted); align-self: center; }
 
 :where([data-ops-board-active-filter]) :where(b) { font-weight: 400; opacity: 0.75; margin-right: 4px; }
-:where(details[data-ops-team-more]) { display: inline-block; font-size: var(--type-caption,12px); color: var(--ops-muted); }
-:where(details[data-ops-team-more] > summary) { cursor: pointer; list-style: none; min-height: 24px; display: inline-flex; align-items: center; padding: 0 6px; border-radius: 999px; }
+:where(details[data-ops-team-more]) { display: inline-block; font-size: var(--type-meta,14px); color: var(--ops-muted); }
+:where(details[data-ops-team-more] > summary) { cursor: pointer; list-style: none; min-height: 40px; min-width: 40px; justify-content: center; font-size: var(--type-meta,14px); display: inline-flex; align-items: center; padding: 0 6px; border-radius: 999px; }
 :where(details[data-ops-team-more][open]) { flex-basis: 100%; }
 
 /* P12: Office rows: one dominant action; notes and comments are a quiet disclosure that opens inline. */
 :where(details[data-ops-row-more]) { display: inline-block; vertical-align: middle; }
-:where(details[data-ops-row-more] > summary) { cursor: pointer; list-style: none; display: inline-flex; align-items: center; min-height: 32px; padding: 0 8px; border-radius: 6px; color: var(--ops-muted); font-size: var(--type-meta,14px); }
+:where(details[data-ops-row-more] > summary) { cursor: pointer; list-style: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 8px; border-radius: 6px; color: var(--ops-muted); font-size: var(--type-meta,14px); }
 :where(details[data-ops-row-more][open]) { display: flex; flex-wrap: wrap; gap: var(--space-2,8px); align-items: center; margin-top: var(--space-1,4px); }
 
 /* P12: thresholds use the exact Settings row anatomy (same columns, label style, 48px rows). */
