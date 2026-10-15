@@ -542,3 +542,10 @@ html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-board-flow] [dat
 html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-lens='skills'] [data-ops-roster] > li { background: rgb(255 255 255 / 0.015); border-color: transparent; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05); }
 
 html[data-hermes-theme^='gold-night'] [data-ops-root] [data-ops-settings-main] > [data-ops-settings-group] { padding-bottom: 16px; }
+
+/* P11g: the form-axis wrapper owns width; the old 62rem cap on settings-body children pushed the form off the title's axis. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] > * { max-width: none; }
+/* P11g: a start-aligned empty state stays on the panel's left edge. */
+html[data-hermes-theme^='gold-night'] [data-panel-empty][data-panel-empty-align='start'] { display: block; width: 100%; text-align: left; }
+html[data-hermes-theme^='gold-night'] [data-panel-empty][data-panel-empty-align='start'] > [data-panel-empty-card] { margin-inline: 0; }
+
