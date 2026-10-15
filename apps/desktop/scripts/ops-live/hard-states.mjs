@@ -33,7 +33,8 @@ const fill = async (page, sel, v) => { const l = page.locator(sel).first(); if (
 
 export default async function ({ page, go, goApp, lens, state, mock, narrow, sleep, want }) {
   if (!want('hard') && !want('all')) return
-  const open = async id => { await go('/ops'); await lens(id) }
+  // Office and Board are pinned routes, not rail lenses.
+  const open = async id => { if (id === 'office' || id === 'board') { await go(`/ops/${id}`); await sleep(1500); return } await go('/ops'); await lens(id) }
   await mock(base)
 
   // Office
@@ -56,7 +57,7 @@ export default async function ({ page, go, goApp, lens, state, mock, narrow, sle
   await mock(base)
 
   // Agents: Fleet / Teams
-  await state('fleet', 'details-open', async () => { await open('agents'); return String(await click(page, '[data-ops-fleet-row] [data-ops-row-more-slot] summary, [data-ops-row] [data-ops-row-more-slot] summary')) })
+  await state('fleet', 'details-open', async () => { await open('agents'); return String(await click(page, 'details:has([data-ops-fleet-details]) > summary')) })
   await state('teams', 'work-and-members-open', async () => {
     await open('agents')
     await click(page, '[data-ops-lens="agents"] [role="tablist"] button:nth-child(2), [data-ops-agents-tab="teams"]')
@@ -90,7 +91,7 @@ export default async function ({ page, go, goApp, lens, state, mock, narrow, sle
   await mock([...base, { path: '^/api/config', method: 'PUT', throw: '422: rejected by schema (mock)' }, { path: '^/api/config', method: 'PATCH', throw: '422: rejected by schema (mock)' }, { path: '^/api/config', method: 'POST', throw: '422: rejected by schema (mock)' }])
   await state('app-settings', 'save-rejected', async () => {
     await goApp('/settings')
-    const ok = await fill(page, 'input[type="number"]', '200000')
+    const ok = await fill(page, '[data-tour*="context_length"] input, [data-tour*="context"] input[type="number"]', '200000')
     await page.keyboard.press('Tab').catch(() => {})
     await sleep(1500)
     return String(ok)
