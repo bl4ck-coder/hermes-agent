@@ -16,7 +16,7 @@ describe('B22', () => {
   it('needs-you rows carry an avatar and a kind pill; troubled kinds are garnet', () => {
     const src = read('office/needs-you.tsx')
     expect(src).toContain('<span data-ops-kind={item.origin}>')
-    expect(src).toContain('<Sigil name={item.profile} size={14} />')
+    expect(src).toContain('<Sigil name={item.profile} size={20} />') // P14: the row lead slot
     expect(b22).toMatch(/\[data-ops-kind='kanban_blocked'\]/)
   })
 

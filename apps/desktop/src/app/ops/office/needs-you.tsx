@@ -1,5 +1,5 @@
 /**
- * Needs-you queue (ops-panel P6 F1, SPEC O5/O59/O72/D3). Columns: Agent, Kind, Waiting on, Age, Why, Actions.
+ * Needs-you queue (ops-panel P6 F1, SPEC O5/O59/O72/D3). P14: a list of decisions (title, context, meta, one primary action, More actions).
  * - jsonrpc approvals: one-click Approve only when the full command is shown unabridged (D3/O8).
  * - kanban_review: Approve (move to done) or Request changes (needs a comment, moves back to todo).
  * - kanban_blocked: Unblock needs a note (comment, then ready); Open goes to the task tab.
@@ -7,10 +7,11 @@
  * Every action goes to the server; the row says what happened and never claims success early.
  */
 
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 
 import type { ApprovalItem, CronJobLite } from '../feed/ops-client'
 import { T } from '../main-i18n'
+import { Disclosure, EntityList, EntityRow } from '../primitives/entity-row'
 import { Sigil } from '../primitives/sigil'
 
 export type KanbanAction = { kind: 'approve_review' | 'request_changes' | 'unblock' | 'comment'; taskId: string; note?: string }
@@ -126,168 +127,202 @@ export function NeedsYouQueue(p: NeedsYouProps) {
   const policy = Array.isArray(p.policy) ? p.policy : []
   const total = p.items.length + failing.length + policy.length
 
+  const alerts = (key: string) => (
+    <>
+      {errors[key] && busy[key] === 'failed' ? <span role="alert">{errors[key]}</span> : null}
+      {errors[`d:${key}`] && busy[`d:${key}`] === 'failed' ? <span role="alert">{errors[`d:${key}`]}</span> : null}
+      {errors[`c:${key}`] && busy[`c:${key}`] === 'failed' ? <span role="alert">{errors[`c:${key}`]}</span> : null}
+    </>
+  )
+
+  // P14: oldest first where age is known; unknown age last. Stable by key otherwise.
+  const byAge = (x: ApprovalItem, y: ApprovalItem) => (typeof y.age_s === 'number' ? y.age_s : -1) - (typeof x.age_s === 'number' ? x.age_s : -1)
+  const decisions = p.items.filter(i => i.origin !== 'kanban_blocked').sort(byAge)
+  const blocked = p.items.filter(i => i.origin === 'kanban_blocked').sort(byAge)
+
+  const comment = (item: ApprovalItem, key: string) =>
+    !p.readOnly && (item.origin === 'kanban_review' || item.origin === 'kanban_blocked') ? (
+      <span data-ops-row-more="comment">
+        <input aria-label={`comment for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [`c:${key}`]: e.target.value }))} placeholder={T("Comment")} value={notes[`c:${key}`] ?? ''} />
+        <button data-ops-comment={key}
+          data-ops-write=""
+          disabled={!(notes[`c:${key}`] ?? '').trim()}
+          onClick={() => void run(`c:${key}`, () => p.onKanban?.({ kind: 'comment', taskId: item.id, note: (notes[`c:${key}`] ?? '').trim() })).then(() => setNotes(n => ({ ...n, [`c:${key}`]: '' })))}
+          type="button"
+        >
+          {T("Comment")}</button>
+      </span>
+    ) : null
+
+  const row = (item: ApprovalItem) => {
+    const key = `${item.origin}:${item.id}`
+    const sending = busy[key] === 'sending' || busy[key] === 'done'
+    const cmd = item.exact_request?.command ?? ''
+    const fullFits = oneClickApprove(item)
+    const note = notes[key] ?? ''
+    const why = MISSING_WHY.has((item.why ?? '').trim()) ? null : item.why
+    // The recognisable work leads; a command is shown whole, in mono, before Approve.
+    const title = item.origin === 'jsonrpc' || item.origin === 'gateway_run' ? item.what_for || T(KIND[item.origin] ?? item.origin) : item.what_for || cmd || item.id
+
+    let primary: ReactNode = null
+    let more: ReactNode = null
+
+    if (p.readOnly) {
+      primary = <span data-ops-review={key}>{T("Review")}</span>
+    } else if (item.origin === 'jsonrpc') {
+      primary = fullFits ? (
+        <button data-ops-approve={key} data-ops-primary="" data-ops-write="" disabled={sending} onClick={() => void run(key, () => p.onApprove?.(item))} type="button">
+          {label(key, 'Approve', 'Approved')}
+        </button>
+      ) : (
+        <span data-ops-review={key}>{T("Review")}</span>
+      )
+      more =
+        p.onDeny && item.actions.includes('deny') ? (
+          <button data-ops-deny={key} data-ops-write="" disabled={sending || busy[`d:${key}`] === 'sending' || busy[`d:${key}`] === 'done'} onClick={() => void run(`d:${key}`, () => p.onDeny?.(item))} type="button">
+            {label(`d:${key}`, 'Deny', 'Denied')}
+          </button>
+        ) : null
+    } else if (item.origin === 'kanban_review') {
+      primary = (
+        <button data-ops-approve={key} data-ops-primary="" data-ops-write="" disabled={sending} onClick={() => void run(key, () => p.onKanban?.({ kind: 'approve_review', taskId: item.id }))} type="button">
+          {label(key, 'Approve', 'Approved')}
+        </button>
+      )
+      more = (
+        <Disclosure label={T("More actions")}>
+          <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("What to change")} value={note} />
+          <button data-ops-write="" disabled={sending || !note.trim()} onClick={() => void run(key, () => p.onKanban?.({ kind: 'request_changes', taskId: item.id, note: note.trim() }))} type="button">
+            {T("Request changes")}</button>
+          {p.onOpenTask ? <button onClick={() => p.onOpenTask?.(item.id)} type="button">{T("Open task")}</button> : null}
+          {comment(item, key)}
+          {why ? null : <small data-ops-why-missing="">{T("reason not recorded")}</small>}
+        </Disclosure>
+      )
+    } else if (item.origin === 'kanban_blocked') {
+      primary = (
+        <button data-ops-primary="" onClick={() => p.onOpenTask?.(item.id)} type="button">
+          {T("Open task")}</button>
+      )
+      more = (
+        <Disclosure label={T("More actions")}>
+          <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("Unblock note")} value={note} />
+          <button data-ops-unblock={key} data-ops-write="" disabled={sending || !note.trim()} onClick={() => void run(key, () => p.onKanban?.({ kind: 'unblock', taskId: item.id, note: note.trim() }))} type="button">
+            {label(key, 'Unblock', 'Unblocked')}
+          </button>
+          {comment(item, key)}
+          {why ? null : <small data-ops-why-missing="">{T("reason not recorded")}</small>}
+        </Disclosure>
+      )
+    } else {
+      primary = <span data-ops-review={key}>{T("Not routable from this connection")}</span>
+    }
+
+    return (
+      <EntityRow
+        attrs={{ 'data-ops-approval': key, 'data-ops-origin': item.origin }}
+        context={
+          <>
+            {why ? <span data-ops-why="">{why}</span> : null}
+            {cmd && (item.origin === 'jsonrpc' || item.origin === 'gateway_run') ? <pre data-ops-row-command="" data-ops-waiting-on="">{cmd}</pre> : null}
+          </>
+        }
+        focusable
+        key={key}
+        lead={item.profile ? <Sigil name={item.profile} size={20} /> : null}
+        meta={
+          <>
+            <span data-ops-kind={item.origin}>{T(KIND[item.origin] ?? item.origin)}</span>
+            <span data-ops-agent="">{item.profile ?? T('unknown')}</span>
+            <span data-ops-age="">{age(item.age_s)}</span>
+          </>
+        }
+        more={
+          <>
+            {more}
+            {alerts(key)}
+          </>
+        }
+        primary={primary}
+        title={cmd && (item.origin === 'jsonrpc' || item.origin === 'gateway_run') ? title : <span data-ops-waiting-on="">{title}</span>}
+        tone={item.origin === 'kanban_blocked' ? 'warn' : undefined}
+      />
+    )
+  }
+
   return (
     <section aria-label={T("Needs you")} data-ops-needs-you="">
       <h3>{T("Needs you (")}{total})</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>{T("Agent")}</th>
-            <th>{T("Kind")}</th>
-            <th>{T("Waiting on")}</th>
-            <th>{T("Age")}</th>
-            <th>{T("Why")}</th>
-            <th>{T("Actions")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {p.items.map(item => {
-            const key = `${item.origin}:${item.id}`
-            const sending = busy[key] === 'sending' || busy[key] === 'done'
-            const cmd = item.exact_request?.command ?? ''
-            const fullFits = oneClickApprove(item)
-            const note = notes[key] ?? ''
+      {/* P14 (judge consult): decisions, not a table. Grouped by what is asked of you; oldest first. */}
+      {decisions.length ? (
+        <div data-ops-rows-group="decisions">
+          <h4>{T("Pending decisions")}</h4>
+          <EntityList label={T("Pending decisions")}>{decisions.map(row)}</EntityList>
+        </div>
+      ) : null}
+      {blocked.length ? (
+        <div data-ops-rows-group="blocked">
+          <h4>{T("Blocked work")}</h4>
+          <EntityList label={T("Blocked work")}>{blocked.map(row)}</EntityList>
+        </div>
+      ) : null}
+      {policy.length || failing.length ? (
+        <div data-ops-rows-group="problems">
+          <h4>{T("Configuration or run problems")}</h4>
+          <EntityList label={T("Configuration or run problems")}>
+            {policy.map(v => {
+              const key = `policy:${v.profile}:${v.field}`
 
-            return (
-              <tr data-ops-approval={key} data-ops-origin={item.origin} key={key} tabIndex={-1}>
-                <td data-ops-agent="">{item.profile ? <Sigil name={item.profile} size={14} /> : null}{item.profile ?? T('unknown')}</td>
-                <td><span data-ops-kind={item.origin}>{T(KIND[item.origin] ?? item.origin)}</span></td>
-                <td data-ops-waiting-on="">{cmd || item.what_for || item.id}</td>
-                <td data-ops-age="">{age(item.age_s)}</td>
-                <td data-ops-why="">
-                  {MISSING_WHY.has((item.why ?? '').trim()) ? (
-                    <span aria-label={T("reason not recorded")} data-ops-why-missing="" title={T("reason not recorded")}>
-                      —
-                    </span>
-                  ) : (
-                    item.why
-                  )}
-                </td>
-                <td>
-                  {p.readOnly ? (
-                    <span data-ops-review={key}>{T("Review")}</span>
-                  ) : item.origin === 'jsonrpc' ? (
+              return (
+                <EntityRow
+                  attrs={{ 'data-ops-approval': key, 'data-ops-origin': 'policy' }}
+                  context={v.reason}
+                  key={key}
+                  meta={
                     <>
-                      {fullFits ? (
-                        <button data-ops-approve={key} data-ops-write="" disabled={sending} onClick={() => void run(key, () => p.onApprove?.(item))} type="button">
-                          {label(key, 'Approve', 'Approved')}
-                        </button>
-                      ) : (
-                        <span data-ops-review={key}>{T("Review")}</span>
-                      )}
-                      {p.onDeny && item.actions.includes('deny') ? (
-                        <button data-ops-deny={key} data-ops-write="" disabled={sending || busy[`d:${key}`] === 'sending' || busy[`d:${key}`] === 'done'} onClick={() => void run(`d:${key}`, () => p.onDeny?.(item))} type="button">
-                          {label(`d:${key}`, 'Deny', 'Denied')}
-                        </button>
-                      ) : null}
+                      <span data-ops-kind="policy">{T(KIND.policy)}</span>
+                      <span data-ops-agent="">{v.profile}</span>
                     </>
-                  ) : item.origin === 'kanban_review' ? (
+                  }
+                  primary={
+                    <button data-ops-policy-fix={v.profile} data-ops-primary="" disabled={!p.onOpenProfile} onClick={() => p.onOpenProfile?.(v.profile)} type="button">
+                      {T("Fix on Canvas")}</button>
+                  }
+                  title={`${v.field}: ${v.provider}/${v.model}`}
+                  tone="bad"
+                />
+              )
+            })}
+            {failing.map(j => {
+              const key = `cron:${j.id}`
+
+              return (
+                <EntityRow
+                  attrs={{ 'data-ops-approval': key, 'data-ops-origin': 'cron_failure' }}
+                  context={`${j.failure_streak} ${T("failure(s) in a row")}${j.last_status ? `, last: ${j.last_status}` : ''}`}
+                  key={key}
+                  meta={
                     <>
-                      <button data-ops-approve={key} data-ops-write="" disabled={sending} onClick={() => void run(key, () => p.onKanban?.({ kind: 'approve_review', taskId: item.id }))} type="button">
-                        {label(key, 'Approve', 'Approved')}
+                      <span data-ops-kind="cron_failure">{T(KIND.cron_failure)}</span>
+                      <span data-ops-agent="">{j.profile ?? T('unknown')}</span>
+                    </>
+                  }
+                  more={alerts(key)}
+                  primary={
+                    p.readOnly ? null : (
+                      <button data-ops-cron-run={j.id} data-ops-primary="" data-ops-write="" disabled={busy[key] === 'sending'} onClick={() => void run(key, () => p.onCronRun?.(j.id))} type="button">
+                        {label(key, 'Run now', 'Triggered')}
                       </button>
-                      {/* P12: one primary action per row; the rest fold behind a disclosure. */}
-                      <details data-ops-row-more=""><summary aria-label={T("More actions")}>{T("More actions")}</summary>
-                      <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("What to change")} value={note} />
-                      <button data-ops-write=""
-                        disabled={sending || !note.trim()}
-                        onClick={() => void run(key, () => p.onKanban?.({ kind: 'request_changes', taskId: item.id, note: note.trim() }))}
-                        type="button"
-                      >
-                        {T("Request changes")}</button>
-                      </details>
-                    </>
-                  ) : item.origin === 'kanban_blocked' ? (
-                    <>
-                      <button onClick={() => p.onOpenTask?.(item.id)} type="button">
-                        {T("Open")}</button>
-                      <details data-ops-row-more=""><summary aria-label={T("More actions")}>{T("More actions")}</summary>
-                      <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T("Unblock note")} value={note} />
-                      <button data-ops-unblock={key}
-                        data-ops-write=""
-                        disabled={sending || !note.trim()}
-                        onClick={() => void run(key, () => p.onKanban?.({ kind: 'unblock', taskId: item.id, note: note.trim() }))}
-                        type="button"
-                      >
-                        {label(key, 'Unblock', 'Unblocked')}
-                      </button>
-                      </details>
-                    </>
-                  ) : (
-                    <span data-ops-review={key}>{T("Not routable from this connection")}</span>
-                  )}
-                  {!p.readOnly && (item.origin === 'kanban_review' || item.origin === 'kanban_blocked') ? (
-                    <details data-ops-row-more="comment"><summary>{T("Comment")}</summary>
-                      <input
-                        aria-label={`comment for ${item.id}`}
-                        onChange={e => setNotes(n => ({ ...n, [`c:${key}`]: e.target.value }))}
-                        placeholder={T("Comment")}
-                        value={notes[`c:${key}`] ?? ''}
-                      />
-                      <button data-ops-comment={key}
-                        data-ops-write=""
-                        disabled={!(notes[`c:${key}`] ?? '').trim()}
-                        onClick={() =>
-                          void run(`c:${key}`, () => p.onKanban?.({ kind: 'comment', taskId: item.id, note: (notes[`c:${key}`] ?? '').trim() })).then(() =>
-                            setNotes(n => ({ ...n, [`c:${key}`]: '' }))
-                          )
-                        }
-                        type="button"
-                      >
-                        {T("Comment")}</button>
-                    </details>
-                  ) : null}
-                  {errors[key] && busy[key] === 'failed' ? <span role="alert">{errors[key]}</span> : null}
-                  {errors[`d:${key}`] && busy[`d:${key}`] === 'failed' ? <span role="alert">{errors[`d:${key}`]}</span> : null}
-                  {errors[`c:${key}`] && busy[`c:${key}`] === 'failed' ? <span role="alert">{errors[`c:${key}`]}</span> : null}
-                </td>
-              </tr>
-            )
-          })}
-          {policy.map(v => {
-            const key = `policy:${v.profile}:${v.field}`
-
-            return (
-              <tr data-ops-approval={key} data-ops-origin="policy" key={key}>
-                <td>{v.profile}</td>
-                <td>{KIND.policy}</td>
-                <td>
-                  {v.field}: {v.provider}/{v.model}
-                </td>
-                <td>{T("unknown")}</td>
-                <td>{v.reason}</td>
-                <td>
-                  <button data-ops-policy-fix={v.profile} disabled={!p.onOpenProfile} onClick={() => p.onOpenProfile?.(v.profile)} type="button">
-                    {T("Fix on Canvas")}</button>
-                </td>
-              </tr>
-            )
-          })}
-          {failing.map(j => {
-            const key = `cron:${j.id}`
-
-            return (
-              <tr data-ops-approval={key} data-ops-origin="cron_failure" key={key}>
-                <td>{j.profile ?? T('unknown')}</td>
-                <td>{KIND.cron_failure}</td>
-                <td>{j.name ?? j.id}</td>
-                <td>{T("unknown")}</td>
-                <td>
-                  {j.failure_streak} {T("failure(s) in a row")}{j.last_status ? `, last: ${j.last_status}` : ''}
-                </td>
-                <td>
-                  {p.readOnly ? null : (
-                    <button data-ops-cron-run={j.id} data-ops-write="" disabled={busy[key] === 'sending'} onClick={() => void run(key, () => p.onCronRun?.(j.id))} type="button">
-                      {label(key, 'Run now', 'Triggered')}
-                    </button>
-                  )}
-                  {errors[key] && busy[key] === 'failed' ? <span role="alert">{errors[key]}</span> : null}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                    )
+                  }
+                  title={j.name ?? j.id}
+                  tone="bad"
+                />
+              )
+            })}
+          </EntityList>
+        </div>
+      ) : null}
       {total === 0 ? <p data-ops-empty="needs-you">{T("Nothing needs you right now.")}</p> : null}
     </section>
   )

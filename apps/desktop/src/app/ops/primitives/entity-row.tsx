@@ -24,7 +24,8 @@ export function EntityRow({
   tone,
   primary,
   more,
-  attrs
+  attrs,
+  focusable
 }: {
   lead?: ReactNode
   title: ReactNode
@@ -34,9 +35,11 @@ export function EntityRow({
   primary?: ReactNode
   more?: ReactNode
   attrs?: DataAttrs
+  /** A focus target for jump-to (toasts, keyboard), not a tab stop. */
+  focusable?: boolean
 }) {
   return (
-    <li data-ops-row="" data-ops-row-tone={tone} {...attrs}>
+    <li data-ops-row="" data-ops-row-tone={tone} tabIndex={focusable ? -1 : undefined} {...attrs}>
       {lead ? <span data-ops-row-lead="">{lead}</span> : null}
       <div data-ops-row-main="">
         <div data-ops-row-title="">{title}</div>

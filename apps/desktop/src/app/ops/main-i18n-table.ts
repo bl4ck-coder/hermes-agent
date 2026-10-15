@@ -2,6 +2,10 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Open task": "Abrir tarea",
+     "Configuration or run problems": "Problemas de configuración o ejecución",
+     "Blocked work": "Trabajo bloqueado",
+     "Pending decisions": "Decisiones pendientes",
      "More actions": "Más acciones",
      "More filters": "Más filtros",
      "Checked": "Comprobado",
@@ -641,6 +645,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Open task": "Ouvrir la tâche",
+     "Configuration or run problems": "Problèmes de configuration ou d’exécution",
+     "Blocked work": "Travail bloqué",
+     "Pending decisions": "Décisions en attente",
      "More actions": "Plus d’actions",
      "More filters": "Plus de filtres",
      "Checked": "Vérifié",
@@ -1279,6 +1287,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Open task": "Aufgabe öffnen",
+     "Configuration or run problems": "Konfigurations- oder Ausführungsprobleme",
+     "Blocked work": "Blockierte Arbeit",
+     "Pending decisions": "Ausstehende Entscheidungen",
      "More actions": "Weitere Aktionen",
      "More filters": "Weitere Filter",
      "Checked": "Geprüft",
@@ -1917,6 +1929,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Open task": "Открыть задачу",
+     "Configuration or run problems": "Проблемы конфигурации или запуска",
+     "Blocked work": "Заблокированная работа",
+     "Pending decisions": "Ожидающие решения",
      "More actions": "Другие действия",
      "More filters": "Другие фильтры",
      "Checked": "Проверено",
@@ -2555,6 +2571,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Open task": "タスクを開く",
+     "Configuration or run problems": "設定または実行の問題",
+     "Blocked work": "ブロック中の作業",
+     "Pending decisions": "保留中の判断",
      "More actions": "その他の操作",
      "More filters": "その他のフィルター",
      "Checked": "確認済み",
@@ -3193,6 +3213,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Open task": "打开任务",
+     "Configuration or run problems": "配置或运行问题",
+     "Blocked work": "受阻的工作",
+     "Pending decisions": "待定决策",
      "More actions": "更多操作",
      "More filters": "更多筛选",
      "Checked": "已检查",
@@ -3831,6 +3855,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Open task": "開啟任務",
+     "Configuration or run problems": "設定或執行問題",
+     "Blocked work": "受阻的工作",
+     "Pending decisions": "待定決策",
      "More actions": "更多操作",
      "More filters": "更多篩選",
      "Checked": "已檢查",
@@ -4469,6 +4497,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Open task": "فتح المهمة",
+     "Configuration or run problems": "مشكلات في الإعداد أو التشغيل",
+     "Blocked work": "عمل محظور",
+     "Pending decisions": "قرارات معلقة",
      "More actions": "مزيد من الإجراءات",
      "More filters": "مزيد من عوامل التصفية",
      "Checked": "تم التحقق",
