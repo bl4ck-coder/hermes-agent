@@ -625,3 +625,9 @@ Scores (after B26 → after B29): Board 8→9, Canvas 8→9, Office 8→9, Setti
 - glass18: p95 15.1 ms in every sample; office and drag each had 2 frames at 44 ms.
 - Build masking: b-live.ps1 stops with BUILD FAILED. Appends are written with UTF-8 (no BOM) through .NET only.
 - After the Hermes v0.22.0 update (gateway pid 230108), the isolated live run works unchanged with the existing venv Python path.
+## B34–B35b (2026-10-14, glass19–glass22)
+
+- B34: Artifacts preview thumbnails (GitHub OG / monogram), Office "now running" hero, Fleet avatars + status rings, Diagnostics/Ops Settings/Profiles heroes, Agents ring illustration, Skills card capture fixed.
+- B35: OG thumbnails cached locally (Cache Storage `hermes-artifact-thumbs-v1`; any failure falls back to the monogram; tested). Shared `HeroBand` for Cron, Sessions (14-day spark), App Settings and Capabilities. Teams avatar stack, Channels connected ring, Canvas profile header, Board column flow bar, Chat emblem. Diagnostics ring hole fixed; Agents single card; Settings hero captured.
+- B35b: Skills hero (enabled ring + category chips), Agents hero always shown, Profiles identity card, live run waits for Office stats and frames the Canvas hero.
+- Evidence: glass22 frames p95 15.1–15.2 ms, max 29.6 ms, 0 frames over 33 ms. Gateway untouched (restarted externally at 21:17 ART; now pid 237584).

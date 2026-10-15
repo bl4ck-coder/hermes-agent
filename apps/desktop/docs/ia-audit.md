@@ -100,3 +100,9 @@ Legend: **Done** = landed in this pass and checked in the live screenshot. **Nex
 | Board | Flat columns. | Lit columns with a gold top wash and an inner highlight. |
 | Office (below the Orbit) | The dispatch bar and Needs-you list sat flat. | The dispatch bar is lit; Needs-you is a lit card with row hover. |
 | Canvas / Teams / Channels / Diagnostics / Sessions / App Settings | | One upgrade each: a dot grid plus a selected-node glow; busy-team glow; app card hover lift plus a connected rim; probe rows with an inner highlight; gold date-group headers; a lit active nav pill. |
+## B34–B35b (2026-10-14, glass19–glass22)
+
+- B34: Artifacts preview thumbnails (GitHub OG / monogram), Office "now running" hero, Fleet avatars + status rings, Diagnostics/Ops Settings/Profiles heroes, Agents ring illustration, Skills card capture fixed.
+- B35: OG thumbnails cached locally (Cache Storage `hermes-artifact-thumbs-v1`; any failure falls back to the monogram; tested). Shared `HeroBand` for Cron, Sessions (14-day spark), App Settings and Capabilities. Teams avatar stack, Channels connected ring, Canvas profile header, Board column flow bar, Chat emblem. Diagnostics ring hole fixed; Agents single card; Settings hero captured.
+- B35b: Skills hero (enabled ring + category chips), Agents hero always shown, Profiles identity card, live run waits for Office stats and frames the Canvas hero.
+- Evidence: glass22 frames p95 15.1–15.2 ms, max 29.6 ms, 0 frames over 33 ms. Gateway untouched (restarted externally at 21:17 ART; now pid 237584).
