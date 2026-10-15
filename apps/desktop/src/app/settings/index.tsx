@@ -592,7 +592,7 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
             {needsSubpageRedirect ? (
               <Navigate replace to={{ hash, pathname, search: `?${subpageSearch}` }} />
             ) : (
-              activeSettingsContent
+              <div className="contents" data-settings-body="">{activeSettingsContent}</div>
             )}
           </SettingsBreadcrumbContext.Provider>
         </OverlayMain>

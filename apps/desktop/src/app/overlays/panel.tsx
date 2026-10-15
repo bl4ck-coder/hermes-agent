@@ -293,6 +293,9 @@ export function PanelDetail({ children, className }: { children: ReactNode; clas
 }
 
 interface PanelEmptyProps {
+  /** B36: semantic hook for themes (data-panel-empty) and an illustration that replaces the small icon. */
+  id?: string
+  illustration?: ReactNode
   action?: ReactNode
   description?: ReactNode
   // Codicon glyph name (e.g. 'hubot', 'warning', 'loading~spin').
@@ -300,14 +303,14 @@ interface PanelEmptyProps {
   title?: ReactNode
 }
 
-export function PanelEmpty({ action, description, icon = 'inbox', title }: PanelEmptyProps) {
+export function PanelEmpty({ action, description, icon = 'inbox', id, illustration, title }: PanelEmptyProps) {
   return (
-    <div className="grid flex-1 place-items-center px-6 py-10 text-center">
-      <div className="flex flex-col items-center gap-2">
-        <Codicon className="text-muted-foreground/50" name={icon} size="1.25rem" />
-        {title ? <p className="text-sm font-medium text-foreground/90">{title}</p> : null}
+    <div className="grid flex-1 place-items-center px-6 py-10 text-center" data-panel-empty={id ?? ''}>
+      <div className="flex flex-col items-center gap-2" data-panel-empty-card="">
+        {illustration ?? <Codicon className="text-muted-foreground/50" name={icon} size="1.25rem" />}
+        {title ? <p className={cn('font-medium text-foreground/90', illustration ? 'text-base' : 'text-sm')}>{title}</p> : null}
         {description ? (
-          <p className="max-w-sm text-xs leading-relaxed text-muted-foreground/70">{description}</p>
+          <p className={cn('max-w-sm leading-relaxed', illustration ? 'text-sm text-muted-foreground' : 'text-xs text-muted-foreground/70')}>{description}</p>
         ) : null}
         {action ? <div className="mt-2">{action}</div> : null}
       </div>

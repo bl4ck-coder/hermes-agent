@@ -39,6 +39,8 @@ import { notify, notifyError } from '@/store/notifications'
 import { useRefreshHotkey } from '../hooks/use-refresh-hotkey'
 import { useRouteEnumParam } from '../hooks/use-route-enum-param'
 
+import { T } from '../ops/main-i18n'
+
 import { useCachedThumb } from './thumb-cache'
 import { openSessionFromPicker } from '../open-session'
 import { PageSearchShell } from '../page-search-shell'
@@ -129,6 +131,8 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
   const [refreshing, setRefreshing] = useState(false)
   const refreshInFlightRef = useRef(false)
   const artifactsLoadedRef = useRef(false)
+  // B36: sessions whose profile was not up even after the retry: not an error toast, but never silent.
+  const [skippedSessions, setSkippedSessions] = useState(0)
 
   const refreshArtifacts = useCallback(async () => {
     if (refreshInFlightRef.current) {
@@ -179,6 +183,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
       // Pool states (retired, saturated, still waiting after the retry) mean "that profile is not up right now",
       // not "your transcripts are unreadable": skip them quietly; they index once the profile is opened.
       const failures = allFailures.filter(({ error }) => !isRetiredBackend(error) && !isSlotWaitTimeout(error))
+      setSkippedSessions(allFailures.filter(({ error }) => isSlotWaitTimeout(error)).length)
 
       if (failures.length > 0) {
         const safeLimitFailures = failures.filter(({ error }) =>
@@ -438,9 +443,17 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                     total={visibleFileArtifacts.length}
                   />
                 </div>
+                {skippedSessions > 0 && (
+                  <p className="flex items-center gap-2 pb-1 text-xs text-muted-foreground" data-artifacts-partial={skippedSessions} role="status">
+                    {T('Not indexed (profile not running): {n} sessions').replace('{n}', String(skippedSessions))}
+                    <Button onClick={() => void refreshArtifacts()} size="sm" variant="ghost">
+                      {T('Retry')}
+                    </Button>
+                  </p>
+                )}
                 {currentFilePage === 1 && (
-                  // B33: the newest files and links as preview cards; the full table stays below.
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 pb-2 pt-1.5" data-artifact-cards="">
+                  // B33: the newest files and links as preview cards; the full table stays below. B36: labelled "Recent" so the overlap with the table reads as intended.
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 pb-2 pt-1.5" data-artifact-cards="" data-label={T('Recent')}>
                     {pagedFileArtifacts.slice(0, 8).map(artifact => (
                       <ArtifactPreviewCard artifact={artifact} key={artifact.id} onOpen={openArtifact} />
                     ))}

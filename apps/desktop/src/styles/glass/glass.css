@@ -387,7 +387,7 @@ html[data-hermes-theme^='gold-night'] :where([data-ops-stat][data-ops-alarm='gar
 html[data-hermes-theme^='gold-night'] [data-page-shell] [class*='bg-(--ui-chat-surface-background)'] { background-color: transparent; }
 
 /* -- Glass p8: Agents empty state sits on a lit glass card instead of floating in a blank overlay. */
-html[data-hermes-theme^='gold-night'] :where(div:has(> * > [data-agents-empty-hint])) {
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > :where([data-panel-empty-card]) {
   background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.55), rgb(var(--glass-panel) / 0.5));
   border: 1px solid rgb(var(--glass-gold-hi) / 0.16);
   border-radius: var(--glass-r-card, 16px);
@@ -403,14 +403,14 @@ html[data-hermes-theme^='gold-night'] [data-artifact-card='link'] [data-artifact
 html[data-hermes-theme^='gold-night'] [data-cron-run-group] { border-left: 2px solid rgb(var(--glass-gold) / 0.35); border-radius: 6px; }
 html[data-hermes-theme^='gold-night'] [data-session-group] { color: rgb(var(--glass-gold-hi) / 0.85); letter-spacing: 0.08em; }
 html[data-hermes-theme^='gold-night'] [data-overlay-surface] [aria-current='page'] { background: linear-gradient(90deg, rgb(var(--glass-gold) / 0.22), rgb(var(--glass-gold) / 0.06)); box-shadow: inset 2px 0 0 rgb(var(--glass-gold-hi)), 0 0 18px -8px rgb(var(--glass-gold) / 0.6); }html[data-hermes-theme^='gold-night'] [data-artifact-card] { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); }
-html[data-hermes-theme^='gold-night'] [data-ops-app]:has([data-ops-app-connected]) { box-shadow: inset 0 0 0 1px rgb(63 185 80 / 0.35); }
+html[data-hermes-theme^='gold-night'] [data-ops-app][data-ops-app-connected] { box-shadow: inset 0 0 0 1px rgb(63 185 80 / 0.35); }
 
 /* -- Glass p10 (B34): thumbnails, profile mark, Agents empty illustration (static CSS rings: no image request). */
 html[data-hermes-theme^='gold-night'] [data-artifact-thumb] { background: radial-gradient(90% 120% at 20% 0%, rgb(var(--glass-gold) / 0.28), transparent 65%), linear-gradient(160deg, rgb(var(--glass-raised)), rgb(var(--glass-ink))); border-bottom: 1px solid rgb(var(--glass-gold-hi) / 0.12); }
 html[data-hermes-theme^='gold-night'] [data-artifact-card='link'] [data-artifact-thumb='monogram'] { background: radial-gradient(90% 120% at 20% 0%, rgb(120 160 255 / 0.22), transparent 65%), linear-gradient(160deg, rgb(var(--glass-raised)), rgb(var(--glass-ink))); }
 html[data-hermes-theme^='gold-night'] [data-artifact-monogram] { color: rgb(var(--glass-gold-hi) / 0.85); text-shadow: 0 0 22px rgb(var(--glass-gold) / 0.5); }
 html[data-hermes-theme^='gold-night'] [data-profile-hero-glyph] > * { border-radius: 14px; box-shadow: 0 0 0 1px rgb(var(--glass-gold-hi) / 0.25), 0 10px 28px -12px rgb(var(--glass-gold) / 0.7); }
-html[data-hermes-theme^='gold-night'] :where(div:has(> * > [data-agents-empty-hint]))::before {
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > :where([data-panel-empty-card])::before {
   content: ''; display: block; height: 96px; margin: 0 auto 14px; width: 96px; border-radius: 999px;
   background: radial-gradient(circle, rgb(var(--glass-gold-hi) / 0.9) 0 5px, transparent 6px), radial-gradient(circle, transparent 0 22px, rgb(var(--glass-gold-hi) / 0.35) 23px 24px, transparent 25px), radial-gradient(circle, transparent 0 38px, rgb(var(--glass-gold) / 0.25) 39px 40px, transparent 41px);
   box-shadow: 0 0 40px -10px rgb(var(--glass-gold) / 0.6);
@@ -434,3 +434,20 @@ html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] > div:first-child:
 /* -- Glass p12 (B35b): Profiles hero row as a lit identity card. */
 html[data-hermes-theme^='gold-night'] [data-profile-hero] { background: var(--glass-spot-top), radial-gradient(120% 160% at 0% 0%, rgb(var(--glass-gold) / 0.18), transparent 60%), linear-gradient(165deg, rgb(var(--glass-raised) / 0.6), rgb(var(--glass-panel) / 0.5)); border: 1px solid rgb(var(--glass-gold-hi) / 0.18); border-radius: 18px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07); padding: 14px 18px; }
 html[data-hermes-theme^='gold-night'] [data-profile-hero-name] { font-family: var(--glass-display-font, inherit); }
+
+/* -- Glass p13 (B36, judge pass) */
+/* Teams/Channels tiles: one effective style, inset only (the earlier global rule re-added outer shadows). */
+html[data-hermes-theme^='gold-night'] :where([data-ops-teams] > li, [data-ops-channels-body] li) { box-shadow: inset 0 0 0 1px rgb(var(--glass-gold-hi) / 0.1), inset 0 1px 0 rgb(255 255 255 / 0.06); }
+/* Agents: the delegation illustration replaces the CSS rings; one picture, gold. */
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-empty-card]::before { content: none; display: none; }
+html[data-hermes-theme^='gold-night'] [data-agents-illustration] { color: rgb(var(--glass-gold-hi)); filter: drop-shadow(0 0 14px rgb(var(--glass-gold) / 0.35)); }
+html[data-hermes-theme^='gold-night'] [data-panel-empty='agents'] > [data-panel-empty-card] { max-width: 34rem; padding: 2.25rem 2.5rem; }
+/* App Settings: a deliberate reading column; sections are cards, rows separated by hairlines, helper text legible. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] > * { max-width: 52rem; }
+html[data-hermes-theme^='gold-night'] [data-settings-section] { background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.5), rgb(var(--glass-panel) / 0.4)); border: 1px solid rgb(var(--glass-gold-hi) / 0.12); border-radius: 16px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); padding: 14px 18px 6px; }
+html[data-hermes-theme^='gold-night'] [data-settings-row] + [data-settings-row] { border-top: 1px solid rgb(var(--glass-gold-hi) / 0.08); }
+html[data-hermes-theme^='gold-night'] [data-settings-row] :where(.text-muted-foreground, [class*='text-muted-foreground/']) { color: rgb(var(--glass-ink-dim, 200 190 170) / 0.85); }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select, button[role='combobox']) { min-height: 2.25rem; }
+html[data-hermes-theme^='gold-night'] [data-overlay-surface] nav :where(button, a) { font-size: 0.84rem; }
+/* Artifacts: the preview strip is labelled "Recent". */
+html[data-hermes-theme^='gold-night'] [data-artifact-cards]::before { color: rgb(var(--glass-gold-hi) / 0.8); content: attr(data-label); font-size: 0.66rem; grid-column: 1 / -1; letter-spacing: 0.1em; text-transform: uppercase; }

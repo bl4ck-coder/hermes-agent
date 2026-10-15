@@ -197,7 +197,7 @@ describe('Channels lens', () => {
     const open = vi.fn()
     render(<ChannelsLens client={client()} onOpenRoute={open} profile="builder" />)
     await waitFor(() => expect(document.querySelector('[data-ops-app="mcp:github"]')).toBeTruthy())
-    expect([...document.querySelectorAll('[data-ops-app-section]')].map(s => s.getAttribute('data-ops-app-section'))).toEqual(['Messaging', 'Tools (MCP)', 'Models'])
+    expect([...document.querySelectorAll('[data-ops-app-section]')].map(s => s.getAttribute('data-ops-app-section'))).toEqual(['connected', 'Messaging', 'Tools (MCP)', 'Models']) // B36: connected apps lead, in their own section
     expect(document.querySelector('[data-ops-app-filter="connected"]')?.textContent).toBe('Connected 4')
     const tg = document.querySelector('[data-ops-app="messaging:telegram"]') as HTMLElement
     expect(tg.querySelector('[data-ops-app-state]')?.textContent).toBe('✓ Connected')

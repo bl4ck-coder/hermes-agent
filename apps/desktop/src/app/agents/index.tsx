@@ -6,6 +6,7 @@ import { useElapsedSeconds } from '@/components/chat/activity-timer'
 import { ActivityTimerText } from '@/components/chat/activity-timer-text'
 import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
 import { Codicon } from '@/components/ui/codicon'
+import { CopyButton } from '@/components/ui/copy-button'
 import { FadeText } from '@/components/ui/fade-text'
 import { GlyphSpinner } from '@/components/ui/glyph-spinner'
 import { type Translations, useI18n } from '@/i18n'
@@ -103,10 +104,15 @@ export function AgentsView({ onClose }: AgentsViewProps) {
       {tree.length === 0 ? (
         <PanelEmpty
           action={
-            <p className="text-xs italic text-muted-foreground/80" data-agents-empty-hint="">
-              {t.teach.agentsEmptyHint}
-            </p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm text-foreground/80" data-agents-empty-hint="">
+                {t.teach.agentsEmptyHint}
+              </p>
+              <CopyButton appearance="button" buttonVariant="outline" label={t.common.copy} showLabel text={agentsHintExample(t.teach.agentsEmptyHint)} />
+            </div>
           }
+          id="agents"
+          illustration={<DelegationIllustration />}
           description={t.agents.emptyDesc}
           icon="hubot"
           title={t.agents.emptyTitle}
@@ -447,17 +453,51 @@ export function SubagentRow({ node, depth = 0, nowMs }: { node: SubagentNode; de
   )
 }
 
-function agentHeroStats(list: readonly unknown[], a: Translations['agents']) {
-  const n = { done: 0, failed: 0, running: 0 }
-  for (const x of list) {
-    const st = String((x as { status?: unknown }).status ?? '')
-    if (/fail|error/i.test(st)) n.failed++
-    else if (/done|complete|success/i.test(st)) n.done++
-    else n.running++
+/** B36: the same buckets the rows use (statusGlyph): interrupted counts as failed, queued as running. */
+export function agentStatusBucket(status: SubagentStatus): 'done' | 'failed' | 'running' {
+  switch (status) {
+    case 'failed':
+    case 'interrupted':
+      return 'failed'
+    case 'completed':
+      return 'done'
+    case 'queued':
+    case 'running':
+      return 'running'
   }
+}
+
+export function agentHeroStats(list: readonly { status: SubagentStatus }[], a: Translations['agents']) {
+  const n = { done: 0, failed: 0, running: 0 }
+  for (const x of list) n[agentStatusBucket(x.status)]++
+  // Empty metrics read as broken; the hero shows numbers only once a turn delegated.
+  if (n.done + n.failed + n.running === 0) return undefined
   return [
     { label: a.running, tone: n.running ? ('good' as const) : ('muted' as const), value: n.running },
     { label: a.done, value: n.done },
     { label: a.failed, tone: n.failed ? ('bad' as const) : undefined, value: n.failed }
   ]
+}
+
+/** B36: one meaningful picture of delegation: a parent turn fanning out to child agents. */
+function DelegationIllustration() {
+  return (
+    <svg aria-hidden className="mb-2 h-28 w-56" data-agents-illustration="" fill="none" viewBox="0 0 224 112">
+      <path d="M112 30 C112 58 40 52 40 84 M112 30 V84 M112 30 C112 58 184 52 184 84" stroke="currentColor" strokeDasharray="3 4" strokeOpacity="0.45" strokeWidth="1.5" />
+      <circle cx="112" cy="22" fill="currentColor" fillOpacity="0.18" r="14" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="112" cy="22" fill="currentColor" r="4" />
+      {[40, 112, 184].map(x => (
+        <g key={x}>
+          <rect fill="currentColor" fillOpacity="0.1" height="20" rx="10" stroke="currentColor" strokeOpacity="0.6" width="44" x={x - 22} y="84" />
+          <circle cx={x - 10} cy="94" fill="currentColor" fillOpacity="0.7" r="3" />
+          <rect fill="currentColor" fillOpacity="0.45" height="3" rx="1.5" width="18" x={x - 3} y="92.5" />
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+/** The example inside the hint ("Try: “…”"), so it can be copied into the composer by hand. */
+export function agentsHintExample(hint: string): string {
+  return /[“"«]([^”"»]+)[”"»]/.exec(hint)?.[1] ?? hint
 }

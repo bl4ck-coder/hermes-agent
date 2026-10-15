@@ -164,7 +164,7 @@ if (want('probe')) {
   })
   save()
 }
-if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) }; await page.waitForFunction(() => { const v = [...document.querySelectorAll('[data-ops-stat-value]')]; return v.length > 0 && v.every(e => e.textContent !== 'unknown') }, null, { timeout: 25000 }).catch(() => {}); return await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr') })
+if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) }; const ready = await page.waitForFunction(() => { const v = [...document.querySelectorAll('[data-ops-stat-value]')]; return v.length > 0 && v.every(e => e.textContent !== 'unknown') }, null, { timeout: 25000 }).then(() => '', () => ' [STATS UNRESOLVED after 25s]'); return (await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr')) + ready })
 if (want('fps')) await sampleFps('office-motion', async () => {}, 6000)
 if (want('board')) await section('02-board', async () => {
   await go('/ops/board')
@@ -315,8 +315,8 @@ if (want('diagnostics')) await section('09-diagnostics', async () => {
 // B33: roster views. Switch to Cards, capture, switch back so the stored choice is unchanged.
 for (const [n, id, tab] of [['04b-fleet-cards', 'agents', 'fleet'], ['06b-skills-cards', 'skills']]) {
   if (!want(n.slice(4)) && !want(n.slice(4, -6))) continue
-  await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); const tg = page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(1); await tg.scrollIntoViewIfNeeded({ timeout: 8000 }); await tg.click({ timeout: 8000, force: true }); await sleep(600); return await page.evaluate(() => document.querySelectorAll('[data-ops-roster] > li').length + ' cards') })
-  await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).first().click({ timeout: 4000 }).catch(() => {})
+  await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); globalThis.__origView = await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).evaluateAll(bs => bs.findIndex(b => b.getAttribute('aria-pressed') === 'true')).catch(() => 0); const tg = page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(1); await tg.scrollIntoViewIfNeeded({ timeout: 8000 }); await tg.click({ timeout: 8000, force: true }); await sleep(600); return await page.evaluate(() => document.querySelectorAll('[data-ops-roster] > li').length + ' cards') })
+  await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(Math.max(0, globalThis.__origView ?? 0)).click({ timeout: 4000 }).catch(() => {})
 }
 // Glass/IA pass: the main Hermes screens outside Ops (read-only visits; Escape closes overlays).
 for (const [n, route] of [['20-app-chat', '/'], ['21-app-settings', '/settings'], ['22-app-profiles', '/profiles'], ['23-app-capabilities', '/capabilities'], ['24-app-messaging', '/messaging'], ['25-app-artifacts', '/artifacts'], ['26-app-cron', '/cron'], ['27-app-command-center', '/command-center'], ['28-app-agents', '/agents']]) {

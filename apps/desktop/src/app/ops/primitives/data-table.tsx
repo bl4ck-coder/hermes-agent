@@ -232,7 +232,13 @@ export function DataTable<T>({
                     return (
                       <div data-col={column.id} key={column.id}>
                         <dt>{typeof column.header === 'string' ? T(column.header) : column.header}</dt>
-                        <dd className={column.tabular ? 'tabular-nums' : undefined}>{value}</dd>
+                        <dd
+                          className={column.tabular ? 'tabular-nums' : undefined}
+                          data-ops-roster-desc={column.description?.(row) ? '' : undefined}
+                          title={typeof value === 'string' ? value : undefined}
+                        >
+                          {value}
+                        </dd>
                       </div>
                     )
                   })}

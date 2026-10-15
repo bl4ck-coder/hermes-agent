@@ -185,7 +185,7 @@ export function SettingsView({
         <div>
           <strong>{profile ?? 'default'}</strong>
           <small>
-            {defaultModel ? `${defaultModel.provider || 'unset'} / ${defaultModel.model || 'unset'}` : T('loading')}
+            {defaultModel ? `${defaultModel.provider || T('not set')} / ${defaultModel.model || T('not set')}` : T('loading')}
           </small>
         </div>
         <span data-ops-settings-hero-chips="">

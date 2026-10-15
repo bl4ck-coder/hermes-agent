@@ -472,12 +472,12 @@ function NowRunning({
   }
 
   return (
-    <section aria-label={T('Now running')} data-ops-now-running={running.length || working.length ? 'live' : 'quiet'}>
+    <section aria-label={T('Now running')} data-ops-now-running={running.length || working.length ? 'live' : inFlight === null ? 'unknown' : 'quiet'}>
       <span aria-hidden data-ops-now-pulse="" />
       <div data-ops-now-body="">
         <span data-ops-now-label="">{T('Now running')}</span>
         {running.length === 0 && working.length === 0 ? (
-          <p data-ops-now-quiet="">{T('Nothing running.')}</p>
+          <p data-ops-now-quiet="">{inFlight === null ? T('Unknown: task feed not loaded.') : T('Nothing running.')}</p>
         ) : (
           <ul>
             {running.map(t => (

@@ -19,6 +19,7 @@ export function HeroSpark({ label, values }: { label?: ReactNode; values: number
           <span className="w-[5px] rounded-sm bg-current opacity-80" data-hero-spark-bar={v ? '' : 'zero'} key={i} style={{ height: `${Math.max(8, (v / max) * 100)}%` }} />
         ))}
       </span>
+      <span className="sr-only">{values.join(', ')}</span>
       {label ? <figcaption className="text-[0.62rem] uppercase tracking-wider text-muted-foreground">{label}</figcaption> : null}
     </figure>
   )

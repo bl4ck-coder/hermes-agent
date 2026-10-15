@@ -1,4 +1,5 @@
 /** X12 (P8 b6): every Office row can copy a deep link to what it shows (task, run, profile, project, cron job). */
+import { T } from '../main-i18n'
 import { Tip } from '@/components/ui/tooltip'
 import { useState } from 'react'
 
@@ -37,7 +38,7 @@ export function CopyLink({ kind, id, label }: { kind: LinkKind; id: string; labe
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
 
   return (
-    <Tip label={state === 'copied' ? 'Link copied' : state === 'failed' ? 'Copy failed' : 'Copy link'}><button
+    <Tip label={state === 'copied' ? T('Link copied') : state === 'failed' ? T('Copy failed') : T('Copy link')}><button
       aria-label={`Copy link to ${label ?? `${kind} ${id}`}`}
       data-ops-copy-link={`${kind}:${id}`}
       data-ops-copy-state={state}

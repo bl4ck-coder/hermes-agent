@@ -414,8 +414,9 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         </p>
       ) : null}
       {note ? <p role="status">{note}</p> : null}
+      <details data-ops-packs-fold="" open={!rows || rows.length === 0}>
+      <summary>{T("Starter packs")}</summary>
       <section aria-label={T("Starter packs")} data-ops-packs="">
-        <h3>{T("Starter packs")}</h3>
         {!packs ? (
           <State error={official.error} what="Starter packs" />
         ) : packs.length === 0 ? (
@@ -434,6 +435,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
           </ul>
         )}
       </section>
+      </details>
       <section aria-label={T("Individual skills")} data-ops-skills="">
         <h3>
           {T("Individual skills")}{' '}<span data-ops-skill-count="">{rows ? shown.length : '…'}</span>
@@ -635,6 +637,16 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
             {T("Connect more apps")}</button>
         </nav>
         <div>
+          {filter === 'all' && !cat && !q && shown.some(x => x.connected) ? (
+            <section aria-label={T('Connected apps')} data-ops-app-section="connected">
+              <h3>{T('Connected apps')}</h3>
+              <ul data-ops-app-grid="">
+                {shown.filter(x => x.connected).map(card => (
+                  <AppTile card={card} key={`c-${card.key}`} onOpenRoute={onOpenRoute} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
           {cats
             .filter(x => !cat || x === cat)
             .map(x => {
