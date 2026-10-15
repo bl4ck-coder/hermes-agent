@@ -212,7 +212,7 @@ function renderEntryActions({
     <Tip label={c.queueLostDiscardTip}>
       <Button
         aria-label={c.queueLostDiscard}
-        className="h-5 rounded-md px-1.5 text-[0.66rem]"
+        className="h-5 rounded-md px-1.5 text-xs"
         data-slot="queue-lost-discard"
         onClick={() => onDiscardLost(entry.id)}
         size="micro"

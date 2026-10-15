@@ -199,7 +199,7 @@ function AccountSummary({ card }: { card: ConnectorCardModel }) {
 
   return summary ? (
     <span
-      className="min-w-0 truncate text-[0.6875rem] text-(--ui-text-secondary)"
+      className="min-w-0 truncate text-xs text-(--ui-text-secondary)"
       data-slot="connector-account-summary"
     >
       {summary}
