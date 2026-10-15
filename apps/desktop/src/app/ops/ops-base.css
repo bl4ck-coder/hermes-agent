@@ -868,3 +868,8 @@
 :where([data-ops-card]) > :where(input[type='checkbox']) { opacity: 0; }
 :where([data-ops-card]:hover, [data-ops-card]:focus-within) > :where(input[type='checkbox']), :where([data-ops-card]) > :where(input[type='checkbox']:checked) { opacity: 1; }
 
+/* P7: long lane names wrap; counts sit under the name instead of overflowing the card. */
+:where([data-ops-team-head]) { flex-wrap: wrap; min-width: 0; }
+:where([data-ops-team-head]) :where(h3) { flex: 1 1 100%; min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; }
+:where([data-ops-team]) { min-width: 0; overflow: hidden; }
+
