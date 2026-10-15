@@ -528,3 +528,5 @@ html[data-hermes-theme^='gold-night'] [data-ops-app-section]:not([data-ops-app-s
 
 /* P10: thresholds lose the theme frame; the Group above already titles them. */
 html[data-hermes-theme^='gold-night'] [data-ops-root] fieldset[data-ops-thresholds] { background: none; border: 0; box-shadow: none; padding: 0; }
+
+html[data-hermes-theme^='gold-night'] [data-ops-root] :is([data-ops-diagnostics], [data-ops-diag-evidence], [data-ops-settings-system]) { background: none; border: 0; box-shadow: none; }

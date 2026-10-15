@@ -2,6 +2,7 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Checked": "Comprobado",
      "Blocked": "Bloqueada",
      "Show all": "Mostrar todo",
      "Show fewer": "Mostrar menos",
@@ -638,6 +639,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Checked": "Vérifié",
      "Blocked": "Bloquée",
      "Show all": "Tout afficher",
      "Show fewer": "Afficher moins",
@@ -1273,6 +1275,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Checked": "Geprüft",
      "Blocked": "Blockiert",
      "Show all": "Alle anzeigen",
      "Show fewer": "Weniger anzeigen",
@@ -1908,6 +1911,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Checked": "Проверено",
      "Blocked": "Заблокирована",
      "Show all": "Показать все",
      "Show fewer": "Показать меньше",
@@ -2543,6 +2547,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Checked": "確認済み",
      "Blocked": "ブロック中",
      "Show all": "すべて表示",
      "Show fewer": "表示を減らす",
@@ -3178,6 +3183,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Checked": "已检查",
      "Blocked": "受阻",
      "Show all": "显示全部",
      "Show fewer": "收起",
@@ -3813,6 +3819,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Checked": "已檢查",
      "Blocked": "受阻",
      "Show all": "顯示全部",
      "Show fewer": "收合",
@@ -4448,6 +4455,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Checked": "تم التحقق",
      "Blocked": "محظورة",
      "Show all": "عرض الكل",
      "Show fewer": "عرض أقل",

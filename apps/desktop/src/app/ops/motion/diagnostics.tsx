@@ -38,7 +38,7 @@ export function connCopy(s: string): string {
   for (const [re, key, names] of CONN_PATTERNS) {
     const m = re.exec(s)
 
-    if (m) return names.reduce((out, name, i) => out.replace(`{${name}}`, m[i + 1]), T(key))
+    if (m) {return names.reduce((out, name, i) => out.replace(`{${name}}`, m[i + 1]), T(key))}
   }
 
   return T(s)
@@ -98,25 +98,6 @@ export function DiagnosticsPanel({
           {T('Recent errors')} {errors.length} · {stream.mode}
           {stream.reason ? ` (${stream.reason})` : ''}
         </p>
-        <span data-ops-diag-actions="">
-          <button data-ops-primary="" data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
-            {probing ? T('Probing…') : results ? T('Probe again') : T('Run capability probe')}
-          </button>
-          <button
-            data-ops-copy-diagnostics=""
-            onClick={async () => {
-              try {
-                await (copy ?? (t => navigator.clipboard.writeText(t)))(text())
-                setNote('Diagnostics copied (redacted).')
-              } catch (e) {
-                setNote(`Copy failed: ${e instanceof Error ? e.message : String(e)}`)
-              }
-            }}
-            type="button"
-          >
-            {T("Copy diagnostics")}</button>
-        </span>
-        {note ? <p role="status">{note}</p> : null}
       </header>
       {failing.length ? (
         <section aria-label={T('Needs attention')} data-ops-diag-evidence="probe">
@@ -130,7 +111,17 @@ export function DiagnosticsPanel({
             ))}
           </ul>
         </section>
+      ) : results ? (
+        <section aria-label={T('Checked')} data-ops-diag-evidence="checked">
+          <h4>{T('Checked')}</h4>
+          <ul data-ops-diag-checked="">
+            {results.map(r => (
+              <li key={r.id}>{T(r.label)}</li>
+            ))}
+          </ul>
+        </section>
       ) : null}
+      {errors.length > 0 ? (
       <section aria-label={T('Recent errors')} data-ops-diag-evidence="errors">
         <h4>
           {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
@@ -151,6 +142,29 @@ export function DiagnosticsPanel({
           </>
         )}
       </section>
+      ) : null}
+      {/* P10: the action follows the evidence, not the headline. */}
+      <div data-ops-diag-next="">
+          <span data-ops-diag-actions="">
+            <button data-ops-primary="" data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
+              {probing ? T('Probing…') : results ? T('Probe again') : T('Run capability probe')}
+            </button>
+            <button
+              data-ops-copy-diagnostics=""
+              onClick={async () => {
+                try {
+                  await (copy ?? (t => navigator.clipboard.writeText(t)))(text())
+                  setNote('Diagnostics copied (redacted).')
+                } catch (e) {
+                  setNote(`Copy failed: ${e instanceof Error ? e.message : String(e)}`)
+                }
+              }}
+              type="button"
+            >
+              {T("Copy diagnostics")}</button>
+          </span>
+        {note ? <p role="status">{note}</p> : null}
+      </div>
       <details data-ops-diag-details="">
         <summary>{T('Details')}</summary>
         <dl>

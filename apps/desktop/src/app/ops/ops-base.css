@@ -906,3 +906,11 @@
 :where([data-ops-root]) :where(fieldset[data-ops-thresholds]) { border: 0; background: transparent; padding: 0; margin: 0; box-shadow: none; display: grid; gap: 0; }
 :where(fieldset[data-ops-thresholds]) :where(label) { display: grid; grid-template-columns: minmax(0,1fr) 8rem; align-items: center; gap: var(--space-3,12px); padding: var(--space-3,12px) 0; border-bottom: 1px solid var(--ops-line, rgba(255,255,255,.08)); }
 :where(fieldset[data-ops-thresholds]) :where(button) { justify-self: start; margin-top: var(--space-3,12px); }
+
+/* P10: Diagnostics reads finding -> evidence -> action; no empty boxes. */
+:where([data-ops-diagnostics]) { max-width: var(--width-form,760px); margin-inline: auto; display: grid; gap: var(--space-4,16px); }
+:where([data-ops-diagnostics]) :where([data-ops-diag-evidence]) { border: 0; background: transparent; padding: 0; margin: 0; }
+:where([data-ops-diagnostics]) :where([data-ops-diag-evidence] > h4) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); margin: 0 0 var(--space-2,8px); font-weight: 600; }
+:where([data-ops-diag-checked]) { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1,4px) var(--space-4,16px); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
+:where([data-ops-diag-checked] > li)::before { content: '\2713\00a0'; color: var(--ops-good,#3fb950); }
+:where([data-ops-diag-next]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2,8px); }
