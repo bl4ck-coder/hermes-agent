@@ -438,13 +438,14 @@ export function CommandCenterView({
                               >
                                 <span className="hx-row-main">
                                   <span className="hx-row-title truncate text-foreground">{sessionTitle(session)}</span>
-                                  {session.cwd || session.git_branch ? (
-                                    <span className="hx-row-secondary truncate text-muted-foreground">
-                                      {[session.cwd?.split(/[\\/]/).filter(Boolean).pop(), session.git_branch].filter(Boolean).join(' · ')}
+                                  {/* P11: the second line is what the conversation was about (preview), then where it ran. */}
+                                  {session.preview?.trim() || session.cwd || session.git_branch ? (
+                                    <span className="hx-row-secondary truncate text-muted-foreground" data-session-context="">
+                                      {[session.preview?.trim().replace(/\s+/g, ' '), session.cwd?.split(/[\\/]/).filter(Boolean).pop(), session.git_branch].filter(Boolean).join(' \u00b7 ')}
                                     </span>
                                   ) : null}
                                 </span>
-                                <span className="hx-row-trailing text-muted-foreground">{formatTimestamp(session.last_active || session.started_at)}</span>
+                                <span className="hx-row-trailing text-(length:--type-caption) text-muted-foreground/70">{formatTimestamp(session.last_active || session.started_at)}</span>
                               </button>
                               <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                                 <RowIconButton
