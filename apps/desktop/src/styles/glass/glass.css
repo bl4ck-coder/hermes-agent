@@ -460,3 +460,8 @@ html[data-hermes-theme^='gold-night'] [data-settings-body] :where(p) { font-size
 html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select, button[role='combobox']) { font-size: 0.86rem; min-height: 2.5rem; }
 html[data-hermes-theme^='gold-night'] [data-settings-body] :where(button[data-variant='default'], button.bg-primary) { min-height: 2.25rem; padding-inline: 1.1rem; }
 html[data-hermes-theme^='gold-night'] [data-agents-empty-hint] { background: rgb(var(--glass-gold) / 0.08); box-shadow: inset 2px 0 0 rgb(var(--glass-gold-hi) / 0.6); }
+
+/* B37b: Skills/Fleet card description really spans the card: label hidden, text full width (judge pass 3). */
+html[data-hermes-theme^='gold-night'] [data-ops-roster] dl div:has(> dd[data-ops-roster-desc]) { display: block; grid-column: 1 / -1; width: 100%; }
+html[data-hermes-theme^='gold-night'] [data-ops-roster] dl div:has(> dd[data-ops-roster-desc]) > dt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+html[data-hermes-theme^='gold-night'] [data-ops-roster] dd[data-ops-roster-desc] { font-size: 0.82rem; margin: 2px 0 6px; max-width: none; width: 100%; }

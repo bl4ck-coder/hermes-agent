@@ -11,6 +11,8 @@ import { useEffect, useState } from 'react'
 export const THUMB_CACHE = 'hermes-artifact-thumbs-v1'
 export const THUMB_OPT_OUT_KEY = 'hermes.artifacts.remoteThumbs'
 export const CACHED_AT = 'x-hermes-cached-at'
+/** Dispatch on window after changing THUMB_OPT_OUT_KEY in this window. */
+export const THUMB_PREF_EVENT = 'hermes:artifact-thumbs-pref'
 const MAX_AGE_MS = 7 * 86_400_000
 const MAX_LIVE = 150
 
@@ -122,12 +124,16 @@ export function useCachedThumb(url: string | null): string | null | 'pending' {
     let live = true
     setSrc('pending')
     const { p, release } = acquireThumb(url)
-    void p.then(s => { if (live) setSrc(s) })
-    const onStorage = (ev: StorageEvent) => { if (ev.key === THUMB_OPT_OUT_KEY && remoteThumbsOptedOut()) setSrc(null) }
-    window.addEventListener('storage', onStorage)
+    // B37b: re-check the preference when a pending request lands, so an opt-out made meanwhile is never undone.
+    void p.then(s => { if (live) setSrc(remoteThumbsOptedOut() ? null : s) })
+    const onPref = (ev?: Event) => { if ((!(ev instanceof StorageEvent) || ev.key === THUMB_OPT_OUT_KEY) && remoteThumbsOptedOut()) setSrc(null) }
+    // storage fires in other windows; THUMB_PREF_EVENT covers the window that changed it.
+    window.addEventListener('storage', onPref)
+    window.addEventListener(THUMB_PREF_EVENT, onPref)
     return () => {
       live = false
-      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('storage', onPref)
+      window.removeEventListener(THUMB_PREF_EVENT, onPref)
       release()
     }
   }, [url])
