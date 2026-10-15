@@ -194,15 +194,11 @@ export function CapabilitiesView({
       ]}
     >
       <div className="flex h-full flex-col">
-        {/* B35: Capabilities hero: what this profile can do, at a glance. */}
+        {/* P24 (judge pass 18): the counts already sit on the tabs; the header names the view and its mode, nothing repeated. */}
         <HeroBand
           className="mx-4 mt-2"
           icon={<Codicon name="extensions" />}
           id="capabilities"
-          stats={[
-            { label: t.skills.tabSkills, value: skills?.length ?? '…' },
-            { label: t.skills.tabToolsets, value: toolsets ? visibleToolsetCount(toolsets) : '…' }
-          ]}
           subtitle={typeof scope.profile === 'string' ? scope.profile : undefined}
           actions={
             mode === 'skills' ? (
@@ -222,7 +218,7 @@ export function CapabilitiesView({
                     role="tab"
                     type="button"
                   >
-                    {view === 'installed' ? `${t.skills.hub.installed} · ${skills?.length ?? '…'}` : t.skills.hub.pickerTitle}
+                    {view === 'installed' ? t.skills.hub.installed : t.skills.hub.pickerTitle}
                   </button>
                 ))}
               </div>
