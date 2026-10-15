@@ -549,3 +549,7 @@ html[data-hermes-theme^='gold-night'] [data-settings-body] > * { max-width: none
 html[data-hermes-theme^='gold-night'] [data-panel-empty][data-panel-empty-align='start'] { display: block; width: 100%; text-align: left; }
 html[data-hermes-theme^='gold-night'] [data-panel-empty][data-panel-empty-align='start'] > [data-panel-empty-card] { margin-inline: 0; }
 
+
+/* P15: Channels rows are EntityRows; drop the connected-tile ring. */
+html[data-hermes-theme^='gold-night'] [data-ops-app][data-ops-row] { box-shadow: none; border-radius: 0; }
+
