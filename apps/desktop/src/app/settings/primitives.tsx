@@ -20,7 +20,8 @@ export function SettingsContent({ children, bare = false }: { children: ReactNod
   return (
     <section className="min-h-0 overflow-hidden">
       <div className={cn('h-full min-h-0 overflow-y-auto', bare ? 'px-5 pb-6' : cn('pb-20', PAGE_INSET_X))} data-settings-scroll="">
-        {children}
+        {/* P10: one form axis. The page column is a real wrapper, not a centering rule on arbitrary children. */}
+        {bare ? children : <div className="mx-auto w-full max-w-(--width-form)" data-settings-form="">{children}</div>}
       </div>
     </section>
   )

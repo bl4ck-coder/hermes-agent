@@ -900,3 +900,9 @@
 
 /* P10: pointers without hover always see Connect. */
 @media (hover: none) { :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-action='connect']) { opacity: 1; } }
+
+/* P10: Ops Settings shares one axis: identity, tabs and form; thresholds are rows, not a box. */
+:where([data-ops-settings-hero], [data-ops-settings-views]) { max-width: var(--width-form,760px); margin-inline: auto; width: 100%; box-sizing: border-box; }
+:where([data-ops-root]) :where(fieldset[data-ops-thresholds]) { border: 0; background: transparent; padding: 0; margin: 0; box-shadow: none; display: grid; gap: 0; }
+:where(fieldset[data-ops-thresholds]) :where(label) { display: grid; grid-template-columns: minmax(0,1fr) 8rem; align-items: center; gap: var(--space-3,12px); padding: var(--space-3,12px) 0; border-bottom: 1px solid var(--ops-line, rgba(255,255,255,.08)); }
+:where(fieldset[data-ops-thresholds]) :where(button) { justify-self: start; margin-top: var(--space-3,12px); }

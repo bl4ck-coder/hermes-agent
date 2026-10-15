@@ -43,5 +43,5 @@
 :where(.hx-reading) { font-size: var(--type-body); line-height: var(--type-reading-lh); max-width: var(--width-reading); }
 
 /* P9: one form anatomy for App and Ops Settings: a centred form column at the form width. */
-:where([data-settings-scroll]) > * { max-width: var(--width-form); margin-inline: auto; }
+:where([data-settings-form]) > * { max-width: none; }
 :where([data-ops-settings-main], [data-ops-settings-system]) { margin-inline: auto; }

@@ -525,3 +525,6 @@ html[data-hermes-theme^='gold-night'] [data-slot='aui_intro'] [data-intro-hint] 
 html[data-hermes-theme^='gold-night'] [data-ops-app-section]:not([data-ops-app-section='connected']) [data-ops-app-grid] > li { background: transparent; border-color: transparent; box-shadow: none; min-height: 0; }
 html[data-hermes-theme^='gold-night'] [data-ops-app-section]:not([data-ops-app-section='connected']) [data-ops-app-grid] > li:hover { border-color: rgb(255 255 255 / 0.08); }
 
+
+/* P10: thresholds lose the theme frame; the Group above already titles them. */
+html[data-hermes-theme^='gold-night'] [data-ops-root] fieldset[data-ops-thresholds] { background: none; border: 0; box-shadow: none; padding: 0; }
