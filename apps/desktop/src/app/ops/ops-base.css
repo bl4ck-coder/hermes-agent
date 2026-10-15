@@ -807,3 +807,29 @@
 :where([data-ops-app-grid]) { gap: var(--space-4, 16px); }
 :where([data-ops-app-grid]) :where(li > p) { font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); }
 
+
+/* P7: Fleet attention first; Teams lead with purpose. */
+:where([data-ops-fleet-attention]) { margin: 0 0 var(--space-6,24px); }
+:where([data-ops-fleet-attention='clear']) { font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); color: var(--ops-muted); }
+:where([data-ops-fleet-attention]) :where(h3) { font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); margin: 0 0 var(--space-3,12px); }
+:where([data-ops-fleet-attention]) :where(ul) { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2,8px); }
+:where([data-ops-fleet-attention]) :where(li > button) { display: grid; grid-template-columns: 32px minmax(0,1fr) auto; grid-template-rows: auto auto; column-gap: var(--space-3,12px); align-items: center; width: 100%; min-height: var(--row-lg,64px); padding: var(--space-3,12px) var(--space-4,16px); text-align: left; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: var(--ops-radius); }
+:where([data-ops-fleet-attention]) :where(li > button > :first-child) { grid-row: 1 / span 2; }
+:where([data-ops-fleet-attention-name]) { font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); font-weight: 600; }
+:where([data-ops-fleet-attention]) :where(li > button > small) { grid-column: 2 / span 2; font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); }
+:where([data-ops-teams-summary]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); margin: 0 0 var(--space-4,16px); }
+:where([data-ops-teams]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--width-card-min,280px),1fr)); gap: var(--space-4,16px); list-style: none; margin: 0; padding: 0; }
+:where([data-ops-team]) { display: flex; flex-direction: column; gap: var(--space-3,12px); padding: var(--space-4,16px); }
+:where([data-ops-team-head]) { display: flex; align-items: baseline; gap: var(--space-2,8px); }
+:where([data-ops-team-head]) :where(h3) { font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); margin: 0; margin-right: auto; overflow-wrap: anywhere; }
+:where([data-ops-team-head]) :where([data-ops-team-open], [data-ops-team-blocked]) { font-size: var(--type-meta,14px); color: var(--ops-muted); }
+:where([data-ops-team-blocked]) { color: var(--ops-warn, #e3a33b) !important; }
+:where([data-ops-team-purpose]) { margin: 0; padding: 0; list-style: none; font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); display: grid; gap: var(--space-1,4px); }
+:where([data-ops-team-purpose]) :where(li) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+:where([data-ops-team-idle]) { color: var(--ops-muted); }
+:where([data-ops-team-foot]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2,8px); margin-top: auto; font-size: var(--type-meta,14px); }
+:where([data-ops-team-members]) { display: inline-flex; gap: var(--space-1,4px); }
+:where([data-ops-sr]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:where([data-ops-team-foot]) :where([data-ops-team-projects]) { display: inline-flex; flex-wrap: wrap; gap: var(--space-1,4px); font-size: var(--type-meta,14px); }
+:where([data-ops-team-foot]) :where([data-ops-team-project]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
+:where([data-ops-team-unassigned]) { opacity: .75; }

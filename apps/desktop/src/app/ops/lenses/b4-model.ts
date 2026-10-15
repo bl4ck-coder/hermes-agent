@@ -106,6 +106,9 @@ export interface Team {
   projects: string[]
   open: number
   members: string[]
+  /** P7: what the lane is working on now: up to 3 open task titles, newest first. */
+  focus: string[]
+  blocked: number
 }
 
 /** R73: a team is a tenant lane: its projects, open tasks and the profiles that work it. */
@@ -122,7 +125,13 @@ export function teams(tasks: BoardTask[]): Team[] {
       lane,
       projects: [...new Set(ts.map(t => t.project_id).filter((x): x is string => !!x))].sort(),
       open: ts.filter(t => OPEN.has(t.status)).length,
-      members: [...new Set(ts.map(t => t.assignee).filter((x): x is string => !!x))].sort()
+      members: [...new Set(ts.map(t => t.assignee).filter((x): x is string => !!x))].sort(),
+      focus: ts
+        .filter(t => OPEN.has(t.status) && t.title)
+        .sort((a, b) => (Number((b as { created_at?: number }).created_at) || 0) - (Number((a as { created_at?: number }).created_at) || 0))
+        .slice(0, 3)
+        .map(t => String(t.title)),
+      blocked: ts.filter(t => t.status === 'blocked').length
     }))
     .sort((a, b) => (a.lane === 'No lane' ? 1 : b.lane === 'No lane' ? -1 : b.open - a.open || a.lane.localeCompare(b.lane)))
 }

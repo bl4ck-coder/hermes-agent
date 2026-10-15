@@ -2,6 +2,10 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Unassigned": "Sin carril",
+     "Working on": "Trabajando en",
+     "No open work": "Sin trabajo abierto",
+     "Nothing needs attention.": "Nada necesita atención.",
     "\"Today\" and \"this week\" in Office use this zone.": "\"Hoy\" y \"esta semana\" en Oficina usan esta zona.",
     "(config.yaml is re-written; comments are not kept)": "(config.yaml se reescribe; no se conservan los comentarios)",
     "(plugin)": "(plugin)",
@@ -604,6 +608,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Show run panel": "Mostrar panel de ejecución",
     "No projects": "Sin proyectos",
     "No members": "Sin miembros",
+
     "{n} of {total} installed": "{n} de {total} instaladas",
     "No lane": "Sin carril",
     "No agent matches.": "Ningún agente coincide.",
@@ -622,6 +627,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Unassigned": "Sans couloir",
+     "Working on": "En cours",
+     "No open work": "Aucun travail ouvert",
+     "Nothing needs attention.": "Rien ne demande d'attention.",
     "\"Today\" and \"this week\" in Office use this zone.": "« Aujourd’hui » et « cette semaine » dans Bureau utilisent ce fuseau.",
     "(config.yaml is re-written; comments are not kept)": "(config.yaml est réécrit ; les commentaires ne sont pas conservés)",
     "(plugin)": "(plugin)",
@@ -1242,6 +1251,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Unassigned": "Ohne Spur",
+     "Working on": "Arbeitet an",
+     "No open work": "Keine offene Arbeit",
+     "Nothing needs attention.": "Nichts braucht Aufmerksamkeit.",
     "\"Today\" and \"this week\" in Office use this zone.": "„Heute“ und „diese Woche“ im Büro nutzen diese Zone.",
     "(config.yaml is re-written; comments are not kept)": "(config.yaml wird neu geschrieben; Kommentare gehen verloren)",
     "(plugin)": "(Plugin)",
@@ -1862,6 +1875,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Unassigned": "Unassigned",
+     "Working on": "Working on",
+     "No open work": "No open work",
+     "Nothing needs attention.": "Nothing needs attention.",
     "\"Today\" and \"this week\" in Office use this zone.": "«Сегодня» и «эта неделя» в Офисе используют этот пояс.",
     "(config.yaml is re-written; comments are not kept)": "(config.yaml перезаписывается; комментарии не сохраняются)",
     "(plugin)": "(плагин)",
@@ -2482,6 +2499,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Unassigned": "Unassigned",
+     "Working on": "Working on",
+     "No open work": "No open work",
+     "Nothing needs attention.": "Nothing needs attention.",
     "\"Today\" and \"this week\" in Office use this zone.": "オフィスの「今日」と「今週」はこのタイムゾーンを使います。",
     "(config.yaml is re-written; comments are not kept)": "(config.yaml は書き直されます。コメントは保持されません)",
     "(plugin)": "(プラグイン)",
@@ -3102,6 +3123,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Unassigned": "Unassigned",
+     "Working on": "Working on",
+     "No open work": "No open work",
+     "Nothing needs attention.": "Nothing needs attention.",
     "\"Today\" and \"this week\" in Office use this zone.": "办公室中的“今天”和“本周”使用此时区。",
     "(config.yaml is re-written; comments are not kept)": "(config.yaml 会被重写;注释不会保留)",
     "(plugin)": "(插件)",
@@ -3722,6 +3747,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Unassigned": "Unassigned",
+     "Working on": "Working on",
+     "No open work": "No open work",
+     "Nothing needs attention.": "Nothing needs attention.",
     "\"Today\" and \"this week\" in Office use this zone.": "辦公室中的“今天”和“本週”使用此時區。",
     "(config.yaml is re-written; comments are not kept)": "(config.yaml 會被重寫;註釋不會保留)",
     "(plugin)": "(外掛)",
@@ -4342,6 +4371,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Unassigned": "Unassigned",
+     "Working on": "Working on",
+     "No open work": "No open work",
+     "Nothing needs attention.": "Nothing needs attention.",
     "\"Today\" and \"this week\" in Office use this zone.": "يستخدم «اليوم» و«هذا الأسبوع» في المكتب هذه المنطقة الزمنية.",
     "(config.yaml is re-written; comments are not kept)": "(تتم إعادة كتابة config.yaml؛ ولا يتم الاحتفاظ بالتعليقات)",
     "(plugin)": "(إضافة)",

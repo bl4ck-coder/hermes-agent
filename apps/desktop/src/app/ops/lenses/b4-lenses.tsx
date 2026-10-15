@@ -152,6 +152,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         <>
           <Search label={T("search agents")} onChange={setQ} placeholder={T("Search by name, model, lane, role")} value={q} />
           {tasks.error ? <p data-ops-partial="">{T("Task counts unavailable:")}{' '}{why(tasks.error)}</p> : null}
+          <FleetAttention now={now} onOpen={onOpenRoute ? open : undefined} rows={rows} />
           <DataTable viewToggleId="fleet"
             caption={`Fleet (${rows.length})`}
             columns={[
@@ -233,49 +234,53 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
     return <p data-ops-empty="teams">{T("No tasks yet, so no lanes.")}</p>
   }
 
-  // B35: Teams hero: everyone on a lane as an avatar stack, with the totals.
+  // P7: one summary line instead of an avatar mosaic; each lane leads with what it is working on.
   const people = [...new Set(list.flatMap(x => x.members))]
   const openTotal = list.reduce((n, x) => n + x.open, 0)
 
   return (
     <>
-    <header data-ops-teams-hero="">
-      <span data-ops-teams-stack="">
-        {people.slice(0, 8).map(m => <Sigil key={m} name={m} size={32} />)}
-        {people.length > 8 ? <span data-ops-teams-more="">+{people.length - 8}</span> : null}
-      </span>
-      <dl>
-        <div><dt>{T('Lanes')}</dt><dd>{list.length}</dd></div>
-        <div><dt>{T('Open tasks')}</dt><dd>{openTotal}</dd></div>
-        <div><dt>{T('Members')}</dt><dd>{people.length}</dd></div>
-      </dl>
-    </header>
+    <p data-ops-teams-summary="">
+      {P(list.length, '{n} lanes')} · {P(openTotal, '{n} open tasks')} · {P(people.length, '{n} members')}
+    </p>
     <ul data-ops-teams="">
       {list.map(t => (
-        <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} key={t.lane}>
+        <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} data-ops-team-unassigned={t.lane === 'No lane' ? '' : undefined} key={t.lane}>
           <header data-ops-team-head="">
-            <h3>{t.lane === 'No lane' ? T('No lane') : t.lane}</h3>
+            <h3>{t.lane === 'No lane' ? T('Unassigned') : t.lane}</h3>
             <span data-ops-team-open="">{P(t.open, '{n} open')}</span>
+            {t.blocked ? <span data-ops-team-blocked="">{P(t.blocked, '{n} blocked')}</span> : null}
           </header>
-          <p data-ops-team-projects="">
-            {t.projects.length
-              ? t.projects.map(p => (
+          {t.focus.length ? (
+            <ul aria-label={T('Working on')} data-ops-team-purpose="">
+              {t.focus.map((f, k) => (
+                <li key={k} title={f}>{f}</li>
+              ))}
+            </ul>
+          ) : (
+            <p data-ops-team-purpose="" data-ops-team-idle="">{T('No open work')}</p>
+          )}
+          <footer data-ops-team-foot="">
+            <span aria-label={T('Members:')} data-ops-team-members="" role="list">
+              {t.members.length
+                ? t.members.map(m => (
+                    <span data-ops-team-member={m} key={m} role="listitem" title={m}>
+                      <Sigil name={m} size={20} />
+                      <span data-ops-sr="">{m}</span>
+                    </span>
+                  ))
+                : <span data-ops-team-none="">{T('No members')}</span>}
+            </span>
+            {t.projects.length ? (
+              <span data-ops-team-projects="">
+                {t.projects.map(p => (
                   <button data-ops-team-project={p} disabled={!onOpenRoute} key={p} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(p)}`)} type="button">
                     {p}
                   </button>
-                ))
-              : <span data-ops-team-none="">{T('No projects')}</span>}
-          </p>
-          <div aria-label={T('Members:')} data-ops-team-members="" role="list">
-            {t.members.length
-              ? t.members.map(m => (
-                  <span data-ops-team-member={m} key={m} role="listitem">
-                    <Sigil name={m} size={14} />
-                    {m}
-                  </span>
-                ))
-              : <span data-ops-team-none="">{T('No members')}</span>}
-          </div>
+                ))}
+              </span>
+            ) : null}
+          </footer>
         </li>
       ))}
     </ul>
@@ -283,7 +288,42 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
   )
 }
 
-/* ------------------------------- Skills lens -------------------------------- */
+/** P7: agents that need a look lead the Fleet; the table below is the inventory. */
+function FleetAttention({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; now: number; onOpen?: (name: string) => void }) {
+  const hot = rows.filter(r => r.status === 'failing' || r.status === 'unknown' || (r.failed7d ?? 0) > 0)
+  const running = rows.filter(r => r.status === 'running').length
+
+  if (hot.length === 0) {
+    return (
+      <p data-ops-fleet-attention="clear">
+        {T('Nothing needs attention.')} {P(running, '{n} running')} · {P(rows.length, '{n} agents')}
+      </p>
+    )
+  }
+
+  return (
+    <section aria-label={T('Needs attention')} data-ops-fleet-attention="">
+      <h3>
+        {T('Needs attention')} <span>{hot.length}</span>
+      </h3>
+      <ul>
+        {hot.map(r => (
+          <li data-ops-fleet-attention-row={r.name} key={r.name}>
+            <button disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
+              <Sigil name={r.name} size={32} />
+              <span data-ops-fleet-attention-name="">{r.name}</span>
+              <span data-ops-fleet-status={r.status}>{T(r.status)}</span>
+              <small>
+                {r.failed7d ? `${r.failed7d} ${T('failed')} · ` : ''}
+                {P(r.active, '{n} active')} · {r.lastActive ? fmtAge(now - r.lastActive) : T('never')}
+              </small>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
 
 function AgentLinks({ agents, onOpen }: { agents: string[]; onOpen?: (p: string) => void }) {
   const [more, setMore] = useState(false)
