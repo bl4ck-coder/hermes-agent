@@ -1,10 +1,10 @@
-import { HeroBand } from '@/components/hero-band'
-import { Codicon } from '@/components/ui/codicon'
 import type * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 
+import { HeroBand } from '@/components/hero-band'
 import { PageLoader } from '@/components/page-loader'
 import { Button } from '@/components/ui/button'
+import { Codicon } from '@/components/ui/codicon'
 import { useI18n } from '@/i18n'
 import { queryClient } from '@/lib/query-client'
 import { invalidateSlashCompletions } from '@/lib/slash-completion-cache'
@@ -196,10 +196,6 @@ export function CapabilitiesView({
       <div className="flex h-full flex-col">
         {/* P24 (judge pass 18): the counts already sit on the tabs; the header names the view and its mode, nothing repeated. */}
         <HeroBand
-          className="mx-4 mt-2"
-          icon={<Codicon name="extensions" />}
-          id="capabilities"
-          subtitle={typeof scope.profile === 'string' ? scope.profile : undefined}
           actions={
             mode === 'skills' ? (
               <div className="flex rounded-full border border-(--ui-stroke-secondary) p-0.5" data-capabilities-modes role="tablist">
@@ -224,6 +220,10 @@ export function CapabilitiesView({
               </div>
             ) : undefined
           }
+          className="mx-4 mt-2"
+          icon={<Codicon name="extensions" />}
+          id="capabilities"
+          subtitle={typeof scope.profile === 'string' ? scope.profile : undefined}
           title={{ connectors: t.connectorsPage.title, plugins: t.skills.tabPlugins, skills: t.skills.tabSkills, toolsets: t.skills.tabToolsets }[mode]}
         />
         {mode !== 'plugins' && <CapabilityScopeSelector scope={scope} />}
