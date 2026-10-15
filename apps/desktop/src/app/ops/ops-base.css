@@ -930,7 +930,7 @@
 :where([data-ops-board-more][open] > [data-ops-board-more-body]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2,8px); padding: var(--space-2,8px) 0 0; }
 :where([data-ops-board]) :where([data-ops-columns]) { display: flex; align-items: flex-start; }
 :where([data-ops-board]) :where([data-ops-columns]) > :where([data-ops-column]) { flex: 0 0 18rem; min-width: 0; }
-:where([data-ops-board]) :where([data-ops-columns]) > :where([data-ops-column-empty]) { flex-basis: 9rem; opacity: 0.75; }
+:where([data-ops-board]) :where([data-ops-columns]) > :where([data-ops-column-empty]) { opacity: 0.75; } /* P12: back to the spec's 18rem; empty only dims */
 :where([data-ops-push]) { font-size: var(--type-caption,12px); color: var(--ops-muted); }
 
 :where([data-ops-board-more] > summary) { gap: var(--space-2,8px); }
@@ -942,13 +942,13 @@
 :where([data-ops-lens='skills']) :where([data-ops-roster-title] button) { text-align: left; justify-content: flex-start; }
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1,4px) var(--space-3,12px); margin: 0; }
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl > [data-col='description']) { flex-basis: 100%; }
-:where([data-ops-lens='skills']) :where([data-ops-roster] dl > [data-col='description'] [data-ops-roster-desc]) { -webkit-line-clamp: 4; color: var(--ops-fg); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
+:where([data-ops-lens='skills']) :where([data-ops-roster] dl > [data-col='description'] [data-ops-roster-desc]) { -webkit-line-clamp: 4; color: var(--ops-fg); font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); }
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl > div:not([data-col='description'])) { display: inline-flex; gap: 4px; align-items: baseline; }
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl > div:not([data-col='description']) dt) { text-transform: none; letter-spacing: 0; font-size: var(--type-caption,12px); color: var(--ops-muted); opacity: 0.8; }
 :where([data-ops-lens='skills']) :where([data-ops-roster] dl > div:not([data-col='description'])) { font-size: var(--type-caption,12px); color: var(--ops-muted); }
 /* P11: Channels catalog descriptions are recoverable without hover: keyboard focus and touch show the full text. */
 :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li:focus-within > p) { -webkit-line-clamp: unset; display: block; }
-@media (hover: none) { :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li > p) { -webkit-line-clamp: 3; } }
+@media (hover: none) { :where([data-ops-app-section]:not([data-ops-app-section='connected'])) :where([data-ops-app-grid]) :where(li > p) { -webkit-line-clamp: unset; display: block; } }
 
 /* P11: one row rhythm for Ops Settings: label and control share the row height and the same rule line. */
 :where([data-ops-settings-group] > dl) { align-items: stretch; grid-template-columns: minmax(10rem, 34%) minmax(0, 1fr); }
@@ -972,3 +972,8 @@
 :where(details[data-ops-row-more]) { display: inline-block; vertical-align: middle; }
 :where(details[data-ops-row-more] > summary) { cursor: pointer; list-style: none; display: inline-flex; align-items: center; min-height: 32px; padding: 0 8px; border-radius: 6px; color: var(--ops-muted); font-size: var(--type-meta,14px); }
 :where(details[data-ops-row-more][open]) { display: flex; flex-wrap: wrap; gap: var(--space-2,8px); align-items: center; margin-top: var(--space-1,4px); }
+
+/* P12: thresholds use the exact Settings row anatomy (same columns, label style, 48px rows). */
+:where(fieldset[data-ops-thresholds]) :where(label) { grid-template-columns: minmax(10rem, 34%) minmax(0, 1fr); min-height: 48px; padding: 8px 0; font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-fg); }
+:where(fieldset[data-ops-thresholds]) :where(label > input) { justify-self: start; width: 8rem; }
+:where([data-ops-settings-main]) > :where(h2) { margin-top: var(--space-4,16px); }
