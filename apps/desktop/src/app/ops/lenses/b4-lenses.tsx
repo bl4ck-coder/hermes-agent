@@ -277,7 +277,13 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
                     </span>
                   ))
                 : <span data-ops-team-none="">{T('No members')}</span>}
-              {t.members.length > 6 ? <span data-ops-team-more="" role="listitem" title={t.members.slice(6).join(', ')}>+{t.members.length - 6}</span> : null}
+              {t.members.length > 6 ? (
+                // P12: the rest stay reachable by keyboard, touch and assistive tech, not only via title.
+                <details data-ops-team-more="" role="listitem">
+                  <summary aria-label={P(t.members.length - 6, '{n} more members')}>+{t.members.length - 6}</summary>
+                  {t.members.slice(6).join(', ')}
+                </details>
+              ) : null}
             </span>
             {t.projects.length ? (
               <span data-ops-team-projects="">

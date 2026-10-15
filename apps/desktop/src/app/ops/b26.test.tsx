@@ -9,7 +9,8 @@ describe('B26', () => {
   it('no subject-less :has() and no :has() on the board toolbar', () => {
     expect(css).not.toMatch(/:where\(:has\(/)
     expect(css).not.toMatch(/\[role='toolbar'\]:has/)
-    expect(css).toMatch(/:where\(\[data-ops-board-toolbar\]\) \{ flex-wrap: nowrap/)
+    // P12: the toolbar wraps so the open More filters menu gets its own row (judge pass 12).
+    expect(css).toMatch(/:where\(\[data-ops-board-toolbar\]\) \{ flex-wrap: wrap; overflow-x: visible/)
   })
 
   it('the board toolbar carries its attribute', () => {

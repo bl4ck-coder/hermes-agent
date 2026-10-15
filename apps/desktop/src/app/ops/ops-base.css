@@ -561,7 +561,7 @@
 @media (prefers-reduced-motion: reduce) { :where([data-ops-run-status])::before { animation: none; } }
 :where([data-ops-motion='reduced'] [data-ops-run-status])::before { animation: none; }
 /* Board toolbar keeps the view switcher on one line and scrolls sideways if it must. B26: an attribute, not :has(), so Office updates never re-match it. */
-:where([data-ops-board-toolbar]) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+:where([data-ops-board-toolbar]) { flex-wrap: wrap; overflow-x: visible; } /* P12: wraps, so the open More filters menu takes a real row of its own */
 :where([data-ops-board-toolbar]) > :where(*) { flex: none; }
 
 /* ---- B27: Board toolbar is a real flex row, Canvas detail expands in place, Settings as a label/control grid ---- */
@@ -962,3 +962,8 @@
 :where([data-ops-teams] > li[data-ops-team='No lane']) { grid-column: auto; order: 1; }
 :where([data-ops-team-now]) { margin: 0; font-size: var(--type-caption,12px); line-height: var(--type-caption-lh,16px); color: var(--ops-muted); }
 :where([data-ops-team-more]) { font-size: var(--type-caption,12px); color: var(--ops-muted); align-self: center; }
+
+:where([data-ops-board-active-filter]) :where(b) { font-weight: 400; opacity: 0.75; margin-right: 4px; }
+:where(details[data-ops-team-more]) { display: inline-block; font-size: var(--type-caption,12px); color: var(--ops-muted); }
+:where(details[data-ops-team-more] > summary) { cursor: pointer; list-style: none; min-height: 24px; display: inline-flex; align-items: center; padding: 0 6px; border-radius: 999px; }
+:where(details[data-ops-team-more][open]) { flex-basis: 100%; }

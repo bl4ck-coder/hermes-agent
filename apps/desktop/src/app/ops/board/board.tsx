@@ -347,9 +347,14 @@ export function BoardView(props: BoardViewProps) {
           {/* P11: active secondary filters stay visible while the menu is closed. */}
           <summary data-ops-board-more-active={[filter.tenant, filter.profile, filter.project, filter.mine].filter(Boolean).length || undefined}>
             {T("More filters")}
-            {[filter.tenant, filter.profile, filter.project, filter.mine ? T("Mine") : null].filter(Boolean).map(v => (
-              <span data-ops-board-active-filter="" key={String(v)}>{String(v)}</span>
-            ))}
+            {([['tenant', T('tenant'), filter.tenant], ['profile', T('profile'), filter.profile], ['project', T('project'), filter.project], ['mine', T('Mine'), filter.mine ? T('Mine') : null]] as const)
+              .filter(([, , v]) => Boolean(v))
+              .map(([field, label, v]) => (
+                <span data-ops-board-active-filter={field} key={field}>
+                  {field === 'mine' ? null : <b>{label}:</b>}
+                  {String(v)}
+                </span>
+              ))}
           </summary>
           <div data-ops-board-more-body="">
         <select aria-label={T("tenant")} onChange={e => (setFilter(f => ({ ...f, tenant: e.target.value || null })), setActiveView(null))} value={filter.tenant ?? ''}>

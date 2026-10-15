@@ -2,6 +2,7 @@
 
 export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDMLPluralRule, string>>>> = {
   "es": {
+     "{n} more members": {"one": "{n} miembro más", "many": "{n} miembros más", "other": "{n} miembros más"},
      "{n} failed runs": {"one":"{n} ejecución fallida","many":"{n} ejecuciones fallidas","other":"{n} ejecuciones fallidas"},
      "{n} failures in a row": {"one":"{n} fallo seguido","many":"{n} fallos seguidos","other":"{n} fallos seguidos"},
     "{n} cards": {"one": "{n} tarjeta", "other": "{n} tarjetas"},
@@ -24,6 +25,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"one":"{n} fallo","other":"{n} fallos","many":"{n} fallos"},
   },
   "fr": {
+     "{n} more members": {"one": "{n} membre de plus", "many": "{n} membres de plus", "other": "{n} membres de plus"},
      "{n} failed runs": {"one":"{n} exécution échouée","many":"{n} exécutions échouées","other":"{n} exécutions échouées"},
      "{n} failures in a row": {"one":"{n} échec d'affilée","many":"{n} échecs d'affilée","other":"{n} échecs d'affilée"},
     "{n} cards": {"one": "{n} carte", "other": "{n} cartes"},
@@ -46,6 +48,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"one":"{n} échec","other":"{n} échecs","many":"{n} échecs"},
   },
   "de": {
+     "{n} more members": {"one": "{n} weiteres Mitglied", "other": "{n} weitere Mitglieder"},
      "{n} failed runs": {"one":"{n} fehlgeschlagener Lauf","other":"{n} fehlgeschlagene Läufe"},
      "{n} failures in a row": {"one":"{n} Fehlschlag in Folge","other":"{n} Fehlschläge in Folge"},
     "{n} cards": {"one": "{n} Karte", "other": "{n} Karten"},
@@ -68,6 +71,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"one":"{n} Fehlschlag","other":"{n} Fehlschläge"},
   },
   "ru": {
+     "{n} more members": {"one": "ещё {n} участник", "few": "ещё {n} участника", "many": "ещё {n} участников", "other": "ещё {n} участника"},
      "{n} failed runs": {"one":"{n} неудачный запуск","few":"{n} неудачных запуска","many":"{n} неудачных запусков","other":"{n} неудачного запуска"},
      "{n} failures in a row": {"one":"{n} сбой подряд","few":"{n} сбоя подряд","many":"{n} сбоев подряд","other":"{n} сбоя подряд"},
     "{n} cards": {"one": "{n} карточка", "few": "{n} карточки", "many": "{n} карточек", "other": "{n} карточки"},
@@ -90,6 +94,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"one":"{n} сбой","few":"{n} сбоя","many":"{n} сбоев","other":"{n} сбоя"},
   },
   "ja": {
+     "{n} more members": {"other": "他 {n} 人のメンバー"},
      "{n} failed runs": {"other":"失敗した実行 {n} 件"},
      "{n} failures in a row": {"other":"{n} 回連続で失敗"},
     "{n} cards": {"other": "{n} 枚のカード"},
@@ -112,6 +117,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"other":"失敗 {n} 件"},
   },
   "zh": {
+     "{n} more members": {"other": "另外 {n} 名成员"},
      "{n} failed runs": {"other":"{n} 次运行失败"},
      "{n} failures in a row": {"other":"连续失败 {n} 次"},
     "{n} cards": {"other": "{n} 张卡片"},
@@ -134,6 +140,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"other":"{n} 次失败"},
   },
   "zh-hant": {
+     "{n} more members": {"other": "另外 {n} 名成員"},
      "{n} failed runs": {"other":"{n} 次執行失敗"},
      "{n} failures in a row": {"other":"連續失敗 {n} 次"},
     "{n} cards": {"other": "{n} 張卡片"},
@@ -156,6 +163,7 @@ export const MAIN_PLURALS: Record<string, Record<string, Partial<Record<Intl.LDM
     "{n} failed": {"other":"{n} 次失敗"},
   },
   "ar": {
+     "{n} more members": {"zero": "لا أعضاء آخرون", "one": "عضو آخر", "two": "عضوان آخران", "few": "{n} أعضاء آخرين", "many": "{n} عضوًا آخر", "other": "{n} عضو آخر"},
      "{n} failed runs": {"zero":"{n} تشغيل فاشل","one":"تشغيل فاشل واحد ({n})","two":"تشغيلان فاشلان ({n})","few":"{n} تشغيلات فاشلة","many":"{n} تشغيلًا فاشلًا","other":"{n} تشغيل فاشل"},
      "{n} failures in a row": {"zero":"{n} إخفاق متتالٍ","one":"إخفاق واحد متتالٍ ({n})","two":"إخفاقان متتاليان ({n})","few":"{n} إخفاقات متتالية","many":"{n} إخفاقًا متتاليًا","other":"{n} إخفاق متتالٍ"},
     "{n} cards": {"zero": "لا بطاقات", "one": "بطاقة واحدة", "two": "بطاقتان", "few": "{n} بطاقات", "many": "{n} بطاقة", "other": "{n} بطاقة"},
