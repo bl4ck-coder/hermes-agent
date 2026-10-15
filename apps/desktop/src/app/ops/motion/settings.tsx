@@ -15,6 +15,7 @@ import { usePublishInspectorDetail } from '../inspector-detail'
 import { T } from '../main-i18n'
 import { useOpsResource } from '../office/office-container'
 import { ThresholdSettings } from '../office/thresholds'
+import { Sigil } from '../primitives/sigil'
 import { OpsShortcutSheet } from '../shortcut-sheet'
 
 import { DiagnosticsPanel } from './diagnostics'
@@ -106,7 +107,20 @@ export function MotionReadout({ mode, onChange }: { mode: MotionMode; onChange: 
 }
 
 /** R75: one titled group per concern. Module-level so inputs keep focus across renders. */
-function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Group({ id, title, hint, folded = false, children }: { id: string; title: string; hint?: string; folded?: boolean; children: ReactNode }) {
+  // Glass p8: reference groups (shortcuts, security detail) fold behind a one-line summary.
+  if (folded) {
+    return (
+      <details aria-label={title} data-ops-settings-group={id} data-ops-settings-folded="">
+        <summary>
+          <h3>{title}</h3>
+          {hint ? <span data-ops-settings-hint="">{hint}</span> : null}
+        </summary>
+        {children}
+      </details>
+    )
+  }
+
   return (
     <section aria-label={title} data-ops-settings-group={id}>
       <h3>{title}</h3>
@@ -165,6 +179,23 @@ export function SettingsView({
 
   return (
     <section aria-label={T("Ops settings")} data-ops-settings="" data-ops-theme={prefs.theme}>
+      {/* B34: whose settings these are, at a glance: the profile mark, its model, its approval and policy posture. */}
+      <header data-ops-settings-hero="">
+        <Sigil name={profile ?? 'default'} size={44} />
+        <div>
+          <strong>{profile ?? 'default'}</strong>
+          <small>
+            {defaultModel ? `${defaultModel.provider || 'unset'} / ${defaultModel.model || 'unset'}` : T('loading')}
+          </small>
+        </div>
+        <span data-ops-settings-hero-chips="">
+          <span data-ops-chip="">{T('Approvals')}: {approval === undefined ? '…' : (approval ?? T('not set'))}</span>
+          <span data-ops-chip="" data-ops-warn={policy?.fail_closed ? 'true' : undefined}>
+            {T('Policy')}: {policy ? policy.source : '…'}
+          </span>
+          <span data-ops-chip="">{T('Secrets set')}: {secrets ? `${secrets.filter(x => x.set).length}/${secrets.length}` : '…'}</span>
+        </span>
+      </header>
       <Group id="general" title={T("General")}>
         <dl>
           <dt>{T("Theme")}</dt>
@@ -193,7 +224,7 @@ export function SettingsView({
           <dt>{T("Open Ops on launch")}</dt>
           <dd>
             <input aria-label={T("open ops on launch")} checked={prefs.openOnLaunch} onChange={e => set({ openOnLaunch: e.target.checked })} type="checkbox" />
-            <small data-ops-launch-route="">{opsLaunchRoute(prefs) ?? 'Desktop opens its own start page.'}</small>
+            <small data-ops-launch-route="">{opsLaunchRoute(prefs) ?? T('Desktop opens its own start page.')}</small>
           </dd>
           <dt>{T("Timezone")}</dt>
           <dd>
@@ -260,14 +291,14 @@ export function SettingsView({
           {T("A task becomes blocked")}</label>
         <p>{T("Silent OS notifications; Desktop never takes focus.")}</p>
       </Group>
-      <Group id="shortcuts" title={T("Shortcuts")}>
+      <Group folded hint={T("Keyboard cheat sheet")} id="shortcuts" title={T("Shortcuts")}>
         <button onClick={() => setSheet(true)} type="button">
           {T("Shortcut sheet")}</button>
       </Group>
       <Group id="diagnostics" title={T("Diagnostics")}>
         <DiagnosticsPanel policySource={policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null} />
       </Group>
-      <Group id="security" title={T("Security")}>
+      <Group folded hint={T("Secrets present, write routes, cross-site rules")} id="security" title={T("Security")}>
         <dl>
           <dt>{T("Secret presence")}</dt>
           <dd data-ops-field="secrets">
@@ -313,7 +344,7 @@ export function SettingsView({
           <dd>{T("Hermes refuses Ops, Board and approval writes from a foreign Origin (separate from the Host check).")}</dd>
           <dt>{T("Legacy write routes")}</dt>
           <dd data-ops-legacy-routes="flag">
-            Older Hermes routes (profile soul/model/description, raw config, skills toggle, toolsets) bypass A5/A6. Ops never calls them. Set HERMES_RETIRE_LEGACY_WRITES=1 in the backend environment to retire them (410); off by default because the classic Settings still uses them.
+            {T('Older Hermes routes (profile soul/model/description, raw config, skills toggle, toolsets) bypass A5/A6. Ops never calls them. Set HERMES_RETIRE_LEGACY_WRITES=1 in the backend environment to retire them (410); off by default because the classic Settings still uses them.')}
           </dd>
         </dl>
       </Group>

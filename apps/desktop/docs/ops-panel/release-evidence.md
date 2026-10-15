@@ -549,3 +549,79 @@ Screenshots: box `/workspace/ops-live/b11/` (contact-sheet.png, before-after.png
 - Tests: 48 files / 462 pass (new b13.test.tsx); tsc clean; build OK.
 - Live r2 (off-screen, venv Python): pageErrors 0, all sections ok, boardUnchanged=true (no real moves; drag measured with dragend-without-drop). fps p95 13.4 ms everywhere; board-drag max 40 ms (B12: 133 ms).
 - Evidence: /workspace/ops-live/b13/ (before-after.png, before-after-canvas.png, contact-sheet.png, sbs-outglow-vs-compose.png, sbs-gr8r-vs-drag.png, live.json).
+
+## B14 — Plurals, layout pills, lens strings, status chips (2026-10-14)
+- `P(n, other, one)` uses Intl.PluralRules per locale (ru one/few/many, ar zero/one/two/few/many, ja/zh single form) with locale number formatting. 8 plural keys × 8 locales.
+- Translated: board layout pills, inspector column ids (falls back to the main table), card counts, skills installed, violations, comments, Agents tabs Fleet/Teams/Roles, status values, kits "N skills · N installed", Add all/All added, on/off, Showing N of M.
+- Fleet status chips: failing garnet, running gold, idle muted.
+- Tests: 49 files / 468 pass (new b14.test.tsx); tsc clean.
+- Live b14r1 (off-screen, venv Python): pageErrors 0, all sections ok, boardUnchanged; fps p95 13.4 ms. Evidence /workspace/ops-live/b14/.
+
+## B15 — Channels/Settings/Diagnostics i18n, empty-state reset, compact compose (32b282ed1f)
+- Channels: Manage/Connect, All/Connected counts, categories, Install {n}, Installing…; the empty search has a "Show all apps" reset.
+- Diagnostics probe text, Settings legacy-routes/start-page text, Office "source:", and the Ops settings tab label are localized.
+- The compose textarea starts at 1 row and grows when there is text.
+- Tests: 50 files / 472 pass. Live b15r1: pageErrors 0, every section ok, board unchanged. Evidence: /workspace/ops-live/b15/.
+
+## B16 — Diagnostics capability i18n + drag screen-reader announcements (95908cb5d9)
+- Capability rows and the connection line are localized at render time; the copied report stays English.
+- Board drag: a polite aria-live region announces start, move and same-column drops (visually hidden via :where([data-ops-sr])).
+- 540 keys per locale. Tests: 51 files / 475 pass; tsc clean.
+- Live b16r1: pageErrors 0, board unchanged, drag p95 13.4 ms / max 13.7 ms. Evidence: /workspace/ops-live/b16/ (before-after.png, before-after-drag.png, contact-sheet.png).
+## B17–B19 — design critique loop (scored per lens; lowest fixed first)
+Scores (1–10): Office 4→7, Board 5→7, Canvas 5→5, Fleet 5→6, Teams 4→5, Skills 4→5, Channels 6→6, Settings 4→6, Diagnostics 4→6.
+- B17 (f88e8956d2): last connection-state and notification English (all diag variants, Task blocked, approvals via plural P). Every button gets a press sink; the selected tab gets a gold baseline; filter chips go quiet; stat values lead at 26 px; the Orbit gets two orbital rings and a slow centre glow (reduced motion: static).
+- B18 (5004bda328): type scale greeting 20 > lens 16 > section label 11 caps > body 13; 12 px section rhythm; the three Office count strips merge into one hairline-separated line; cards lift on hover (transform only, pitch-safe); table rows highlight on hover.
+- B19 (ee2bbcb5e6): Needs-you kinds/actions/retry localized; while a card is dragged, hover lift and transitions turn off (drag max 53 ms → 26.8 ms, 0 frames over 33 ms); failing/overdue counts carry an alarm colour; empty states get a dashed frame.
+- Tests: 54 files / 484 pass; tsc clean. Live b17r1–b19r1: pageErrors 0, board unchanged. Evidence: /workspace/ops-live/b17/, b18/, b19/.
+## B20–B22 — toward 9/10 per lens
+Scores (1–10, after B19 → after B22): Canvas 5→8, Channels 6→8, Teams 5→8, Skills 5→7, Office 7→8, Board 7→8, Fleet 6→6, Settings 6→6, Diagnostics 6→6.
+- B20 (c104761b8f): Canvas Outglow pass: glyph tile per node type, localized node titles, status-tinted tiles, port dots where wires meet, gold ring on the selected node with a floating detail, flowing dashes on lit run wires (static under reduced motion), unavailable nodes recede.
+- B21 (cf530f7fec): Channels equal-height cards with the action pinned to the foot, connected apps first with gold glyphs; Teams as cards with member avatars, plural open counts and empty copy; Skills starter packs as a grid with an install progress bar; Canvas leftovers localized; next cron run as a local date instead of ISO.
+- B22 (8ca36d36f9): Needs-you rows get avatars, tinted kind pills (garnet for blocked/failing/policy), right-aligned ages, compact inputs; board titles lead at 13/600 with mono ids, blocked/running cards get an inset edge tint, done cards recede; tab switch fades in (opacity only); Channels left-aligned; "No lane" localized.
+- Tests: 57 files / 496 pass; tsc clean. Live b20r1–b22r1: pageErrors 0, board unchanged; drag and pan/zoom max 13.5 ms in b22r1, one 40 ms board-scroll frame. Evidence: /workspace/ops-live/b20/–b22/.
+## B23–B26 — toward 9/10 (Fleet, Settings, Diagnostics, frame budget)
+Scores (after B22 → after B26): Fleet 6→8, Diagnostics 6→8, Settings 6→7, Skills 7→8, Canvas 8→8, Board 8→8, Office 8→8, Channels 8, Teams 8.
+- B23 (5307c45eb2): sortable headers become quiet caps with a gold active sort and ↑/↓; non-sortable headers localized (Skills "DESCRIPTION"); Fleet agent cell = avatar + name + quiet role; zero counts recede; failures garnet; Diagnostics capabilities and connection as status lights in a grid; fleet copy localized.
+- B24 (5430e1540a): secret presence as a mono chip grid with green lights; board views as a segmented switcher with New task primary; Canvas node detail below its node; Office live cards lifted with a state edge; kit names wrap.
+- B25 (f86e28e6c9): Canvas run panel status pill (localized, state light, reduced-motion safe); drifting orbs drop shadows.
+- B26 (8dee375052): removed an unscoped `:where(:has(> [data-ops-count]))` and a toolbar `:has()`; Office p99 26.5 → 13.5 ms.
+- Tests: 61 files / 510 pass; tsc clean. Live b23r1–b26r1: pageErrors 0, board unchanged. b26r1 max frames: one 66.8 ms Office frame, one 40 ms drag frame (p99 13.5 / 26.6 ms). Evidence: /workspace/ops-live/b23/–b26/.
+## B27–B29 — verified in live screenshots before scoring
+Scores (after B26 → after B29): Board 8→9, Canvas 8→9, Office 8→9, Settings 7→8, Skills 8→8, Fleet 8, Diagnostics 8, Channels 8, Teams 8.
+- B27 (2e18598466): board toolbar was block flow, so the B24/B26 nowrap never applied; it is now a flex row with shrinking filters (verified: Mías and Archivadas on the same line). Canvas node detail expands the node in place (verified: Modelo no longer covered). Settings groups are a label/control grid. Driver: new 08c-settings-top shot.
+- B28 (85fb70d768 test only, df37559e3c edits; the first edit script aborted on a CRLF mismatch and was re-applied): Office dispatch input fills the row with a primary submit, routing hint below, "+N más → Te necesita" as a link, larger orbit badges; settings rows top-aligned; node editor heading/badge, dispatch status localized. Driver scroll fixed (verified: Settings top visible).
+- B29 (e064d53912): skills agent chips as pills; thresholds as labelled inputs; first-column name rule did NOT take (names still framed), noted for the next batch.
+- Tests: 64 files / 521 pass; tsc clean. Live b27r1, b28r2, b29r1: pageErrors 0, board unchanged. b29r1: Office max 26.7 ms (0 over 33), drag max 53.4 ms (2 frames), scroll max 40 ms (1). Evidence: /workspace/ops-live/b27/–b29/.
+## B30 (c754ab9635)
+- Drop highlight moved from React state to DOM attribute: board-drag 368 -> 748 frames, p99 13.5 ms, max 53.4 -> 40.1 ms (2 frames at drag end).
+- Skill names unframed via [data-ops-skill-open]; table cells carry data-col; Fleet model mono/muted, running pulse; Teams 'No lane' spans the row; Settings follow-up dd tucked.
+- Live b30r1: pageErrors 0, boardUnchanged true, 65 files / 524 tests, tsc clean.
+
+## B31 + glass pass 1 (2418d988cf, 1e4c7cc08d, e1f565b492)
+- B31: probe chips sr-only 'available', secrets full-row 3 columns, channel copy clamp.
+- Glass layer (src/styles/glass/glass.css, components/ui/glass.tsx) app-wide in Gold Night; IA audit in docs/ia-audit.md.
+- Live b31r1 (before) vs glass2 (after): pageErrors 0, boardUnchanged true. office-motion p99 26.6 -> 13.5 ms (max 53.4 -> 80, one frame); board-drag p99 26.8 -> 26.6, max 53.5 -> 40; board-scroll max 40 -> 26.8; canvas max 26.7 -> 40. glass1 had a 240 ms Office frame with the blurred ops toast; blur removed from the toast in glass2.
+
+## Glass pass 2 + IA (26f9f57d9b)
+- Ambient static light layers (radial gold/amber/garnet, vignette, noise tile), translucent glass cards with light rims, lit primary buttons; no new backdrop-filter.
+- IA: Settings nav sections (Sistema / Conexiones y datos / Extensiones), sessions search above list + date groups, chat intro hint, agents empty hint, cron status chips + folded templates. Ops hover hints restored through Tip.
+- Live glass3: pageErrors 0, boardUnchanged true, zero frames over 33 ms in all four measurements (frame interval was ~15.1 ms this round vs ~13.3 ms before, so p95 numbers are not directly comparable).
+
+## Glass pass 3 follow-up (glass6–glass11)
+
+- Live driver: app screens now leave Ops fullscreen instead of forcing it (Artifacts/Capabilities/Messaging used to capture the Ops lens). Long-animation-frame attribution is recorded per fps sample.
+- Fixes: artifacts pool-state toasts (3 commits), code editor ink on Gold Night, SOUL frame, display headlines, page-shell light.
+- Board scroll 221.8 ms (glass6): did not reproduce in glass7–glass10 (max 15.6–29.7 ms, 0 frames over 33 ms). It was a one-off. The probe recorded no long frame that pointed at app script or rendering.
+- Board drag: p95 15.1 ms throughout. The 58–68 ms outliers in glass9/10 are long-animation-frames with 0 ms blocking, ~1–2 ms render/layout and no attributed script, i.e. a gap between frames rather than app work. The synthetic drag test was the same as when it measured 28.8 ms.
+
+## B32 (glass12-glass14)
+
+- The glass12 capture was stale: a cp1252 byte from a PowerShell append made ops-base.css unloadable, and the live script hid the failed build. All appended blocks have been re-encoded as UTF-8, and b-live.ps1 now stops with BUILD FAILED.
+- glass14: no frame over 33 ms in any sample (max 27-30 ms). No artifacts warning.
+## B33 (glass15-glass18)
+
+- glass15: large blurred outer shadows on repeated cards, columns and nodes made frames GPU-bound. Long frames had ~2 ms of main-thread render and no script; office max was 257 ms. B33b keeps only inset highlights on repeated elements. glass16 and glass17 were clean again (office max 29.6 / 37.4 ms; board drag 29.6 / 15.6 ms).
+- glass18: p95 15.1 ms in every sample; office and drag each had 2 frames at 44 ms.
+- Build masking: b-live.ps1 stops with BUILD FAILED. Appends are written with UTF-8 (no BOM) through .NET only.
+- After the Hermes v0.22.0 update (gateway pid 230108), the isolated live run works unchanged with the existing venv Python path.

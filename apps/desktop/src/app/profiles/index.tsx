@@ -226,12 +226,17 @@ function ProfileRow({
 function ProfileDetail({ profile }: { profile: ProfileInfo }) {
   const { t } = useI18n()
   const p = t.profiles
+  const colors = useStore($profileColors)
 
   return (
     <PanelDetail>
       <header className="space-y-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3" data-profile-hero="">
+            {/* B34: the profile's own glyph, large, as the page's identity mark. */}
+            <span className="grid size-12 shrink-0 place-items-center [&>*]:size-12! [&>*]:text-lg!" data-profile-hero-glyph="">
+              <ProfileGlyph aria-hidden="true" color={resolveProfileColor(profile.name, colors)} isDefault={profile.is_default} name={profile.name} />
+            </span>
             <h3 className="text-[0.95rem] font-semibold tracking-tight text-foreground">{profileLabel(profile)}</h3>
             {profile.is_default && <PanelPill tone="good">{p.defaultBadge}</PanelPill>}
             {profile.has_env && <PanelPill tone="muted">.env</PanelPill>}
@@ -339,7 +344,7 @@ function SoulEditor({ profileName }: { profileName: string }) {
       {loading ? (
         <PageLoader className="min-h-44" label={p.loadingSoul} />
       ) : (
-        <div className="min-h-48">
+        <div className="min-h-[min(55vh,30rem)] [&>*]:min-h-[inherit] [&_.cm-editor]:min-h-[inherit]" data-profile-soul-editor="">
           <CodeEditor
             filePath="SOUL.md"
             framed

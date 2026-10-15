@@ -52,16 +52,18 @@ page.on('response', r => r.status() >= 400 && log.http.push({ status: r.status()
 const dismissToasts = async () => {
   const texts = await page.evaluate(() => {
     const out = []
-    for (const n of document.querySelectorAll('[role="region"] [role="status"]')) {
+    // Glass p3: alerts too (warnings render as role=alert), full text with the details expanded.
+    for (const n of document.querySelectorAll('[role="region"] [role="status"], [role="region"] [role="alert"]')) {
       if (!n.getClientRects().length) continue
-      const b = n.querySelector('button[aria-label]')
-      if (b) { out.push((n.textContent || '').trim().slice(0, 80)); b.click() }
+      // Only the close control: never the toast's own actions (e.g. Copy detail writes the clipboard).
+      const b = [...n.querySelectorAll('button[aria-label]')].find(x => /close|cerrar|dismiss|descartar|fermer|schlie/i.test(x.getAttribute('aria-label') || ''))
+      if (b) { out.push((n.textContent || '').trim().slice(0, 600)); b.click() }
     }
     return out
   }).catch(() => [])
   if (texts.length) { log.toastDismissed.push(...texts); await sleep(350) }
 }
-const shot = async name => { await dismissToasts(); return page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) })) }
+const shot = async name => { await dismissToasts(); await sleep(250); await dismissToasts(); return page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) })) }
 const save = () => writeFileSync(join(OUT, 'live.json'), JSON.stringify({ ...log, mainTail: typeof log.mainTail === 'function' ? log.mainTail() : '' }, null, 2))
 
 async function section(name, fn) {
@@ -105,6 +107,8 @@ async function sampleFps(name, act, ms = 5000) {
     w.__opsFrames = []
     let last = performance.now()
     w.__opsFpsOn = true
+    w.__opsLong = []; w.__opsT0 = performance.now()
+    try { w.__opsObs?.disconnect(); w.__opsObs = new PerformanceObserver(l => { for (const e of l.getEntries()) w.__opsLong.push([Math.round(e.startTime - w.__opsT0), Math.round(e.duration), e.entryType, `block=${Math.round(e.blockingDuration || 0)} render=${Math.round(e.renderStart ? e.startTime + e.duration - e.renderStart : 0)} layout=${Math.round(e.styleAndLayoutStart ? e.startTime + e.duration - e.styleAndLayoutStart : 0)}`, (e.scripts || []).slice(0, 3).map(s => (s.invoker || '') + ' ' + (s.sourceFunctionName || '') + ' ' + (s.sourceURL || '').split('/').pop() + ':' + (s.sourceCharPosition ?? '') + ' ' + Math.round(s.duration)).join(' | ')]) }); w.__opsObs.observe({ type: 'long-animation-frame', buffered: false }) } catch { try { w.__opsObs.observe({ type: 'longtask' }) } catch {} }
     const tick = t => { w.__opsFrames.push(t - last); last = t; if (w.__opsFpsOn) requestAnimationFrame(tick) }
     requestAnimationFrame(tick)
   })
@@ -118,10 +122,13 @@ async function sampleFps(name, act, ms = 5000) {
   // B11: when each long frame happened (ms from sample start), to tell pickup from release.
   let acc = 0
   log.fps[name].spikes = d.map(x => { acc += x; return [Math.round(acc), +x.toFixed(1)] }).filter(([, x]) => x > 33.4)
+  log.fps[name].long = await page.evaluate(() => window.__opsLong || []).catch(() => [])
   save()
 }
 
 const ensureFull = async () => { const v = await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen').catch(() => null); if (v !== null && v !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1200) } }
+// App screens: no Ops fullscreen toggle (ensureFull promoted Ops over /artifacts, /capabilities, /messaging).
+const goApp = async route => { const v = await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen').catch(() => null); if (v === 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(800) } await page.evaluate(r => { location.hash = r }, `#${route}`); await sleep(2500) }
 const go = async route => { await page.evaluate(r => { location.hash = r }, `#${route}`); await sleep(2500); await ensureFull() }
 const lens = async id => {
   const btn = page.locator(`[data-ops-rail-list] button[data-ops-lens="${id}"]`).first()
@@ -295,11 +302,47 @@ for (const [n, id, tab] of [['04-fleet', 'agents', 'fleet'], ['05-teams', 'agent
   if (!want(n.slice(3))) continue
   await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); return page.url() })
 }
+if (want('settings')) await section('08c-settings-top', async () => {
+  await page.evaluate(() => document.querySelector('[data-ops-settings-group]')?.scrollIntoView({ block: 'start' }))
+  await sleep(400)
+  return 'scrolled to top'
+})
 if (want('diagnostics')) await section('09-diagnostics', async () => {
   const d = page.locator('[data-ops-diagnostics]').first(); await d.scrollIntoViewIfNeeded({ timeout: 8000 })
   await page.locator('[data-ops-probe]').first().click({ timeout: 8000 }); await sleep(4000); await d.scrollIntoViewIfNeeded()
   return await page.evaluate(() => { const e = document.querySelector('[data-ops-diag-connection]'); return `${e?.getAttribute('data-ops-diag-connection')} writes=${e?.getAttribute('data-ops-writes')}` })
 })
+// B33: roster views. Switch to Cards, capture, switch back so the stored choice is unchanged.
+for (const [n, id, tab] of [['04b-fleet-cards', 'agents', 'fleet'], ['06b-skills-cards', 'skills']]) {
+  if (!want(n.slice(4)) && !want(n.slice(4, -6))) continue
+  await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); const tg = page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(1); await tg.scrollIntoViewIfNeeded({ timeout: 8000 }); await tg.click({ timeout: 8000, force: true }); await sleep(600); return await page.evaluate(() => document.querySelectorAll('[data-ops-roster] > li').length + ' cards') })
+  await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).first().click({ timeout: 4000 }).catch(() => {})
+}
+// Glass/IA pass: the main Hermes screens outside Ops (read-only visits; Escape closes overlays).
+for (const [n, route] of [['20-app-chat', '/'], ['21-app-settings', '/settings'], ['22-app-profiles', '/profiles'], ['23-app-capabilities', '/capabilities'], ['24-app-messaging', '/messaging'], ['25-app-artifacts', '/artifacts'], ['26-app-cron', '/cron'], ['27-app-command-center', '/command-center'], ['28-app-agents', '/agents']]) {
+  if (!want('app') && !want(n)) continue
+  await section(n, async () => { await goApp(route); if (route === '/artifacts') await page.waitForSelector('[data-artifact-card], [data-artifacts-empty], table tbody tr, img', { timeout: 15000 }).catch(() => {}); if (route === '/artifacts' || route === '/capabilities') log['stack' + route.replace('/', '-')] = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.4, innerHeight * 0.5).slice(0, 12).map(e => { const c = getComputedStyle(e); return e.tagName.toLowerCase() + ' bg=' + c.backgroundColor + ' img=' + c.backgroundImage.slice(0, 30) + ' attrs=' + [...e.attributes].filter(a => a.name.startsWith('data-')).map(a => a.name).join(',') + ' cls=' + String(e.className).slice(0, 100) })).catch(e => String(e)); if (route === '/') { await page.locator('button:has-text("Chats")').first().click({ timeout: 4000 }).catch(() => {}); await sleep(1500); log.chatStack = await page.evaluate(() => document.elementsFromPoint(innerWidth * 0.3, innerHeight * 0.3).slice(0, 14).map(e => { const c = getComputedStyle(e); return `${e.tagName.toLowerCase()}${e.getAttribute('data-slot') ? '[slot=' + e.getAttribute('data-slot') + ']' : ''}${e.hasAttribute('data-chat-surface') ? '[chat-surface]' : ''} bg=${c.backgroundColor} img=${c.backgroundImage.slice(0, 40)} cls=${(e.className && e.className.baseVal === undefined ? e.className : '').slice(0, 90)}` })).catch(e => String(e)) } return page.url() })
+  if (n === '22-app-profiles') log.soulProbe = await page.evaluate(() => { const q = s => { const e = document.querySelector(s); if (!e) return null; const c = getComputedStyle(e); const r = e.getBoundingClientRect(); return { cls: String(e.className).slice(0, 120), color: c.color, bg: c.backgroundColor, outline: `  `, border: ` `, shadow: c.boxShadow.slice(0, 80), ws: c.whiteSpace, rect: [r.x, r.y, r.width, r.height].map(Math.round) } }; return { wrap: q('[data-profile-soul-editor]'), editor: q('[data-profile-soul-editor] .cm-editor'), scroller: q('[data-profile-soul-editor] .cm-scroller'), content: q('[data-profile-soul-editor] .cm-content'), line: q('[data-profile-soul-editor] .cm-line'), active: q('[data-profile-soul-editor] .cm-activeLine'), sel: q('[data-profile-soul-editor] .cm-selectionBackground') } }).catch(e => String(e))
+  await page.keyboard.press('Escape').catch(() => {}); await sleep(300)
+}
+log.themeProbe = await page.evaluate(() => { const h = document.documentElement; const cs = el => { const e = document.querySelector(el); if (!e) return null; const c = getComputedStyle(e); return { bg: c.backgroundColor, img: c.backgroundImage.slice(0, 120) } }; return { attrs: [...h.attributes].map(a => `${a.name}=${a.value}`.slice(0, 80)), chat: cs('[data-chat-surface]'), bounds: cs("[data-slot='composer-bounds']"), sidebar: cs("[data-slot='sidebar-inner']"), ops: cs('[data-ops-root]') } }).catch(e => String(e))
+// Glass p3: why do artifact loads fail? Read-only GETs mirroring app/artifacts refreshArtifacts.
+if (want('app') || want('artifacts-probe')) {
+  log.artifactsProbe = await page.evaluate(async () => {
+    const api = window.hermesDesktop.api
+    const out = []
+    try {
+      const list = await api({ path: '/api/profiles/sessions?limit=30&offset=0&min_messages=1&archived=exclude&order=recent&profile=all' })
+      for (const s of list.sessions || []) {
+        const q = new URLSearchParams({ limit: '50', offset: '0', order: 'oldest', include_compacted: 'true' })
+        if (s.profile) q.set('profile', s.profile)
+        try { const r = await api({ path: `/api/sessions/${encodeURIComponent(s.id)}/messages?${q}`, profile: s.profile }); out.push({ id: s.id, profile: s.profile, ok: true, n: (r.messages || []).length }) }
+        catch (e) { out.push({ id: s.id, profile: s.profile, ok: false, err: String(e && (e.message || e)).slice(0, 300) }) }
+      }
+    } catch (e) { out.push({ listErr: String(e && (e.message || e)).slice(0, 300) }) }
+    return out
+  }).catch(e => [{ evalErr: String(e) }])
+}
 const boardSig = () => page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') })
 log.boardAfter = await boardSig().catch(e => 'ERR ' + e)
 log.boardUnchanged = log.boardBefore === log.boardAfter

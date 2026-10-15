@@ -6,12 +6,12 @@
  * (R71/R58), favourites (R74), card menu (R20), New-task modal (R40), inline rename (R47), Markdown body (R17).
  */
 
-import { type KeyboardEvent, type ReactNode, useMemo, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useMemo, useState, useRef } from 'react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 import { boardInspectorSummary, taskInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
-import { T } from '../main-i18n'
+import { layoutLabel, T } from '../main-i18n'
 import { Sigil } from '../primitives/sigil'
 
 import {
@@ -128,7 +128,16 @@ export function BoardView(props: BoardViewProps) {
   const [groupBy, setGroupBy] = useState<GroupBy>('status')
   const [sortBy, setSortBy] = useState<SortBy>('priority')
   const [dragging, setDragging] = useState<string | null>(null)
-  const [dropCol, setDropCol] = useState<string | null>(null)
+  // B30: the drop highlight is a DOM attribute on the hovered column, not React state: dragover fires every frame
+  // and re-rendering the whole board per frame caused the 40-53 ms drag spikes.
+  const dropRef = useRef<HTMLElement | null>(null)
+  const markDrop = (el: HTMLElement | null) => {
+    if (dropRef.current === el) return
+    dropRef.current?.removeAttribute('data-ops-drop')
+    el?.setAttribute('data-ops-drop', 'over')
+    dropRef.current = el
+  }
+  const [announce, setAnnounce] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<BoardTask | null>(null)
   const [modal, setModal] = useState<string | null>(null)
@@ -226,13 +235,14 @@ export function BoardView(props: BoardViewProps) {
       draggable={!readOnly}
       key={t.id}
       onContextMenu={e => (e.preventDefault(), setMenu(t.id))}
-      onDragEnd={() => setDragging(null)}
+      onDragEnd={() => (setDragging(null), setAnnounce(''), markDrop(null))}
       onDragStart={e => {
         if (readOnly) {
           return
         }
 
         setDragging(t.id)
+        setAnnounce(T('Dragging {id}. Drop it on a column, or press Escape to cancel.').replace('{id}', t.title || t.id))
         e.dataTransfer.setData('text/ops-card', t.id)
         e.dataTransfer.effectAllowed = 'move'
       }}
@@ -310,10 +320,10 @@ export function BoardView(props: BoardViewProps) {
         }
       }}
     >
-      <div role="toolbar">
+      <div data-ops-board-toolbar="" role="toolbar">
         {LAYOUTS.map(l => (
           <button aria-pressed={l === layout} data-ops-layout={l} key={l} onClick={() => setLayout(l)} type="button">
-            {l}
+            {layoutLabel(l)}
           </button>
         ))}
         {!readOnly && props.createFull ? (
@@ -451,16 +461,18 @@ export function BoardView(props: BoardViewProps) {
       ) : null}
 
       {layout === 'board' || layout === 'review' ? (
-        <div data-ops-columns="">
+        <div data-ops-columns="" data-ops-drag-active={dragging ? '' : undefined}>
+          <span aria-live="polite" data-ops-sr="" role="status">
+            {announce}
+          </span>
           {shown.columns.map(col => (
             <section
               aria-label={col.name}
               data-ops-column={col.name}
-              data-ops-drop={dropCol === col.name ? 'over' : undefined}
               key={col.name}
               onDragLeave={e => {
                 if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  setDropCol(cur => (cur === col.name ? null : cur))
+                  if (dropRef.current === e.currentTarget) markDrop(null)
                 }
               }}
               onDragOver={e => {
@@ -470,11 +482,11 @@ export function BoardView(props: BoardViewProps) {
 
                 e.preventDefault()
                 e.dataTransfer.dropEffect = 'move'
-                setDropCol(col.name)
+                markDrop(e.currentTarget)
               }}
               onDrop={e => {
                 e.preventDefault()
-                setDropCol(null)
+                markDrop(null)
                 const id = e.dataTransfer.getData('text/ops-card') || dragging
 
                 if (!readOnly && id && (MOVABLE as readonly string[]).includes(col.name)) {
@@ -482,6 +494,9 @@ export function BoardView(props: BoardViewProps) {
 
                   if (from && from !== col.name) {
                     props.move(id, col.name)
+                    setAnnounce(T('Moved to {col}.').replace('{col}', T(col.name)))
+                  } else {
+                    setAnnounce(T('Same column: nothing moved.'))
                   }
                 }
 

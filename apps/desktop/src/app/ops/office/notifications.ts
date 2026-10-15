@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 
 import { newIds, opsNotify } from '../feed/diag'
+import { P, T } from '../main-i18n'
 
 /** Reads the Settings prefs directly (no import of the Settings module: it imports the Office container). */
 function prefs(): { notifyApprovals?: boolean; notifyBlocked?: boolean } {
@@ -26,7 +27,7 @@ export function useOpsNotifications(approvalIds: string[] | null, blocked: { id:
     const fresh = newIds(seenA, approvalIds.filter(Boolean))
 
     if (fresh.length && prefs().notifyApprovals === true) {
-      opsNotify('Approval waiting', fresh.length === 1 ? 'An agent is waiting for your approval.' : `${fresh.length} approvals are waiting.`)
+      opsNotify(T('Approval waiting'), fresh.length === 1 ? T('An agent is waiting for your approval.') : P(fresh.length, '{n} approvals are waiting.'))
     }
 
     setSeenA(new Set(approvalIds))
@@ -42,7 +43,7 @@ export function useOpsNotifications(approvalIds: string[] | null, blocked: { id:
 
     if (fresh.length && prefs().notifyBlocked === true) {
       const first = blocked.find(t => t.id === fresh[0])
-      opsNotify('Task blocked', fresh.length === 1 ? `${first?.title ?? fresh[0]} is blocked.` : `${fresh.length} tasks became blocked.`)
+      opsNotify(T('Task blocked'), fresh.length === 1 ? T('{title} is blocked.').replace('{title}', String(first?.title ?? fresh[0])) : P(fresh.length, '{n} tasks became blocked.'))
     }
 
     setSeenB(new Set(blocked.map(t => t.id)))

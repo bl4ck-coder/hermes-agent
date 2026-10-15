@@ -16,6 +16,7 @@ import {
 } from '@/store/hub-actions'
 import { notify, notifyError } from '@/store/notifications'
 import { $paneHeightOverride, setPaneHeightOverride } from '@/store/panes'
+import { useTheme } from '@/themes/context'
 
 // The REAL Skills Hub page (docs site) embedded as a one-click picker — the
 // same trick the Bot Mode agent editor uses. `?embed=picker` hides the docs
@@ -75,6 +76,10 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
 }: EmbeddedHubPickerProps) {
   const { t } = useI18n()
   const h = t.skills.hub
+  // B33: the hub is a Docusaurus site; its documented theme query keeps it dark inside a dark app
+  // (the iframe otherwise follows the OS scheme and flashed a white page into Gold Night).
+  const { renderedMode } = useTheme()
+  const hubSrc = `${HUB_PICKER_URL}&docusaurus-theme=${renderedMode}`
   // Subscribe to the ONE flag this header renders, not the whole action map —
   // $hubActions churns on every tailed log line during an install.
   const updating = useStoreSelector($hubActions, actions => actions[UPDATE_ALL_KEY]?.running ?? false)
@@ -220,7 +225,8 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
           <div
             style={{
               border: '1px solid var(--ui-stroke-secondary)',
-              borderRadius: 8,
+              borderRadius: 12,
+              boxShadow: '0 18px 48px -28px rgb(0 0 0 / 0.8)',
               flex: `0 1 ${height}px`,
               maxWidth: '100%',
               minHeight: 0,
@@ -232,7 +238,7 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
           >
             <iframe
               sandbox="allow-scripts allow-same-origin"
-              src={HUB_PICKER_URL}
+              src={hubSrc}
               style={{
                 background: 'transparent',
                 border: 'none',

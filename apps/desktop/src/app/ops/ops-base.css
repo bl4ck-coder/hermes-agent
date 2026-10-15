@@ -257,7 +257,7 @@
 :where([data-ops-card]) > :where([data-ops-card-signals]) { grid-area: sig; max-width: 150px; }
 
 /* Office strips: each count is a quiet chip. */
-:where(:has(> [data-ops-count])) { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+:where([data-ops-strip]) { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 :where([data-ops-count]) { background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 999px; color: var(--ops-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; padding: 2px 10px; white-space: nowrap; }
 
 /* Canvas inline node detail: one key/value row per line, like the Inspector. */
@@ -327,6 +327,392 @@
 :where([data-ops-card][draggable='true']) { cursor: grab; }
 :where([data-ops-card][draggable='true']:active) { cursor: grabbing; }
 :where([data-ops-card][data-ops-dragging]) { opacity: 0.55; }
+/* B14: fleet status reads at a glance (Gr8r status chips): failing garnet, running gold, idle muted. */
+:where([data-ops-fleet-status]) { border-radius: 999px; font-size: 11.5px; padding: 1px 8px; }
+:where([data-ops-fleet-status='failing']) { background: color-mix(in srgb, #b4474b 18%, transparent); color: #e08a8d; }
+:where([data-ops-fleet-status='running']) { background: color-mix(in srgb, var(--ops-gold, #c9a227) 16%, transparent); color: var(--ops-gold, #c9a227); }
+:where([data-ops-fleet-status='idle'], [data-ops-fleet-status='unknown']) { color: var(--ops-muted); }
+
+/* B15: Compose is one quiet line (Outglow's docked composer) until it holds text or a proposal. */
+:where([data-ops-compose]) { margin: 0 0 8px; }
+:where([data-ops-compose] form) { align-items: flex-start; display: flex; gap: 6px; }
+:where([data-ops-compose] textarea) { flex: 1; min-height: 30px; resize: vertical; }
+:where([data-ops-proposal]) { border: 1px dashed color-mix(in srgb, var(--ops-gold, #c9a227) 55%, transparent); border-radius: 8px; margin-top: 6px; padding: 8px 10px; }
+:where([data-ops-proposal] pre) { color: #8fc79a; margin: 4px 0; white-space: pre-wrap; }
+:where([data-ops-empty-reset]) { margin-left: 6px; }
+
+/* B16: screen-reader-only live region. */
+:where([data-ops-sr]) { clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+
+/* ---- B17 design layer: press states, quieter chips, stat hierarchy, a living orbit stage ---- */
+/* Press: every control answers the pointer (1px sink + inner shade); hover already lifts the surface. */
+:where([data-ops-root]) :where(button) { transition: background var(--dur-micro, 140ms) var(--ease, ease), border-color var(--dur-micro, 140ms) var(--ease, ease), color var(--dur-micro, 140ms) var(--ease, ease), transform 90ms var(--ease, ease), box-shadow var(--dur-micro, 140ms) var(--ease, ease); }
+:where([data-ops-root]) :where(button:active:not(:disabled)) { box-shadow: inset 0 1px 2px rgb(0 0 0 / 35%); transform: translateY(1px); }
+:where([data-ops-root]) :where([data-ops-primary]) { background: color-mix(in srgb, var(--ops-gold) 14%, transparent); }
+:where([data-ops-root]) :where([data-ops-primary]:hover:not(:disabled)) { background: color-mix(in srgb, var(--ops-gold) 22%, transparent); border-color: var(--ops-gold); }
+/* Tabs: the selected tab owns a gold baseline instead of another bordered box. */
+:where([data-ops-root]) :where([role='tab'][aria-selected='true']) { box-shadow: inset 0 -2px 0 var(--ops-gold); }
+/* Filter chips are secondary: no frame until hover, muted ink, tighter pitch. */
+:where([data-ops-chips]) :where(button) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 12px; padding: 2px 8px; }
+:where([data-ops-chips]) :where(button:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: var(--ops-line); color: var(--ops-fg); }
+:where([data-ops-chips]) :where(button[aria-pressed='true']) { background: color-mix(in srgb, var(--ops-gold) 12%, transparent); border-color: color-mix(in srgb, var(--ops-gold) 45%, transparent); color: var(--ops-gold); }
+/* Stat cards: the number leads, the label supports, the sub whispers; hover hints they open something. */
+:where([data-ops-stat-value]) { font-size: 26px; letter-spacing: -0.01em; }
+:where([data-ops-stats]) :where([data-ops-stat]) { gap: 4px; padding: 12px 14px; }
+:where([data-ops-stats]) :where([data-ops-stat]:hover:not(:disabled)) { border-color: color-mix(in srgb, var(--ops-gold) 45%, transparent); }
+/* Orbit stage: two faint orbital rings and a slow centre glow so the Office reads as a place, not a list. */
+:where([data-ops-orrery]) { isolation: isolate; overflow: hidden; }
+:where([data-ops-orrery])::before, :where([data-ops-orrery])::after { border: 1px dashed color-mix(in srgb, var(--ops-fg) 9%, transparent); border-radius: 50%; content: ''; left: 50%; pointer-events: none; position: absolute; top: 50%; transform: translate(-50%, -50%); z-index: -1; }
+:where([data-ops-orrery])::before { height: 46%; width: 34%; }
+:where([data-ops-orrery])::after { height: 86%; width: 70%; }
+:where([data-ops-orrery-centre])::before { animation: ops-glow 5s ease-in-out infinite; background: radial-gradient(circle, color-mix(in srgb, var(--ops-gold) 22%, transparent), transparent 70%); border-radius: 50%; content: ''; height: 140px; left: 50%; pointer-events: none; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 140px; z-index: -1; }
+@keyframes ops-glow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+:where([data-ops-orrery] [data-ops-orb]) { box-shadow: 0 1px 3px rgb(0 0 0 / 40%); }
+:where([data-ops-orrery] [data-ops-orb]:hover) { border-color: color-mix(in srgb, var(--ops-gold) 70%, transparent); z-index: 2; }
+:where([data-ops-orrery] [data-ops-orrery-overflow]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 11px; left: 8px; position: absolute; top: 8px; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-orrery-centre])::before { animation: none; } :where([data-ops-root]) :where(button:active:not(:disabled)) { transform: none; } }
+:where([data-ops-motion='reduced'] [data-ops-orrery-centre])::before { animation: none; }
+
+/* ---- B18 design layer: typography scale, 4/8/12 rhythm, Office density, card and row feedback ---- */
+/* Scale: greeting 20 > lens title 16 > section label 11 caps > body 13 > meta 11. */
+:where([data-ops-greeting] h2) { font-size: 20px; }
+:where(section[data-ops-lens] > header > h2) { font-size: 16px; letter-spacing: -0.005em; }
+:where([data-ops-root]) :where(section > h2:first-child, section > h3:first-child, fieldset > legend) { color: var(--ops-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.07em; margin: 0 0 8px; text-transform: uppercase; }
+:where([data-ops-root]) :where(section, fieldset) { margin: 0 0 12px; padding: 12px 14px; }
+/* Office: the three count strips flow as one wrapping line, separated by hairlines, not three stacked rows. */
+:where([data-ops-strip]) { display: inline-flex; margin: 0 10px 10px 0; padding-right: 10px; vertical-align: top; border-right: 1px solid var(--ops-line); }
+:where([data-ops-strip]:last-of-type) { border-right: 0; }
+:where([data-ops-strip]) :where([data-ops-count]) { background: transparent; border-color: transparent; padding: 1px 6px; }
+/* Board cards lift on hover and sink on press; transform only, so the windowed row pitch never changes. */
+:where([data-ops-card]) { transition: border-color 120ms ease, background-color 120ms ease, transform 120ms var(--ease, ease), box-shadow 120ms ease; }
+:where([data-ops-card]:hover) { box-shadow: 0 4px 12px rgb(0 0 0 / 30%); transform: translateY(-1px); }
+:where([data-ops-card]:active) { box-shadow: none; transform: none; }
+:where([data-ops-column] > h3 [data-ops-count]) { background: var(--ops-surface-2); border-radius: 999px; font-size: 11px; padding: 0 7px; }
+/* Tables: the row under the pointer is findable. */
+:where([data-ops-root]) :where(tbody tr) { transition: background-color 120ms ease; }
+:where([data-ops-root]) :where(tbody tr:hover) { background: var(--ops-surface); }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-card]:hover) { transform: none; } }
+:where([data-ops-motion='reduced'] [data-ops-card]:hover) { transform: none; }
+
+/* ---- B19: drag stays cheap (no hover lift or transitions while a card is in flight), alarm chips, empty states ---- */
+:where([data-ops-columns][data-ops-drag-active]) :where([data-ops-card]) { box-shadow: none; transform: none; transition: none; }
+:where([data-ops-columns][data-ops-drag-active]) :where([data-ops-column][data-ops-drop='over']) { background: color-mix(in srgb, var(--ops-gold) 6%, transparent); }
+/* Counts that mean trouble read as trouble, even in the quiet strip. */
+:where([data-ops-strip]) :where([data-ops-count][data-ops-alarm]) { color: #d77b7f; }
+/* Empty states: centred, calm, with the next action visible rather than a bare italic line. */
+:where([data-ops-empty], [data-ops-inspector-empty]) { border: 1px dashed var(--ops-line); border-radius: var(--ops-radius); color: var(--ops-muted); padding: 14px; text-align: center; }
+
+/* ---- B20 Canvas (Outglow agent-builder): glyph tiles, status dots, ports, selected glow, flowing lit edges ---- */
+:where([data-ops-canvas-nodes] [data-ops-node]) { align-items: center; padding: 10px 12px; transition: border-color 140ms ease, box-shadow 140ms ease, opacity 140ms ease; }
+:where([data-ops-canvas-nodes] [data-ops-node]:hover) { border-color: var(--ops-line-strong); box-shadow: 0 6px 18px rgb(0 0 0 / 35%); }
+:where([data-ops-node]) :where([data-ops-node-title]) { align-items: center; display: inline-flex; font-size: 13px; gap: 8px; order: 1; text-transform: none; }
+:where([data-ops-node-icon]) { align-items: center; background: color-mix(in srgb, var(--ops-gold) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ops-gold) 30%, transparent); border-radius: 6px; color: var(--ops-gold); display: inline-flex; font-size: 12px; height: 22px; justify-content: center; width: 22px; }
+:where([data-ops-node][data-ops-port-colour='amber'] [data-ops-node-icon]) { background: color-mix(in srgb, #d08a2e 14%, transparent); border-color: color-mix(in srgb, #d08a2e 35%, transparent); color: #e0a24e; }
+:where([data-ops-node][data-ops-port-colour='garnet'] [data-ops-node-icon]) { background: color-mix(in srgb, #b4434b 16%, transparent); border-color: color-mix(in srgb, #b4434b 40%, transparent); color: #d77b7f; }
+:where([data-ops-node][data-ops-port-colour='muted'] [data-ops-node-icon]) { background: var(--ops-surface-2); border-color: var(--ops-line); color: var(--ops-muted); }
+:where([data-ops-node]) :where([data-ops-node-collapse]) { background: transparent; border-color: transparent; color: var(--ops-muted); margin-left: auto; order: 2; padding: 0 6px; }
+:where([data-ops-node]) :where([data-ops-node-collapse]:hover) { color: var(--ops-fg); }
+:where([data-ops-node]) :where([data-ops-node-body]) { order: 3; padding-left: 30px; }
+:where([data-ops-node]) :where([data-ops-identity-cta]) { margin-left: 30px; order: 4; }
+:where([data-ops-node]) :where([data-ops-node-detail]) { order: 5; }
+/* Unavailable nodes recede; they are real but have nothing to say yet. */
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-port='unknown']) { opacity: 0.6; }
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-port='unknown']:hover, [data-ops-canvas-nodes] [data-ops-node][data-ops-port='unknown'][data-ops-selected]) { opacity: 1; }
+:where([data-ops-node][data-ops-port='unknown'] [data-ops-node-body]) { font-style: italic; }
+/* Ports: a dot where the wire meets the node (left column emits right, right column receives left, centre both). */
+:where([data-ops-canvas-nodes] [data-ops-node])::before, :where([data-ops-canvas-nodes] [data-ops-node])::after { background: var(--ops-gold); border: 2px solid var(--color-background, #14110d); border-radius: 50%; content: ''; height: 6px; position: absolute; top: 50%; translate: 0 -50%; width: 6px; }
+:where([data-ops-canvas-nodes] [data-ops-node])::before { left: -5px; }
+:where([data-ops-canvas-nodes] [data-ops-node])::after { right: -5px; }
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-column='left'])::before, :where([data-ops-canvas-nodes] [data-ops-node][data-ops-column='right'])::after { display: none; }
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-port-colour='muted'])::before, :where([data-ops-canvas-nodes] [data-ops-node][data-ops-port-colour='muted'])::after { background: var(--ops-muted); }
+/* Selected node: a gold ring, and its detail floats above the graph. */
+:where([data-ops-canvas-nodes] [data-ops-node][data-ops-selected]) { border-color: color-mix(in srgb, var(--ops-gold) 75%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ops-gold) 18%, transparent), 0 8px 24px rgb(0 0 0 / 40%); opacity: 1; z-index: 3; }
+:where([data-ops-node-detail]) { box-shadow: 0 14px 36px rgb(0 0 0 / 50%); z-index: 4; }
+/* A lit run wire flows; idle wires stay still. */
+@keyframes ops-flow { to { stroke-dashoffset: -12; } }
+:where([data-ops-edge-layer] [data-ops-edge-lit]) { animation: ops-flow 700ms linear infinite; stroke-dasharray: 6 6; stroke-width: 2; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-edge-layer] [data-ops-edge-lit]) { animation: none; stroke-dasharray: none; } }
+:where([data-ops-motion='reduced'] [data-ops-edge-layer] [data-ops-edge-lit]) { animation: none; stroke-dasharray: none; }
+
+/* ---- B21: Channels, Teams, Skills breathe (grids, visual status, pinned actions) ---- */
+/* Channels: equal-height cards, action pinned to the foot, connected apps lead their group and glow gold. */
+:where([data-ops-app-grid]) { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); list-style: none; margin: 0; padding: 0; }
+:where([data-ops-app-grid]) :where(li) { display: flex; flex-direction: column; gap: 6px; min-height: 132px; padding: 12px; transition: border-color 140ms ease, background-color 140ms ease; }
+:where([data-ops-app-grid]) :where(li:hover) { background: color-mix(in srgb, var(--ops-fg) 9%, transparent); border-color: var(--ops-line-strong); }
+:where([data-ops-app-grid]) :where(li > p) { -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: var(--ops-muted); display: -webkit-box; font-size: 12px; line-height: 1.45; margin: 0; overflow: hidden; }
+:where([data-ops-app-grid]) :where(li > [data-ops-app-action]) { align-self: flex-start; margin-top: auto; }
+:where([data-ops-app-grid]) :where([data-ops-app-action='connect']) { background: transparent; color: var(--ops-muted); }
+:where([data-ops-app-grid]) :where(li:hover [data-ops-app-action='connect']) { border-color: var(--ops-line-strong); color: var(--ops-fg); }
+:where([data-ops-app-glyph]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 8px; color: var(--ops-muted); display: inline-flex; font-size: 11px; font-weight: 600; height: 28px; justify-content: center; width: 28px; }
+:where([data-ops-app][data-ops-app-connected]) { border-color: color-mix(in srgb, var(--ops-gold) 45%, transparent); order: -1; }
+:where([data-ops-app][data-ops-app-connected] [data-ops-app-glyph]) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); border-color: color-mix(in srgb, var(--ops-gold) 40%, transparent); color: var(--ops-gold); }
+:where([data-ops-app-state='connected']) { color: var(--ops-gold); font-size: 11px; }
+/* Teams: a card per lane: name and open count up top, member avatars, projects as chips. */
+:where([data-ops-teams]) { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); list-style: none; margin: 0; padding: 0; }
+:where([data-ops-teams] > li) { background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: var(--ops-radius); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; transition: border-color 140ms ease; }
+:where([data-ops-teams] > li:hover) { border-color: var(--ops-line-strong); }
+:where([data-ops-team-head]) { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
+:where([data-ops-team-head] h3) { font-size: 13px; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-team-open]) { background: var(--ops-surface); border-radius: 999px; color: var(--ops-muted); flex: none; font-size: 11px; font-variant-numeric: tabular-nums; padding: 1px 8px; }
+:where([data-ops-teams] > li[data-ops-team-busy] [data-ops-team-open]) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); color: var(--ops-gold); }
+:where([data-ops-team-members]) { display: flex; flex-wrap: wrap; gap: 6px; }
+:where([data-ops-team-member]) { align-items: center; background: var(--ops-surface); border: 1px solid var(--ops-line); border-radius: 999px; display: inline-flex; font-size: 12px; gap: 5px; padding: 1px 8px 1px 3px; }
+:where([data-ops-team-projects]) { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+:where([data-ops-team-projects]) :where(button) { font-size: 11px; padding: 1px 7px; }
+:where([data-ops-team-none]) { color: var(--ops-muted); font-size: 11px; font-style: italic; }
+/* Skills starter packs: a grid of kit cards with an install progress bar. */
+:where([data-ops-packs] > ul) { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); list-style: none; margin: 0; padding: 0; }
+:where([data-ops-packs] li[data-ops-pack]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: var(--ops-radius); display: grid; gap: 6px 8px; grid-template-areas: 'title action' 'meta action' 'bar bar'; grid-template-columns: minmax(0, 1fr) auto; padding: 10px 12px; }
+:where([data-ops-packs] li[data-ops-pack] > strong) { grid-area: title; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-pack-meta]) { color: var(--ops-muted); font-size: 11px; grid-area: meta; }
+:where([data-ops-packs] li[data-ops-pack] > button) { grid-area: action; }
+:where([data-ops-pack-bar]) { background: var(--ops-surface); border-radius: 999px; grid-area: bar; height: 4px; overflow: hidden; position: relative; }
+:where([data-ops-pack-bar])::after { background: var(--ops-gold); border-radius: inherit; content: ''; inset: 0 auto 0 0; position: absolute; transition: width 320ms var(--ease, ease); width: var(--ops-pct, 0%); }
+:where([data-ops-packs] li[data-ops-pack-complete]) { border-color: color-mix(in srgb, var(--ops-gold) 35%, transparent); }
+
+/* ---- B22: Office below the Orbit, Board card hierarchy, tab transitions ---- */
+/* Tab switch: the incoming panel fades in (opacity only, so fixed drawers and menus keep their containing block). */
+@keyframes ops-tab-in { from { opacity: 0; } to { opacity: 1; } }
+:where([data-ops-panel]:not([hidden]) > [data-ops-panel-body]) { animation: ops-tab-in 160ms var(--ease, ease) both; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-panel]:not([hidden]) > [data-ops-panel-body]) { animation: none; } }
+:where([data-ops-motion='reduced'] [data-ops-panel]:not([hidden]) > [data-ops-panel-body]) { animation: none; }
+/* Needs you: who (avatar), what kind (tinted pill), how long (right-aligned numerals); row actions stay compact. */
+:where([data-ops-needs-you]) :where(td[data-ops-agent]) { align-items: center; display: flex; gap: 6px; white-space: nowrap; }
+:where([data-ops-kind]) { background: var(--ops-surface-2); border-radius: 999px; font-size: 11px; padding: 1px 8px; white-space: nowrap; }
+:where([data-ops-kind='kanban_blocked'], [data-ops-kind='cron_failure'], [data-ops-kind='policy']) { background: color-mix(in srgb, #b4434b 18%, transparent); color: #e0989b; }
+:where([data-ops-kind='jsonrpc'], [data-ops-kind='gateway_run'], [data-ops-kind='kanban_review']) { background: color-mix(in srgb, var(--ops-gold) 16%, transparent); color: var(--ops-gold); }
+:where([data-ops-needs-you]) :where(td[data-ops-age]) { color: var(--ops-muted); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+:where([data-ops-needs-you]) :where(td[data-ops-waiting-on]) { max-width: 360px; }
+:where([data-ops-needs-you]) :where(td input) { background: transparent; font-size: 12px; width: 140px; }
+:where([data-ops-needs-you]) :where(tbody tr:hover input) { background: color-mix(in srgb, var(--ops-fg) 3%, transparent); }
+/* Board cards: title leads (13/600), id whispers in mono, column state tints the card edge. */
+:where([data-ops-card]) > :where([data-ops-open-task]) { color: var(--ops-fg); font-size: 13px; font-weight: 600; }
+:where([data-ops-card-id]) { background: var(--ops-surface); border-radius: 4px; color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; margin-right: 4px; opacity: 0.8; padding: 0 4px; }
+:where([data-ops-column='blocked'] [data-ops-card]) { box-shadow: inset 2px 0 0 #b4434b; }
+:where([data-ops-column='running'] [data-ops-card]) { box-shadow: inset 2px 0 0 var(--ops-gold); }
+:where([data-ops-column='done'] [data-ops-card]) { opacity: 0.78; }
+:where([data-ops-column='done'] [data-ops-card]:hover) { opacity: 1; }
+/* Channels cards read left-aligned like every other card; Teams cards keep their own height. */
+:where([data-ops-app-grid]) :where(li) { text-align: left; }
+:where([data-ops-teams]) { align-items: start; }
+
+/* ---- B23: tables (Fleet, Skills), Diagnostics as a status board ---- */
+/* Sortable headers are labels, not buttons: quiet caps, the active sort is gold with an arrow. */
+:where(.ops-data-table th) { border-bottom: 1px solid var(--ops-line-strong); }
+:where(.ops-data-table th) :where(button[data-sort-column]) { background: transparent; border-color: transparent; color: var(--ops-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; padding: 2px 4px; text-transform: uppercase; }
+:where(.ops-data-table th) :where(button[data-sort-column]:hover) { background: transparent; border-color: transparent; color: var(--ops-fg); }
+:where(.ops-data-table th[aria-sort='ascending'], .ops-data-table th[aria-sort='descending']) :where(button[data-sort-column]) { color: var(--ops-gold); }
+:where(.ops-data-table th[aria-sort='ascending']) :where(button[data-sort-column])::after { content: '↑'; margin-left: 4px; }
+:where(.ops-data-table th[aria-sort='descending']) :where(button[data-sort-column])::after { content: '↓'; margin-left: 4px; }
+:where(.ops-data-table td) { padding-bottom: 6px; padding-top: 6px; }
+/* Fleet: the agent cell is an avatar + name + quiet role, not a framed button; zeroes recede. */
+:where([data-ops-fleet-open]) { background: transparent; border-color: transparent; gap: 8px; padding: 2px 4px; }
+:where([data-ops-fleet-open]:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; }
+:where([data-ops-fleet-open] > span) { font-weight: 600; }
+:where([data-ops-fleet-open]) :where([data-ops-role]) { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-zero]) { color: var(--ops-muted); opacity: 0.6; }
+:where([data-ops-runs-failed]) { color: #d77b7f; }
+/* Diagnostics: the connection and each capability read as status lights in a two-column board. */
+:where([data-ops-diag-connection])::before, :where([data-ops-probe-row])::before { background: var(--ops-muted); border-radius: 50%; content: ''; display: inline-block; flex: none; height: 7px; margin-right: 8px; vertical-align: middle; width: 7px; }
+:where([data-ops-diag-connection='connected'])::before, :where([data-ops-probe-row][data-ops-probe-state='ok'])::before { background: #6fbf73; box-shadow: 0 0 0 3px color-mix(in srgb, #6fbf73 20%, transparent); }
+:where([data-ops-diag-connection='version-skew'], [data-ops-diag-connection='connecting'])::before { background: var(--ops-gold); }
+:where([data-ops-diag-connection='incompatible'], [data-ops-diag-connection='auth-failed'], [data-ops-diag-connection='unreachable'])::before, :where([data-ops-probe-row]:not([data-ops-probe-state='ok']))::before { background: #b4434b; }
+:where([data-ops-probe-results]) { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); list-style: none; margin: 10px 0; padding: 0; }
+:where([data-ops-probe-row]) { align-items: center; background: var(--ops-surface-2); border: 1px solid var(--ops-line); border-radius: 6px; display: flex; font-size: 12px; padding: 6px 10px; }
+:where([data-ops-probe-row]:not([data-ops-probe-state='ok'])) { border-color: color-mix(in srgb, #b4434b 45%, transparent); }
+:where([data-ops-diagnostics] > dl) { display: grid; gap: 4px 16px; grid-template-columns: max-content 1fr; }
+
+/* ---- B24: Settings secrets, Board view switcher, Canvas detail placement, Office live cards, Skills kit titles ---- */
+/* Settings: secret presence reads as a grid of mono chips with a light, not a run-on list. */
+:where([data-ops-secret-list]) { display: grid; gap: 4px 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); list-style: none; margin: 6px 0; padding: 0; }
+:where([data-ops-secret]) { align-items: center; display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-secret])::before { background: var(--ops-muted); border-radius: 50%; content: ''; flex: none; height: 6px; opacity: 0.5; width: 6px; }
+:where([data-ops-secret][data-ops-set='yes'])::before { background: #6fbf73; opacity: 1; }
+:where([data-ops-secret-summary]) { color: var(--ops-muted); font-size: 12px; margin: 0; }
+:where([data-ops-diagnostics] h4) { margin-top: 14px; }
+/* Board: the view pills are one segmented switcher, not a row of equal buttons; New task is the primary action. */
+:where([role='toolbar'] > [data-ops-layout]) { background: transparent; border-color: transparent; border-radius: 6px; color: var(--ops-muted); text-transform: capitalize; }
+:where([role='toolbar'] > [data-ops-layout]:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; color: var(--ops-fg); }
+:where([role='toolbar'] > [data-ops-layout][aria-pressed='true']) { background: var(--ops-surface-2); border-color: var(--ops-line-strong); box-shadow: inset 0 -2px 0 var(--ops-gold); color: var(--ops-fg); }
+:where([data-ops-new-task-btn]) { background: color-mix(in srgb, var(--ops-gold) 14%, transparent); border-color: color-mix(in srgb, var(--ops-gold) 55%, transparent); color: var(--ops-gold); margin-left: 6px; }
+/* Canvas: a node's detail floats below the node instead of covering its own text. */
+:where([data-ops-canvas-nodes] [data-ops-node-detail]) { left: 0; min-width: 240px; position: absolute; top: calc(100% + 6px); width: 100%; }
+/* Office live cards (blocked / approval previews): a lifted card with a state edge. */
+:where(.ops-toast) { background: color-mix(in srgb, var(--ops-surface) 80%, black); border: 1px solid var(--ops-line); border-left: 3px solid var(--ops-gold); border-radius: var(--ops-radius); box-shadow: 0 6px 18px rgb(0 0 0 / 30%); padding: 10px 12px; }
+:where(.ops-toast[data-kind*='block'], .ops-toast[data-kind*='fail'], .ops-toast[data-kind='error']) { border-left-color: #b4434b; }
+/* Skills kits: names wrap to two lines instead of truncating. */
+:where([data-ops-packs] li[data-ops-pack] > strong) { -webkit-box-orient: vertical; -webkit-line-clamp: 2; display: -webkit-box; white-space: normal; }
+
+/* ---- B25: Office frame budget, Canvas run panel, Board toolbar on one line ---- */
+/* Orbs that drift are composited, not repainted: no shadow while moving, transform hinted. */
+:where([data-ops-orrery][data-ops-drift] [data-ops-orb]) { box-shadow: none; will-change: translate; }
+:where([data-ops-orrery-centre])::before { will-change: opacity; }
+/* Run panel: input, then one status line (state pill, elapsed, tokens), then the stream. */
+:where([data-ops-run-panel]) { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+:where([data-ops-run-panel] > textarea) { flex-basis: 100%; min-height: 64px; resize: vertical; }
+:where([data-ops-run-panel] > pre) { flex-basis: 100%; }
+:where([data-ops-run-status]) { align-items: center; background: var(--ops-surface-2); border-radius: 999px; display: inline-flex; font-size: 11px; gap: 6px; padding: 1px 10px 1px 8px; text-transform: capitalize; }
+:where([data-ops-run-status])::before { background: var(--ops-muted); border-radius: 50%; content: ''; height: 6px; width: 6px; }
+:where([data-ops-run-status='running'], [data-ops-run-status='streaming'])::before { animation: ops-glow 1.2s ease-in-out infinite; background: var(--ops-gold); }
+:where([data-ops-run-status='done'], [data-ops-run-status='completed'])::before { background: #6fbf73; }
+:where([data-ops-run-status='error'], [data-ops-run-status='failed'])::before { background: #b4434b; }
+:where([data-ops-run-elapsed], [data-ops-run-tokens]) { color: var(--ops-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+:where([data-ops-run-text]:empty) { display: none; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-run-status])::before { animation: none; } }
+:where([data-ops-motion='reduced'] [data-ops-run-status])::before { animation: none; }
+/* Board toolbar keeps the view switcher on one line and scrolls sideways if it must. B26: an attribute, not :has(), so Office updates never re-match it. */
+:where([data-ops-board-toolbar]) { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+:where([data-ops-board-toolbar]) > :where(*) { flex: none; }
+
+/* ---- B27: Board toolbar is a real flex row, Canvas detail expands in place, Settings as a label/control grid ---- */
+/* Board: the toolbar was block flow, so B24/B26 nowrap never applied. Views + New task stay fixed; filters shrink. */
+:where([data-ops-board-toolbar]) { align-items: center; display: flex; gap: 4px; }
+:where([data-ops-board-toolbar]) > :where(input:not([type='checkbox']), select) { flex: 1 1 110px; max-width: 200px; min-width: 80px; }
+:where([data-ops-board-toolbar]) > :where(input:not([type='checkbox'])):first-of-type { margin-left: 8px; }
+:where([data-ops-board-toolbar]) > :where(label) { align-items: center; display: inline-flex; gap: 4px; white-space: nowrap; }
+/* Canvas: the node detail expands the node in place (rows grow, wires re-measure), so it never covers a neighbour. */
+:where([data-ops-canvas-nodes] [data-ops-node-detail]) { flex-basis: 100%; margin-top: 8px; min-width: 0; position: static; top: auto; width: auto; }
+/* Settings: every group is a label column and a control column with hairline rows. */
+:where([data-ops-settings-group] > dl) { align-items: center; display: grid; gap: 0 16px; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); margin: 0 0 10px; }
+:where([data-ops-settings-group] > dl > dt) { border-bottom: 1px solid var(--ops-line); color: var(--ops-muted); font-size: 12px; padding: 8px 0; }
+:where([data-ops-settings-group] > dl > dd) { align-items: center; border-bottom: 1px solid var(--ops-line); display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 0; min-height: 34px; padding: 6px 0; }
+:where([data-ops-settings-group] > dl > dd + dd) { grid-column: 2; }
+:where([data-ops-settings-group] > dl > dd) :where(small) { flex-basis: 100%; }
+:where([data-ops-settings]) :where(select, input:not([type='checkbox'], [type='radio'], [type='range'])) { min-height: 26px; }
+:where([data-ops-prefs-reset]) { background: transparent; color: var(--ops-muted); }
+
+/* ---- B28: Office dispatch row and orbit legibility, Settings rows top-aligned, needs-you overflow link ---- */
+:where([data-ops-dispatch]) { align-items: center; display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 10px 0; }
+:where([data-ops-dispatch] > input) { flex: 1 1 320px; min-height: 30px; padding: 4px 10px; }
+:where([data-ops-dispatch] > button[type='submit']) { background: color-mix(in srgb, var(--ops-gold) 14%, transparent); border-color: color-mix(in srgb, var(--ops-gold) 55%, transparent); color: var(--ops-gold); min-height: 30px; padding: 3px 14px; }
+:where([data-ops-dispatch] > [data-ops-routing]) { color: var(--ops-muted); flex-basis: 100%; font-size: 12px; }
+:where([data-ops-dispatch] > [data-ops-chips]) { flex-basis: 100%; }
+:where([data-ops-orrery] [data-ops-orb]) { font-size: 12.5px; padding: 4px 11px 4px 4px; }
+:where([data-ops-orrery-centre] [data-ops-orb]) { font-size: 14px; padding: 5px 14px 5px 5px; }
+:where(.ops-toast-queue [data-needs-you]) { background: transparent; border-color: transparent; color: var(--ops-gold); font-size: 12px; padding: 2px 4px; }
+:where(.ops-toast-queue [data-needs-you]:hover) { text-decoration: underline; }
+:where([data-ops-settings-group] > dl) { align-items: start; }
+:where([data-ops-settings-group] > dl > dt) { min-height: 34px; padding: 9px 0 6px; }
+
+/* ---- B29: Skills table chips, first-column names, Office thresholds as a tidy control row ---- */
+:where([data-ops-skill-agents]) { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+:where([data-ops-skill-agents]) :where(button) { background: transparent; border-color: var(--ops-line); border-radius: 999px; color: var(--ops-muted); font-size: 11px; gap: 4px; padding: 0 7px 0 3px; }
+:where([data-ops-skill-agents]) :where(button:hover:not(:disabled)) { border-color: var(--ops-line-strong); color: var(--ops-fg); }
+:where([data-ops-skill-agents]) :where([data-ops-agents-more]) { padding: 0 7px; }
+:where(.ops-data-table td:first-child > button) { background: transparent; border-color: transparent; font-weight: 600; padding: 1px 4px; }
+:where(.ops-data-table td:first-child > button:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; color: var(--ops-gold); }
+:where(.ops-data-table td) :where(button:not(:first-child)) { font-size: 11px; padding: 0 6px; }
+:where([data-ops-thresholds]) { align-items: end; display: flex; flex-wrap: wrap; gap: 10px 20px; }
+:where([data-ops-thresholds] > legend) { flex-basis: 100%; }
+:where([data-ops-thresholds] > label) { color: var(--ops-muted); display: inline-flex; flex-direction: column; font-size: 12px; gap: 4px; }
+:where([data-ops-thresholds] > label > input) { color: var(--ops-fg); font-variant-numeric: tabular-nums; width: 90px; }
+:where([data-ops-thresholds] > button) { background: transparent; color: var(--ops-muted); }
+
+/* ---- B30: drag highlight without re-render; skill names by attribute (B29 td:first-child never matched) ---- */
+:where([data-ops-skill-open]) { background: transparent; border-color: transparent; font-weight: 600; padding: 1px 4px; }
+:where([data-ops-skill-open]:hover:not(:disabled)) { background: var(--ops-surface-2); border-color: transparent; color: var(--ops-gold); }
+
+/* Fleet columns by id: model reads as a quiet mono tag, lane as a chip, numbers right-aligned. */
+:where(.ops-data-table td[data-tabular='true']) { font-variant-numeric: tabular-nums; }
+:where(.ops-data-table td[data-col='model']) { color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+:where(.ops-data-table td[data-col='lane']) { font-size: 12px; }
+:where([data-ops-fleet-status='running']) { color: var(--ops-gold); }
+:where([data-ops-fleet-status='running'])::before { animation: ops-glow 1.6s ease-in-out infinite; background: var(--ops-gold); border-radius: 50%; content: ''; display: inline-block; height: 6px; margin-right: 6px; vertical-align: middle; width: 6px; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-fleet-status='running'])::before { animation: none; } }
+:where([data-ops-motion='reduced'] [data-ops-fleet-status='running'])::before { animation: none; }
+/* Teams: the catch-all lane spans the row so it does not tower over the real teams. */
+:where([data-ops-teams] > li[data-ops-team='No lane']) { grid-column: 1 / -1; order: 1; }
+/* Settings: a control that follows its own row (e.g. Cambiar under Approval mode) tucks under it. */
+:where([data-ops-settings-group] > dl > dd + dd) { min-height: 0; padding-top: 0; }
+
+/* ---- B31: probe chips drop the redundant word, secrets use the full row, channel copy clamps ---- */
+:where([data-ops-probe-ok]) { block-size: 1px; clip-path: inset(50%); inline-size: 1px; overflow: hidden; position: absolute; white-space: nowrap; }
+:where([data-ops-probe-row]) { position: relative; }
+:where([data-ops-probe-id]) { color: var(--ops-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 500; margin-right: 4px; }
+:where([data-ops-settings-group] > dl > dd[data-ops-field='secrets']) { grid-column: 1 / -1; border-top: 0; }
+:where([data-ops-secrets]) { inline-size: 100%; }
+:where([data-ops-secret-list]) { column-gap: 24px; columns: 3 220px; }
+:where([data-ops-secret-list] > li) { break-inside: avoid; }
+:where([data-ops-channels-body] li p, [data-ops-channels-body] article p) { -webkit-box-orient: vertical; -webkit-line-clamp: 3; display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; }
+
+/* -- Glass p8 (B32): display headline sizes live here so they beat the earlier ops-base sizes; lit board cards; folded settings groups. */
+:where([data-ops-greeting]) h2 { font-size: 34px; font-weight: 500; } /* same (0,0,1) as the Gr8r rule above, so order wins */
+:where(section[data-ops-lens] > header > h2) { font-size: 26px; font-weight: 500; }
+:where([data-ops-card]) {
+  background: linear-gradient(165deg, color-mix(in srgb, var(--ops-gold, #c9a227) 7%, var(--ops-surface-2)) 0%, var(--ops-surface-2) 55%);
+  border-color: color-mix(in srgb, var(--ops-gold, #c9a227) 16%, var(--ops-line));
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent), 0 6px 16px -10px rgb(0 0 0 / 0.7);
+}
+:where([data-ops-card]:hover) { border-color: color-mix(in srgb, var(--ops-gold, #c9a227) 34%, var(--ops-line)); }
+:where([data-ops-settings-folded]) { margin: 0 0 12px; padding: 10px 14px; }
+:where([data-ops-settings-folded]) > :where(summary) { align-items: baseline; cursor: pointer; display: flex; gap: 10px; list-style: none; }
+:where([data-ops-settings-folded]) > :where(summary) :where(h3) { margin: 0; }
+:where([data-ops-settings-folded]) > :where(summary)::after { color: var(--ops-muted); content: '›'; margin-left: auto; transition: transform 160ms ease; }
+:where([data-ops-settings-folded][open]) > :where(summary)::after { transform: rotate(90deg); }
+:where([data-ops-settings-folded][open]) > :where(summary) { margin-bottom: 10px; }
+:where([data-ops-settings-hint]) { color: var(--ops-muted); font-size: 12px; }
+
+/* -- B33: layout batch. Roster cards, column depth, the Office below the Orbit, one upgrade per lens. */
+:where([data-ops-view-toggle]) { background: color-mix(in srgb, var(--ops-surface-2) 80%, black); border: 1px solid var(--ops-line); border-radius: 999px; display: inline-flex; gap: 2px; margin: 0 0 10px; padding: 2px; }
+:where([data-ops-view-toggle]) > :where(button) { background: transparent; border: 0; border-radius: 999px; color: var(--ops-muted); font-size: 12px; padding: 3px 12px; }
+:where([data-ops-view-toggle]) > :where(button[aria-pressed='true']) { background: color-mix(in srgb, var(--ops-gold, #c9a227) 22%, var(--ops-surface-2)); color: var(--ops-fg, inherit); box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent), 0 0 14px -4px color-mix(in srgb, var(--ops-gold, #c9a227) 55%, transparent); }
+:where([data-ops-roster]) { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); list-style: none; margin: 0; padding: 0; }
+:where([data-ops-roster]) > :where(li) { background: linear-gradient(165deg, color-mix(in srgb, var(--ops-gold, #c9a227) 8%, var(--ops-surface-2)), var(--ops-surface-2) 60%); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 14%, var(--ops-line)); border-radius: 14px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent), 0 10px 24px -18px black; padding: 12px 14px; transition: border-color 160ms ease, transform 160ms ease; }
+:where([data-ops-roster]) > :where(li:hover) { border-color: color-mix(in srgb, var(--ops-gold, #c9a227) 38%, var(--ops-line)); transform: translateY(-1px); }
+:where([data-ops-roster-title]) { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+:where([data-ops-roster]) :where(dl) { display: grid; gap: 4px 10px; grid-template-columns: auto 1fr; margin: 0; }
+:where([data-ops-roster]) :where(dl > div) { display: contents; }
+:where([data-ops-roster]) :where(dt) { color: var(--ops-muted); font-size: 11px; }
+:where([data-ops-roster]) :where(dd) { font-size: 12px; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-column]) { background: linear-gradient(180deg, color-mix(in srgb, var(--ops-gold, #c9a227) 6%, var(--ops-surface)) 0, var(--ops-surface) 140px); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 10%, var(--ops-line)); border-radius: 14px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent), inset 0 -24px 40px -30px black, 0 14px 30px -24px black; }
+:where([data-ops-dispatch]) { border-radius: 12px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 18%, transparent), 0 12px 30px -22px color-mix(in srgb, var(--ops-gold, #c9a227) 60%, transparent); }
+:where([data-ops-needs-you]) { background: linear-gradient(170deg, color-mix(in srgb, var(--ops-gold, #c9a227) 7%, var(--ops-surface)), var(--ops-surface) 50%); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 16%, var(--ops-line)); border-radius: 14px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent), 0 16px 34px -26px black; }
+:where([data-ops-needs-you]) :where(tbody tr) { transition: background-color 120ms ease; }
+:where([data-ops-needs-you]) :where(tbody tr:hover) { background: color-mix(in srgb, var(--ops-gold, #c9a227) 6%, transparent); }
+:where([data-ops-node]) { border-radius: 14px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent), 0 14px 28px -20px black; }
+:where([data-ops-node][data-ops-selected='true']) { box-shadow: inset 0 1px 0 color-mix(in srgb, white 9%, transparent), 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 55%, transparent), 0 0 28px -6px color-mix(in srgb, var(--ops-gold, #c9a227) 50%, transparent); }
+:where([data-ops-canvas-viewport]) { background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ops-gold, #c9a227) 14%, transparent) 1px, transparent 1.5px); background-size: 22px 22px; }
+:where([data-ops-team]) { background: linear-gradient(165deg, color-mix(in srgb, var(--ops-gold, #c9a227) 8%, var(--ops-surface-2)), var(--ops-surface-2) 60%); border-radius: 14px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent), 0 10px 24px -18px black; }
+:where([data-ops-team-busy]) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 40%, transparent), 0 0 22px -8px color-mix(in srgb, var(--ops-gold, #c9a227) 60%, transparent); }
+:where([data-ops-app]) { border-radius: 14px; transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+:where([data-ops-app]:hover) { box-shadow: 0 14px 30px -22px black, 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 30%, transparent); transform: translateY(-1px); }
+:where([data-ops-probe-row]) { border-radius: 10px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent); }
+:where([data-ops-diag-connection]) :where(svg, [data-dot]) { filter: drop-shadow(0 0 5px #3fb950); }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-roster] > li, [data-ops-app]) { transition: none; transform: none; } }/* B33b: frame budget. glass15 showed GPU-bound frames (long frames with ~2 ms main-thread render and no script) after the batch above.
+   Repeated elements keep the inset highlight (cheap) but drop the large blurred outer shadows; only singletons (dispatch, Needs-you, selected node) keep a glow. */
+:where([data-ops-roster] > li, [data-ops-column], [data-ops-node], [data-ops-team], [data-ops-card]) { box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); }
+:where([data-ops-app]:hover) { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ops-gold, #c9a227) 30%, transparent); }
+/* -- B34: hero moves. Singletons may glow; repeated elements keep only the inner highlight. */
+:where([data-ops-now-running]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 16%, transparent), transparent 60%), var(--ops-surface); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 24%, var(--ops-line)); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent), 0 18px 40px -28px color-mix(in srgb, var(--ops-gold, #c9a227) 70%, transparent); display: flex; gap: 14px; margin: 0 0 12px; padding: 14px 18px; }
+:where([data-ops-now-running='quiet']) { background: var(--ops-surface); box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent); }
+:where([data-ops-now-pulse]) { background: #3fb950; border-radius: 999px; box-shadow: 0 0 0 4px color-mix(in srgb, #3fb950 22%, transparent), 0 0 18px #3fb950; flex: none; height: 10px; width: 10px; }
+:where([data-ops-now-running='quiet'] [data-ops-now-pulse]) { background: var(--ops-muted); box-shadow: none; }
+@media (prefers-reduced-motion: no-preference) { :where([data-ops-now-running='live'] [data-ops-now-pulse]) { animation: ops-now-pulse 2.4s ease-in-out infinite; } }
+:where([data-ops-now-label]) { color: var(--ops-muted); display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+:where([data-ops-now-running]) :where(ul) { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; margin: 4px 0 0; padding: 0; }
+:where([data-ops-now-running]) :where(li > button:first-child) { background: none; border: 0; font-size: 16px; font-weight: 500; padding: 0; text-align: left; }
+:where([data-ops-now-agent]) { background: none; border: 0; color: var(--ops-gold, #c9a227); font-size: 13px; margin-left: 6px; padding: 0; }
+:where([data-ops-now-quiet]) { font-size: 15px; margin: 2px 0 0; }
+:where([data-ops-roster-agent]) { align-items: center; background: none; border: 0; display: flex; gap: 12px; padding: 0; text-align: left; }
+:where([data-ops-roster-avatar]) { border-radius: 999px; box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px var(--ops-line); display: inline-grid; flex: none; place-items: center; }
+:where([data-ops-roster-avatar='running']) { box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px #3fb950; }
+:where([data-ops-roster-avatar='failing'], [data-ops-roster-avatar='blocked']) { box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px #f85149; }
+:where([data-ops-roster-avatar='idle']) { box-shadow: 0 0 0 2px var(--ops-surface-2), 0 0 0 4px color-mix(in srgb, var(--ops-gold, #c9a227) 70%, transparent); }
+:where([data-ops-roster-name]) { display: grid; font-size: 15px; font-weight: 600; }
+:where([data-ops-roster-name]) :where(small) { color: var(--ops-muted); font-size: 11px; font-weight: 400; }
+:where([data-ops-diag-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, #3fb950 14%, transparent), transparent 60%), var(--ops-surface); border: 1px solid var(--ops-line); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; gap: 16px; margin: 0 0 12px; padding: 14px 18px; }
+:where([data-ops-diag-hero='warn']) { background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 18%, transparent), transparent 60%), var(--ops-surface); }
+:where([data-ops-diag-hero='idle']) { background: var(--ops-surface); }
+:where([data-ops-diag-ring]) { --ops-ring: #3fb950; background: radial-gradient(closest-side, var(--ops-surface) 76%, transparent 78%), conic-gradient(var(--ops-ring) calc(var(--ops-pct, 0) * 360deg), var(--ops-line) 0); border-radius: 999px; display: grid; flex: none; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 600; height: 64px; place-items: center; width: 64px; }
+:where([data-ops-diag-hero='warn'] [data-ops-diag-ring]) { --ops-ring: var(--ops-gold, #c9a227); }
+:where([data-ops-diag-hero]) :where(strong) { display: block; font-size: 18px; font-weight: 500; }
+:where([data-ops-diag-hero]) :where(small) { color: var(--ops-muted); font-size: 12px; }
+:where([data-ops-settings-hero]) { align-items: center; background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--ops-gold, #c9a227) 14%, transparent), transparent 60%), var(--ops-surface); border: 1px solid color-mix(in srgb, var(--ops-gold, #c9a227) 18%, var(--ops-line)); border-radius: 16px; box-shadow: inset 0 1px 0 color-mix(in srgb, white 7%, transparent); display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 12px; padding: 14px 18px; }
+:where([data-ops-settings-hero]) :where(strong) { display: block; font-size: 20px; font-weight: 500; }
+:where([data-ops-settings-hero]) :where(small) { color: var(--ops-muted); font-size: 12px; }
+:where([data-ops-settings-hero-chips]) { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+:where([data-ops-column]) > :where(header, h3:first-child) { font-size: 13px; letter-spacing: 0.04em; }
 
 /* v0.22 card health: why dispatch holds the card, and the worker's last failure output. */
 :where([data-ops-card-held]), :where([data-ops-card-failure]) { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

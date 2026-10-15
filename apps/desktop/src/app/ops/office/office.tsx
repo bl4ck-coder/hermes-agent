@@ -3,6 +3,7 @@
  * a null is rendered as "unknown", never 0. Updates never move focus.
  */
 
+import { Tip } from '@/components/ui/tooltip'
 import { type RefObject, useRef, useState } from 'react'
 
 import { describeEvent } from '../detail/task-tab'
@@ -17,7 +18,7 @@ import type {
   UsageToday
 } from '../feed/ops-client'
 import { parseDispatch, shownPresence } from '../feed/ops-client'
-import { opsMainLocale, T } from '../main-i18n'
+import { opsMainLocale, T, P } from '../main-i18n'
 import { EASE, effectiveReduced, loadMotion, MOTION, systemPrefersReduced } from '../motion/motion'
 import { opsTimezone } from '../motion/tz'
 import { Sigil } from '../primitives/sigil'
@@ -192,7 +193,7 @@ function TodayStrip({ cron, inFlight, nowS, th }: { cron: CronJobLite[] | null; 
     <div aria-label={T("Today strip")} data-ops-strip="today">
       <span data-ops-count="cron-24h">{T("Cron next 24 h")}{' '}{n(c.next24)}</span>
       <span data-ops-count="running">{T("Running")}{' '}{n(c.running)}</span>
-      <span data-ops-count="overdue">{T("Overdue")}{' '}{n(c.overdue)}</span>
+      <span data-ops-alarm={Number(c.overdue) > 0 ? '' : undefined} data-ops-count="overdue">{T("Overdue")}{' '}{n(c.overdue)}</span>
     </div>
   )
 }
@@ -208,7 +209,7 @@ function CronStrip({ cron, onOpenCron }: { cron: CronJobLite[] | null; onOpenCro
   return (
     <div data-ops-strip="cron">
       <span data-ops-count="cron-enabled">{enabled.length} {T("cron jobs")}</span>
-      <span data-ops-count="cron-failing">{failing.length} {T("failing")}</span>
+      <span data-ops-alarm={failing.length ? '' : undefined} data-ops-count="cron-failing">{P(failing.length, '{n} failing')}</span>
       {failing.slice(0, 3).map(j => (
         <button data-ops-cron-failure={j.id} disabled={!onOpenCron} key={j.id} onClick={() => onOpenCron?.(j.id)} type="button">
           {j.name || j.id} ({j.failure_streak})
@@ -263,22 +264,20 @@ function Orrery({
   const arcs = reduced ? [] : handoffArcs(events, nowS).filter(a => at.has(a.from) && at.has(a.to))
 
   const orb = (o: { profile: string; presence: Presence; ring: number; x: number; y: number }) => (
-    <button
+    <Tip label={o.presence === 'unknown' ? `${o.profile}: ${UNKNOWN_WHY}` : undefined} key={o.profile}><button
       aria-label={`${o.profile}: ${T(PRESENCE_LABEL[o.presence])}`}
       data-ops-halo={moving && live.has(o.profile) ? '' : undefined}
       data-ops-orb={o.profile}
       data-ops-presence={o.presence}
       data-ops-ring={o.ring}
       data-ops-thinking={live.has(o.profile) && !reduced ? '' : undefined}
-      key={o.profile}
       onClick={() => onOpenProfile?.(o.profile)}
       style={{ position: 'absolute', left: `calc(50% + ${o.x}px)`, top: `calc(50% + ${o.y}px)`, transform: 'translate(-50%, -50%)', whiteSpace: 'nowrap' }}
-      title={o.presence === 'unknown' ? `${o.profile}: ${UNKNOWN_WHY}` : undefined}
       type="button"
     >
       <Sigil name={o.profile} size={o.ring === 0 ? 26 : 16} />
       <span data-ops-orb-label="">{o.profile}</span>
-    </button>
+    </button></Tip>
   )
 
   return (
@@ -411,9 +410,9 @@ function Dispatch({
         try {
           await onDispatch?.(text)
           setText('')
-          setStatus('Dispatched')
+          setStatus(T('Dispatched'))
         } catch (err) {
-          setStatus(`Dispatch failed: ${err instanceof Error ? err.message : 'request failed'}`)
+          setStatus(T('Dispatch failed: {why}').replace('{why}', err instanceof Error ? err.message : T('request failed')))
         } finally {
           setSending(false)
         }
@@ -452,6 +451,62 @@ export function localDay(nowS: number): string {
 }
 
 const localTime = (s?: number | null) => (typeof s === 'number' && s > 0 ? new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'unknown')
+
+/** B34: the Office hero. What is running right now, by whom, one click from the task; quiet when nothing is. */
+function NowRunning({
+  fleet,
+  inFlight,
+  onOpenProfile,
+  onOpenTask
+}: {
+  fleet: OfficeViewProps['fleet']
+  inFlight: OfficeViewProps['inFlight']
+  onOpenProfile?: OfficeViewProps['onOpenProfile']
+  onOpenTask?: OfficeViewProps['onOpenTask']
+}) {
+  const working = (fleet?.profiles ?? []).filter(p => String(p.presence) === 'working').map(p => p.profile)
+  const running = (inFlight ?? []).slice(0, 3)
+
+  if (inFlight === null && !fleet) {
+    return null
+  }
+
+  return (
+    <section aria-label={T('Now running')} data-ops-now-running={running.length || working.length ? 'live' : 'quiet'}>
+      <span aria-hidden data-ops-now-pulse="" />
+      <div data-ops-now-body="">
+        <span data-ops-now-label="">{T('Now running')}</span>
+        {running.length === 0 && working.length === 0 ? (
+          <p data-ops-now-quiet="">{T('Nothing running.')}</p>
+        ) : (
+          <ul>
+            {running.map(t => (
+              <li key={t.id}>
+                <button disabled={!onOpenTask} onClick={() => onOpenTask?.(t.id)} type="button">
+                  {t.title}
+                </button>
+                {t.assignee ? (
+                  <button data-ops-now-agent="" disabled={!onOpenProfile} onClick={() => onOpenProfile?.(t.assignee as string)} type="button">
+                    @{t.assignee}
+                  </button>
+                ) : null}
+              </li>
+            ))}
+            {running.length === 0
+              ? working.slice(0, 3).map(name => (
+                  <li key={name}>
+                    <button data-ops-now-agent="" disabled={!onOpenProfile} onClick={() => onOpenProfile?.(name)} type="button">
+                      @{name}
+                    </button>
+                  </li>
+                ))
+              : null}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
 
 export function OfficeView(props: OfficeViewProps) {
   const reducedMotion = props.reducedMotion ?? effectiveReduced(loadMotion(), systemPrefersReduced())
@@ -503,6 +558,7 @@ export function OfficeView(props: OfficeViewProps) {
         )}
       </header>
       <Greeting />
+      <NowRunning fleet={fleet} inFlight={props.inFlight} onOpenProfile={props.onOpenProfile} onOpenTask={props.onOpenTask} />
       <StatCards onFocus={focus} profile={profile} stats={stats} />
       <TodayStrip cron={props.cron} inFlight={props.inFlight} nowS={nowS} th={th} />
       <HealthStrip error={props.fleetError} fleet={fleet} nowS={nowS} />
@@ -609,7 +665,7 @@ export function OfficeView(props: OfficeViewProps) {
           </table>
         ) : null}
         {/* X10: provenance always shown; no money figure (no price is configured in Hermes). */}
-        <small data-ops-usage-provenance="">source: {props.usage?.provenance ?? '/api/ops/usage/today'} {T("· no $ (no price configured)")}</small>
+        <small data-ops-usage-provenance="">{T('source:')} {props.usage?.provenance ?? '/api/ops/usage/today'} {T("· no $ (no price configured)")}</small>
       </SectionFrame>
       <SectionFrame error={errors.activity} id="activity" loading={props.activity === null && !props.taskEvents?.length} title={T("Activity")}>
         {props.taskEvents && props.taskEvents.length ? (

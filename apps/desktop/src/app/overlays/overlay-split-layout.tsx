@@ -168,6 +168,8 @@ export interface OverlayNavGroup extends OverlayNavLink {
   /** Visual break before this group — a spacer on the rail, a separator in
    *  the dropdown. */
   gapBefore?: boolean
+  /** Section header shown on the rail above this group (IA: grouped settings nav). */
+  sectionLabel?: string
 }
 
 // Data-driven pane nav: one model renders a persistent left rail on wide
@@ -213,6 +215,14 @@ export function OverlayNav({ footer, groups }: { footer?: ReactNode; groups: Ove
           return (
             <Fragment key={group.id}>
               {group.gapBefore && <div aria-hidden className="h-2" />}
+              {group.sectionLabel && (
+                <div
+                  className="px-2 pb-1 pt-3 text-[0.6rem] font-medium uppercase tracking-wider text-muted-foreground/60"
+                  data-nav-section=""
+                >
+                  {group.sectionLabel}
+                </div>
+              )}
               <div className="relative">
                 <OverlayNavItem
                   active={group.active}

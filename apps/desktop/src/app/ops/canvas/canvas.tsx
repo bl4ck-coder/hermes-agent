@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { CronJobLite, DelegationView, ModelNode, PolicyView, PromptNode } from '../feed/ops-client'
 import { canvasInspectorDetail, usePublishInspectorDetail } from '../inspector-detail'
-import { T } from '../main-i18n'
+import { opsMainLocale, P, T } from '../main-i18n'
 
 import { ComposePanel } from './compose-view'
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
@@ -194,6 +194,13 @@ export const clampPan = (p: { x: number; y: number }) => ({
 const PAN_KEYS = { ArrowLeft: [-40, 0], ArrowRight: [40, 0], ArrowUp: [0, -40], ArrowDown: [0, 40] } as const
 
 /** G49: port colour by node state. */
+/** B20 (Outglow): every node type has a glyph tile and a localized title. */
+export const NODE_GLYPH: Record<string, string> = { schedule: '◷', identity: '◉', prompt: '¶', tools: '⚒', policy: '⛨', skills: '✦', channels: '⇄', model: '◈', memory: '▤', delegation: '⤳' }
+export const nodeTitle = (id: string): string => T(id.charAt(0).toUpperCase() + id.slice(1))
+
+/** Accessible names keep the stable lowercase id in English (tests, screen-reader muscle memory); other locales get the title. */
+const nodeAria = (id: string): string => (opsMainLocale() === 'en' ? id : nodeTitle(id))
+
 export const PORT_COLOUR = { ok: 'champagne', unset: 'amber', policy: 'garnet', unknown: 'muted' } as const
 export type CanvasNodeId = (typeof CANVAS_NODES)[number]
 
@@ -263,7 +270,7 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
       const failing = d.cron.filter(j => (j.failure_streak ?? 0) > 0).length
 
       return {
-        text: `${d.cron.length} ${T('cron jobs')}${next ? `, ${T('next')} ${new Date(next).toISOString()}` : ''}${failing ? `, ${failing} ${T('failing')}` : ''}`,
+        text: `${d.cron.length} ${T('cron jobs')}${next ? `, ${T('next')} ${new Date(next).toLocaleString(opsMainLocale().replace('zh-hant', 'zh-Hant'), { dateStyle: 'medium', timeStyle: 'short' })}` : ''}${failing ? `, ${failing} ${T('failing')}` : ''}`,
         state: failing ? 'policy' : d.cron.length ? 'ok' : 'unset'
       }
     }
@@ -273,7 +280,7 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
         ? { text: 'unknown', state: 'unknown' }
         : d.identity.description
           ? { text: `${d.identity.name}: ${d.identity.description}`, state: 'ok' }
-          : { text: `${d.identity.name} (no description)`, state: 'unset' }
+          : { text: T('{name} (no description)').replace('{name}', d.identity.name), state: 'unset' }
     case 'memory': {
       if (!d.memory) {
         return { text: 'unknown', state: 'unknown' }
@@ -282,16 +289,16 @@ function nodeBody(id: CanvasNodeId, d: CanvasData): { text: string; state: 'ok' 
       const files = d.memory.builtin_files ?? {}
       const bytes = Object.values(files).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0)
 
-      return { text: `${d.memory.active || 'built-in'} memory, ${bytes} bytes in MEMORY/USER`, state: 'ok' }
+      return { text: T('{kind} memory, {bytes} in MEMORY/USER').replace('{kind}', d.memory.active || T('built-in')).replace('{bytes}', `${bytes} bytes`), state: 'ok' }
     }
 
     case 'skills':
-      return typeof d.skills === 'number' ? { text: `${d.skills} skills installed`, state: d.skills ? 'ok' : 'unset' } : { text: 'unknown', state: 'unknown' }
+      return typeof d.skills === 'number' ? { text: P(d.skills, '{n} skills installed', '{n} skill installed'), state: d.skills ? 'ok' : 'unset' } : { text: 'unknown', state: 'unknown' }
 
     case 'delegation':
       return d.delegation
         ? {
-            text: d.delegation.inherit_model ? 'inherits main model' : `${d.delegation.provider ?? ''} · ${d.delegation.model ?? ''}`,
+            text: d.delegation.inherit_model ? T('inherits main model') : `${d.delegation.provider ?? ''} · ${d.delegation.model ?? ''}`,
             state: 'ok'
           }
         : { text: 'unknown', state: 'unknown' }
@@ -661,15 +668,17 @@ export function CanvasView({
               data-ops-node={id}
               data-ops-port={b.state}
               data-ops-port-colour={PORT_COLOUR[b.state]}
+              data-ops-selected={detail === id ? '' : undefined}
               key={id}
               role="listitem"
               style={{ gridColumn: { left: 1, centre: 2, right: 3 }[CANVAS_COLUMN[id]], gridRow: CANVAS_NODES.filter(n => CANVAS_COLUMN[n] === CANVAS_COLUMN[id]).indexOf(id) + 1 }}
             >
-              <button aria-expanded={!closed} aria-label={`${closed ? 'Expand' : 'Collapse'} ${id}`} onClick={() => toggle(id)} type="button">
+              <button aria-expanded={!closed} aria-label={T(closed ? 'Expand {id}' : 'Collapse {id}').replace('{id}', nodeAria(id))} data-ops-node-collapse="" onClick={() => toggle(id)} type="button">
                 {closed ? '+' : '−'}
               </button>
               <button aria-expanded={detail === id} aria-haspopup="dialog" data-ops-node-title="" onClick={() => setDetail(d => (d === id ? null : id))} type="button">
-                {id}
+                <span aria-hidden data-ops-node-icon="">{NODE_GLYPH[id] ?? '•'}</span>
+                {nodeTitle(id)}
               </button>
               {closed ? null : <span data-ops-node-body="">{T(b.text)}</span>}
               {id === 'identity' && b.state === 'unset' ? (
@@ -677,7 +686,7 @@ export function CanvasView({
                   {T("Set identity")}</button>
               ) : null}
               {detail === id ? (
-                <div aria-label={`${id} details`} data-ops-node-detail={id} onKeyDown={e => e.key === 'Escape' && setDetail(null)} role="dialog">
+                <div aria-label={T('{id} details').replace('{id}', nodeAria(id))} data-ops-node-detail={id} onKeyDown={e => e.key === 'Escape' && setDetail(null)} role="dialog">
                   <dl>
                     {nodeDetail(id, data).map(([k, v], i) => (
                       <div key={`${k}-${i}`}>
@@ -712,7 +721,7 @@ export function CanvasView({
         <button aria-label={T("Fit")} onClick={() => (setZoom(1), setPan({ x: 0, y: 0 }))} type="button">
           {T("Fit")}</button>
         <button aria-label={T("Collapse all")} onClick={() => setCollapsed(c => (c.size === CANVAS_NODES.length ? new Set() : new Set(CANVAS_NODES)))} type="button">
-          {collapsed.size === CANVAS_NODES.length ? 'Expand all' : 'Collapse all'}
+          {collapsed.size === CANVAS_NODES.length ? T('Expand all') : T('Collapse all')}
         </button>
       </div>
       <ul aria-label={T("Canvas edges")} data-ops-canvas-edges="">
@@ -723,14 +732,14 @@ export function CanvasView({
         ))}
       </ul>
       <button aria-expanded={runOpen} data-ops-run-toggle="" onClick={() => setRunOpen(o => !o)} type="button">
-        {runOpen ? 'Hide run panel' : 'Show run panel'}
+        {runOpen ? T('Hide run panel') : T('Show run panel')}
       </button>
       <section aria-label={T("Test run")} data-ops-run-panel="" hidden={!runOpen}>
         <textarea aria-label={T("Test run input")} onChange={e => setInput(e.target.value)} value={input} />
         <button data-ops-test-run="" data-ops-write="" disabled={!runs || active} onClick={() => void start()} type="button">
           {T("Test run")}</button>
         {!runs ? <span>{T("Runs bridge unavailable")}</span> : null}
-        <div data-ops-run-status={run.status}>{run.status}</div>
+        <div data-ops-run-status={run.status}>{T(run.status)}</div>
         {run.status === 'unknown' ? (
           <div data-ops-run-unknown="" role="status">
             <span data-ops-badge="unknown" title={T("The run lost its owner. Later turns wait until it is resolved.")}>

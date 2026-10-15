@@ -608,6 +608,22 @@ ${payload}
 })
 
 describe('loadArtifactsForSessions', () => {
+  it('reports artifacts after each session so the page can stream them', async () => {
+    const a = { ...makeSession(), id: 'a' }
+    const b = { ...makeSession(), id: 'b' }
+    const seen: number[] = []
+
+    await loadArtifactsForSessions(
+      [a, b],
+      async session => ({
+        messages: [{ content: `https://example.com/${session.id}.png`, role: 'assistant', timestamp: 1000 }],
+        pagination: { limit: 50, offset: 0, order: 'oldest', returned: 1 }
+      }),
+      { onSession: found => seen.push(found.length) }
+    )
+
+    expect(seen).toEqual([1, 2])
+  })
   it('indexes oldest-first pages incrementally and keeps the first duplicate', async () => {
     const session = makeSession()
     const duplicate = 'https://example.com/shared.pdf'

@@ -4,6 +4,7 @@
  * A refresh failure keeps the last rows and says so; nothing is ever shown as a healthy 0.
  */
 
+import { Tip } from '@/components/ui/tooltip'
 import { type ReactNode, useState } from 'react'
 
 import { T } from '../main-i18n'
@@ -87,19 +88,17 @@ export function StatCards({ stats, profile, onFocus }: { stats: OfficeStats; pro
   const v = (x: number | null) => (x === null ? 'unknown' : String(x))
 
   const card = (key: string, label: string, value: number | null, sub: string | null, target: SectionId, alarm = false, hint = '') => (
-    <button
+    <Tip label={T(hint)} key={key}><button
       aria-label={`${label}: ${v(value)}${sub ? `, ${sub}` : ''}. Show ${target.replace('-', ' ')}`}
       data-ops-alarm={alarm && (value ?? 0) > 0 ? 'garnet' : undefined}
       data-ops-stat={key}
-      key={key}
       onClick={() => onFocus(target)}
-      title={T(hint)}
       type="button"
     >
       <strong data-ops-stat-value="">{v(value)}</strong>
       <span>{T(label)}</span>
       {sub ? <small data-ops-stat-sub="">{sub}</small> : null}
-    </button>
+    </button></Tip>
   )
 
   return (

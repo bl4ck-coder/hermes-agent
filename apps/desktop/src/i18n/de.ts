@@ -19,6 +19,14 @@ import { defineLocale, type TranslationOverrides } from './define-locale'
 import { introDe } from './intro-de'
 
 export const deOverrides = {
+  teach: {
+    navCore: 'Agent & App',
+    navSystem: 'System',
+    navConnections: 'Verbindungen & Daten',
+    navExtensions: 'Erweiterungen',
+    chatIntroHint: 'Tippe / für Befehle · Strg+K, um Sitzungen und Einstellungen zu suchen',
+    agentsEmptyHint: 'Probier: „Recherchiere A und B parallel und vergleiche dann.“',
+  },
   ...opsLocaleEntry('de'),
   sharedMetrics: deSharedMetrics,
   firstRun: deFirstRun,

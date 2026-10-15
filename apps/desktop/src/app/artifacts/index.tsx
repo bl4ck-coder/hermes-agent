@@ -126,6 +126,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
 
   const [refreshing, setRefreshing] = useState(false)
   const refreshInFlightRef = useRef(false)
+  const artifactsLoadedRef = useRef(false)
 
   const refreshArtifacts = useCallback(async () => {
     if (refreshInFlightRef.current) {
@@ -138,13 +139,44 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
     try {
       const sessions = (await listAllProfileSessions(30, 1)).sessions
 
-      const { artifacts: nextArtifacts, failures } = await loadArtifactsForSessions(sessions, (session, page) =>
+      // Other profiles' sessions are read through their own local backends. A cold start can
+      // time out waiting for a free backend slot while the app is still booting; those are
+      // transient, so retry them once after the first sweep before reporting anything.
+      const loadPage = (session: (typeof sessions)[number], page: { limit: number; offset: number }) =>
         getSessionMessages(session.id, session.profile, {
           ...page,
           includeCompacted: true,
           order: 'oldest'
         })
-      )
+
+      // First load streams: show artifacts session by session instead of a spinner until all 30 are read.
+      // A refresh keeps the current list until the new one is complete, so it never flickers.
+      const streaming = !artifactsLoadedRef.current
+      const first = await loadArtifactsForSessions(sessions, loadPage, {
+        onSession: found => {
+          if (streaming && found.length) {
+            setArtifacts([...found].sort((left, right) => right.timestamp - left.timestamp))
+          }
+        }
+      })
+      const transient = first.failures.filter(({ error }) => isSlotWaitTimeout(error))
+      // Give the pool a beat to drain before the single retry.
+      if (transient.length) await new Promise(resolve => setTimeout(resolve, 1500))
+      const retry = transient.length
+        ? await loadArtifactsForSessions(
+            transient.map(f => f.session),
+            loadPage
+          )
+        : null
+      const nextArtifacts = retry ? [...first.artifacts, ...retry.artifacts] : first.artifacts
+      const allFailures = retry
+        ? [...first.failures.filter(f => !isSlotWaitTimeout(f.error)), ...retry.failures]
+        : first.failures
+      // A retired profile backend is the pool's normal idle state, not a read error: those
+      // sessions are skipped quietly (opening the profile reconnects it) instead of warning on every boot.
+      // Pool states (retired, saturated, still waiting after the retry) mean "that profile is not up right now",
+      // not "your transcripts are unreadable": skip them quietly; they index once the profile is opened.
+      const failures = allFailures.filter(({ error }) => !isRetiredBackend(error) && !isSlotWaitTimeout(error))
 
       if (failures.length > 0) {
         const safeLimitFailures = failures.filter(({ error }) =>
@@ -155,7 +187,11 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
 
         const detail = [
           safeLimitFailures ? `${safeLimitFailures} exceeded the safe transcript load limit.` : '',
-          otherFailures ? `${otherFailures} could not be read.` : ''
+          otherFailures ? `${otherFailures} could not be read.` : '',
+          // Name the first non-limit reason so the toast is actionable, not just a count.
+          otherFailures
+            ? `First error: ${String((failures.find(({ error }) => !String(error instanceof Error ? error.message : error).includes('safe-load limit'))?.error as Error | undefined)?.message ?? failures[0]?.error).slice(0, 160)}`
+            : ''
         ]
           .filter(Boolean)
           .join(' ')
@@ -171,6 +207,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
       }
 
       setArtifacts(nextArtifacts.sort((left, right) => right.timestamp - left.timestamp))
+      artifactsLoadedRef.current = true
     } catch (err) {
       notifyError(err, a.failedLoad)
       setArtifacts([])
@@ -399,6 +436,14 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                     total={visibleFileArtifacts.length}
                   />
                 </div>
+                {currentFilePage === 1 && (
+                  // B33: the newest files and links as preview cards; the full table stays below.
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 pb-2 pt-1.5" data-artifact-cards="">
+                    {pagedFileArtifacts.slice(0, 8).map(artifact => (
+                      <ArtifactPreviewCard artifact={artifact} key={artifact.id} onOpen={openArtifact} />
+                    ))}
+                  </div>
+                )}
                 <div className="overflow-x-auto rounded-lg border border-(--ui-stroke-tertiary) bg-(--ui-chat-bubble-background)">
                   <ArtifactTable artifacts={pagedFileArtifacts} ctx={cellCtx} filter={kindFilter} />
                 </div>
@@ -408,6 +453,90 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
         </div>
       )}
     </PageSearchShell>
+  )
+}
+
+function artifactBadge(artifact: ArtifactRecord): string {
+  if (artifact.kind === 'link') {
+    try {
+      return new URL(artifact.href).hostname.replace(/^www\./, '').slice(0, 18)
+    } catch {
+      return 'link'
+    }
+  }
+
+  return (/\.(\w{1,5})$/.exec(artifact.value)?.[1] ?? 'file').toUpperCase()
+}
+
+/**
+ * B34: a real thumbnail where one exists without fetching the page ourselves. GitHub publishes
+ * a social card for every repo, issue and PR at a predictable URL; other links and local files
+ * get a lit monogram tile instead.
+ */
+export function artifactThumbnail(artifact: Pick<ArtifactRecord, 'href' | 'kind'>): string | null {
+  if (artifact.kind !== 'link') {
+    return null
+  }
+
+  try {
+    const url = new URL(artifact.href)
+
+    if (url.hostname !== 'github.com') {
+      return null
+    }
+
+    const [owner, repo, kind, num] = url.pathname.split('/').filter(Boolean)
+
+    if (!owner || !repo) {
+      return null
+    }
+
+    const tail = (kind === 'pull' || kind === 'issues') && num && /^\d+$/.test(num) ? `/${kind}/${num}` : ''
+
+    return `https://opengraph.githubassets.com/1/${owner}/${repo}${tail}`
+  } catch {
+    return null
+  }
+}
+
+/** B33: a lit preview card for a file or link — type badge, name, where it came from, when. */
+function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; onOpen: (artifact: ArtifactRecord) => void }) {
+  const thumb = artifactThumbnail(artifact)
+  const [thumbFailed, setThumbFailed] = useState(false)
+
+  return (
+    <button
+      className="group flex min-w-0 flex-col gap-1.5 rounded-xl border border-(--ui-stroke-tertiary) bg-(--ui-chat-bubble-background) p-3 text-left text-xs transition-colors hover:border-(--ui-stroke-secondary)"
+      data-artifact-card={artifact.kind}
+      onClick={() => onOpen(artifact)}
+      type="button"
+    >
+      <span aria-hidden className="relative -mx-3 -mt-3 mb-1 block h-24 overflow-hidden rounded-t-xl" data-artifact-thumb={thumb && !thumbFailed ? 'image' : 'monogram'}>
+        {thumb && !thumbFailed ? (
+          <img
+            alt=""
+            className="size-full object-cover"
+            decoding="async"
+            loading="lazy"
+            onError={() => setThumbFailed(true)}
+            referrerPolicy="no-referrer"
+            src={thumb}
+          />
+        ) : (
+          <span className="grid size-full place-items-center font-mono text-2xl tracking-widest" data-artifact-monogram="">
+            {artifactBadge(artifact).slice(0, 4)}
+          </span>
+        )}
+      </span>
+      <span className="self-start rounded-md px-1.5 py-0.5 font-mono text-[0.62rem] tracking-wide" data-artifact-badge="">
+        {artifactBadge(artifact)}
+      </span>
+      <span className="truncate text-sm font-medium text-foreground">{artifact.label}</span>
+      <span className="truncate text-muted-foreground">{artifact.sessionTitle}</span>
+      <span className="text-[0.62rem] text-muted-foreground/70 tabular-nums">
+        {new Date(artifact.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+      </span>
+    </button>
   )
 }
 
@@ -720,4 +849,16 @@ function ArtifactTable({
       </tbody>
     </table>
   )
+}
+
+/** A profile backend that could not start in time because every local slot was busy (transient). */
+export function isSlotWaitTimeout(error: unknown): boolean {
+  return /SlotWaitTimeout|waiting for a free slot|was cancelled during start|BackgroundSlotRetryDeferred|backing off after slot saturation|ECONNREFUSED 127\.0\.0\.1/i.test(
+    String(error instanceof Error ? error.message : error)
+  )
+}
+
+/** The profile's local backend was retired by the pool (idle); reading needs an explicit reopen. */
+export function isRetiredBackend(error: unknown): boolean {
+  return /was retired; open it explicitly/i.test(String(error instanceof Error ? error.message : error))
 }

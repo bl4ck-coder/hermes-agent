@@ -3,9 +3,10 @@
  * Files (R11/R70), Favourites (R74), New-task modal (R40) and the Markdown body editor (R17).
  */
 
+import { Tip } from '@/components/ui/tooltip'
 import { type DragEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 
-import { T } from '../main-i18n'
+import { P, T } from '../main-i18n'
 import { fmtAge, fmtBytes } from '../office/control-room'
 
 import { type BoardTask, cardHealth } from './board-model'
@@ -36,16 +37,15 @@ export function InlineTitle({ task, readOnly, onOpen, onRename }: { task: BoardT
 
   if (!editing || readOnly || !onRename) {
     return (
-      <button
+      <Tip label={readOnly || !onRename ? undefined : 'Double-click or F2 to rename'}><button
         data-ops-open-task={task.id}
         onClick={onOpen}
         onDoubleClick={() => !readOnly && onRename && (setDraft(task.title), (done.current = false), setEditing(true))}
         onKeyDown={e => e.key === 'F2' && !readOnly && onRename && (e.preventDefault(), setDraft(task.title), (done.current = false), setEditing(true))}
-        title={readOnly || !onRename ? undefined : 'Double-click or F2 to rename'}
         type="button"
       >
         {task.title}
-      </button>
+      </button></Tip>
     )
   }
 
@@ -185,7 +185,7 @@ export function CardSignals({ task, nowS }: { task: BoardTask; nowS: number }) {
         </span>
       ) : null}
       {comments ? (
-        <span aria-label={`${comments} comments`} data-ops-comments={comments}>
+        <span aria-label={P(comments, '{n} comments', '{n} comment')} data-ops-comments={comments}>
           💬 {comments}
         </span>
       ) : null}

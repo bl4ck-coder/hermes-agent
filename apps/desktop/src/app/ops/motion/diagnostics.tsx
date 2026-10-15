@@ -22,6 +22,28 @@ import { useKanbanStream } from '../feed/kanban-stream'
 import { setOpsConnection } from '../feed/write-gate'
 import { T } from '../main-i18n'
 
+
+/** B16: the connection line is localized at render; the copied diagnostics report stays English. */
+/** B17: every connection-state line (diag.ts copy) localizes at render; the copied report stays English. */
+const CONN_PATTERNS: [RegExp, string, string[]][] = [
+  [/^Connected to Hermes (.+)\.$/, 'Connected to Hermes {v}.', ['v']],
+  [/^Hermes is unreachable: (.+)\. Showing the last data, labelled stale\.$/, 'Hermes is unreachable: {msg}. Showing the last data, labelled stale.', ['msg']],
+  [/^Hermes (.+) is outside this Ops window \((.+) to below (.+)\)\. Ops is read-only until Desktop or Hermes is updated\.$/, 'Hermes {v} is outside this Ops window ({min} to below {max}). Ops is read-only until Desktop or Hermes is updated.', ['v', 'min', 'max']],
+  [/^Hermes (.+) lacks (.+)\. Ops is read-only for those features\.$/, 'Hermes {v} lacks {list}. Ops is read-only for those features.', ['v', 'list']],
+  [/^Hermes (.+) is newer than tested \((.+)\); unknown fields are ignored\.$/, 'Hermes {v} is newer than tested ({t}); unknown fields are ignored.', ['v', 't']],
+  [/^Hermes (.+) does not publish capability tokens; the route probe decides each section\.$/, 'Hermes {v} does not publish capability tokens; the route probe decides each section.', ['v']]
+]
+
+export function connCopy(s: string): string {
+  for (const [re, key, names] of CONN_PATTERNS) {
+    const m = re.exec(s)
+
+    if (m) return names.reduce((out, name, i) => out.replace(`{${name}}`, m[i + 1]), T(key))
+  }
+
+  return T(s)
+}
+
 export function DiagnosticsPanel({
   policySource,
   get,
@@ -61,6 +83,26 @@ export function DiagnosticsPanel({
 
   return (
     <div data-ops-diagnostics="">
+      {/* B34: one-glance health. A ring for the probe score, a plain headline, the stream and error count. */}
+      {(() => {
+        const ok = results ? results.filter(r => r.state === 'ok').length : 0
+        const total = results?.length ?? 0
+        const tone = !results ? 'idle' : ok === total && errors.length === 0 ? 'good' : 'warn'
+
+        return (
+          <div data-ops-diag-hero={tone}>
+            <span data-ops-diag-ring="" style={{ '--ops-pct': total ? ok / total : 0 } as React.CSSProperties}>
+              {results ? `${ok}/${total}` : '–'}
+            </span>
+            <div>
+              <strong>{!results ? T('Not probed yet') : tone === 'good' ? T('All systems go') : T('Some capabilities need attention')}</strong>
+              <small>
+                {stream.mode} · {T('Recent errors')} {errors.length}
+              </small>
+            </div>
+          </div>
+        )
+      })()}
       <dl>
         <dt>{T("Stream")}</dt>
         <dd data-ops-diag-stream={stream.mode}>
@@ -69,7 +111,7 @@ export function DiagnosticsPanel({
         </dd>
         <dt>{T("Connection")}</dt>
         <dd data-ops-diag-connection={conn?.state ?? 'not probed'} data-ops-writes={conn ? (conn.writesEnabled ? 'on' : 'off') : undefined}>
-          {conn ? conn.copy : 'Run the probe to check the Hermes version and capabilities.'}
+          {conn ? connCopy(conn.copy) : T('Run the probe to check the Hermes version and capabilities.')}
         </dd>
         <dt>{T("Stream generation")}</dt>
         <dd data-ops-diag-generation="">{stream.generation ?? 0}</dd>
@@ -77,13 +119,13 @@ export function DiagnosticsPanel({
         <dd data-ops-diag-policy="">{policySource ?? T('unknown')}</dd>
       </dl>
       <button data-ops-probe="" disabled={probing} onClick={() => void runProbe()} type="button">
-        {probing ? 'Probing…' : 'Run capability probe'}
+        {probing ? T('Probing…') : T('Run capability probe')}
       </button>
       {results ? (
         <ul aria-label={T("Capability probe")} data-ops-probe-results="">
           {results.map(r => (
             <li data-ops-probe-row={r.id} data-ops-probe-state={r.state} key={r.id}>
-              {r.id} {r.label}: {r.state === 'ok' ? 'available' : r.detail}
+              <b data-ops-probe-id="">{r.id}</b> {T(r.label)}{r.state === 'ok' ? <span data-ops-probe-ok="">: {T('available')}</span> : <>: {r.detail}</>}
             </li>
           ))}
         </ul>

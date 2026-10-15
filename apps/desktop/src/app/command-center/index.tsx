@@ -1,5 +1,5 @@
 import { compactNumber } from '@hermes/shared'
-import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react'
 
 import { LogSearchField, useLogSearch } from '@/components/chat/log-search'
 import { LogTail } from '@/components/chat/log-tail'
@@ -151,7 +151,7 @@ export function CommandCenterView({
   onLoadMoreSessions,
   onOpenSession
 }: CommandCenterViewProps) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const cc = t.commandCenter
   // $sessions ticks on every streaming token (title updates, new sessions),
   // but we only need the data on the Sessions tab. Subscribe conditionally so
@@ -384,14 +384,6 @@ export function CommandCenterView({
               rootLabel={cc.commandCenter}
               trailing={
                 <>
-                  {section === 'sessions' && (
-                    <SearchField
-                      containerClassName="max-w-[40vw]"
-                      onChange={next => setQuery(next)}
-                      placeholder={cc.searchPlaceholder}
-                      value={query}
-                    />
-                  )}
                   {section === 'usage' && (
                     <SegmentedControl
                       onChange={id => setUsagePeriod(Number(id) as UsagePeriod)}
@@ -406,53 +398,72 @@ export function CommandCenterView({
           <div className={cn('flex min-h-0 flex-1 flex-col', PAGE_INSET_X)}>
             {section === 'sessions' ? (
               <div className="flex min-h-0 flex-1 flex-col">
+                {/* IA: search sits on top of the list it filters, not in the far header corner. */}
+                <div className="shrink-0 pb-3 pt-1" data-sessions-search="">
+                  <SearchField onChange={next => setQuery(next)} placeholder={cc.searchPlaceholder} value={query} />
+                </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {!sessionListHasResults ? (
                     <EmptyPanel description={debouncedQuery ? cc.noResults : cc.noSessions} />
                   ) : (
                     <ul>
-                      {filteredSessions.map(session => {
+                      {filteredSessions.map((session, index) => {
+                        const group = sessionDateGroup(session.last_active || session.started_at, locale)
+                        const prev = index > 0 ? filteredSessions[index - 1] : undefined
+                        const showGroup =
+                          !prev || sessionDateGroup(prev.last_active || prev.started_at, locale) !== group
                         const pinId = sessionPinId(session)
                         const pinned = pinnedSessionIds.includes(pinId)
 
                         return (
-                          <li className="group flex items-center gap-2 py-2" key={session.id}>
-                            <button
-                              className="min-w-0 flex-1 text-left"
-                              onClick={() => onOpenSession(session.id, session)}
-                              type="button"
-                            >
-                              <div className="truncate text-[length:var(--conversation-text-font-size)] font-medium text-foreground">
-                                {sessionTitle(session)}
+                          <Fragment key={session.id}>
+                            {showGroup && (
+                              <li
+                                className="pb-1 pt-4 text-[0.62rem] font-medium uppercase tracking-wider text-muted-foreground/60 first:pt-1"
+                                data-session-group=""
+                                role="presentation"
+                              >
+                                {group}
+                              </li>
+                            )}
+                            <li className="group flex items-center gap-2 py-2">
+                              <button
+                                className="min-w-0 flex-1 text-left"
+                                onClick={() => onOpenSession(session.id, session)}
+                                type="button"
+                              >
+                                <div className="truncate text-[length:var(--conversation-text-font-size)] font-medium text-foreground">
+                                  {sessionTitle(session)}
+                                </div>
+                                <div className="truncate text-[length:var(--conversation-caption-font-size)] text-(--ui-text-tertiary)">
+                                  {formatTimestamp(session.last_active || session.started_at)}
+                                </div>
+                              </button>
+                              <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                                <RowIconButton
+                                  onClick={() => (pinned ? unpinSession(pinId) : pinSession(pinId))}
+                                  title={pinned ? cc.unpinSession : cc.pinSession}
+                                >
+                                  {pinned ? <BookmarkFilled className="size-3.5" /> : <Bookmark className="size-3.5" />}
+                                </RowIconButton>
+                                <RowIconButton
+                                  onClick={() =>
+                                    void exportSession(session.id, { session, title: sessionTitle(session) })
+                                  }
+                                  title={cc.exportSession}
+                                >
+                                  <Download className="size-3.5" />
+                                </RowIconButton>
+                                <RowIconButton
+                                  className="hover:text-destructive"
+                                  onClick={() => setPendingDelete(session)}
+                                  title={cc.deleteSession}
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </RowIconButton>
                               </div>
-                              <div className="truncate text-[length:var(--conversation-caption-font-size)] text-(--ui-text-tertiary)">
-                                {formatTimestamp(session.last_active || session.started_at)}
-                              </div>
-                            </button>
-                            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                              <RowIconButton
-                                onClick={() => (pinned ? unpinSession(pinId) : pinSession(pinId))}
-                                title={pinned ? cc.unpinSession : cc.pinSession}
-                              >
-                                {pinned ? <BookmarkFilled className="size-3.5" /> : <Bookmark className="size-3.5" />}
-                              </RowIconButton>
-                              <RowIconButton
-                                onClick={() =>
-                                  void exportSession(session.id, { session, title: sessionTitle(session) })
-                                }
-                                title={cc.exportSession}
-                              >
-                                <Download className="size-3.5" />
-                              </RowIconButton>
-                              <RowIconButton
-                                className="hover:text-destructive"
-                                onClick={() => setPendingDelete(session)}
-                                title={cc.deleteSession}
-                              >
-                                <Trash2 className="size-3.5" />
-                              </RowIconButton>
-                            </div>
-                          </li>
+                            </li>
+                          </Fragment>
                         )
                       })}
                     </ul>
@@ -766,4 +777,22 @@ function UsageStat({ hint, label, value }: { hint?: string; label: string; value
       {hint && <div className="mt-0.5 truncate text-[0.62rem] text-(--ui-text-tertiary)">{hint}</div>}
     </div>
   )
+}
+
+/** IA: date headers for the sessions list (Today, This week, then month and year), locale-aware with no new copy. */
+export function sessionDateGroup(ts: number | undefined, locale: string, now = Date.now()): string {
+  if (!ts) return ''
+  const ms = ts > 1e12 ? ts : ts * 1000
+  const day = new Date(ms)
+  const today = new Date(now)
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+  const cap = (v: string) => v.charAt(0).toLocaleUpperCase(locale) + v.slice(1)
+  try {
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+    if (ms >= startOfToday) return cap(rtf.format(0, 'day'))
+    if (ms >= startOfToday - 6 * 86_400_000) return cap(rtf.format(0, 'week'))
+    return cap(new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(day))
+  } catch {
+    return day.toDateString()
+  }
 }

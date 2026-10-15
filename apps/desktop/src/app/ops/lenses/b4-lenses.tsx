@@ -14,7 +14,8 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 import { opsCall } from '../feed/diag'
 import { type ActiveWorker, createOpsActions } from '../feed/ops-actions'
-import { T } from '../main-i18n'
+import { P, T } from '../main-i18n'
+import { Sigil } from '../primitives/sigil'
 import type { BoardTask } from '../office/control-room'
 import { fmtAge } from '../office/control-room'
 import { useOpsResource } from '../office/office-container'
@@ -137,7 +138,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         <div role="tablist">
           {(['fleet', 'teams', 'roles'] as const).map(t => (
             <button aria-selected={tab === t} data-ops-agents-tab={t} key={t} onClick={() => setTab(t)} role="tab" type="button">
-              {t === 'fleet' ? 'Fleet' : t === 'teams' ? 'Teams' : 'Roles'}
+              {t === 'fleet' ? T('Fleet') : t === 'teams' ? T('Teams') : T('Roles')}
             </button>
           ))}
         </div>
@@ -151,7 +152,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         <>
           <Search label={T("search agents")} onChange={setQ} placeholder={T("Search by name, model, lane, role")} value={q} />
           {tasks.error ? <p data-ops-partial="">{T("Task counts unavailable:")}{' '}{why(tasks.error)}</p> : null}
-          <DataTable
+          <DataTable viewToggleId="fleet"
             caption={`Fleet (${rows.length})`}
             columns={[
               {
@@ -159,8 +160,20 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                 header: 'Agent',
                 sortable: true,
                 sortValue: r => r.name,
+                cardTitle: r => (
+                  <button data-ops-fleet-open={r.name} data-ops-roster-agent="" disabled={!onOpenRoute} onClick={() => open(r.name)} type="button">
+                    <span data-ops-roster-avatar={r.status}>
+                      <Sigil name={r.name} size={36} />
+                    </span>
+                    <span data-ops-roster-name="">
+                      <span>{r.name}</span>
+                      {r.role ? <small data-ops-role="">{r.role}</small> : null}
+                    </span>
+                  </button>
+                ),
                 cell: r => (
                   <button data-ops-fleet-open={r.name} disabled={!onOpenRoute} onClick={() => open(r.name)} type="button">
+                    <Sigil name={r.name} size={16} />
                     <span>{r.name}</span>
                     {r.role ? <small data-ops-role="">{r.role}</small> : null}
                   </button>
@@ -168,7 +181,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
               },
               { id: 'model', header: 'Model', sortable: true, sortValue: r => r.model, cell: r => r.model ?? T('unknown') },
               { id: 'lane', header: 'Lane', sortable: true, sortValue: r => r.lane, cell: r => r.lane ?? '—' },
-              { id: 'active', header: 'Active tasks', sortable: true, tabular: true, sortValue: r => r.active, cell: r => String(r.active) },
+              { id: 'active', header: 'Active tasks', sortable: true, tabular: true, sortValue: r => r.active, cell: r => <span data-ops-zero={r.active ? undefined : ''}>{String(r.active)}</span> },
               {
                 id: 'runs7d',
                 header: 'Runs 7d',
@@ -176,16 +189,16 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
                 tabular: true,
                 sortValue: r => r.runs7d,
                 cell: r => (
-                  <span data-ops-runs-source={r.runsSource} title={r.runsSource === 'runs' ? 'Worker runs started in the last 7 days' : 'Task starts (this Hermes has no run stats)'}>
-                    {r.runs7d}
+                  <span data-ops-runs-source={r.runsSource} title={r.runsSource === 'runs' ? T('Worker runs started in the last 7 days') : T('Task starts (this Hermes has no run stats)')}>
+                    <span data-ops-zero={r.runs7d ? undefined : ''}>{r.runs7d}</span>
                     {r.failed7d ? <small data-ops-runs-failed=""> · {r.failed7d} {T("failed")}</small> : null}
                   </span>
                 )
               },
-              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : 'never') },
-              { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{r.status}</span> }
+              { id: 'lastActive', header: 'Last active', sortable: true, sortValue: r => r.lastActive ?? 0, cell: r => (r.lastActive ? fmtAge(now - r.lastActive) : T('never')) },
+              { id: 'status', header: 'Status', sortable: true, sortValue: r => r.status, cell: r => <span data-ops-fleet-status={r.status}>{T(r.status)}</span> }
             ]}
-            emptyLabel={q ? 'No agent matches.' : 'No profiles.'}
+            emptyLabel={q ? T('No agent matches.') : T('No profiles.')}
             getRowId={r => r.name}
             onSortChange={setSort}
             rows={searchRows(rows, q, r => [r.name, r.model, r.lane, r.role])}
@@ -198,7 +211,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
         <ul data-ops-roles="">
           {rows.map(r => (
             <li data-ops-role-row={r.name} key={r.name}>
-              <strong>{r.name}</strong> — {r.role ?? 'No role (the profile has no description).'}
+              <strong>{r.name}</strong> — {r.role ?? T('No role (the profile has no description).')}
             </li>
           ))}
           <li data-ops-roles-note="">{T("Roles are read-only here; edit a profile's description in Profiles.")}</li>
@@ -222,20 +235,30 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
   return (
     <ul data-ops-teams="">
       {list.map(t => (
-        <li data-ops-team={t.lane} key={t.lane}>
-          <h3>{t.lane}</h3>
-          <span data-ops-team-open="">{t.open} {T("open")}</span>
-          <p>
-            {T("Projects:")}{' '}
+        <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} key={t.lane}>
+          <header data-ops-team-head="">
+            <h3>{t.lane === 'No lane' ? T('No lane') : t.lane}</h3>
+            <span data-ops-team-open="">{P(t.open, '{n} open')}</span>
+          </header>
+          <div aria-label={T('Members:')} data-ops-team-members="" role="list">
+            {t.members.length
+              ? t.members.map(m => (
+                  <span data-ops-team-member={m} key={m} role="listitem">
+                    <Sigil name={m} size={14} />
+                    {m}
+                  </span>
+                ))
+              : <span data-ops-team-none="">{T('No members')}</span>}
+          </div>
+          <p data-ops-team-projects="">
             {t.projects.length
               ? t.projects.map(p => (
                   <button data-ops-team-project={p} disabled={!onOpenRoute} key={p} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(p)}`)} type="button">
                     {p}
                   </button>
                 ))
-              : 'none'}
+              : <span data-ops-team-none="">{T('No projects')}</span>}
           </p>
-          <p data-ops-team-members="">{T("Members:")}{' '}{t.members.join(', ') || 'none'}</p>
         </li>
       ))}
     </ul>
@@ -252,7 +275,7 @@ function AgentLinks({ agents, onOpen }: { agents: string[]; onOpen?: (p: string)
   return (
     <span data-ops-skill-agents="">
       {head.map(a => (
-        <button disabled={!onOpen} key={a} onClick={() => onOpen?.(a)} type="button">
+        <button data-ops-skill-agent={a} disabled={!onOpen} key={a} onClick={() => onOpen?.(a)} type="button">
           {a}
         </button>
       ))}
@@ -361,10 +384,11 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         ) : (
           <ul>
             {packs.map(p => (
-              <li data-ops-pack={p.id} key={p.id}>
-                <strong>{p.title}</strong> <span data-ops-pack-meta="">{p.skills.length} {T("skills")}{p.missing.length < p.skills.length ? ` · ${p.skills.length - p.missing.length} installed` : ''}</span>
+              <li data-ops-pack={p.id} data-ops-pack-complete={p.missing.length === 0 ? '' : undefined} key={p.id}>
+                <strong>{p.title}</strong> <span data-ops-pack-meta="">{P(p.skills.length, '{n} skills', '{n} skill')}{p.missing.length < p.skills.length ? ` · ${P(p.skills.length - p.missing.length, '{n} installed')}` : ''}</span>
+                <span aria-label={T('{n} of {total} installed').replace('{n}', String(p.skills.length - p.missing.length)).replace('{total}', String(p.skills.length))} data-ops-pack-bar="" role="img" style={{ ['--ops-pct' as string]: `${Math.round(((p.skills.length - p.missing.length) / Math.max(1, p.skills.length)) * 100)}%` }} />
                 <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
-                  {p.missing.length === 0 ? 'All added' : 'Add all'}
+                  {p.missing.length === 0 ? T('All added') : T('Add all')}
                 </button>
               </li>
             ))}
@@ -397,14 +421,14 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         </div>
         {rows ? (
           <p data-ops-skill-shown="">
-            {T("Showing")}{' '}{shown.length} of {rows.length}
-            {scanCapped ? ` · Agents column covers the first ${SKILL_PROFILE_SCAN_MAX} profiles` : ''}
+            {T('Showing')}{' '}{shown.length} {T('of')} {rows.length}
+            {scanCapped ? ` · ${T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}` : ''}
           </p>
         ) : null}
         {!rows ? (
           <State error={skills.error} what="Skills" />
         ) : (
-          <DataTable
+          <DataTable viewToggleId="skills"
             caption="Skills"
             columns={[
               {
@@ -423,7 +447,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
               { id: 'agents', header: 'Agents', sortable: true, tabular: true, sortValue: r => r.agents.length, cell: r => <AgentLinks agents={r.agents} onOpen={onOpenRoute ? openAgent : undefined} /> },
               { id: 'source', header: 'Source', sortable: true, sortValue: r => r.provenance ?? '', cell: r => r.provenance ?? T('unknown') },
               { id: 'usage', header: 'Uses', sortable: true, tabular: true, sortValue: r => r.usage ?? -1, cell: r => (typeof r.usage === 'number' ? String(r.usage) : '—') },
-              { id: 'enabled', header: 'On', sortable: true, sortValue: r => (r.enabled ? 1 : 0), cell: r => (r.enabled ? 'on' : 'off') }
+              { id: 'enabled', header: 'On', sortable: true, sortValue: r => (r.enabled ? 1 : 0), cell: r => (r.enabled ? T('on') : T('off')) }
             ]}
             emptyLabel={filtered ? 'No skill matches these filters.' : 'This profile has no skills yet. Use Create skill or Browse library.'}
             getRowId={r => r.name}
@@ -434,7 +458,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         )}
       </section>
       <ConfirmDialog
-        confirmLabel={busy ? 'Installing…' : `Install ${confirm?.missing.length ?? 0}`}
+        confirmLabel={busy ? T('Installing…') : T('Install {n}').replace('{n}', String(confirm?.missing.length ?? 0))}
         description={confirm ? `Into ${profile}: ${confirm.missing.map(s => s.name).join(', ')}` : ''}
         onClose={() => {
           if (!busy) {
@@ -447,7 +471,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
           }
         }}
         open={!!confirm}
-        title={confirm ? `Add all of ${confirm.title}?` : ''}
+        title={confirm ? T('Add all of {title}?').replace('{title}', confirm.title) : ''}
       />
     </section>
   )
@@ -468,7 +492,7 @@ function AppTile({ card, onOpenRoute }: { card: AppCard; onOpenRoute?: (r: strin
       {card.warning ? <small data-ops-app-warning="">{card.warning}</small> : null}
       {card.connected ? <span data-ops-app-state="connected">{T("✓ Connected")}</span> : null}
       <button data-ops-app-action={card.connected ? 'manage' : 'connect'} disabled={!onOpenRoute} onClick={() => onOpenRoute?.(appRoute(card))} type="button">
-        {card.connected ? 'Manage' : 'Connect'}
+        {card.connected ? T('Manage') : T('Connect')}
       </button>
     </li>
   )
@@ -487,7 +511,7 @@ export function QuickConnect({ cards, onOpenRoute, onClose }: { cards: AppCard[]
         <option value="all">{T("All kinds")}</option>
         {(Object.keys(APP_CATEGORIES) as AppCard['kind'][]).map(k => (
           <option key={k} value={k}>
-            {APP_CATEGORIES[k]}
+            {T(APP_CATEGORIES[k])}
           </option>
         ))}
       </select>
@@ -535,7 +559,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
         <div role="tablist">
           {(['all', 'connected'] as const).map(f => (
             <button aria-selected={filter === f} data-ops-app-filter={f} key={f} onClick={() => setFilter(f)} role="tab" type="button">
-              {f === 'all' ? `All ${cards.length}` : `Connected ${cards.filter(x => x.connected).length}`}
+              {f === 'all' ? `${T('All')} ${cards.length}` : `${T('Connected')} ${cards.filter(x => x.connected).length}`}
             </button>
           ))}
         </div>
@@ -576,7 +600,14 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
                 </section>
               ) : null
             })}
-          {shown.length === 0 ? <p data-ops-empty="apps">{filter === 'connected' ? 'Nothing connected yet.' : 'No app matches.'}</p> : null}
+          {shown.length === 0 ? (
+        <p data-ops-empty="apps">
+          {filter === 'connected' ? T('Nothing connected yet.') : T('No app matches.')}{' '}
+          <button data-ops-empty-reset="" onClick={() => (setFilter('all'), setQ(''))} type="button">
+            {T('Show all apps')}
+          </button>
+        </p>
+      ) : null}
         </div>
       </div>
     </section>

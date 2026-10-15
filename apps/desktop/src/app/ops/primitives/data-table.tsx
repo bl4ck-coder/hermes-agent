@@ -50,6 +50,8 @@ export interface DataTableColumn<T> {
   description?: (row: T) => string | null | undefined
   cell?: (row: T) => ReactNode
   sortValue?: (row: T) => string | number | null | undefined
+  /** B34: what the first column shows as a card title in the roster view (defaults to `cell`). */
+  cardTitle?: (row: T) => ReactNode
 }
 
 export interface DataTableProps<T> {
@@ -60,6 +62,8 @@ export interface DataTableProps<T> {
   emptyLabel?: string
   sort?: DataTableSort | null
   onSortChange?: (sort: DataTableSort) => void
+  /** B33: offer a card (roster) view next to the table; the choice is remembered under this id. */
+  viewToggleId?: string
 }
 
 export interface OpsSelectOption {
@@ -161,9 +165,23 @@ export function DataTable<T>({
   getRowId,
   onSortChange,
   rows,
-  sort
+  sort,
+  viewToggleId
 }: DataTableProps<T>) {
   const copy = useI18n().t.ops
+  const [view, setViewState] = useState<'table' | 'cards'>(() =>
+    viewToggleId && readView(viewToggleId) === 'cards' ? 'cards' : 'table'
+  )
+  const setView = (next: 'table' | 'cards') => {
+    setViewState(next)
+    if (viewToggleId) {
+      try {
+        localStorage.setItem(`ops-view:${viewToggleId}`, next)
+      } catch {
+        /* storage unavailable: the choice lasts for this mount */
+      }
+    }
+  }
   const [internalSort, setInternalSort] = useState<DataTableSort | null>(null)
   const activeSort = sort === undefined ? internalSort : sort
   const activeColumn = columns.find(column => column.id === activeSort?.columnId)
@@ -179,8 +197,57 @@ export function DataTable<T>({
     onSortChange?.(next)
   }
 
+  const toggle = viewToggleId ? (
+    <div aria-label={T('View')} data-ops-view-toggle="" role="group">
+      <button aria-pressed={view === 'table'} onClick={() => setView('table')} type="button">
+        {T('Table')}
+      </button>
+      <button aria-pressed={view === 'cards'} onClick={() => setView('cards')} type="button">
+        {T('Cards')}
+      </button>
+    </div>
+  ) : null
+
+  if (view === 'cards') {
+    const [titleColumn, ...rest] = columns
+
+    return (
+      <div className="ops-data-table" data-density="frozen" data-view="cards" style={opsDensityStyle()}>
+        {toggle}
+        {ordered.length === 0 ? (
+          <p data-empty="true">{emptyLabel ?? copy.table.empty}</p>
+        ) : (
+          <ul aria-label={caption ?? copy.table.caption} data-ops-roster="">
+            {ordered.map(row => (
+              <li data-row-id={getRowId(row)} key={getRowId(row)}>
+                <div data-ops-roster-title="">{titleColumn?.cardTitle?.(row) ?? titleColumn?.cell?.(row) ?? titleColumn?.description?.(row) ?? ''}</div>
+                <dl>
+                  {rest.map(column => {
+                    const value = column.description?.(row) || column.cell?.(row)
+
+                    if (value == null || value === '' || value === false) {
+                      return null
+                    }
+
+                    return (
+                      <div data-col={column.id} key={column.id}>
+                        <dt>{typeof column.header === 'string' ? T(column.header) : column.header}</dt>
+                        <dd className={column.tabular ? 'tabular-nums' : undefined}>{value}</dd>
+                      </div>
+                    )
+                  })}
+                </dl>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="ops-data-table" data-density="frozen" style={opsDensityStyle()}>
+      {toggle}
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: OPS_BODY_PX }}>
         <caption className="sr-only">{caption ?? copy.table.caption}</caption>
         <thead>
@@ -222,7 +289,7 @@ export function DataTable<T>({
                       {typeof column.header === 'string' ? T(column.header) : column.header}
                     </button>
                   ) : (
-                    column.header
+                    typeof column.header === 'string' ? T(column.header) : column.header
                   )}
                 </th>
               )
@@ -245,6 +312,7 @@ export function DataTable<T>({
 
                   return (
                     <td
+                      data-col={column.id}
                       data-tabular={tabular ? 'true' : 'false'}
                       key={column.id}
                       style={
@@ -268,6 +336,14 @@ export function DataTable<T>({
       </table>
     </div>
   )
+}
+
+function readView(id: string): string | null {
+  try {
+    return localStorage.getItem(`ops-view:${id}`)
+  } catch {
+    return null
+  }
 }
 
 /** Clip the native source of truth. The themed trigger is the only painted control. */

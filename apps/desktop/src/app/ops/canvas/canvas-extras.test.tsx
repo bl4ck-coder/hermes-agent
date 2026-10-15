@@ -17,7 +17,9 @@ describe('canvas extras (P6 F6)', () => {
     )
     expect(document.querySelector('[data-ops-node="skills"]')?.textContent).toContain('4 skills installed')
     const sched = document.querySelector('[data-ops-node="schedule"]')
-    expect(sched?.textContent).toContain('2 cron jobs, next 2026-10-14T03:00:00.000Z, 1 failing')
+    // B21: the next run reads as a local date, not a raw ISO string.
+    expect(sched?.textContent).toMatch(/2 cron jobs, next Oct 1[34], 2026, \d{1,2}:\d{2}\s?[AP]M, 1 failing/)
+    expect(sched?.textContent).not.toContain('T03:00:00.000Z')
     expect(sched?.getAttribute('data-ops-port')).toBe('policy')
   })
 

@@ -11,6 +11,7 @@ import { useState } from 'react'
 
 import type { ApprovalItem, CronJobLite } from '../feed/ops-client'
 import { T } from '../main-i18n'
+import { Sigil } from '../primitives/sigil'
 
 export type KanbanAction = { kind: 'approve_review' | 'request_changes' | 'unblock' | 'comment'; taskId: string; note?: string }
 
@@ -83,7 +84,7 @@ const KIND: Record<string, string> = {
 
 const age = (s: number | null | undefined) =>
   typeof s !== 'number'
-    ? 'unknown'
+    ? T('unknown')
     : s < 60
       ? `${Math.round(s)} s`
       : s < 3600
@@ -121,7 +122,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
     }
   }
 
-  const label = (key: string, idle: string, done: string) => (busy[key] === 'done' ? outcomeCopy(results[key], done) : busy[key] === 'failed' ? `Retry ${idle.toLowerCase()}` : idle)
+  const label = (key: string, idle: string, done: string) => (busy[key] === 'done' ? T(outcomeCopy(results[key], done)) : busy[key] === 'failed' ? T('Retry {action}').replace('{action}', T(idle).toLowerCase()) : T(idle))
   const policy = Array.isArray(p.policy) ? p.policy : []
   const total = p.items.length + failing.length + policy.length
 
@@ -149,8 +150,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
 
             return (
               <tr data-ops-approval={key} data-ops-origin={item.origin} key={key} tabIndex={-1}>
-                <td>{item.profile ?? T('unknown')}</td>
-                <td>{KIND[item.origin] ?? item.origin}</td>
+                <td data-ops-agent="">{item.profile ? <Sigil name={item.profile} size={14} /> : null}{item.profile ?? T('unknown')}</td>
+                <td><span data-ops-kind={item.origin}>{T(KIND[item.origin] ?? item.origin)}</span></td>
                 <td data-ops-waiting-on="">{cmd || item.what_for || item.id}</td>
                 <td data-ops-age="">{age(item.age_s)}</td>
                 <td data-ops-why="">

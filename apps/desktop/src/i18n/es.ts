@@ -19,6 +19,14 @@ import { esUpdateChannel } from './es_update_channel'
 import { introEs } from './intro-es'
 
 export const esOverrides = {
+  teach: {
+    navCore: 'Agente y app',
+    navSystem: 'Sistema',
+    navConnections: 'Conexiones y datos',
+    navExtensions: 'Extensiones',
+    chatIntroHint: 'Escribí / para comandos · Ctrl+K para buscar sesiones y ajustes',
+    agentsEmptyHint: 'Probá: “Investigá A y B en paralelo y después compará.”',
+  },
   ...opsLocaleEntry('es'),
   sharedMetrics: esSharedMetrics,
   firstRun: esFirstRun,
