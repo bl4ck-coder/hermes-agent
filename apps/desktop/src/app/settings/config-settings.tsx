@@ -148,6 +148,7 @@ function ConfigSettingsInner({
   const saveVersionRef = useRef(0)
   const savedDiscoverySignatureRef = useRef<string | undefined>(undefined)
   const [saveVersion, setSaveVersion] = useState(0)
+  const [fieldSave, setFieldSave] = useState<Record<string, 'saving' | 'failed'>>({})
 
   // Seed the local draft once, the first time the shared record lands.
   // Background refetches thereafter must not clobber in-progress edits.
@@ -224,6 +225,11 @@ function ConfigSettingsInner({
       // baseline advance — each save's diff is computed once its predecessor
       // has fully resolved.
       saveQueueRef.current = saveQueueRef.current.then(async () => {
+        // P18g (judge consult): save state beside the edited fields, not only a toast.
+        const keys = flattenKeys(diffConfig(configBaselineRef.current ?? {}, snapshot))
+
+        setFieldSave(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, 'saving' as const])) }))
+
         try {
           const patch = diffConfig(configBaselineRef.current ?? {}, snapshot)
           const result = await saveHermesConfig(patch, writeScope ?? scopeProfile)
@@ -244,6 +250,7 @@ function ConfigSettingsInner({
           const savedScope = writeScope ?? scopeProfile
 
           recordSettingsSaved(patch, schema ?? {}, typeof savedScope === 'string' ? savedScope : savedScope?.profile)
+          setFieldSave(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => !keys.includes(k))))
 
           if (saveVersionRef.current === v) {
             // The repo-discovery scan reads the ACTIVE profile's workspace
@@ -260,6 +267,8 @@ function ConfigSettingsInner({
             onConfigSaved?.()
           }
         } catch (err) {
+          setFieldSave(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, 'failed' as const])) }))
+
           if (saveVersionRef.current === v) {
             notifyError(err, c.autosaveFailed)
           }
@@ -505,9 +514,20 @@ function ConfigSettingsInner({
             <div className="scroll-mt-6 rounded-lg" id={`setting-field-${key}`} key={key}>
               <ConfigField
                 descriptionExtra={
-                  key === 'memory.provider' && isExternalMemoryProvider(getNested(config, key)) ? (
-                    <MemoryConnect profile={scopeProfile} provider={String(getNested(config, key))} />
-                  ) : undefined
+                  <>
+                    {key === 'memory.provider' && isExternalMemoryProvider(getNested(config, key)) ? (
+                      <MemoryConnect profile={scopeProfile} provider={String(getNested(config, key))} />
+                    ) : null}
+                    {fieldSave[key] === 'failed' ? (
+                      <span className="mt-1 block text-(--destructive)" data-settings-field-error={key} role="alert">
+                        {c.autosaveFailed}
+                      </span>
+                    ) : fieldSave[key] === 'saving' ? (
+                      <span aria-live="polite" className="mt-1 block" data-settings-field-status={key}>
+                        {t.common.saving}
+                      </span>
+                    ) : null}
+                  </>
                 }
                 enumOptions={
                   key === 'tts.elevenlabs.voice_id'
@@ -604,4 +624,13 @@ function AttachmentSizeSetting() {
       title={c.attachmentSizeTitle}
     />
   )
+}
+
+/** P18g: dotted leaf keys of a config patch (arrays and scalars are leaves), to place save state beside each field. */
+function flattenKeys(o: unknown, prefix = ''): string[] {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) {
+    return prefix ? [prefix] : []
+  }
+
+  return Object.entries(o as Record<string, unknown>).flatMap(([k, v]) => flattenKeys(v, prefix ? `${prefix}.${k}` : k))
 }
