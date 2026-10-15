@@ -59,3 +59,7 @@
 :where([data-sfr-help], [data-sfr-status]) { margin: 0; font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); color: var(--muted-foreground, #9a9a9a); }
 :where([data-sfr-error]) { margin: 0; font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); color: var(--destructive, #e0898d); }
 @container settings-form (max-width: 40rem) { :where([data-settings-form-row]) { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-2, 8px); } :where([data-sfr-label]) { padding-top: 0; } }
+:where([data-settings-form-actions]) { display: flex; gap: var(--space-2, 8px); padding: var(--space-2, 8px) 0 0; margin-left: calc(min(14rem, 30%) + var(--space-4, 16px)); }
+:where([data-settings-group-desc]) { margin: 0 0 var(--space-2, 8px); }
+@container settings-form (max-width: 40rem) { :where([data-settings-form-actions]) { margin-left: 0; } }
+
