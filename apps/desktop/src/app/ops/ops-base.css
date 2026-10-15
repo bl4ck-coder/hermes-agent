@@ -860,3 +860,11 @@
 :where([data-ops-canvas]) { background-image: radial-gradient(color-mix(in srgb, var(--ops-muted) 12%, transparent) 1px, transparent 1.2px); background-size: 24px 24px; }
 :where([data-ops-canvas-viewport]) { background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--ops-gold, #c9a227) 6%, transparent) 1px, transparent 1.5px); background-size: 24px 24px; }
 
+/* P7: a Board card is its task: title body/600 up to two lines, one quiet meta line, controls on hover/focus. */
+:where([data-ops-card]) { padding: var(--space-3,12px); row-gap: var(--space-2,8px); }
+:where([data-ops-card]) > :where([data-ops-open-task]), :where([data-ops-card]) :where([data-ops-open-task]) { font-size: var(--type-body,16px); line-height: var(--type-body-lh,24px); font-weight: 600; -webkit-line-clamp: 2; }
+:where([data-ops-card]) > :where([data-ops-assignee]), :where([data-ops-card]) > :where([data-ops-card-signals]) { font-size: var(--type-caption,12px); line-height: var(--type-caption-lh,16px); }
+:where([data-ops-card]) :where([data-ops-card-id]) { display: none; }
+:where([data-ops-card]) > :where(input[type='checkbox']) { opacity: 0; }
+:where([data-ops-card]:hover, [data-ops-card]:focus-within) > :where(input[type='checkbox']), :where([data-ops-card]) > :where(input[type='checkbox']:checked) { opacity: 1; }
+

@@ -48,7 +48,8 @@ import {
 import { effectiveSort, type Favourite, type GroupBy, listViews, removeView, saveView, type SortBy, viewScope, viewsStore } from './board-plus'
 
 /** P8 b3: cards carry signals (tags, priority, subtasks, heartbeat, comments), so rows are taller. */
-export const ROW_H = 76
+// P7: pitch fits a two-line body title + one meta line (judge pass 7, Board).
+export const ROW_H = 100
 export const LAYOUTS: BoardLayout[] = ['board', 'list', 'table', 'calendar', 'timeline', 'files', 'favorites', 'review']
 
 export interface BoardActions {
