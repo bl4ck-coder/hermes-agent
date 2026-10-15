@@ -402,7 +402,7 @@ export function CommandCenterView({
             {section === 'sessions' ? (
               <div className="flex min-h-0 flex-1 flex-col">
                 {/* IA: search sits on top of the list it filters, not in the far header corner. */}
-                <SessionsHero label={cc.statSessions} locale={locale} sessions={sessions} span={cc.days(14)} />
+                {/* B41 (hierarchy spec): no stat hero over the list; the conversation to resume is the signal. */}
                 <div className="shrink-0 pb-3 pt-1" data-sessions-search="">
                   <SearchField onChange={next => setQuery(next)} placeholder={cc.searchPlaceholder} value={query} />
                 </div>
@@ -423,25 +423,28 @@ export function CommandCenterView({
                           <Fragment key={session.id}>
                             {showGroup && (
                               <li
-                                className="pb-1 pt-4 text-xs font-medium uppercase tracking-wider text-muted-foreground/60 first:pt-1"
+                                className="pb-2 pt-6 text-[length:var(--type-meta)] font-semibold text-muted-foreground first:pt-1"
                                 data-session-group=""
                                 role="presentation"
                               >
                                 {group}
                               </li>
                             )}
-                            <li className="group flex items-center gap-2 py-2">
+                            <li className="hx-row group rounded-lg hover:bg-(--ui-row-hover-background,rgb(255_255_255/0.04))" data-hx="row" data-session-row="" data-two-line="">
                               <button
-                                className="min-w-0 flex-1 text-left"
+                                className="flex min-w-0 flex-1 items-center gap-3 text-left"
                                 onClick={() => onOpenSession(session.id, session)}
                                 type="button"
                               >
-                                <div className="truncate text-[length:var(--conversation-text-font-size)] font-medium text-foreground">
-                                  {sessionTitle(session)}
-                                </div>
-                                <div className="truncate text-[length:var(--conversation-caption-font-size)] text-(--ui-text-tertiary)">
-                                  {formatTimestamp(session.last_active || session.started_at)}
-                                </div>
+                                <span className="hx-row-main">
+                                  <span className="hx-row-title truncate text-foreground">{sessionTitle(session)}</span>
+                                  {session.cwd || session.git_branch ? (
+                                    <span className="hx-row-secondary truncate text-muted-foreground">
+                                      {[session.cwd?.split(/[\\/]/).filter(Boolean).pop(), session.git_branch].filter(Boolean).join(' · ')}
+                                    </span>
+                                  ) : null}
+                                </span>
+                                <span className="hx-row-trailing text-muted-foreground">{formatTimestamp(session.last_active || session.started_at)}</span>
                               </button>
                               <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                                 <RowIconButton
@@ -802,7 +805,7 @@ export function sessionDateGroup(ts: number | undefined, locale: string, now = D
 }
 
 /** B35: Sessions hero: totals, today, and a 14-day activity spark. */
-function SessionsHero({ label, locale, sessions, span }: { label: string; locale: string; sessions: readonly { last_active?: number | null; started_at?: number | null }[]; span: string }) {
+export function SessionsHero({ label, locale, sessions, span }: { label: string; locale: string; sessions: readonly { last_active?: number | null; started_at?: number | null }[]; span: string }) {
   const now = Date.now()
   const todayKey = sessionDateGroup(now, locale, now)
   const days = Array.from({ length: 14 }, () => 0)
