@@ -1,3 +1,4 @@
+import { T } from '../ops/main-i18n'
 import { HeroBand, HeroSpark } from '@/components/hero-band'
 import { Codicon } from '@/components/ui/codicon'
 import { compactNumber } from '@hermes/shared'
@@ -819,7 +820,7 @@ function SessionsHero({ label, locale, sessions, span }: { label: string; locale
       className="mt-1"
       icon={<Codicon name="history" />}
       id="sessions"
-      spark={<HeroSpark label={span} values={days} />}
+      spark={<HeroSpark label={span} srSummary={T('{label}: {sum} total, peak {max}').replace('{label}', span).replace('{sum}', String(days.reduce((a, b) => a + b, 0))).replace('{max}', String(Math.max(0, ...days)))} values={days} />}
       stats={[{ label, value: sessions.length }, { label: todayKey, tone: today ? 'good' : 'muted', value: today }]}
       title={label}
     />

@@ -454,3 +454,9 @@ html[data-hermes-theme^='gold-night'] [data-artifact-cards]::before { color: rgb
 
 /* B36b: settings pages without SettingsSection (Model, etc.) still read as one deliberate card, not a form floating on the void. */
 html[data-hermes-theme^='gold-night'] [data-settings-body] > :not(:has([data-settings-section])) { background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.45), rgb(var(--glass-panel) / 0.35)); border: 1px solid rgb(var(--glass-gold-hi) / 0.12); border-radius: 18px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); margin-inline: 1rem; padding: 1.1rem 1.4rem; }
+/* -- Glass p14 (B37): App Settings scale (labels, help, controls, Apply); Agents example reads as a quote; Skills card descriptions span the card. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(label, h3, h4) { font-size: 0.92rem; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(p) { font-size: 0.8rem; line-height: 1.5; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select, button[role='combobox']) { font-size: 0.86rem; min-height: 2.5rem; }
+html[data-hermes-theme^='gold-night'] [data-settings-body] :where(button[data-variant='default'], button.bg-primary) { min-height: 2.25rem; padding-inline: 1.1rem; }
+html[data-hermes-theme^='gold-night'] [data-agents-empty-hint] { background: rgb(var(--glass-gold) / 0.08); box-shadow: inset 2px 0 0 rgb(var(--glass-gold-hi) / 0.6); }

@@ -164,7 +164,7 @@ if (want('probe')) {
   })
   save()
 }
-if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) }; const ready = await page.waitForFunction(() => { const v = [...document.querySelectorAll('[data-ops-stat-value]')]; return v.length > 0 && v.every(e => e.textContent !== 'unknown') }, null, { timeout: 25000 }).then(() => '', () => ' [STATS UNRESOLVED after 25s]'); return (await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr')) + ready })
+if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) }; const ready = await page.waitForFunction(() => { const v = [...document.querySelectorAll('[data-ops-stat-value]')]; return v.length > 0 && v.every(e => e.textContent !== 'unknown') }, null, { timeout: 25000 }).then(() => '', () => ' [STATS UNRESOLVED after 25s]'); if (ready) throw new Error('office stats unresolved after 25s'); return (await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr')) + ready })
 if (want('fps')) await sampleFps('office-motion', async () => {}, 6000)
 if (want('board')) await section('02-board', async () => {
   await go('/ops/board')

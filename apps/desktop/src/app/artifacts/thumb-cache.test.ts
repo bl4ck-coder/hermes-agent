@@ -21,6 +21,11 @@ function fakeCaches(store = new Map<string, Response>()) {
 const f = (impl: () => Promise<Response>) => vi.fn(impl) as unknown as typeof fetch
 
 describe('artifact thumbnail cache', () => {
+  it('stamps its own cached-at time so freshness never depends on a Date header', async () => {
+    const c = fakeCaches()
+    await resolveThumb('u', { caches: c, fetch: f(async () => png()), now: () => 123, toUrl: () => 'blob:a' })
+    expect(c.store.get('u')?.headers.get('x-hermes-cached-at')).toBe('123')
+  })
   it('fetches once, stores it, then serves from the cache', async () => {
     const c = fakeCaches()
     const fetchMock = vi.fn(async () => png())
@@ -45,8 +50,8 @@ describe('artifact thumbnail cache', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
   it('refetches a copy older than 7 days and keeps the stale one if the refetch fails', async () => {
-    const old = new Date(Date.UTC(2026, 0, 1)).toUTCString()
-    const c = fakeCaches(new Map([['u', png(old)]]))
+    const old = new Response(new Blob(['x'], { type: 'image/png' }), { headers: { 'content-type': 'image/png', 'x-hermes-cached-at': String(Date.UTC(2026, 0, 1)) } })
+    const c = fakeCaches(new Map([['u', old]]))
     const now = () => Date.UTC(2026, 0, 20)
     const failing = vi.fn(async () => { throw new Error('offline') })
     expect(await resolveThumb('u', { caches: c, fetch: failing as unknown as typeof fetch, now, toUrl: () => 'blob:stale' })).toBe('blob:stale')

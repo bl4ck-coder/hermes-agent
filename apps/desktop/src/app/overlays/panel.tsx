@@ -308,9 +308,9 @@ export function PanelEmpty({ action, description, icon = 'inbox', id, illustrati
     <div className="grid flex-1 place-items-center px-6 py-10 text-center" data-panel-empty={id ?? ''}>
       <div className="flex flex-col items-center gap-2" data-panel-empty-card="">
         {illustration ?? <Codicon className="text-muted-foreground/50" name={icon} size="1.25rem" />}
-        {title ? <p className={cn('font-medium text-foreground/90', illustration ? 'text-base' : 'text-sm')}>{title}</p> : null}
+        {title ? <p className={cn('font-medium text-foreground/90', illustration ? 'text-xl tracking-tight' : 'text-sm')}>{title}</p> : null}
         {description ? (
-          <p className={cn('max-w-sm leading-relaxed', illustration ? 'text-sm text-muted-foreground' : 'text-xs text-muted-foreground/70')}>{description}</p>
+          <p className={cn('leading-relaxed', illustration ? 'max-w-md text-[0.95rem] text-foreground/75' : 'max-w-sm text-xs text-muted-foreground/70')}>{description}</p>
         ) : null}
         {action ? <div className="mt-2">{action}</div> : null}
       </div>

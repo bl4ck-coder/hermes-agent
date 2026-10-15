@@ -105,7 +105,7 @@ export function AgentsView({ onClose }: AgentsViewProps) {
         <PanelEmpty
           action={
             <div className="flex flex-col items-center gap-2">
-              <p className="text-sm text-foreground/80" data-agents-empty-hint="">
+              <p className="rounded-lg px-3 py-2 text-[0.95rem] text-foreground/90" data-agents-empty-hint="">
                 {t.teach.agentsEmptyHint}
               </p>
               <CopyButton appearance="button" buttonVariant="outline" label={t.common.copy} showLabel text={agentsHintExample(t.teach.agentsEmptyHint)} />
@@ -482,7 +482,7 @@ export function agentHeroStats(list: readonly { status: SubagentStatus }[], a: T
 /** B36: one meaningful picture of delegation: a parent turn fanning out to child agents. */
 function DelegationIllustration() {
   return (
-    <svg aria-hidden className="mb-2 h-28 w-56" data-agents-illustration="" fill="none" viewBox="0 0 224 112">
+    <svg aria-hidden className="mb-3 h-36 w-72" data-agents-illustration="" fill="none" viewBox="0 0 224 112">
       <path d="M112 30 C112 58 40 52 40 84 M112 30 V84 M112 30 C112 58 184 52 184 84" stroke="currentColor" strokeDasharray="3 4" strokeOpacity="0.45" strokeWidth="1.5" />
       <circle cx="112" cy="22" fill="currentColor" fillOpacity="0.18" r="14" stroke="currentColor" strokeWidth="1.5" />
       <circle cx="112" cy="22" fill="currentColor" r="4" />

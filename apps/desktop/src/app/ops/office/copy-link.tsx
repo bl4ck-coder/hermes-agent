@@ -39,7 +39,7 @@ export function CopyLink({ kind, id, label }: { kind: LinkKind; id: string; labe
 
   return (
     <Tip label={state === 'copied' ? T('Link copied') : state === 'failed' ? T('Copy failed') : T('Copy link')}><button
-      aria-label={`Copy link to ${label ?? `${kind} ${id}`}`}
+      aria-label={T('Copy link to {target}').replace('{target}', label ?? `${kind} ${id}`)}
       data-ops-copy-link={`${kind}:${id}`}
       data-ops-copy-state={state}
       onClick={async e => {

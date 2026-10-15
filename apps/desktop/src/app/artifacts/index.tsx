@@ -35,6 +35,7 @@ import { normalize } from '@/lib/text'
 import { fmtDayTime } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { notify, notifyError } from '@/store/notifications'
+import { $activeProfile } from '@/store/profile'
 
 import { useRefreshHotkey } from '../hooks/use-refresh-hotkey'
 import { useRouteEnumParam } from '../hooks/use-route-enum-param'
@@ -132,7 +133,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
   const refreshInFlightRef = useRef(false)
   const artifactsLoadedRef = useRef(false)
   // B36: sessions whose profile was not up even after the retry: not an error toast, but never silent.
-  const [skippedSessions, setSkippedSessions] = useState(0)
+  const [skipped, setSkipped] = useState({ idle: 0, unreachable: 0 })
 
   const refreshArtifacts = useCallback(async () => {
     if (refreshInFlightRef.current) {
@@ -158,9 +159,11 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
       // First load streams: show artifacts session by session instead of a spinner until all 30 are read.
       // A refresh keeps the current list until the new one is complete, so it never flickers.
       const streaming = !artifactsLoadedRef.current
-      // B36c: the running (default) profile's sessions first, so first paint never waits on a cold profile backend.
+      // B36c/B37: this window's active profile's sessions first, so first paint never waits on a cold profile backend.
       // Order only affects arrival; the list is sorted by time either way.
-      const ordered = [...sessions].sort((l, r) => Number(Boolean(l.profile && l.profile !== 'default')) - Number(Boolean(r.profile && r.profile !== 'default')))
+      const here = $activeProfile.get() || 'default'
+      const away = (s: (typeof sessions)[number]) => Number((s.profile || 'default') !== here)
+      const ordered = [...sessions].sort((l, r) => away(l) - away(r))
       const first = await loadArtifactsForSessions(ordered, loadPage, {
         onSession: found => {
           if (streaming && found.length) {
@@ -186,7 +189,11 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
       // Pool states (retired, saturated, still waiting after the retry) mean "that profile is not up right now",
       // not "your transcripts are unreadable": skip them quietly; they index once the profile is opened.
       const failures = allFailures.filter(({ error }) => !isRetiredBackend(error) && !isSlotWaitTimeout(error))
-      setSkippedSessions(allFailures.filter(({ error }) => isSlotWaitTimeout(error)).length)
+      // B37: every quiet omission is counted, by what the error actually proves.
+      setSkipped({
+        idle: allFailures.filter(({ error }) => isRetiredBackend(error)).length,
+        unreachable: allFailures.filter(({ error }) => !isRetiredBackend(error) && isSlotWaitTimeout(error)).length
+      })
 
       if (failures.length > 0) {
         const safeLimitFailures = failures.filter(({ error }) =>
@@ -396,6 +403,15 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
         { id: 'link', label: a.tabLinks, meta: artifacts ? counts.link : null }
       ]}
     >
+      {skipped.idle + skipped.unreachable > 0 && (
+        <p className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-1 pt-2 text-xs text-muted-foreground" data-artifacts-partial={skipped.idle + skipped.unreachable} role="status">
+          {skipped.unreachable > 0 && <span>{T('Not indexed: {n} sessions (their profile could not be reached)').replace('{n}', String(skipped.unreachable))}</span>}
+          {skipped.idle > 0 && <span>{T('Not indexed: {n} sessions (profile idle; opening it indexes them)').replace('{n}', String(skipped.idle))}</span>}
+          <Button onClick={() => void refreshArtifacts()} size="sm" variant="ghost">
+            {T('Retry')}
+          </Button>
+        </p>
+      )}
       {!artifacts ? (
         <PageLoader label={a.indexing} />
       ) : visibleArtifacts.length === 0 ? (
@@ -446,14 +462,6 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                     total={visibleFileArtifacts.length}
                   />
                 </div>
-                {skippedSessions > 0 && (
-                  <p className="flex items-center gap-2 pb-1 text-xs text-muted-foreground" data-artifacts-partial={skippedSessions} role="status">
-                    {T('Not indexed (profile not running): {n} sessions').replace('{n}', String(skippedSessions))}
-                    <Button onClick={() => void refreshArtifacts()} size="sm" variant="ghost">
-                      {T('Retry')}
-                    </Button>
-                  </p>
-                )}
                 {currentFilePage === 1 && (
                   // B33: the newest files and links as preview cards; the full table stays below. B36: labelled "Recent" so the overlap with the table reads as intended.
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] gap-2 pb-2 pt-1.5" data-artifact-cards="" data-label={T('Recent')}>

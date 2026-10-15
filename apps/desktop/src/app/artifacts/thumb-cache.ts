@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 
 /**
- * B35/B36: GitHub Open Graph thumbnails are cached on this machine (Cache Storage, survives restarts).
- * - Opt-out: localStorage `hermes.artifacts.remoteThumbs` = 'off' makes no remote request at all (monograms only).
- * - Freshness: a cached card older than 7 days is refetched; if that fails the stale copy is still shown.
- * - Memory: at most MAX_LIVE blob URLs stay alive (oldest revoked); failures are not memoized, so they retry later.
- * Any failure resolves to null and the card keeps its monogram.
+ * B35-B37: GitHub Open Graph thumbnails cached on this machine (Cache Storage, survives restarts).
+ * - Opt-out: localStorage `hermes.artifacts.remoteThumbs` = 'off' => no remote request and no cached image served.
+ * - Freshness: every stored copy carries its own `x-hermes-cached-at`; older than 7 days is refetched (stale kept on failure).
+ *   Memory entries are age-checked too.
+ * - Blob URLs are reference-counted: an entry evicted past MAX_LIVE is revoked only when no mounted card still uses it.
+ * - Failures are never memoized. Any failure resolves to null and the card keeps its monogram.
  */
 export const THUMB_CACHE = 'hermes-artifact-thumbs-v1'
 export const THUMB_OPT_OUT_KEY = 'hermes.artifacts.remoteThumbs'
+export const CACHED_AT = 'x-hermes-cached-at'
 const MAX_AGE_MS = 7 * 86_400_000
 const MAX_LIVE = 150
 
-const memory = new Map<string, Promise<string | null>>()
+interface Entry { at: number; evicted: boolean; p: Promise<string | null>; refs: number }
+const memory = new Map<string, Entry>()
 
 interface Deps {
   caches?: Pick<CacheStorage, 'open'> | undefined
@@ -47,42 +50,68 @@ export async function resolveThumb(url: string, deps: Deps = defaultDeps()): Pro
     const cache = deps.caches ? await deps.caches.open(THUMB_CACHE).catch(() => undefined) : undefined
     const hit = cache ? await cache.match(url) : undefined
     if (hit?.ok) {
-      const dated = Date.parse(hit.headers.get('date') ?? '')
-      if (!Number.isFinite(dated) || now() - dated < MAX_AGE_MS) return deps.toUrl(await hit.blob())
+      const at = Number(hit.headers.get(CACHED_AT))
+      // No own timestamp (older entries) counts as stale: refetch, keep it only as a fallback.
+      if (Number.isFinite(at) && at > 0 && now() - at < MAX_AGE_MS) return deps.toUrl(await hit.blob())
       stale = hit
     }
     const res = await deps.fetch(url, { mode: 'cors', referrerPolicy: 'no-referrer', credentials: 'omit' }).catch(() => undefined)
     if (!res || !res.ok || !isImage(res)) return stale ? deps.toUrl(await stale.blob()) : null
-    if (cache) await cache.put(url, res.clone()).catch(() => undefined)
-    return deps.toUrl(await res.blob())
+    const blob = await res.blob()
+    if (cache) {
+      const headers = new Headers({ 'content-type': res.headers.get('content-type') ?? 'image/png', [CACHED_AT]: String(now()) })
+      await cache.put(url, new Response(blob, { headers })).catch(() => undefined)
+    }
+    return deps.toUrl(blob)
   } catch {
     return null
   }
 }
 
-export function cachedThumb(url: string): Promise<string | null> {
-  const known = memory.get(url)
-  if (known) {
-    memory.delete(url)
-    memory.set(url, known) // most recently used last
-    return known
-  }
-  const p = resolveThumb(url)
-  memory.set(url, p)
-  void p.then(src => {
-    if (src === null) memory.delete(url) // never memoize a failure
-  })
-  while (memory.size > MAX_LIVE) {
-    const [oldest, op] = memory.entries().next().value as [string, Promise<string | null>]
-    memory.delete(oldest)
-    void op.then(src => {
-      if (src && src.startsWith('blob:')) URL.revokeObjectURL(src)
-    })
-  }
-  return p
+const revoke = (e: Entry) => void e.p.then(src => { if (src && src.startsWith('blob:')) URL.revokeObjectURL(src) })
+
+function drop(url: string, e: Entry) {
+  memory.delete(url)
+  e.evicted = true
+  if (e.refs === 0) revoke(e)
 }
 
-/** 'pending' while resolving, a blob: URL when cached/fetched, null on any failure (caller shows the monogram). */
+/** Acquire a thumbnail; call the returned release() when the consumer unmounts. */
+export function acquireThumb(url: string): { p: Promise<string | null>; release: () => void } {
+  if (remoteThumbsOptedOut()) return { p: Promise.resolve(null), release: () => {} }
+  let e = memory.get(url)
+  if (e && Date.now() - e.at >= MAX_AGE_MS) {
+    drop(url, e)
+    e = undefined
+  }
+  if (e) {
+    memory.delete(url)
+    memory.set(url, e) // most recently used last
+  } else {
+    const entry: Entry = { at: Date.now(), evicted: false, p: resolveThumb(url), refs: 0 }
+    e = entry
+    memory.set(url, entry)
+    void entry.p.then(src => { if (src === null && memory.get(url) === entry) memory.delete(url) }) // never memoize a failure
+    for (const [oldUrl, old] of memory) {
+      if (memory.size <= MAX_LIVE) break
+      if (old !== entry) drop(oldUrl, old)
+    }
+  }
+  const held = e
+  held.refs++
+  let released = false
+  return {
+    p: held.p,
+    release: () => {
+      if (released) return
+      released = true
+      held.refs--
+      if (held.evicted && held.refs === 0) revoke(held)
+    }
+  }
+}
+
+/** 'pending' while resolving, a blob: URL when cached/fetched, null on any failure or opt-out (caller shows the monogram). */
 export function useCachedThumb(url: string | null): string | null | 'pending' {
   const [src, setSrc] = useState<string | null | 'pending'>(url ? 'pending' : null)
   useEffect(() => {
@@ -92,11 +121,14 @@ export function useCachedThumb(url: string | null): string | null | 'pending' {
     }
     let live = true
     setSrc('pending')
-    void cachedThumb(url).then(s => {
-      if (live) setSrc(s)
-    })
+    const { p, release } = acquireThumb(url)
+    void p.then(s => { if (live) setSrc(s) })
+    const onStorage = (ev: StorageEvent) => { if (ev.key === THUMB_OPT_OUT_KEY && remoteThumbsOptedOut()) setSrc(null) }
+    window.addEventListener('storage', onStorage)
     return () => {
       live = false
+      window.removeEventListener('storage', onStorage)
+      release()
     }
   }, [url])
   return src
