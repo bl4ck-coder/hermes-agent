@@ -2,6 +2,10 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Connected, board not updated": "Conectado, tablero sin actualizar",
+     "Connecting": "Conectando",
+     "Polling every 5 s": "Consultando cada 5 s",
+     "Live": "En vivo",
      "Not refreshed: {reason}. Showing the last loaded board.": "Sin actualizar: {reason}. Se muestra el último tablero cargado.",
      "Reset General and Dates to defaults": "Restablecer General y Fechas",
      "Dates and previews": "Fechas y vistas previas",
@@ -675,6 +679,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Connected, board not updated": "Connecté, tableau non mis à jour",
+     "Connecting": "Connexion",
+     "Polling every 5 s": "Interrogation toutes les 5 s",
+     "Live": "En direct",
      "Not refreshed: {reason}. Showing the last loaded board.": "Non actualisé : {reason}. Dernier tableau chargé affiché.",
      "Reset General and Dates to defaults": "Réinitialiser Général et Dates",
      "Dates and previews": "Dates et aperçus",
@@ -1347,6 +1355,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Connected, board not updated": "Verbunden, Board nicht aktualisiert",
+     "Connecting": "Verbindung wird hergestellt",
+     "Polling every 5 s": "Abfrage alle 5 s",
+     "Live": "Live",
      "Not refreshed: {reason}. Showing the last loaded board.": "Nicht aktualisiert: {reason}. Zuletzt geladenes Board wird angezeigt.",
      "Reset General and Dates to defaults": "Allgemein und Datum zurücksetzen",
      "Dates and previews": "Datum und Vorschauen",
@@ -2019,6 +2031,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Connected, board not updated": "Подключено, доска не обновлена",
+     "Connecting": "Подключение",
+     "Polling every 5 s": "Опрос каждые 5 с",
+     "Live": "В реальном времени",
      "Not refreshed: {reason}. Showing the last loaded board.": "Не обновлено: {reason}. Показана последняя загруженная доска.",
      "Reset General and Dates to defaults": "Сбросить «Общие» и «Даты»",
      "Dates and previews": "Даты и превью",
@@ -2691,6 +2707,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Connected, board not updated": "接続済み・ボード未更新",
+     "Connecting": "接続中",
+     "Polling every 5 s": "5 秒ごとに確認中",
+     "Live": "ライブ",
      "Not refreshed: {reason}. Showing the last loaded board.": "更新されていません: {reason}。最後に読み込んだボードを表示しています。",
      "Reset General and Dates to defaults": "全般と日付を既定に戻す",
      "Dates and previews": "日付とプレビュー",
@@ -3363,6 +3383,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Connected, board not updated": "已连接，看板未更新",
+     "Connecting": "正在连接",
+     "Polling every 5 s": "每 5 秒轮询",
+     "Live": "实时",
      "Not refreshed: {reason}. Showing the last loaded board.": "未刷新：{reason}。显示最后加载的看板。",
      "Reset General and Dates to defaults": "将常规和日期恢复默认",
      "Dates and previews": "日期与预览",
@@ -4035,6 +4059,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Connected, board not updated": "已連線，看板未更新",
+     "Connecting": "正在連線",
+     "Polling every 5 s": "每 5 秒輪詢",
+     "Live": "即時",
      "Not refreshed: {reason}. Showing the last loaded board.": "未重新整理：{reason}。顯示最後載入的看板。",
      "Reset General and Dates to defaults": "將一般與日期恢復預設",
      "Dates and previews": "日期與預覽",
@@ -4707,6 +4735,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Connected, board not updated": "متصل، اللوحة غير محدّثة",
+     "Connecting": "جارٍ الاتصال",
+     "Polling every 5 s": "استطلاع كل 5 ث",
+     "Live": "مباشر",
      "Not refreshed: {reason}. Showing the last loaded board.": "لم يتم التحديث: {reason}. يُعرض آخر لوح تم تحميله.",
      "Reset General and Dates to defaults": "إعادة تعيين العام والتواريخ",
      "Dates and previews": "التواريخ والمعاينات",

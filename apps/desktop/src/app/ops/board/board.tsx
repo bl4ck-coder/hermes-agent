@@ -462,8 +462,9 @@ export function BoardView(props: BoardViewProps) {
       ) : null}
 
       {props.pushMode ? (
-        <span data-ops-push={props.pushMode} role="status">
-          {props.pushMode === 'stream' ? 'Live' : props.pushMode === 'poll' ? 'Polling every 5 s' : 'Connecting'}
+        <span data-ops-push={props.error ? 'stale' : props.pushMode} role="status">
+          {/* P20b: transport state and snapshot freshness are different facts; a failed refresh wins. */}
+          {props.error ? T('Connected, board not updated') : T(props.pushMode === 'stream' ? 'Live' : props.pushMode === 'poll' ? 'Polling every 5 s' : 'Connecting')}
         </span>
       ) : null}
       {props.notice ? (
