@@ -262,7 +262,7 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
         attrs={{ 'data-ops-team': t.lane, 'data-ops-team-busy': t.open > 0 ? '' : undefined, 'data-ops-team-unassigned': t.lane === 'No lane' ? '' : undefined }}
         context={
           head ? (
-            <span data-ops-team-purpose="">
+            <span data-ops-team-current="">
               <span data-ops-team-now="">{T('Working on')}:</span>{' '}
               {head.blocked ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
               <span data-ops-team-task={head.id} data-ops-team-task-blocked={head.blocked ? '' : undefined}>{head.title}</span>
@@ -274,7 +274,7 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
         key={t.lane}
         meta={
           <>
-            <span data-ops-team-open="">{P(t.open, '{n} open')}</span>
+            <span data-ops-team-open-n="">{P(t.open, '{n} open')}</span>
             {t.blocked ? <span data-ops-team-blocked="">{P(t.blocked, '{n} blocked')}</span> : null}
             <span>{P(t.members.length, '{n} members')}</span>
           </>
@@ -332,7 +332,7 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
   return (
     <div data-ops-teams="">
       <p data-ops-teams-summary="">
-        {P(list.length, '{n} lanes')} \u00b7 {P(openTotal, '{n} open tasks')} \u00b7 {P(people.length, '{n} members')}
+        {P(list.length, '{n} lanes')} {'\u00b7'} {P(openTotal, '{n} open tasks')} {'\u00b7'} {P(people.length, '{n} members')}
       </p>
       {group('blocked', T('With blocked work'), blockedLanes)}
       {group('open', T('With open work'), openLanes)}
