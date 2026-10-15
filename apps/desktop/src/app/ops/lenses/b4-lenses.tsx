@@ -251,87 +251,101 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
   const people = [...new Set(list.flatMap(x => x.members))]
   const openTotal = list.reduce((n, x) => n + x.open, 0)
 
-  return (
-    <>
-    <p data-ops-teams-summary="">
-      {P(list.length, '{n} lanes')} · {P(openTotal, '{n} open tasks')} · {P(people.length, '{n} members')}
-    </p>
-    <ul data-ops-teams="">
-      {list.filter(t => t.open > 0).map(t => (
-        <li data-ops-team={t.lane} data-ops-team-busy={t.open > 0 ? '' : undefined} data-ops-team-unassigned={t.lane === 'No lane' ? '' : undefined} key={t.lane}>
-          <header data-ops-team-head="">
-            <h3>{t.lane === 'No lane' ? T('Unassigned') : t.lane}</h3>
+  const label = (lane: string) => (lane === 'No lane' ? T('Unassigned') : lane)
+
+  // P14 (judge consult): one EntityRow per lane: name → current work with its state → open/blocked and members → projects and the rest in a disclosure.
+  const row = (t: (typeof list)[number]) => {
+    const [head, ...rest] = t.focus
+
+    return (
+      <EntityRow
+        attrs={{ 'data-ops-team': t.lane, 'data-ops-team-busy': t.open > 0 ? '' : undefined, 'data-ops-team-unassigned': t.lane === 'No lane' ? '' : undefined }}
+        context={
+          head ? (
+            <span data-ops-team-purpose="">
+              <span data-ops-team-now="">{T('Working on')}:</span>{' '}
+              {head.blocked ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
+              <span data-ops-team-task={head.id} data-ops-team-task-blocked={head.blocked ? '' : undefined}>{head.title}</span>
+            </span>
+          ) : (
+            <span data-ops-team-idle="">{T('No open work')}</span>
+          )
+        }
+        key={t.lane}
+        meta={
+          <>
             <span data-ops-team-open="">{P(t.open, '{n} open')}</span>
             {t.blocked ? <span data-ops-team-blocked="">{P(t.blocked, '{n} blocked')}</span> : null}
-          </header>
-          {t.focus.length ? (
-            <>
-            {/* P11: the headline task is current work, labeled as such, not the team's purpose. */}
-            <p data-ops-team-now="">{T('Working on')}</p>
-            <ul aria-label={T('Working on')} data-ops-team-purpose="">
-              {t.focus.map(f => (
-                <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.blocked ? '' : undefined} key={f.id} title={f.title}>
-                  {f.blocked ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
-                  {f.title}
-                </li>
-              ))}
-            </ul>
-            </>
-          ) : (
-            <p data-ops-team-idle="" data-ops-team-purpose="">{T('No open work')}</p>
-          )}
-          <footer data-ops-team-foot="">
-            <span aria-label={T('Members:')} data-ops-team-members="" role="list">
-              {t.members.length
-                ? t.members.slice(0, 6).map(m => (
-                    <span data-ops-team-member={m} key={m} role="listitem" title={m}>
-                      <Sigil name={m} size={20} />
-                      <span data-ops-sr="">{m}</span>
-                    </span>
-                  ))
-                : <span data-ops-team-none="">{T('No members')}</span>}
-              {t.members.length > 6 ? (
-                // P12: the rest stay reachable by keyboard, touch and assistive tech, not only via title.
-                <details data-ops-team-more="" role="listitem">
-                  <summary aria-label={P(t.members.length - 6, '{n} more members')}>+{t.members.length - 6}</summary>
-                  {t.members.slice(6).join(', ')}
-                </details>
+            <span>{P(t.members.length, '{n} members')}</span>
+          </>
+        }
+        more={
+          <Disclosure label={T('Work and members')}>
+            <div data-ops-team-detail="">
+              {rest.length ? (
+                <ul aria-label={T('Working on')} data-ops-team-rest="">
+                  {rest.map(f => (
+                    <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.blocked ? '' : undefined} key={f.id}>
+                      {f.blocked ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
+                      {f.title}
+                    </li>
+                  ))}
+                </ul>
               ) : null}
-            </span>
-            {t.projects.length ? (
-              <span data-ops-team-projects="">
-                {t.projects.map(p => (
-                  <button data-ops-team-project={p} disabled={!onOpenRoute} key={p} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(p)}`)} type="button">
-                    {p}
-                  </button>
-                ))}
-              </span>
-            ) : null}
-          </footer>
-        </li>
-      ))}
-    </ul>
-    {/* P8: lanes with no open work take one line, not a card each. */}
-    {list.some(t => t.open === 0) ? (
-      <p data-ops-teams-idle="">
-        <span>{T('No open work')}:</span>{' '}
-        {list
-          .filter(t => t.open === 0)
-          .map(t => (
-            <span data-ops-team={t.lane} data-ops-team-idle-lane="" key={t.lane}>
-              {t.lane === 'No lane' ? T('Unassigned') : t.lane}
-              <span aria-label={T('Members:')} data-ops-team-members="" role="list">
-                {t.members.map(m => (
-                  <span data-ops-team-member={m} key={m} role="listitem" title={m}>
-                    <span data-ops-sr="">{m}</span>
-                  </span>
-                ))}
-              </span>
-            </span>
-          ))}
+              <p aria-label={T('Members:')} data-ops-team-members="">
+                {t.members.length ? t.members.map(m => <span data-ops-team-member={m} key={m}><Sigil name={m} size={20} /> {m}</span>) : <span data-ops-team-none="">{T('No members')}</span>}
+              </p>
+              {t.projects.length ? (
+                <p data-ops-team-projects="">
+                  {t.projects.map(pr => (
+                    <button data-ops-team-project={pr} disabled={!onOpenRoute} key={pr} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(pr)}`)} type="button">
+                      {pr}
+                    </button>
+                  ))}
+                </p>
+              ) : null}
+            </div>
+          </Disclosure>
+        }
+        title={label(t.lane)}
+        tone={t.blocked ? 'warn' : undefined}
+      />
+    )
+  }
+
+  const lanes = list.filter(t => t.lane !== 'No lane')
+  const blockedLanes = lanes.filter(t => t.open > 0 && t.blocked > 0)
+  const openLanes = lanes.filter(t => t.open > 0 && !t.blocked)
+  const idle = list.filter(t => t.open === 0)
+  const unassigned = list.find(t => t.lane === 'No lane' && t.open > 0)
+
+  const group = (id: string, title: string, xs: typeof list) =>
+    xs.length ? (
+      <div data-ops-rows-group={id} key={id}>
+        <h4>
+          {title} <span data-ops-rows-count="">{xs.length}</span>
+        </h4>
+        <EntityList label={title}>{xs.map(row)}</EntityList>
+      </div>
+    ) : null
+
+  return (
+    <div data-ops-teams="">
+      <p data-ops-teams-summary="">
+        {P(list.length, '{n} lanes')} \u00b7 {P(openTotal, '{n} open tasks')} \u00b7 {P(people.length, '{n} members')}
       </p>
-    ) : null}
-    </>
+      {group('blocked', T('With blocked work'), blockedLanes)}
+      {group('open', T('With open work'), openLanes)}
+      {unassigned ? group('unassigned', T('Work not assigned to a lane'), [unassigned]) : null}
+      {idle.length ? (
+        <details data-ops-rows-group="idle" data-ops-teams-idle="">
+          <summary>
+            {T('No open work')} <span data-ops-rows-count="">{idle.length}</span>
+          </summary>
+          <EntityList label={T('No open work')}>{idle.map(row)}</EntityList>
+        </details>
+      ) : null}
+    </div>
   )
 }
 

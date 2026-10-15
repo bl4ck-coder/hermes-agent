@@ -2,6 +2,10 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Work not assigned to a lane": "Trabajo sin carril asignado",
+     "With open work": "Con trabajo abierto",
+     "With blocked work": "Con trabajo bloqueado",
+     "Work and members": "Trabajo y miembros",
      "Fleet view": "Vista de la flota",
      "No run observed": "Sin ejecución observada",
      "Open profile": "Abrir perfil",
@@ -648,6 +652,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Work not assigned to a lane": "Travail non assigné à une voie",
+     "With open work": "Avec du travail ouvert",
+     "With blocked work": "Avec du travail bloqué",
+     "Work and members": "Travail et membres",
      "Fleet view": "Vue de la flotte",
      "No run observed": "Aucune exécution observée",
      "Open profile": "Ouvrir le profil",
@@ -1293,6 +1301,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Work not assigned to a lane": "Keiner Spur zugewiesene Arbeit",
+     "With open work": "Mit offener Arbeit",
+     "With blocked work": "Mit blockierter Arbeit",
+     "Work and members": "Arbeit und Mitglieder",
      "Fleet view": "Flottenansicht",
      "No run observed": "Keine Ausführung beobachtet",
      "Open profile": "Profil öffnen",
@@ -1938,6 +1950,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Work not assigned to a lane": "Работа без дорожки",
+     "With open work": "С открытой работой",
+     "With blocked work": "С заблокированной работой",
+     "Work and members": "Работа и участники",
      "Fleet view": "Вид парка",
      "No run observed": "Запусков не замечено",
      "Open profile": "Открыть профиль",
@@ -2583,6 +2599,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Work not assigned to a lane": "レーン未割り当ての作業",
+     "With open work": "未完了の作業あり",
+     "With blocked work": "ブロック中の作業あり",
+     "Work and members": "作業とメンバー",
      "Fleet view": "フリートの表示",
      "No run observed": "実行は観測されていません",
      "Open profile": "プロフィールを開く",
@@ -3228,6 +3248,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Work not assigned to a lane": "未分配泳道的工作",
+     "With open work": "有未完成的工作",
+     "With blocked work": "有受阻的工作",
+     "Work and members": "工作与成员",
      "Fleet view": "舰队视图",
      "No run observed": "未观察到运行",
      "Open profile": "打开配置文件",
@@ -3873,6 +3897,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Work not assigned to a lane": "未分配泳道的工作",
+     "With open work": "有未完成的工作",
+     "With blocked work": "有受阻的工作",
+     "Work and members": "工作與成員",
      "Fleet view": "艦隊檢視",
      "No run observed": "未觀察到執行",
      "Open profile": "開啟設定檔",
@@ -4518,6 +4546,10 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Work not assigned to a lane": "عمل غير مسند إلى مسار",
+     "With open work": "بها عمل مفتوح",
+     "With blocked work": "بها عمل محظور",
+     "Work and members": "العمل والأعضاء",
      "Fleet view": "عرض الأسطول",
      "No run observed": "لم يُلاحظ أي تشغيل",
      "Open profile": "فتح الملف الشخصي",
