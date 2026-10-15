@@ -2,6 +2,7 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Reset General and Dates to defaults": "Restablecer General y Fechas",
      "Dates and previews": "Fechas y vistas previas",
      "Among the first {n} profiles checked": "Entre los primeros {n} perfiles revisados",
      "None observed": "Ninguno observado",
@@ -673,6 +674,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Reset General and Dates to defaults": "Réinitialiser Général et Dates",
      "Dates and previews": "Dates et aperçus",
      "Among the first {n} profiles checked": "Parmi les {n} premiers profils vérifiés",
      "None observed": "Aucun observé",
@@ -1343,6 +1345,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Reset General and Dates to defaults": "Allgemein und Datum zurücksetzen",
      "Dates and previews": "Datum und Vorschauen",
      "Among the first {n} profiles checked": "Unter den ersten {n} geprüften Profilen",
      "None observed": "Keine beobachtet",
@@ -2013,6 +2016,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Reset General and Dates to defaults": "Сбросить «Общие» и «Даты»",
      "Dates and previews": "Даты и превью",
      "Among the first {n} profiles checked": "Среди первых {n} проверенных профилей",
      "None observed": "Не замечено",
@@ -2683,6 +2687,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Reset General and Dates to defaults": "全般と日付を既定に戻す",
      "Dates and previews": "日付とプレビュー",
      "Among the first {n} profiles checked": "確認した最初の {n} 件のプロファイル内",
      "None observed": "観測なし",
@@ -3353,6 +3358,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Reset General and Dates to defaults": "将常规和日期恢复默认",
      "Dates and previews": "日期与预览",
      "Among the first {n} profiles checked": "在检查的前 {n} 个配置文件中",
      "None observed": "未观察到",
@@ -4023,6 +4029,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Reset General and Dates to defaults": "將一般與日期恢復預設",
      "Dates and previews": "日期與預覽",
      "Among the first {n} profiles checked": "在檢查的前 {n} 個設定檔中",
      "None observed": "未觀察到",
@@ -4693,6 +4700,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Reset General and Dates to defaults": "إعادة تعيين العام والتواريخ",
      "Dates and previews": "التواريخ والمعاينات",
      "Among the first {n} profiles checked": "ضمن أول {n} ملفات تم فحصها",
      "None observed": "لم يُلاحظ أي منها",

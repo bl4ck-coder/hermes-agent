@@ -292,9 +292,12 @@ export function SettingsView({
             <small>{T("Loads GitHub preview images for linked repos and PRs (cached on this machine for 7 days). Off keeps the monogram and makes no request.")}</small>
           </dd>
         </dl>
-        <button data-ops-prefs-reset="" disabled={JSON.stringify(prefs) === JSON.stringify(DEFAULT_PREFS)} onClick={() => set({ ...DEFAULT_PREFS })} type="button">
-          {T("Reset to defaults")}</button>
       </Group>
+      {/* P18c (pass16 #3): Reset restores every preference above (General and Dates), so it says so and sits after both groups. */}
+      <p data-ops-prefs-reset-row="">
+        <button data-ops-prefs-reset="" disabled={JSON.stringify(prefs) === JSON.stringify(DEFAULT_PREFS)} onClick={() => set({ ...DEFAULT_PREFS })} type="button">
+          {T("Reset General and Dates to defaults")}</button>
+      </p>
       <Group id="ops" title={T("Ops")}>
         {policy?.fail_closed ? (
           <p data-ops-policy-invalid="" role="alert">
