@@ -82,7 +82,17 @@ export function SkillDetail({
         </dl>
       )}
       {contentQuery.isLoading ? (
-        <CountSkeleton />
+        <div aria-busy="true" aria-label={t.skills.loading} data-skill-loading="">
+          <CountSkeleton />
+        </div>
+      ) : contentQuery.isError ? (
+        // P8: a failed load says so and offers a retry instead of an empty pane.
+        <div className="flex items-center gap-3 text-(length:--type-meta) text-(--ui-text-secondary)" data-skill-load-error="" role="alert">
+          <span>{contentQuery.error instanceof Error ? contentQuery.error.message : String(contentQuery.error)}</span>
+          <Button onClick={() => void contentQuery.refetch()} size="sm" variant="outline">
+            {t.skills.refresh}
+          </Button>
+        </div>
       ) : parsed ? (
         <pre
           className="overflow-auto whitespace-pre-wrap wrap-break-word font-sans text-(length:--type-body) leading-(--type-reading-lh) text-foreground"
