@@ -834,8 +834,9 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
 
   const missing = (['catalog', 'servers', 'platforms', 'providers'] as const).filter(k => r.value![k] === null)
   const base = filter === 'connected' ? cards.filter(x => x.connected) : cards
-  const shown = searchRows(base, q, x => [x.name, x.description]).filter(x => !cat || x.category === cat)
-  const connectedFirst = filter === 'all' && !cat && !q && shown.some(x => x.connected)
+  // P16c: configured apps lead under every filter, and each group is in stable alphabetical order.
+  const shown = searchRows(base, q, x => [x.name, x.description]).filter(x => !cat || x.category === cat).sort((a, b) => a.name.localeCompare(b.name))
+  const connectedFirst = shown.some(x => x.connected)
   const cats = Object.values(APP_CATEGORIES)
 
   return (
