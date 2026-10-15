@@ -465,7 +465,7 @@ export function ArtifactsView({ setStatusbarItemGroup: _setStatusbarItemGroup, .
                 {currentFilePage === 1 && (
                   // B33: the newest files and links as preview cards; the full table stays below. B36: labelled "Recent" so the overlap with the table reads as intended.
                   // B40 (judge pass 5): Recent is a one-row summary; the full list stays in view right below.
-                  <div className="grid grid-cols-3 gap-4 pb-4 pt-2" data-artifact-cards="" data-label={T('Recent')}>
+                  <div className="grid grid-cols-3 gap-3 pb-3 pt-1" data-artifact-cards="" data-label={T('Recent')}>
                     {pagedFileArtifacts.slice(0, 3).map(artifact => (
                       <ArtifactPreviewCard artifact={artifact} key={artifact.id} onOpen={openArtifact} />
                     ))}
@@ -536,12 +536,13 @@ function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; o
 
   return (
     <button
-      className="group flex min-w-0 flex-col gap-1.5 rounded-xl border border-(--ui-stroke-tertiary) bg-(--ui-chat-bubble-background) p-3 text-left text-xs transition-colors hover:border-(--ui-stroke-secondary)"
+      // P8 (judge pass 8): Recent is secondary to the list: one compact row per card, a 32px mark unless a real preview exists.
+      className="group grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 rounded-lg border border-(--ui-stroke-tertiary) px-3 py-2 text-left text-sm transition-colors hover:border-(--ui-stroke-secondary)"
       data-artifact-card={artifact.kind}
       onClick={() => onOpen(artifact)}
       type="button"
     >
-      <span aria-hidden className="relative -mx-3 -mt-3 mb-1 block h-24 overflow-hidden rounded-t-xl" data-artifact-thumb={showImg ? 'image' : 'monogram'} data-artifact-thumb-cache={cached === 'pending' ? 'pending' : cached ? 'hit' : 'none'}>
+      <span aria-hidden className={`relative row-span-2 block shrink-0 overflow-hidden rounded-md ${showImg ? 'h-8 w-14' : 'size-8'}`} data-artifact-thumb={showImg ? 'image' : 'monogram'} data-artifact-thumb-cache={cached === 'pending' ? 'pending' : cached ? 'hit' : 'none'}>
         {showImg ? (
           <img
             alt=""
@@ -553,17 +554,14 @@ function ArtifactPreviewCard({ artifact, onOpen }: { artifact: ArtifactRecord; o
             src={cached as string}
           />
         ) : (
-          <span className="grid size-full place-items-center font-mono text-2xl tracking-widest" data-artifact-monogram="">
-            {artifactBadge(artifact).slice(0, 4)}
+          <span className="grid size-full place-items-center font-mono text-xs" data-artifact-monogram="">
+            {artifactBadge(artifact).slice(0, 2)}
           </span>
         )}
       </span>
-      <span className="self-start rounded-md px-1.5 py-0.5 font-mono text-xs tracking-wide" data-artifact-badge="">
-        {artifactBadge(artifact)}
-      </span>
       <span className="truncate text-sm font-medium text-foreground">{artifact.label}</span>
-      <span className="truncate text-muted-foreground">{artifact.sessionTitle}</span>
-      <span className="text-xs text-muted-foreground/70 tabular-nums">
+      <span className="truncate text-xs text-muted-foreground tabular-nums" data-artifact-badge="">
+        {artifactBadge(artifact)} ·{' '}
         {new Date(artifact.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
       </span>
     </button>
