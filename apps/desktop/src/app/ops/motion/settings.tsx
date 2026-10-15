@@ -4,8 +4,11 @@
  * through the Canvas model node (P2 policy, A5/A6 backup); secret presence lists names and set/unset only until a backend reports them.
  */
 
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useId, useMemo, useState } from 'react'
 
+import { SettingsFormRow, settingsRowIds } from '@/components/ui/settings-form-row'
+
+import { remoteThumbsOptedOut, THUMB_OPT_OUT_KEY, THUMB_PREF_EVENT } from '../../artifacts/thumb-cache'
 import { forgetDrafts } from '../canvas/drafts'
 import { createNodeClient } from '../canvas/node-editor'
 import { NodeEditor } from '../canvas/node-editor-view'
@@ -16,8 +19,6 @@ import { useOpsResource } from '../office/office-container'
 import { ThresholdSettings } from '../office/thresholds'
 import { Sigil } from '../primitives/sigil'
 import { OpsShortcutSheet } from '../shortcut-sheet'
-
-import { remoteThumbsOptedOut, THUMB_OPT_OUT_KEY, THUMB_PREF_EVENT } from '../../artifacts/thumb-cache'
 
 import { DiagnosticsPanel, SystemStatus } from './diagnostics'
 import { cycleMotion, loadMotion, type MotionMode, saveMotion } from './motion'
@@ -99,11 +100,62 @@ export function useMotionMode(): [MotionMode, (m: MotionMode) => void] {
 
 const LABEL: Record<MotionMode, string> = { full: 'Full', reduced: 'Reduced', system: 'System' }
 
-export function MotionReadout({ mode, onChange }: { mode: MotionMode; onChange: (m: MotionMode) => void }) {
+export function MotionReadout({ mode, onChange, id }: { mode: MotionMode; onChange: (m: MotionMode) => void; id?: string }) {
   return (
-    <button aria-label={`Motion: ${LABEL[mode]}`} data-ops-motion={mode} onClick={() => onChange(cycleMotion(mode))} type="button">
+    <button aria-label={`Motion: ${LABEL[mode]}`} data-ops-motion={mode} id={id} onClick={() => onChange(cycleMotion(mode))} type="button">
       {T("Motion:")}{' '}{LABEL[mode]}
     </button>
+  )
+}
+
+/**
+ * P24 (judge pass 18): a preference row is the shared SettingsFormRow (label, control, help, error, status). A refused save
+ * keeps the draft in the control and says why beside it, with Retry (this preference only) and Revert (back to what is saved).
+ */
+function PrefRow({
+  id,
+  label,
+  help,
+  error,
+  saved,
+  onRetry,
+  onRevert,
+  children
+}: {
+  id: string
+  label: ReactNode
+  help?: ReactNode
+  /** undefined = no error; '' = refused without a reason. */
+  error?: string
+  saved?: boolean
+  onRetry?: () => void
+  onRevert?: () => void
+  children: ReactNode
+}) {
+  return (
+    <SettingsFormRow
+      error={
+        error === undefined ? undefined : (
+          <>
+            {T('Not saved:')} {error || T('reason not recorded')}
+            <span data-ops-pref-recover="">
+              <button data-ops-pref-retry="" onClick={onRetry} type="button">
+                {T('Retry')}
+              </button>
+              <button data-ops-pref-revert="" onClick={onRevert} type="button">
+                {T('Revert to saved value')}
+              </button>
+            </span>
+          </>
+        )
+      }
+      help={help}
+      id={id}
+      label={label}
+      status={saved && error === undefined ? T('Saved on this device') : undefined}
+    >
+      {children}
+    </SettingsFormRow>
   )
 }
 
@@ -112,7 +164,7 @@ function Group({ id, title, hint, folded = false, children }: { id: string; titl
   // Glass p8: reference groups (shortcuts, security detail) fold behind a one-line summary.
   if (folded) {
     return (
-      <details aria-label={title} data-ops-settings-group={id} data-ops-settings-folded="">
+      <details aria-label={title} data-ops-settings-folded="" data-ops-settings-group={id}>
         <summary>
           <h3>{title}</h3>
           {hint ? <span data-ops-settings-hint="">{hint}</span> : null}
@@ -157,6 +209,7 @@ export function SettingsView({
   const policySource = policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null
   const [draftNote, setDraftNote] = useState<string | null>(null)
   const [thumbs, setThumbs] = useState(() => !remoteThumbsOptedOut())
+
   const setRemoteThumbs = (on: boolean) => {
     try {
       if (on) {
@@ -174,11 +227,55 @@ export function SettingsView({
   }
   // P8: no Settings inspector detail: it only repeated the form's own values (judge pass 8).
 
+  // P24: per-preference save outcome. A refused write keeps the draft visible; only the edited keys are written, so a failed
+  // draft of another preference is never smuggled to disk by a later edit.
+  const [prefErr, setPrefErr] = useState<Partial<Record<keyof OpsPrefs, string>>>({})
+  const [savedKeys, setSavedKeys] = useState<(keyof OpsPrefs)[]>([])
+  const uid = useId()
+
   const set = (p: Partial<OpsPrefs>) => {
-    const next = { ...prefs, ...p }
-    savePrefs(next)
-    setPrefs(next)
+    const keys = Object.keys(p) as (keyof OpsPrefs)[]
+    setPrefs(prev => ({ ...prev, ...p }))
+
+    try {
+      savePrefs({ ...loadPrefs(), ...p })
+      setPrefErr(prev => omitKeys(prev, keys))
+      setSavedKeys(keys)
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e)
+      setPrefErr(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, reason])) }))
+      setSavedKeys([])
+    }
   }
+
+  const retry = (k: keyof OpsPrefs) => set({ [k]: prefs[k] } as Partial<OpsPrefs>)
+
+  const revert = (k: keyof OpsPrefs) => {
+    const saved = loadPrefs()
+    setPrefs(prev => ({ ...prev, [k]: saved[k] }))
+    setPrefErr(prev => omitKeys(prev, [k]))
+  }
+
+  /** Row + control wiring for one preference: label→control, help/error described, invalid while refused. */
+  const pref = (k: keyof OpsPrefs, help?: boolean) => {
+    const id = `${uid}-${k}`
+    const ids = settingsRowIds(id)
+    const err = prefErr[k]
+    const describedBy = [help ? ids.help : null, err !== undefined ? ids.error : null].filter(Boolean).join(' ') || undefined
+
+    return {
+      row: { id, error: err, saved: savedKeys.includes(k), onRetry: () => retry(k), onRevert: () => revert(k) },
+      control: { id, 'aria-invalid': err !== undefined ? true : undefined, 'aria-describedby': describedBy }
+    }
+  }
+
+  const theme = pref('theme')
+  const defaultTab = pref('defaultTab')
+  const launch = pref('openOnLaunch', true)
+  const tz = pref('timezone', true)
+  const dateFormat = pref('dateFormat')
+  const notifyApprovals = pref('notifyApprovals')
+  const notifyBlocked = pref('notifyBlocked')
 
   return (
     <section aria-label={T("Ops settings")} data-ops-settings="" data-ops-theme={prefs.theme}>
@@ -232,10 +329,10 @@ export function SettingsView({
       </section>
       <div aria-labelledby="ops-settings-tab-settings" data-ops-settings-main="" hidden={view !== 'settings'} id="ops-settings-panel-settings" role="tabpanel">
       <Group id="general" title={T("General")}>
-        <dl>
-          <dt>{T("Theme")}</dt>
-          <dd>
-            <select aria-label={T("theme")} onChange={e => set({ theme: e.target.value as OpsTheme })} value={prefs.theme}>
+        {/* P24: the shared SettingsFormRow anatomy; rows stack by the form's own width (container query), not the window. */}
+        <div data-settings-form-rows="">
+          <PrefRow {...theme.row} label={T("Theme")}>
+            <select aria-label={T("theme")} {...theme.control} onChange={e => set({ theme: e.target.value as OpsTheme })} value={prefs.theme}>
               <option value="gold-night">{T("Gold Night (default)")}</option>
               <option value="light">{T("Light")}</option>
               <option value="dark">{T("Dark")}</option>
@@ -243,32 +340,27 @@ export function SettingsView({
             </select>
             <button data-ops-open-route="/settings" onClick={() => onOpenRoute?.('/settings')} type="button">
               {T("Desktop appearance")}</button>
-          </dd>
-          <dt>{T("Motion")}</dt>
-          <dd>
-            <MotionReadout mode={motion} onChange={setMotion} />
-          </dd>
-          <dt>{T("Default tab")}</dt>
-          <dd>
-            <select aria-label={T("default tab")} onChange={e => set({ defaultTab: e.target.value as OpsPrefs['defaultTab'] })} value={prefs.defaultTab}>
+          </PrefRow>
+          <PrefRow id={`${uid}-motion`} label={T("Motion")}>
+            <MotionReadout id={`${uid}-motion`} mode={motion} onChange={setMotion} />
+          </PrefRow>
+          <PrefRow {...defaultTab.row} label={T("Default tab")}>
+            <select aria-label={T("default tab")} {...defaultTab.control} onChange={e => set({ defaultTab: e.target.value as OpsPrefs['defaultTab'] })} value={prefs.defaultTab}>
               <option value="office">{T("Office")}</option>
               <option value="canvas">{T("Canvas")}</option>
               <option value="board">{T("Board")}</option>
             </select>
-          </dd>
-          <dt>{T("Open Ops on launch")}</dt>
-          <dd>
-            <input aria-label={T("open ops on launch")} checked={prefs.openOnLaunch} onChange={e => set({ openOnLaunch: e.target.checked })} type="checkbox" />
-            <small data-ops-launch-route="">{opsLaunchRoute(prefs) ?? T('Desktop opens its own start page.')}</small>
-          </dd>
-        </dl>
+          </PrefRow>
+          <PrefRow {...launch.row} help={<span data-ops-launch-route="">{opsLaunchRoute(prefs) ?? T('Desktop opens its own start page.')}</span>} label={T("Open Ops on launch")}>
+            <input aria-label={T("open ops on launch")} {...launch.control} checked={prefs.openOnLaunch} onChange={e => set({ openOnLaunch: e.target.checked })} type="checkbox" />
+          </PrefRow>
+        </div>
       </Group>
       {/* P17d (judge consult): dates and previews are their own group; Reset closes the preferences it resets. */}
       <Group id="dates" title={T("Dates and previews")}>
-        <dl>
-          <dt>{T("Timezone")}</dt>
-          <dd>
-            <select aria-label={T("timezone")} data-ops-timezone={opsTimezone(prefs)} onChange={e => set({ timezone: validTimezone(e.target.value) })} value={prefs.timezone}>
+        <div data-settings-form-rows="">
+          <PrefRow {...tz.row} help={T("\"Today\" and \"this week\" in Office use this zone.")} label={T("Timezone")}>
+            <select aria-label={T("timezone")} {...tz.control} data-ops-timezone={opsTimezone(prefs)} onChange={e => set({ timezone: validTimezone(e.target.value) })} value={prefs.timezone}>
               <option value="">{T("Host local (")}{hostTimezone()})</option>
               {[...new Set([...TZ_CHOICES, ...(prefs.timezone ? [prefs.timezone] : [])])].map(z => (
                 <option key={z} value={z}>
@@ -276,22 +368,23 @@ export function SettingsView({
                 </option>
               ))}
             </select>
-            <small>{T("\"Today\" and \"this week\" in Office use this zone.")}</small>
-          </dd>
-          <dt>{T("Date format")}</dt>
-          <dd>
-            <select aria-label={T("date format")} onChange={e => set({ dateFormat: e.target.value as OpsPrefs['dateFormat'] })} value={prefs.dateFormat}>
+          </PrefRow>
+          <PrefRow {...dateFormat.row} label={T("Date format")}>
+            <select aria-label={T("date format")} {...dateFormat.control} onChange={e => set({ dateFormat: e.target.value as OpsPrefs['dateFormat'] })} value={prefs.dateFormat}>
               <option value="relative">{T("Relative")}</option>
               <option value="iso">ISO</option>
               <option value="local">{T("Local")}</option>
             </select>
-          </dd>
-          <dt>{T("Artifact previews")}</dt>
-          <dd>
-            <input aria-label={T("load GitHub preview images")} checked={thumbs} data-ops-remote-thumbs={thumbs ? 'on' : 'off'} onChange={e => setRemoteThumbs(e.target.checked)} type="checkbox" />
-            <small>{T("Loads GitHub preview images for linked repos and PRs (cached on this machine for 7 days). Off keeps the monogram and makes no request.")}</small>
-          </dd>
-        </dl>
+          </PrefRow>
+          {/* B39: this toggle already shows the preference in effect when storage refuses the write. */}
+          <PrefRow
+            help={T("Loads GitHub preview images for linked repos and PRs (cached on this machine for 7 days). Off keeps the monogram and makes no request.")}
+            id={`${uid}-thumbs`}
+            label={T("Artifact previews")}
+          >
+            <input aria-describedby={settingsRowIds(`${uid}-thumbs`).help} aria-label={T("load GitHub preview images")} checked={thumbs} data-ops-remote-thumbs={thumbs ? 'on' : 'off'} id={`${uid}-thumbs`} onChange={e => setRemoteThumbs(e.target.checked)} type="checkbox" />
+          </PrefRow>
+        </div>
       </Group>
       {/* P18c (pass16 #3): Reset restores every preference above (General and Dates), so it says so and sits after both groups. */}
       <p data-ops-prefs-reset-row="">
@@ -331,12 +424,14 @@ export function SettingsView({
         </dl>
       </Group>
       <Group id="notifications" title={T("Notifications")}>
-        <label>
-          <input aria-label={T("notify approvals")} checked={prefs.notifyApprovals} onChange={e => (set({ notifyApprovals: e.target.checked }), e.target.checked && requestNotify())} type="checkbox" />
-          {T("New approval waiting")}</label>
-        <label>
-          <input aria-label={T("notify blocked")} checked={prefs.notifyBlocked} onChange={e => (set({ notifyBlocked: e.target.checked }), e.target.checked && requestNotify())} type="checkbox" />
-          {T("A task becomes blocked")}</label>
+        <div data-settings-form-rows="">
+          <PrefRow {...notifyApprovals.row} label={T("New approval waiting")}>
+            <input aria-label={T("notify approvals")} {...notifyApprovals.control} checked={prefs.notifyApprovals} onChange={e => (set({ notifyApprovals: e.target.checked }), e.target.checked && requestNotify())} type="checkbox" />
+          </PrefRow>
+          <PrefRow {...notifyBlocked.row} label={T("A task becomes blocked")}>
+            <input aria-label={T("notify blocked")} {...notifyBlocked.control} checked={prefs.notifyBlocked} onChange={e => (set({ notifyBlocked: e.target.checked }), e.target.checked && requestNotify())} type="checkbox" />
+          </PrefRow>
+        </div>
         <p>{T("Silent OS notifications; Desktop never takes focus.")}</p>
       </Group>
       <Group folded hint={T("Keyboard cheat sheet")} id="shortcuts" title={T("Shortcuts")}>
@@ -401,6 +496,10 @@ export function SettingsView({
       {sheet ? <OpsShortcutSheet onClose={() => setSheet(false)} /> : null}
     </section>
   )
+}
+
+function omitKeys<T extends object>(o: T, keys: readonly PropertyKey[]): T {
+  return Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k))) as T
 }
 
 function requestNotify() {
