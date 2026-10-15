@@ -200,7 +200,6 @@ export function NeedsYouQueue(p: NeedsYouProps) {
             {T("Request changes")}</button>
           {p.onOpenTask ? <button onClick={() => p.onOpenTask?.(item.id)} type="button">{T("Open task")}</button> : null}
           {comment(item, key)}
-          {why ? null : <small data-ops-why-missing="">{T("reason not recorded")}</small>}
         </Disclosure>
       )
     } else if (item.origin === 'kanban_blocked') {
@@ -215,7 +214,6 @@ export function NeedsYouQueue(p: NeedsYouProps) {
             {label(key, 'Unblock', 'Unblocked')}
           </button>
           {comment(item, key)}
-          {why ? null : <small data-ops-why-missing="">{T("reason not recorded")}</small>}
         </Disclosure>
       )
     } else {
@@ -227,7 +225,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
         attrs={{ 'data-ops-approval': key, 'data-ops-origin': item.origin }}
         context={
           <>
-            {why ? <span data-ops-why="">{why}</span> : null}
+            {/* P23b (judge pass 17): the reason helps decide, so it sits before the controls; a missing one is said here too. */}
+            {why ? <span data-ops-why="">{why}</span> : item.origin === 'kanban_review' || item.origin === 'kanban_blocked' ? <span data-ops-why-missing="">{T("reason not recorded")}</span> : null}
             {cmd && (item.origin === 'jsonrpc' || item.origin === 'gateway_run') ? <pre data-ops-row-command="" data-ops-waiting-on="">{cmd}</pre> : null}
           </>
         }

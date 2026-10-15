@@ -356,16 +356,17 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
 /** P14 (judge consult): one list, each agent once. Attention first, then running, then no run observed.
  * name → work/problem → status and last activity → open profile; infrastructure in Details. */
 function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; now: number; onOpen?: (name: string) => void }) {
-  const hot = (r: (typeof rows)[number]) => r.status === 'failing' || r.status === 'unknown' || (r.failed7d ?? 0) > 0
+  // P23c (judge pass 17): a failure in the last 7 days is history, not a current incident. Attention is what is failing
+  // or unreadable now; recent failures get their own quieter group below it.
+  const hot = (r: (typeof rows)[number]) => r.status === 'failing' || r.status === 'unknown'
+  const recentFail = (r: (typeof rows)[number]) => !hot(r) && r.status !== 'running' && (r.failed7d ?? 0) > 0
 
-  const attention = rows
-    .filter(hot)
-    .sort((a, b) => Number(b.status === 'failing') - Number(a.status === 'failing') || Number(a.status === 'unknown') - Number(b.status === 'unknown') || (b.failed7d ?? 0) - (a.failed7d ?? 0))
-
+  const attention = rows.filter(hot).sort((a, b) => Number(b.status === 'failing') - Number(a.status === 'failing') || (b.failed7d ?? 0) - (a.failed7d ?? 0))
+  const recent = rows.filter(recentFail).sort((a, b) => (b.failed7d ?? 0) - (a.failed7d ?? 0))
   const running = rows.filter(r => !hot(r) && r.status === 'running')
   // P15 (judge): inactive now is not the same as never observed.
-  const idleNow = rows.filter(r => !hot(r) && r.status !== 'running' && (r.lastActive || (r.runs7d ?? 0) > 0))
-  const quiet = rows.filter(r => !hot(r) && r.status !== 'running' && !(r.lastActive || (r.runs7d ?? 0) > 0))
+  const idleNow = rows.filter(r => !hot(r) && !recentFail(r) && r.status !== 'running' && (r.lastActive || (r.runs7d ?? 0) > 0))
+  const quiet = rows.filter(r => !hot(r) && !recentFail(r) && r.status !== 'running' && !(r.lastActive || (r.runs7d ?? 0) > 0))
 
   const context = (r: (typeof rows)[number]) =>
     r.failingTask
@@ -380,7 +381,7 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
 
   const row = (r: (typeof rows)[number]) => (
     <EntityRow
-      attrs={{ 'data-ops-fleet-row': r.name, 'data-ops-fleet-attention-row': hot(r) ? r.name : undefined }}
+      attrs={{ 'data-ops-fleet-row': r.name, 'data-ops-fleet-attention-row': hot(r) ? r.name : undefined, 'data-ops-fleet-recent-fail': recentFail(r) ? r.name : undefined }}
       context={context(r)}
       key={r.name}
       lead={<Sigil name={r.name} size={32} />}
@@ -392,13 +393,26 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
       }
       more={
         <Disclosure label={T('Details')}>
+          {/* P23c: only facts that are known; unknown infrastructure does not take rows of height. */}
           <dl data-ops-fleet-details="">
-            <dt>{T('Model')}</dt>
-            <dd>{r.model ?? T('unknown')}</dd>
-            <dt>{T('Lane')}</dt>
-            <dd>{r.lane ?? '\u2014'}</dd>
-            <dt>{T('Active tasks')}</dt>
-            <dd>{String(r.active)}</dd>
+            {r.model ? (
+              <>
+                <dt>{T('Model')}</dt>
+                <dd>{r.model}</dd>
+              </>
+            ) : null}
+            {r.lane ? (
+              <>
+                <dt>{T('Lane')}</dt>
+                <dd>{r.lane}</dd>
+              </>
+            ) : null}
+            {r.active ? (
+              <>
+                <dt>{T('Active tasks')}</dt>
+                <dd>{String(r.active)}</dd>
+              </>
+            ) : null}
             <dt>{T('Runs 7d')}</dt>
             <dd data-ops-runs-source={r.runsSource}>
               {r.runs7d}
@@ -436,6 +450,7 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
       {attention.length === 0 ? <p data-ops-fleet-attention="clear">{T('Nothing needs attention.')}</p> : null}
       {group('attention', T('Needs attention'), attention)}
       {group('running', T('Running'), running)}
+      {group('recent', T('Failed in the last 7 days'), recent)}
       {group('idle', T('No active run'), idleNow)}
       {group('quiet', T('No run observed'), quiet)}
     </div>

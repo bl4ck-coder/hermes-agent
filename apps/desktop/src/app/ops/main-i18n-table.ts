@@ -2,6 +2,7 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "Failed in the last 7 days": "Con fallos en los últimos 7 días",
      "sign-in providers": "los proveedores de inicio de sesión",
      "messaging platforms": "las plataformas de mensajería",
      "your MCP servers": "tus servidores MCP",
@@ -686,6 +687,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "Failed in the last 7 days": "Échecs au cours des 7 derniers jours",
      "sign-in providers": "les fournisseurs de connexion",
      "messaging platforms": "les plateformes de messagerie",
      "your MCP servers": "vos serveurs MCP",
@@ -1369,6 +1371,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "Failed in the last 7 days": "Fehler in den letzten 7 Tagen",
      "sign-in providers": "Anmeldeanbieter",
      "messaging platforms": "Messaging-Plattformen",
      "your MCP servers": "deine MCP-Server",
@@ -2052,6 +2055,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "Failed in the last 7 days": "Сбои за последние 7 дней",
      "sign-in providers": "поставщиков входа",
      "messaging platforms": "платформы сообщений",
      "your MCP servers": "ваши серверы MCP",
@@ -2735,6 +2739,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "Failed in the last 7 days": "過去7日間に失敗あり",
      "sign-in providers": "サインイン プロバイダー",
      "messaging platforms": "メッセージング プラットフォーム",
      "your MCP servers": "MCP サーバー",
@@ -3418,6 +3423,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "Failed in the last 7 days": "过去 7 天内有失败",
      "sign-in providers": "登录提供方",
      "messaging platforms": "消息平台",
      "your MCP servers": "你的 MCP 服务器",
@@ -4101,6 +4107,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "Failed in the last 7 days": "過去 7 天內有失敗",
      "sign-in providers": "登入提供者",
      "messaging platforms": "訊息平台",
      "your MCP servers": "你的 MCP 伺服器",
@@ -4784,6 +4791,7 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "Failed in the last 7 days": "إخفاقات خلال آخر 7 أيام",
      "sign-in providers": "مزوّدي تسجيل الدخول",
      "messaging platforms": "منصات المراسلة",
      "your MCP servers": "خوادم MCP لديك",
