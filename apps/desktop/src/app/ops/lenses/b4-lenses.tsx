@@ -470,6 +470,70 @@ function AgentLinks({ agents, onOpen }: { agents: string[]; onOpen?: (p: string)
   )
 }
 
+/** P15 (judge consult): Skills as one list: enabled, then disabled. Name → what it does → category and state → Open skill; usage and profiles under a disclosure. */
+function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: ReturnType<typeof skillRows>; onOpenSkill?: (n: string) => void; onOpenAgent?: (p: string) => void; scanCapped: boolean }) {
+  const row = (r: (typeof rows)[number]) => (
+    <EntityRow
+      attrs={{ 'data-ops-skill': r.name, 'data-ops-skill-enabled': r.enabled ? '' : undefined }}
+      context={r.description ? <span data-ops-skill-desc="">{r.description}</span> : <span data-ops-skill-nodesc="">{T('No description')}</span>}
+      key={r.name}
+      lead={<span aria-hidden data-ops-skill-glyph="">{'\u2726'}</span>}
+      meta={
+        <>
+          <span data-ops-skill-tag={tagTone(r.category || 'general')}>{r.category || 'general'}</span>
+          <span>{r.enabled ? T('Enabled') : T('Disabled')}</span>
+        </>
+      }
+      more={
+        <Disclosure label={T('Details and profiles')}>
+          <div data-ops-skill-detail="">
+            <p>{typeof r.usage === 'number' ? P(r.usage, 'Used {n} times') : T('Usage not available')}</p>
+            <p>{T('Profiles with this skill enabled')}</p>
+            {r.agents.length ? (
+              <p data-ops-skill-agents="">
+                {r.agents.map(a => (
+                  <button data-ops-skill-agent={a} disabled={!onOpenAgent} key={a} onClick={() => onOpenAgent?.(a)} type="button">
+                    {a}
+                  </button>
+                ))}
+              </p>
+            ) : (
+              <p>{T('None observed')}</p>
+            )}
+            {scanCapped ? <p>{T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}</p> : null}
+          </div>
+        </Disclosure>
+      }
+      primary={
+        <button data-ops-skill-open={r.name} disabled={!onOpenSkill} onClick={() => onOpenSkill?.(r.name)} type="button">
+          {T('Open skill')}
+        </button>
+      }
+      title={r.name}
+    />
+  )
+
+  const on = rows.filter(r => r.enabled)
+  const off = rows.filter(r => !r.enabled)
+
+  const group = (id: string, title: string, xs: typeof rows) =>
+    xs.length ? (
+      <div data-ops-rows-group={id} key={id}>
+        <h4>
+          {title} <span data-ops-rows-count="">{xs.length}</span>
+        </h4>
+        <EntityList label={title}>{xs.map(row)}</EntityList>
+      </div>
+    ) : null
+
+  return (
+    <>
+      {group('on', T('Enabled in this profile'), on)}
+      {group('off', T('Disabled in this profile'), off)}
+    </>
+  )
+}
+
 export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Client; profile: string; onOpenRoute?: (r: string) => void }) {
   const client = useClient(c)
   const profiles = useOpsResource(() => client.profiles(), [client], 60_000)
@@ -497,6 +561,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [onFilter, setOnFilter] = useState<'all' | 'on' | 'off'>('all')
   const [type, setType] = useState('')
+  const [skillView, setSkillView] = useState<'list' | 'table'>('list')
   const rows = skills.value ? skillRows(skills.value as Record<string, SkillLite[] | null>, profile) : null
   const types = rows ? [...new Set(rows.map(r => r.category || 'general'))].sort() : []
 
@@ -549,28 +614,6 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         </p>
       ) : null}
       {note ? <p role="status">{note}</p> : null}
-      <details data-ops-packs-fold="" open={!rows || rows.length === 0}>
-      <summary>{T("Starter packs")}</summary>
-      <section aria-label={T("Starter packs")} data-ops-packs="">
-        {!packs ? (
-          <State error={official.error} what="Starter packs" />
-        ) : packs.length === 0 ? (
-          <p data-ops-empty="packs">{T("The hub offers no category with two or more skills.")}</p>
-        ) : (
-          <ul>
-            {packs.map(p => (
-              <li data-ops-pack={p.id} data-ops-pack-complete={p.missing.length === 0 ? '' : undefined} key={p.id}>
-                <strong>{p.title}</strong> <span data-ops-pack-meta="">{P(p.skills.length, '{n} skills', '{n} skill')}{p.missing.length < p.skills.length ? ` · ${P(p.skills.length - p.missing.length, '{n} installed')}` : ''}</span>
-                <span aria-label={T('{n} of {total} installed').replace('{n}', String(p.skills.length - p.missing.length)).replace('{total}', String(p.skills.length))} data-ops-pack-bar="" role="img" style={{ ['--ops-pct' as string]: `${Math.round(((p.skills.length - p.missing.length) / Math.max(1, p.skills.length)) * 100)}%` }} />
-                <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
-                  {p.missing.length === 0 ? T('All added') : T('Add all')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      </details>
       <section aria-label={T("Individual skills")} data-ops-skills="">
         <h3>
           {T("Individual skills")}{' '}<span data-ops-skill-count="">{rows ? shown.length : '…'}</span>
@@ -601,8 +644,23 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
             {scanCapped ? ` · ${T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}` : ''}
           </p>
         ) : null}
+        {rows ? (
+          <div aria-label={T('Skills view')} data-ops-fleet-views="" data-ops-skill-views="" role="group">
+            {(['list', 'table'] as const).map(v => (
+              <button aria-pressed={skillView === v} data-ops-skill-view={v} key={v} onClick={() => setSkillView(v)} type="button">
+                {v === 'list' ? T('List') : T('Table')}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {!rows ? (
           <State error={skills.error} what="Skills" />
+        ) : skillView === 'list' ? (
+          shown.length === 0 ? (
+            <p data-ops-empty="skills">{T(filtered ? 'No skill matches these filters.' : 'This profile has no skills yet. Use Create skill or Browse library.')}</p>
+          ) : (
+            <SkillRows onOpenAgent={onOpenRoute ? openAgent : undefined} onOpenSkill={onOpenRoute ? openSkill : undefined} rows={shown} scanCapped={scanCapped} />
+          )
         ) : (
           <DataTable caption="Skills"
             columns={[
@@ -632,6 +690,28 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
           />
         )}
       </section>
+      <details data-ops-packs-fold="" open={!!rows && rows.length === 0}>
+      <summary>{T("Add by category")}</summary>
+      <section aria-label={T("Starter packs")} data-ops-packs="">
+        {!packs ? (
+          <State error={official.error} what="Starter packs" />
+        ) : packs.length === 0 ? (
+          <p data-ops-empty="packs">{T("The hub offers no category with two or more skills.")}</p>
+        ) : (
+          <ul>
+            {packs.map(p => (
+              <li data-ops-pack={p.id} data-ops-pack-complete={p.missing.length === 0 ? '' : undefined} key={p.id}>
+                <strong>{p.title}</strong> <span data-ops-pack-meta="">{P(p.skills.length, '{n} skills', '{n} skill')}{p.missing.length < p.skills.length ? ` · ${P(p.skills.length - p.missing.length, '{n} installed')}` : ''}</span>
+                <span aria-label={T('{n} of {total} installed').replace('{n}', String(p.skills.length - p.missing.length)).replace('{total}', String(p.skills.length))} data-ops-pack-bar="" role="img" style={{ ['--ops-pct' as string]: `${Math.round(((p.skills.length - p.missing.length) / Math.max(1, p.skills.length)) * 100)}%` }} />
+                <button data-ops-add-all={p.id} data-ops-write="" disabled={busy || p.missing.length === 0} onClick={() => setConfirm(p)} type="button">
+                  {p.missing.length === 0 ? T('All added') : T('Add all')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      </details>
       <ConfirmDialog
         confirmLabel={busy ? T('Installing…') : T('Install {n}').replace('{n}', String(confirm?.missing.length ?? 0))}
         description={confirm ? `Into ${profile}: ${confirm.missing.map(s => s.name).join(', ')}` : ''}

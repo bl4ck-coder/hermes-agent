@@ -153,9 +153,9 @@ describe('Skills lens', () => {
     expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('1')
     expect(document.querySelector('[data-ops-skill-tag]')?.getAttribute('data-ops-skill-tag')).toBe(tagTone('design'))
     const agents = document.querySelector('[data-ops-skill-agents]') as HTMLElement
-    expect(within(agents).getAllByRole('button').map(b => b.textContent)).toEqual(['a1', 'a2', 'a3', '+2'])
-    fireEvent.click(within(agents).getByText('+2'))
-    fireEvent.click(within(document.querySelector('[data-ops-agents-popover]') as HTMLElement).getByText('builder'))
+    // P15: every profile with the skill enabled is reachable from the row's disclosure (no +N popover).
+    expect(within(agents).getAllByRole('button').map(b => b.textContent).sort()).toEqual(['a1', 'a2', 'a3', 'a4', 'builder'])
+    fireEvent.click(within(agents).getByText('builder'))
     expect(open).toHaveBeenLastCalledWith('/profiles?profile=builder')
     fireEvent.change(screen.getByLabelText('search skills'), { target: { value: 'nothing' } })
     expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('0')

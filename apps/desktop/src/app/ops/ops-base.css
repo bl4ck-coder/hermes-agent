@@ -1037,3 +1037,11 @@
 :where([data-ops-app-warning]) { color: var(--ops-warn,#e3a33b); }
 :where([data-ops-app-catalog-title]) { margin-top: var(--space-8,32px); font-size: var(--type-section,20px); line-height: var(--type-section-lh,28px); }
 :where([data-ops-app-section] > h4) { margin: var(--space-4,16px) 0 var(--space-1,4px); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); font-weight: 600; }
+
+/* P15: Skills rows. */
+:where([data-ops-skill-glyph]) { color: var(--ops-muted); font-size: 20px; line-height: 24px; }
+:where([data-ops-skill-detail]) { display: grid; gap: var(--space-1,4px); font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-muted); text-align: left; }
+:where([data-ops-skill-detail]) :where(p) { margin: 0; }
+:where([data-ops-skill-detail] [data-ops-skill-agents]) { display: flex; flex-wrap: wrap; gap: var(--space-2,8px); }
+:where([data-ops-skill-nodesc]) { color: var(--ops-muted); }
+:where([data-ops-row] [data-ops-skill-tag]) { background: none; border: 0; padding: 0; color: var(--ops-muted); }
