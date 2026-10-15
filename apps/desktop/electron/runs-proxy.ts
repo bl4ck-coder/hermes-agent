@@ -292,7 +292,7 @@ export function createRunsProxy({ resolveTarget, transport, timeoutMs = 20_000 }
         return call(ref, 'POST', '/v1/runs', body)
       }),
 
-    approve: (ref: RunsTargetRef, runId: string, body: { choice: string; request_id?: string; all?: boolean }) =>
+    approve: (ref: RunsTargetRef, runId: string, body: { choice: string; request_id?: string; all?: boolean; execution_generation?: number }) =>
       guard(async () => {
         const choice = String(body?.choice ?? '').toLowerCase()
 
@@ -310,6 +310,11 @@ export function createRunsProxy({ resolveTarget, transport, timeoutMs = 20_000 }
           payload.all = true
         }
 
+        // v0.22 authority runs answer one exact prompt of one execution generation.
+        if (Number.isInteger(body.execution_generation)) {
+          payload.execution_generation = body.execution_generation
+        }
+
         return call(ref, 'POST', runPath(runId, '/approval'), payload)
       }),
 
@@ -317,6 +322,41 @@ export function createRunsProxy({ resolveTarget, transport, timeoutMs = 20_000 }
       guard(() => call(ref, 'POST', runPath(runId, '/steer'), body ?? {})),
 
     stop: (ref: RunsTargetRef, runId: string) => guard(() => call(ref, 'POST', runPath(runId, '/stop'), {})),
+
+    /** v0.22 `POST /v1/runs/{id}/clarify`: answer one pending clarify prompt. The gateway wants exactly these three keys. */
+    clarify: (ref: RunsTargetRef, runId: string, body: { request_id: string; execution_generation: number; answer: string }) =>
+      guard(async () => {
+        const requestId = String(body?.request_id ?? '')
+        const answer = typeof body?.answer === 'string' ? body.answer : ''
+
+        if (!requestId || !Number.isInteger(body?.execution_generation) || !answer.trim()) {
+          throw new RunsProxyError('invalid_body', 'clarify needs request_id, execution_generation and a non-empty answer')
+        }
+
+        return call(ref, 'POST', runPath(runId, '/clarify'), {
+          request_id: requestId,
+          execution_generation: body.execution_generation,
+          answer
+        })
+      }),
+
+    /**
+     * v0.22 `POST /v1/runs/{id}/resolve-unknown`: acknowledge the lost owner epoch of a run whose status is
+     * `unknown` (not terminal; later turns wait on it). Ends the run like a stop.
+     */
+    resolveUnknown: (ref: RunsTargetRef, runId: string, body: { admission_id: string; execution_generation: number }) =>
+      guard(async () => {
+        const admissionId = String(body?.admission_id ?? '')
+
+        if (!admissionId || !Number.isInteger(body?.execution_generation)) {
+          throw new RunsProxyError('invalid_body', 'resolve-unknown needs admission_id and execution_generation')
+        }
+
+        return call(ref, 'POST', runPath(runId, '/resolve-unknown'), {
+          admission_id: admissionId,
+          execution_generation: body.execution_generation
+        })
+      }),
 
     /**
      * Follow `GET /v1/runs/{id}/events` in main and forward parsed events. On a

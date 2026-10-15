@@ -327,3 +327,10 @@
 :where([data-ops-card][draggable='true']) { cursor: grab; }
 :where([data-ops-card][draggable='true']:active) { cursor: grabbing; }
 :where([data-ops-card][data-ops-dragging]) { opacity: 0.55; }
+
+/* v0.22 card health: why dispatch holds the card, and the worker's last failure output. */
+:where([data-ops-card-held]), :where([data-ops-card-failure]) { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-card-held]) { color: var(--ops-amber, #c98a1b); }
+:where([data-ops-card-failure]) { color: var(--ops-red, #d0524a); }
+:where([data-ops-badge='unknown']) { border: 1px dashed currentColor; border-radius: 4px; padding: 0 4px; color: var(--ops-amber, #c98a1b); }
+

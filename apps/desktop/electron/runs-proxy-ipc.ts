@@ -17,6 +17,8 @@ export const RUNS_IPC = {
   approve: 'hermes:runs:approve',
   steer: 'hermes:runs:steer',
   stop: 'hermes:runs:stop',
+  clarify: 'hermes:runs:clarify',
+  resolveUnknown: 'hermes:runs:resolve-unknown',
   eventsOpen: 'hermes:runs:events:open',
   eventsClose: 'hermes:runs:events:close',
   event: 'hermes:runs:event',
@@ -102,6 +104,8 @@ export function registerRunsProxyIpc({ ipcMain, proxy, keyStore, transport, reso
   ipcMain.handle(RUNS_IPC.approve, (_e, ref, runId, body) => proxy.approve(refOf(ref), String(runId), body))
   ipcMain.handle(RUNS_IPC.steer, (_e, ref, runId, body) => proxy.steer(refOf(ref), String(runId), body))
   ipcMain.handle(RUNS_IPC.stop, (_e, ref, runId) => proxy.stop(refOf(ref), String(runId)))
+  ipcMain.handle(RUNS_IPC.clarify, (_e, ref, runId, body) => proxy.clarify(refOf(ref), String(runId), body))
+  ipcMain.handle(RUNS_IPC.resolveUnknown, (_e, ref, runId, body) => proxy.resolveUnknown(refOf(ref), String(runId), body))
 
   ipcMain.handle(RUNS_IPC.eventsOpen, (event, ref, runId, opts) => {
     let id = ''

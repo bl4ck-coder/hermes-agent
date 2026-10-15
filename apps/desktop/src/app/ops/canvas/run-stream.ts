@@ -10,7 +10,7 @@ export interface RunTool {
 
 export interface RunView {
   runId: string | null
-  status: 'idle' | 'starting' | 'running' | 'waiting_for_approval' | 'completed' | 'failed'
+  status: RunStatus
   text: string
   tokens: number
   startedAt: number | null
@@ -19,6 +19,109 @@ export interface RunView {
   subagents: { id: string; goal: string | null; status: 'running' | 'done' }[]
   error: string | null
   lit: Set<string>
+  /** v0.22: the admission/generation pair `resolve-unknown` and `clarify` must echo back. */
+  admissionId?: string | null
+  executionGeneration?: number | null
+  /** v0.22: the pending clarify prompt, from the run snapshot's `pending_controls`. */
+  clarify?: { requestId: string; question: string; choices: string[] } | null
+}
+
+/**
+ * `unknown` (v0.22): the run lost its owner epoch. It is not terminal; later turns wait until someone
+ * acknowledges it with `POST /v1/runs/{id}/resolve-unknown`. `waiting_for_input`: a clarify prompt is open.
+ */
+export type RunStatus =
+  | 'idle'
+  | 'starting'
+  | 'running'
+  | 'waiting_for_approval'
+  | 'waiting_for_input'
+  | 'unknown'
+  | 'completed'
+  | 'failed'
+
+/** Statuses that still need the run panel's attention (ticking clock, polling, Test run disabled). */
+export const ACTIVE_RUN_STATUSES: ReadonlySet<RunStatus> = new Set([
+  'starting',
+  'running',
+  'waiting_for_approval',
+  'waiting_for_input',
+  'unknown'
+])
+
+const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+
+/** Pull the first pending clarify prompt out of `pending_controls` (shape varies: fields may sit in `payload`). */
+export function pendingClarify(controls: unknown): RunView['clarify'] {
+  if (!Array.isArray(controls)) {
+    return null
+  }
+
+  for (const raw of controls) {
+    const c = (raw ?? {}) as Record<string, unknown>
+    const p = (c.payload && typeof c.payload === 'object' ? c.payload : {}) as Record<string, unknown>
+
+    if (c.kind !== 'clarify') {
+      continue
+    }
+
+    const requestId = str(c.prompt_id) || str(c.request_id) || str(c.id)
+
+    if (!requestId) {
+      continue
+    }
+
+    const choices = (Array.isArray(c.choices) ? c.choices : Array.isArray(p.choices) ? p.choices : []).filter(
+      (x): x is string => typeof x === 'string'
+    )
+
+    return { requestId, question: str(c.question) || str(p.question) || str(c.text), choices }
+  }
+
+  return null
+}
+
+/**
+ * Fold a `GET /v1/runs/{id}` snapshot (v0.22 authority shape) into the view. Terminal states already
+ * reached by the stream win; a snapshot never resurrects a finished run.
+ */
+export function applyRunSnapshot(state: RunView, snap: unknown, now: number): RunView {
+  if (!snap || typeof snap !== 'object' || state.status === 'completed' || state.status === 'failed') {
+    return state
+  }
+
+  const s = snap as Record<string, unknown>
+
+  const next: RunView = {
+    ...state,
+    admissionId: str(s.admission_id) || state.admissionId || null,
+    executionGeneration: Number.isInteger(s.execution_generation) ? (s.execution_generation as number) : (state.executionGeneration ?? null),
+    clarify: pendingClarify(s.pending_controls)
+  }
+
+  switch (s.status) {
+    case 'unknown':
+      return { ...next, status: 'unknown' }
+
+    case 'waiting_for_approval':
+      return { ...next, status: 'waiting_for_approval' }
+
+    case 'completed':
+      return { ...next, status: 'completed', endedAt: now }
+
+    case 'failed':
+
+    case 'cancelled':
+      return { ...next, status: 'failed', endedAt: now, error: state.error ?? String(s.status) }
+
+    case 'running':
+
+    case 'queued':
+      return { ...next, status: next.clarify ? 'waiting_for_input' : state.status === 'starting' ? 'starting' : 'running' }
+
+    default:
+      return next
+  }
 }
 
 export const initialRun = (): RunView => ({

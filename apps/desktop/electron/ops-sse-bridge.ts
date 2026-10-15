@@ -40,9 +40,19 @@ export function opsSsePath(req: OpsSseOpenRequest): string {
     qs.set('board', String(req.board))
   }
 
+  // One backend serves every profile (v0.22): the profile rides as a query param, not a backend pick.
+  if (req.profile) {
+    qs.set('profile', String(req.profile))
+  }
+
   const q = qs.toString()
 
   return q ? `${path}?${q}` : path
+}
+
+/** 404 (SSE) or 1008 (WS policy close) for a kanban stream opened on a named board means the board is gone. */
+export function isBoardGone(req: OpsSseOpenRequest, status: number): boolean {
+  return req?.path === OPS_SSE_PATHS[0] && Boolean(req.board) && (status === 404 || status === 1008)
 }
 
 export function followOpsSse(opts: {
@@ -110,6 +120,14 @@ export function followOpsSse(opts: {
 
       if (controller.signal.aborted) {
         break
+      }
+
+      // A board slug that names an archived or deleted board: the SSE route answers 404, the WS route
+      // closes 1008. Either way the board is gone; reconnecting would only repeat the refusal.
+      if (isBoardGone(opts.request, status)) {
+        opts.onEnd({ code: 'board_gone', status })
+
+        return
       }
 
       if (status === 401 || status === 403 || status === 404) {

@@ -28,6 +28,48 @@ export interface BoardTask {
   comment_count?: number | null
   progress?: { done: number; total: number } | null
   link_counts?: { parents: number; children: number } | null
+  /** v0.22 board route: active distress signals (plugin_api._attach_diagnostics). */
+  diagnostics?: BoardDiagnostic[] | null
+}
+
+export interface BoardDiagnostic {
+  kind: string
+  severity?: string
+  title?: string
+  detail?: string
+}
+
+/** Diagnostics that explain why dispatch is holding a card back. */
+export const HELD_DIAGNOSTICS: ReadonlySet<string> = new Set([
+  'stranded_in_ready',
+  'stuck_in_blocked',
+  'review_dependency_deadlock',
+  'running_with_open_parents',
+  'block_unblock_cycling'
+])
+
+/** Diagnostics that carry a failed worker's error (and, since v0.22, its last output). */
+export const FAILURE_DIAGNOSTICS: ReadonlySet<string> = new Set(['repeated_failures', 'repeated_crashes'])
+
+const WORKER_OUTPUT_RE = /Worker's last output:\s*(['"])([\s\S]*?)\1\s*$/
+
+/** Pull the worker's own last words out of a failure detail; falls back to the whole detail. */
+export function workerOutputOf(detail: string): string {
+  const m = WORKER_OUTPUT_RE.exec(detail)
+
+  return (m ? m[2] : detail).trim()
+}
+
+/** Card health line: why the card is held, and the latest failure output. Null fields when nothing applies. */
+export function cardHealth(task: BoardTask): { held: { title: string; detail: string } | null; failure: { title: string; output: string } | null } {
+  const diags = Array.isArray(task.diagnostics) ? task.diagnostics : []
+  const heldD = diags.find(d => d && HELD_DIAGNOSTICS.has(d.kind))
+  const failD = [...diags].reverse().find(d => d && FAILURE_DIAGNOSTICS.has(d.kind))
+
+  return {
+    held: heldD ? { title: heldD.title || heldD.kind, detail: heldD.detail || '' } : null,
+    failure: failD ? { title: failD.title || failD.kind, output: workerOutputOf(failD.detail || '') } : null
+  }
 }
 
 export interface BoardData {

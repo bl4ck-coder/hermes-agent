@@ -96,7 +96,7 @@ describe('B8 L2 coverage (static)', () => {
 
   it.each([
     ['canvas/node-editor-view.tsx', 3],
-    ['canvas/canvas.tsx', 2],
+    ['canvas/canvas.tsx', 4],
     ['board/board-parts.tsx', 3],
     ['board/board.tsx', 3],
     ['detail/task-tab.tsx', 5],

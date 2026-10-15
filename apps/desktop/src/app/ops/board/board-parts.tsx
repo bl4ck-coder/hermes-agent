@@ -8,7 +8,7 @@ import { type DragEvent, type KeyboardEvent, type ReactNode, useEffect, useRef, 
 import { T } from '../main-i18n'
 import { fmtAge, fmtBytes } from '../office/control-room'
 
-import type { BoardTask } from './board-model'
+import { type BoardTask, cardHealth } from './board-model'
 import {
   type Favourite,
   favStore,
@@ -155,6 +155,7 @@ export function CardSignals({ task, nowS }: { task: BoardTask; nowS: number }) {
   const tone = heartbeatTone(task, nowS)
   const pri = typeof task.priority === 'number' && task.priority > 0 ? task.priority : null
   const comments = typeof task.comment_count === 'number' ? task.comment_count : null
+  const health = cardHealth(task)
 
   return (
     <span data-ops-card-signals="">
@@ -186,6 +187,16 @@ export function CardSignals({ task, nowS }: { task: BoardTask; nowS: number }) {
       {comments ? (
         <span aria-label={`${comments} comments`} data-ops-comments={comments}>
           💬 {comments}
+        </span>
+      ) : null}
+      {health.held ? (
+        <span aria-label={`held: ${health.held.title}`} data-ops-card-held="" title={[health.held.title, health.held.detail].filter(Boolean).join('\n')}>
+          ⏸ {T("held")}: {health.held.title}
+        </span>
+      ) : null}
+      {health.failure ? (
+        <span aria-label={`last failure: ${health.failure.output.slice(0, 200)}`} data-ops-card-failure="" title={`${health.failure.title}\n${health.failure.output}`}>
+          ⚠ {health.failure.output.slice(0, 80) || health.failure.title}
         </span>
       ) : null}
     </span>

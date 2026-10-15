@@ -12,7 +12,7 @@ import { T } from '../main-i18n'
 
 import { ComposePanel } from './compose-view'
 import { saveAllCanvas, useCanvasDirtyCount } from './dirty-store'
-import { elapsedMs, initialRun, reduceRun, type RunView } from './run-stream'
+import { ACTIVE_RUN_STATUSES, applyRunSnapshot, elapsedMs, initialRun, reduceRun, type RunView } from './run-stream'
 
 export interface CanvasData {
   model: ModelNode | null
@@ -209,8 +209,14 @@ export const CANVAS_EDGES: [CanvasNodeId, CanvasNodeId][] = [
   ['memory', 'model']
 ]
 
+type RunsCall = Promise<{ ok: boolean; data?: unknown; code?: string; message?: string }>
+
 interface RunsBridge {
-  create: (ref: object, body: Record<string, unknown>) => Promise<{ ok: boolean; data?: unknown; code?: string; message?: string }>
+  create: (ref: object, body: Record<string, unknown>) => RunsCall
+  /** v0.22 run snapshot (status incl. `unknown`, pending_controls, admission/generation). Optional: older bridges lack it. */
+  get?: (ref: object, runId: string) => RunsCall
+  clarify?: (ref: object, runId: string, body: { request_id: string; execution_generation: number; answer: string }) => RunsCall
+  resolveUnknown?: (ref: object, runId: string, body: { admission_id: string; execution_generation: number }) => RunsCall
   openEvents: (ref: object, runId: string, opts?: object) => Promise<{ subscriptionId: string; ended: boolean }>
   closeEvents: (id: string) => Promise<unknown>
   onEvent: (cb: (p: { subscriptionId: string; type: string; event?: string; data?: string; code?: string }) => void) => () => void
@@ -406,7 +412,7 @@ export function CanvasView({
       }
 
       if (p.type === 'end') {
-        setRun(r => (r.status === 'completed' || r.status === 'failed' ? r : { ...r, status: 'failed', endedAt: now(), error: p.code ?? 'stream ended' }))
+        setRun(r => (r.status === 'completed' || r.status === 'failed' || r.status === 'unknown' ? r : { ...r, status: 'failed', endedAt: now(), error: p.code ?? 'stream ended' }))
 
         return
       }
@@ -423,7 +429,64 @@ export function CanvasView({
     }
   }, [runs, now])
 
-  const active = run.status === 'starting' || run.status === 'running' || run.status === 'waiting_for_approval'
+  const active = ACTIVE_RUN_STATUSES.has(run.status)
+  const [answer, setAnswer] = useState('')
+  const [controlNote, setControlNote] = useState<string | null>(null)
+
+  // v0.22: clarify prompts and the `unknown` state surface only on the run snapshot, so poll it while active.
+  useEffect(() => {
+    if (!active || !runs?.get || !run.runId) {
+      return
+    }
+
+    const runId = run.runId
+    let stopped = false
+
+    const poll = async () => {
+      const res = await runs.get!({ profile }, runId).catch(() => null)
+
+      if (!stopped && res?.ok) {
+        setRun(r => (r.runId === runId ? applyRunSnapshot(r, res.data, now()) : r))
+      }
+    }
+
+    void poll()
+    const t = setInterval(() => void poll(), 2_500)
+
+    return () => {
+      stopped = true
+      clearInterval(t)
+    }
+  }, [active, runs, run.runId, profile, now])
+
+  const sendClarify = async () => {
+    const c = run.clarify
+
+    if (!runs?.clarify || !run.runId || !c || typeof run.executionGeneration !== 'number' || !answer.trim()) {
+      return
+    }
+
+    const res = await runs.clarify({ profile }, run.runId, { request_id: c.requestId, execution_generation: run.executionGeneration, answer })
+    setControlNote(res.ok ? null : (res.code ?? res.message ?? 'clarify refused'))
+
+    if (res.ok) {
+      setAnswer('')
+      setRun(r => ({ ...r, clarify: null, status: 'running' }))
+    }
+  }
+
+  const resolveUnknown = async () => {
+    if (!runs?.resolveUnknown || !run.runId || !run.admissionId || typeof run.executionGeneration !== 'number') {
+      return
+    }
+
+    const res = await runs.resolveUnknown({ profile }, run.runId, { admission_id: run.admissionId, execution_generation: run.executionGeneration })
+    setControlNote(res.ok ? null : (res.code ?? res.message ?? 'resolve refused'))
+
+    if (res.ok) {
+      setRun(r => ({ ...r, status: 'failed', endedAt: now(), error: 'resolved: owner lost (unknown)' }))
+    }
+  }
 
   useEffect(() => {
     if (!active) {
@@ -668,6 +731,44 @@ export function CanvasView({
           {T("Test run")}</button>
         {!runs ? <span>{T("Runs bridge unavailable")}</span> : null}
         <div data-ops-run-status={run.status}>{run.status}</div>
+        {run.status === 'unknown' ? (
+          <div data-ops-run-unknown="" role="status">
+            <span data-ops-badge="unknown" title={T("The run lost its owner. Later turns wait until it is resolved.")}>
+              {T("unknown")}
+            </span>
+            <button
+              data-ops-resolve-unknown=""
+              data-ops-write=""
+              disabled={readOnly || !runs?.resolveUnknown || !run.admissionId || typeof run.executionGeneration !== 'number'}
+              onClick={() => void resolveUnknown()}
+              type="button"
+            >
+              {T("Resolve")}
+            </button>
+          </div>
+        ) : null}
+        {run.clarify ? (
+          <form
+            aria-label={T("Clarify")}
+            data-ops-run-clarify={run.clarify.requestId}
+            onSubmit={e => {
+              e.preventDefault()
+              void sendClarify()
+            }}
+          >
+            <p>{run.clarify.question || T("The agent asks for input.")}</p>
+            {run.clarify.choices.map(c => (
+              <button data-ops-clarify-choice={c} key={c} onClick={() => setAnswer(c)} type="button">
+                {c}
+              </button>
+            ))}
+            <input aria-label={T("Clarify answer")} onChange={e => setAnswer(e.target.value)} value={answer} />
+            <button data-ops-clarify-send="" data-ops-write="" disabled={readOnly || !runs?.clarify || !answer.trim()} type="submit">
+              {T("Answer")}
+            </button>
+          </form>
+        ) : null}
+        {controlNote ? <div role="alert">{controlNote}</div> : null}
         <div data-ops-run-elapsed="">{ms === null ? '' : `${(ms / 1000).toFixed(1)} s`}</div>
         <div data-ops-run-tokens="">{run.tokens} {T("streamed tokens")}</div>
         <pre data-ops-run-text="">{run.text}</pre>

@@ -31,7 +31,12 @@ export interface KanbanStreamState {
   reason?: string | null
   /** SPEC v2.1 0b: subscription generation; bumps on every (re)open and on stop. Late frames from an older generation are dropped. */
   generation?: number
+  /** v0.22: the board was archived or deleted (404 / WS 1008). Terminal: no reconnect, the poll keeps the view. */
+  gone?: boolean
 }
+
+/** End codes after which reconnecting cannot help. */
+export const KANBAN_TERMINAL_END_CODES: ReadonlySet<string> = new Set(['board_gone'])
 
 /** L9 teardown accounting: everything this stream holds. All false after stop(). */
 export interface KanbanStreamResources {
@@ -222,7 +227,17 @@ export function createKanbanStream({
         }
 
         if (p.type === 'end') {
-          fallBack(`stream ended${(p as { code?: string }).code ? ` (${(p as { code?: string }).code})` : ''}`)
+          const code = (p as { code?: string }).code
+
+          if (code && KANBAN_TERMINAL_END_CODES.has(code)) {
+            // Board gone: stop for good (no backoff timer), keep polling as the fallback view.
+            sub = null
+            set({ mode: 'poll', reason: 'board gone', gone: true })
+
+            return
+          }
+
+          fallBack(`stream ended${code ? ` (${code})` : ''}`)
 
           return
         }

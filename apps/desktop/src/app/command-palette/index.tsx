@@ -15,6 +15,7 @@ import {
 } from '@/app/floating-hud'
 import { finishOpsPaletteCommand, OpsPalettePage } from '@/app/ops/palette'
 import { SESSION_IMPORT_ROUTE } from '@/app/routes'
+import { leaveIntro } from '@/components/onboarding/first-run/intro'
 import { codiconIcon } from '@/components/ui/codicon'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { HighlightMatches } from '@/components/ui/highlight-matches'
@@ -62,6 +63,7 @@ import {
 } from '@/lib/icons'
 import { getServers } from '@/lib/mcp-servers'
 import { normalize } from '@/lib/text'
+import { rollbackSentence } from '@/lib/update-copy'
 import { cn } from '@/lib/utils'
 import { resolveVersionStatus } from '@/lib/version-status'
 import { $repoWorktrees } from '@/store/coding-status'
@@ -632,8 +634,11 @@ function CommandPaletteBody({
     return resolveVersionStatus({
       applying: apply.applying || apply.stage === 'restart',
       behind: status?.behind ?? 0,
+      channel: status?.channel === 'stable' ? 'stable' : 'main',
       copy: t.shell.statusbar,
+      latestTag: status?.latestTag,
       remote: backend,
+      rollback: rollbackSentence(status, t.settings.about.channel.rollbackBody),
       restarting: apply.stage === 'restart',
       sha: status?.currentSha?.slice(0, 7) ?? null,
       target: backend ? 'backend' : 'client',
@@ -1626,6 +1631,8 @@ function CommandPaletteBody({
 
     completeFlow('command_palette')
     recordAction(item.action ?? 'other', 'palette')
+    // A Cmd-K command or layout is a way out of the first-run intro.
+    leaveIntro()
 
     if (item.runWithEvent) {
       item.runWithEvent(lastSelectMods.current)
