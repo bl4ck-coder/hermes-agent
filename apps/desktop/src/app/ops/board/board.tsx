@@ -173,6 +173,8 @@ export function BoardView(props: BoardViewProps) {
     return <p data-ops-unavailable="">{props.error ? `Board unavailable: ${props.error}` : 'Board is loading (unknown).'}</p>
   }
 
+  // P18h (hard-state capture): a failed refresh keeps the last board, and says so.
+  const staleNotice = props.error ? <p data-ops-board-stale="" role="status">{T('Not refreshed: {reason}. Showing the last loaded board.').replace('{reason}', props.error)}</p> : null
   const tasks = allTasks(shown)
   const statusOrder = board.columns.map(c => c.name)
   const pinnedFirst = (list: BoardTask[]) => [...list.filter(t => pins.has(t.id)), ...list.filter(t => !pins.has(t.id))]
@@ -323,6 +325,7 @@ export function BoardView(props: BoardViewProps) {
         }
       }}
     >
+      {staleNotice}
       {/* B35: the board's shape at a glance, one segment per column sized by its tasks. */}
       <div aria-hidden data-ops-board-flow="">
         {shown.columns.map(col => (
