@@ -37,8 +37,11 @@ export function InlineTitle({ task, readOnly, onOpen, onRename }: { task: BoardT
 
   if (!editing || readOnly || !onRename) {
     return (
-      <Tip label={readOnly || !onRename ? undefined : T('Double-click or F2 to rename')}><button
+      // P24a: the full title stays recoverable on hover when it is clamped to two lines: in the rename tip when there is
+      // one, else a native title (no tooltip per card, the board stays cheap to render). Focus expands the card instead.
+      <Tip label={readOnly || !onRename ? undefined : `${task.title} · ${T('Double-click or F2 to rename')}`}><button
         data-ops-open-task={task.id}
+        title={readOnly || !onRename ? task.title : undefined}
         onClick={onOpen}
         onDoubleClick={() => !readOnly && onRename && (setDraft(task.title), (done.current = false), setEditing(true))}
         onKeyDown={e => e.key === 'F2' && !readOnly && onRename && (e.preventDefault(), setDraft(task.title), (done.current = false), setEditing(true))}

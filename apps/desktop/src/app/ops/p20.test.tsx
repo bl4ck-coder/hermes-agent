@@ -6,8 +6,9 @@ const src = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8')
 describe('P20 hard-state fixes', () => {
   it('Board badge reports a failed refresh instead of Live', () => {
     const b = src('./board/board.tsx')
-    expect(b).toContain("data-ops-push={props.error ? 'stale' : props.pushMode}")
-    expect(b).toContain("T('Connected, board not updated')")
+    // P24a: the stale state stays, but only a live stream may say "Connected".
+    expect(b).toContain("state: 'stale'")
+    expect(b).toContain("pushMode === 'stream' ? 'Connected, board not updated'")
   })
 })
 

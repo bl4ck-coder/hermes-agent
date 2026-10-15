@@ -1059,4 +1059,13 @@
 /* P22a (pass 17): on hover/focus the quick actions REPLACE the meta row as one opaque strip, instead of partly covering
    assignee and signals. The title rows stay readable; the metadata returns when the pointer leaves. */
 :where([data-ops-card]) > :where([data-ops-quick]) { bottom: 3px; justify-content: flex-end; left: 28px; right: 4px; }
-:where([data-ops-card]:hover, [data-ops-card]:focus-within) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: hidden; }
+:where([data-ops-card]:hover:not([data-ops-card-expanded])) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: hidden; }
+
+/* P24a (pass 18, Board): the card holding focus grows in flow instead of swapping information: the full title unclamps,
+   assignee and signals stay, and the quick actions take their own row with 40px targets. Blur restores the windowed card.
+   Hover keeps the one-strip swap above; the tip on the title carries the full text. Nothing is positioned over text. */
+:where([data-ops-card][data-ops-card-expanded]) { grid-template-areas: 'chk title title' 'chk who sig' 'chk quick quick'; grid-template-rows: auto auto auto; }
+:where([data-ops-card][data-ops-card-expanded]) :where([data-ops-open-task]) { display: block; -webkit-line-clamp: none; overflow: visible; overflow-wrap: anywhere; }
+:where([data-ops-card][data-ops-card-expanded]) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: visible; }
+:where([data-ops-card][data-ops-card-expanded]) > :where([data-ops-quick]) { grid-area: quick; position: static; flex-wrap: wrap; justify-content: flex-start; gap: var(--space-2,8px); opacity: 1; pointer-events: auto; background: none; padding: 0; }
+:where([data-ops-card][data-ops-card-expanded]) :where([data-ops-quick]) :where(button, select) { min-height: 40px; min-width: 40px; font-size: var(--type-meta,14px); }
