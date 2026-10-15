@@ -243,7 +243,7 @@ describe('Channels lens', () => {
 
   it('a source that does not answer is named, the rest still render; all down = reason', async () => {
     render(<ChannelsLens client={client({ channels: vi.fn().mockResolvedValue({ catalog: null, servers: null, platforms: [], providers: [] }) })} profile="p" />)
-    await screen.findByText('Not answering: catalog, servers.') // P15: a missing MCP server list is named too
+    await screen.findByText(/Couldn't load the MCP catalog, your MCP servers/) // P22b: plain-language source failure
     cleanup()
     render(<ChannelsLens client={client({ channels: vi.fn().mockRejectedValue(new Error('no channel source answered')) })} profile="p" />)
     await screen.findByText('Channels & MCP unavailable: no channel source answered')

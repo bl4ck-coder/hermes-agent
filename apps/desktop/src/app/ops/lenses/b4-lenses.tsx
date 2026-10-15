@@ -62,6 +62,8 @@ export interface B4Client {
 
 const settle = <T,>(p: Promise<T>) => p.then(v => v, () => null)
 
+const SOURCE_NAMES = { catalog: 'the MCP catalog', servers: 'your MCP servers', platforms: 'messaging platforms', providers: 'sign-in providers' } as const
+
 export function createB4Client(): B4Client {
   const ops = createOpsActions()
 
@@ -855,7 +857,12 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
           +
         </button>
       </header>
-      {missing.length ? <p data-ops-partial="">{T("Not answering:")}{' '}{missing.join(', ')}.</p> : null}
+      {/* P22b: name the failed source in plain words and say what is still shown. */}
+      {missing.length ? (
+        <p data-ops-partial="" role="status">
+          {T("Couldn't load {sources}. Showing everything else.").replace('{sources}', missing.map(k => T(SOURCE_NAMES[k])).join(', '))}
+        </p>
+      ) : null}
       {quick ? <QuickConnect cards={cards} onClose={() => setQuick(false)} onOpenRoute={onOpenRoute} /> : null}
       <div data-ops-channels-body="">
         <nav aria-label={T("Categories")} data-ops-app-rail="">
