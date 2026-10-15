@@ -1,0 +1,52 @@
+{
+  "Connecting, board not updated": {
+    "es": "Conectando, tablero sin actualizar",
+    "fr": "Connexion en cours, tableau non mis à jour",
+    "de": "Verbindung wird hergestellt, Board nicht aktualisiert",
+    "ru": "Подключение, доска не обновлена",
+    "ja": "接続中・ボード未更新",
+    "zh": "正在连接，看板未更新",
+    "zh-hant": "正在連線，看板未更新",
+    "ar": "جارٍ الاتصال، اللوحة غير محدّثة"
+  },
+  "Polling, board not updated": {
+    "es": "Consultando periódicamente, tablero sin actualizar",
+    "fr": "Interrogation périodique, tableau non mis à jour",
+    "de": "Periodische Abfrage, Board nicht aktualisiert",
+    "ru": "Периодический опрос, доска не обновлена",
+    "ja": "定期取得中・ボード未更新",
+    "zh": "正在轮询，看板未更新",
+    "zh-hant": "正在輪詢，看板未更新",
+    "ar": "استطلاع دوري، اللوحة غير محدّثة"
+  },
+  "No artifacts match": {
+    "es": "Ningún artefacto coincide",
+    "fr": "Aucun artefact ne correspond",
+    "de": "Keine Artefakte passen",
+    "ru": "Нет подходящих артефактов",
+    "ja": "一致するアーティファクトはありません",
+    "zh": "没有匹配的产物",
+    "zh-hant": "沒有符合的產物",
+    "ar": "لا توجد عناصر مطابقة"
+  },
+  "Preview unavailable": {
+    "es": "Vista previa no disponible",
+    "fr": "Aperçu indisponible",
+    "de": "Vorschau nicht verfügbar",
+    "ru": "Предпросмотр недоступен",
+    "ja": "プレビューを表示できません",
+    "zh": "预览不可用",
+    "zh-hant": "無法預覽",
+    "ar": "المعاينة غير متاحة"
+  },
+  "This category could not be loaded.": {
+    "es": "No se pudo cargar esta categoría.",
+    "fr": "Impossible de charger cette catégorie.",
+    "de": "Diese Kategorie konnte nicht geladen werden.",
+    "ru": "Не удалось загрузить эту категорию.",
+    "ja": "このカテゴリを読み込めませんでした。",
+    "zh": "无法加载此类别。",
+    "zh-hant": "無法載入此類別。",
+    "ar": "تعذّر تحميل هذه الفئة."
+  }
+}
