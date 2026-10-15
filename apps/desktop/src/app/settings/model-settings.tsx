@@ -908,8 +908,11 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
     <div className="grid gap-6">
       {!showMain && errorNotice}
       {showMain && (
-        <section>
-          <p className="mb-3 text-xs text-muted-foreground">{m.appliesDesc}</p>
+        <section data-settings-decisions="">
+          {/* B38 (judge): one block per decision (which model; how it thinks by default). */}
+          <div data-settings-block="model">
+          <h4 data-settings-block-title="">{m.provider} · {m.model}</h4>
+          <p className="mb-3 text-sm text-muted-foreground">{m.appliesDesc}</p>
           <div className="flex flex-wrap items-center gap-2">
             <Select onValueChange={setSelectedProvider} value={selectedProviderRow?.slug ?? selectedProvider}>
               <SelectTrigger className={cn('min-w-40', CONTROL_TEXT)}>
@@ -981,9 +984,10 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                 : `${selectedProviderRow?.name} signs in through your browser — Hermes runs the flow for you.`}
             </p>
           )}
+          </div>
           {config && mainModel && (reasoningSupported || fastSupported || ultrafastSupported) && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
-              <span className="text-xs text-muted-foreground">{m.defaultsLabel}</span>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3" data-settings-block="defaults">
+              <h4 className="basis-full" data-settings-block-title="">{m.defaultsLabel}</h4>
               {reasoningSupported && (
                 <div className="flex items-center gap-2 text-xs">
                   <span className="shrink-0 whitespace-nowrap">{m.reasoning}</span>

@@ -336,9 +336,15 @@ function SoulEditor({ profileName }: { profileName: string }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <PanelSectionLabel className="text-[0.7rem] tracking-[0.14em]">SOUL.md</PanelSectionLabel>
-          <p className="text-xs text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
+          <p className="text-sm text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
         </div>
-        {dirty && <span className="text-[0.65rem] text-muted-foreground">{p.unsavedChanges}</span>}
+        <div className="flex items-center gap-3" data-profile-soul-actions="">
+          {dirty && <span className="text-xs text-muted-foreground">{p.unsavedChanges}</span>}
+          <Button disabled={!dirty || saving || loading} onClick={() => void handleSave()} size="sm">
+            <Save />
+            {saving ? p.saving : p.saveSoul}
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -363,12 +369,6 @@ function SoulEditor({ profileName }: { profileName: string }) {
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Button disabled={!dirty || saving || loading} onClick={() => void handleSave()} size="sm">
-          <Save />
-          {saving ? p.saving : p.saveSoul}
-        </Button>
-      </div>
     </section>
   )
 }

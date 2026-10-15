@@ -188,7 +188,11 @@ export function ConfigField({
   }
 
   if (schema.type === 'number') {
+    // B38 (judge): 0 means "use the detected value" for the context override; say so beside the field.
+    const zeroIsAuto = schemaKey === 'model_context_length' && (value === 0 || value === '' || value == null)
+
     return row(
+      <div className="relative" data-config-number="">
       <Input
         className={CONTROL_TEXT}
         onChange={e => {
@@ -203,6 +207,15 @@ export function ConfigField({
         type="number"
         value={value === undefined || value === null ? '' : String(value)}
       />
+      {zeroIsAuto ? (
+        <span
+          className="pointer-events-none absolute top-1/2 right-9 -translate-y-1/2 rounded-full border border-(--ui-stroke-secondary) px-2 py-0.5 text-[0.7rem] text-muted-foreground"
+          data-config-zero-auto=""
+        >
+          0 = {t.settings.appearance.textDirection.auto}
+        </span>
+      ) : null}
+      </div>
     )
   }
 

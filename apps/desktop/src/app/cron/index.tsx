@@ -909,14 +909,47 @@ function CronJobDetail({
           </div>
         </div>
 
+        {/* B38 (judge): what a scheduler page is FOR leads: when it fires next
+            and how the last run went, at reading scale. History sits below. */}
+        <div className="grid grid-cols-2 gap-2" data-cron-glance="">
+          <div
+            className="rounded-xl border border-(--ui-stroke-secondary) px-3.5 py-3"
+            data-cron-glance-tile="next"
+            data-overdue={nextRunOverdueMs(job) === null ? undefined : ''}
+          >
+            <div className="text-[0.7rem] font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
+              {(nextRunOverdueMs(job) === null ? c.next : c.overdueSince).replace(/:$/, '')}
+            </div>
+            <div className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+              {isPaused ? (c.states.paused ?? 'paused') : formatTime(job.next_run_at)}
+            </div>
+            <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">{jobScheduleDisplay(job)}</div>
+          </div>
+          <div
+            className="rounded-xl border border-(--ui-stroke-secondary) px-3.5 py-3"
+            data-cron-glance-tile="last"
+            data-result={job.last_error ? 'failed' : job.last_run_at ? 'ok' : 'none'}
+          >
+            <div className="text-[0.7rem] font-medium uppercase tracking-wide text-(--ui-text-tertiary)">
+              {c.last.replace(/:$/, '')}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-lg font-semibold tabular-nums text-foreground">
+              {job.last_run_at ? (
+                <span
+                  aria-hidden="true"
+                  className={'size-2 shrink-0 rounded-full ' + (job.last_error ? 'bg-destructive' : 'bg-emerald-400')}
+                />
+              ) : null}
+              {formatTime(job.last_run_at)}
+            </div>
+            <div className="mt-0.5 truncate text-xs text-(--ui-text-tertiary)">
+              {job.last_error ? lastErrorSummary(job.last_error) : (c.states[state] ?? state)}
+            </div>
+          </div>
+        </div>
+
         <PanelMeta
           rows={[
-            { label: c.frequencyLabel, value: jobScheduleDisplay(job) },
-            { label: c.last.replace(/:$/, ''), value: formatTime(job.last_run_at) },
-            {
-              label: (nextRunOverdueMs(job) === null ? c.next : c.overdueSince).replace(/:$/, ''),
-              value: formatTime(job.next_run_at)
-            },
             { label: c.deliverLabel, value: c.deliveryLabels[deliver] ?? deliver },
             ...(modelOverride ? [{ label: c.modelLabel, value: modelOverride }] : [])
           ]}

@@ -309,6 +309,11 @@ describe('CapabilitiesView toolset management', { timeout: 60_000 }, () => {
 
     const iframe = document.querySelector('iframe')
     expect(iframe).toBeTruthy()
+    // B38: Skills opens on Installed; the Hub is its own Explore mode.
+    expect(iframe!.closest('section')!.classList.contains('hidden')).toBe(true)
+    await act(async () => {
+      fireEvent.click(document.querySelector('[data-capabilities-mode="explore"]')!)
+    })
     expect(iframe!.closest('section')!.classList.contains('hidden')).toBe(false)
 
     // Switch to Tools → the iframe STAYS mounted (no docs-site reload on the

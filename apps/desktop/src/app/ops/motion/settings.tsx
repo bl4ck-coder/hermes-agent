@@ -18,6 +18,8 @@ import { ThresholdSettings } from '../office/thresholds'
 import { Sigil } from '../primitives/sigil'
 import { OpsShortcutSheet } from '../shortcut-sheet'
 
+import { remoteThumbsOptedOut, THUMB_OPT_OUT_KEY, THUMB_PREF_EVENT } from '../../artifacts/thumb-cache'
+
 import { DiagnosticsPanel } from './diagnostics'
 import { cycleMotion, loadMotion, type MotionMode, saveMotion } from './motion'
 import { hostTimezone, opsTimezone as tzOf, validTimezone } from './tz'
@@ -153,6 +155,21 @@ export function SettingsView({
   const [prefs, setPrefs] = useState<OpsPrefs>(() => loadPrefs())
   const [sheet, setSheet] = useState(false)
   const [draftNote, setDraftNote] = useState<string | null>(null)
+  const [thumbs, setThumbs] = useState(() => !remoteThumbsOptedOut())
+  const setRemoteThumbs = (on: boolean) => {
+    try {
+      if (on) {
+        globalThis.localStorage?.removeItem(THUMB_OPT_OUT_KEY)
+      } else {
+        globalThis.localStorage?.setItem(THUMB_OPT_OUT_KEY, 'off')
+      }
+    } catch {
+      /* storage unavailable: keep the in-memory choice */
+    }
+
+    setThumbs(on)
+    globalThis.dispatchEvent?.(new Event(THUMB_PREF_EVENT))
+  }
   usePublishInspectorDetail({
     kind: 'settings',
     id: `settings:${profile ?? 'default'}`,
@@ -245,6 +262,11 @@ export function SettingsView({
               <option value="iso">ISO</option>
               <option value="local">{T("Local")}</option>
             </select>
+          </dd>
+          <dt>{T("Artifact previews")}</dt>
+          <dd>
+            <input aria-label={T("load GitHub preview images")} checked={thumbs} data-ops-remote-thumbs={thumbs ? 'on' : 'off'} onChange={e => setRemoteThumbs(e.target.checked)} type="checkbox" />
+            <small>{T("Loads GitHub preview images for linked repos and PRs (cached on this machine for 7 days). Off keeps the monogram and makes no request.")}</small>
           </dd>
         </dl>
         <button data-ops-prefs-reset="" disabled={JSON.stringify(prefs) === JSON.stringify(DEFAULT_PREFS)} onClick={() => set({ ...DEFAULT_PREFS })} type="button">

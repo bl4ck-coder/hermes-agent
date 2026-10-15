@@ -739,3 +739,13 @@
 :where([data-ops-packs-fold]) > :where(summary) { color: var(--ops-muted); cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; margin: 0 0 8px; text-transform: uppercase; }
 :where([data-ops-now-running='unknown']) { background: var(--ops-surface); box-shadow: inset 0 1px 0 color-mix(in srgb, white 6%, transparent); }
 :where([data-ops-now-running='unknown'] [data-ops-now-pulse]) { background: transparent; border: 1px dashed var(--ops-muted); box-shadow: none; }
+
+/* B38 (judge: card geometry): description leads under the title, facts become one compact inline footer, cards in a row share a baseline. */
+:where([data-ops-roster]) > :where(li) { display: flex; flex-direction: column; gap: 6px; }
+:where([data-ops-roster-title]) { font-size: 15px; letter-spacing: -0.01em; margin: 0; }
+:where([data-ops-roster]) :where(dl) { align-content: flex-start; display: flex; flex: 1; flex-wrap: wrap; gap: 6px 14px; }
+:where([data-ops-roster]) :where(dl > div) { align-items: baseline; display: flex; gap: 5px; min-width: 0; max-width: 100%; }
+:where([data-ops-roster]) :where(dl > div[data-desc]) { flex-basis: 100%; order: -1; margin-bottom: 4px; }
+:where([data-ops-roster]) :where(dl > div[data-desc] > dt) { clip: rect(0 0 0 0); height: 1px; overflow: hidden; position: absolute; width: 1px; }
+:where([data-ops-roster]) :where(dl > div[data-desc] > dd) { color: var(--ops-text, inherit); font-size: 13px; }
+:where([data-ops-roster]) :where(dt) { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; }

@@ -230,7 +230,7 @@ export function DataTable<T>({
                     }
 
                     return (
-                      <div data-col={column.id} key={column.id}>
+                      <div data-col={column.id} data-desc={column.description?.(row) ? '' : undefined} key={column.id}>
                         <dt>{typeof column.header === 'string' ? T(column.header) : column.header}</dt>
                         <dd
                           className={column.tabular ? 'tabular-nums' : undefined}

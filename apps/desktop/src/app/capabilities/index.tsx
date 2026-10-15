@@ -73,6 +73,10 @@ export function CapabilitiesView({
   const gateway = useStoreSelector($gateway, g => (mode === 'connectors' ? g : null))
 
   const [query, setQuery] = useState('')
+  // B38 (judge): managing installed skills and exploring the Hub are two jobs.
+  // One segmented switch; each gets the full column instead of a split pane.
+  const [skillsView, setSkillsView] = useState<'installed' | 'explore'>('installed')
+  const exploring = mode === 'skills' && skillsView === 'explore'
 
   // Keep the docs iframe alive after the first Skills visit.
   const [hubMounted, setHubMounted] = useState(mode === 'skills')
@@ -200,16 +204,43 @@ export function CapabilitiesView({
             { label: t.skills.tabToolsets, value: toolsets ? visibleToolsetCount(toolsets) : '…' }
           ]}
           subtitle={typeof scope.profile === 'string' ? scope.profile : undefined}
+          actions={
+            mode === 'skills' ? (
+              <div className="flex rounded-full border border-(--ui-stroke-secondary) p-0.5" data-capabilities-modes role="tablist">
+                {(['installed', 'explore'] as const).map(view => (
+                  <button
+                    aria-selected={skillsView === view}
+                    className={
+                      'rounded-full px-3.5 py-1 text-sm font-medium transition-colors ' +
+                      (skillsView === view
+                        ? 'bg-(--ui-surface-active) text-(--ui-text-primary)'
+                        : 'text-(--ui-text-tertiary) hover:text-(--ui-text-primary)')
+                    }
+                    data-capabilities-mode={view}
+                    key={view}
+                    onClick={() => setSkillsView(view)}
+                    role="tab"
+                    type="button"
+                  >
+                    {view === 'installed' ? `${t.skills.hub.installed} · ${skills?.length ?? '…'}` : t.skills.hub.pickerTitle}
+                  </button>
+                ))}
+              </div>
+            ) : undefined
+          }
           title={{ connectors: t.connectorsPage.title, plugins: t.skills.tabPlugins, skills: t.skills.tabSkills, toolsets: t.skills.tabToolsets }[mode]}
         />
         {mode !== 'plugins' && <CapabilityScopeSelector scope={scope} />}
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className={mode === 'skills' ? 'min-h-40 flex-1 overflow-hidden' : 'min-h-0 flex-1'}>
-            {loadGate ?? tabContent[mode]()}
-          </div>
+          {!exploring && (
+            <div className={mode === 'skills' ? 'min-h-40 flex-1 overflow-hidden' : 'min-h-0 flex-1'}>
+              {loadGate ?? tabContent[mode]()}
+            </div>
+          )}
           {hubMounted && (
             <EmbeddedHubPicker
-              hidden={mode !== 'skills'}
+              fill={exploring}
+              hidden={mode !== 'skills' || skillsView !== 'explore'}
               installedNames={installedSkillNames}
               profile={scope.profile}
             />
