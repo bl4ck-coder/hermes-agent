@@ -451,3 +451,6 @@ html[data-hermes-theme^='gold-night'] [data-settings-body] :where(input, select,
 html[data-hermes-theme^='gold-night'] [data-overlay-surface] nav :where(button, a) { font-size: 0.84rem; }
 /* Artifacts: the preview strip is labelled "Recent". */
 html[data-hermes-theme^='gold-night'] [data-artifact-cards]::before { color: rgb(var(--glass-gold-hi) / 0.8); content: attr(data-label); font-size: 0.66rem; grid-column: 1 / -1; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* B36b: settings pages without SettingsSection (Model, etc.) still read as one deliberate card, not a form floating on the void. */
+html[data-hermes-theme^='gold-night'] [data-settings-body] > :not(:has([data-settings-section])) { background: var(--glass-spot-top), linear-gradient(170deg, rgb(var(--glass-raised) / 0.45), rgb(var(--glass-panel) / 0.35)); border: 1px solid rgb(var(--glass-gold-hi) / 0.12); border-radius: 18px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06); margin-inline: 1rem; padding: 1.1rem 1.4rem; }
