@@ -27,6 +27,12 @@ const env = {
 delete env.HERMES_DESKTOP_DEV_SERVER
 if (process.env.OPS_LIVE_HERMES_HOME) { console.error('hard.mjs never uses OPS_LIVE_HERMES_HOME'); process.exit(4) }
 mkdirSync(join(tmpdir(), 'ops-hard-home'), { recursive: true })
+// The sandbox has no provider, so the first-run setup dialog can cover the app mid-run (it depended on
+// provider keys leaking in from the parent shell). A placeholder key keeps setup closed; nothing is ever sent.
+{
+  const envFile = join(tmpdir(), 'ops-hard-home', '.env')
+  if (!existsSync(envFile)) writeFileSync(envFile, 'ANTHROPIC_API_KEY=ops-hard-placeholder-not-a-real-key\n')
+}
 
 
 // B11 safety: never launch a test window whose backend cannot start (a wrong interpreter makes the
