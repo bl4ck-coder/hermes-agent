@@ -299,7 +299,6 @@ function ConfigSettingsInner({
     })
   }
 
-  // eslint-disable-next-line no-restricted-syntax -- autosave bookkeeping refs, not an atom mirror
   useEffect(() => {
     if (!latestConfigRef.current || saveVersion === 0) {
       return
