@@ -131,7 +131,11 @@ function normalizeValue(value: string): string {
     break
   }
 
-  return trimmed.replace(/[`*]+$/g, '').replace(/[),.;]+$/, '')
+  trimmed = trimmed.replace(/[`*]+$/g, '').replace(/[),.;]+$/, '')
+
+  // P27 (judge pass 21 #8): a URL scraped from JSON-escaped text keeps the escape's backslashes
+  // (`…jpg?name=orig\\`); requested as-is the host answers 400. A URL never ends in a backslash.
+  return /^https?:\/\//i.test(trimmed) ? trimmed.replace(/\\+$/, '') : trimmed
 }
 
 // Chat renders file refs as `[label](#media:<encoded path>)`. Decode before
