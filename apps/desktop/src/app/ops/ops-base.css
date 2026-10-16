@@ -1086,7 +1086,7 @@
    (Retry / Revert to saved value) are 40px targets; checkboxes keep a 20px box (their label is also the target). */
 :where([data-ops-settings]) :where([data-sfr-control]) :where(select, button, input) { min-height: 40px; }
 :where([data-ops-settings]) :where([data-sfr-control]) :where(input[type='checkbox']) { min-height: auto; inline-size: 20px; block-size: 20px; margin: 10px 0; }
-:where([data-ops-pref-recover]) { display: inline-flex; flex-wrap: wrap; gap: var(--space-2,8px); margin-inline-start: var(--space-2,8px); vertical-align: middle; }
+:where([data-ops-pref-recover]) { display: inline-flex; flex-wrap: wrap; gap: var(--space-2,8px); }
 :where([data-ops-pref-retry], [data-ops-pref-revert]) { min-height: 40px; min-width: 40px; padding: 0 var(--space-3,12px); font-size: var(--type-meta,14px); font-weight: 500; }
 
 /* P24a (pass 18, Board): the card holding focus grows in flow instead of swapping information: the full title unclamps,

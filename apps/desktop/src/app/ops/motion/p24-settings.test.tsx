@@ -59,6 +59,9 @@ describe('P24 Ops Settings recovery', () => {
     expect((screen.getByLabelText('theme') as HTMLSelectElement).value).toBe('light')
     expect(screen.getByLabelText('theme').getAttribute('aria-invalid')).toBe('true')
     expect(screen.getByLabelText('theme').getAttribute('aria-describedby')).toContain(err.id)
+    // P25 (pass 19 #3): same anatomy as App Settings: recovery is its own slot after the error, not inside the message.
+    expect(err.querySelector('[data-ops-pref-retry]')).toBeNull()
+    expect(themeRow.querySelector('[data-sfr-error] + [data-sfr-actions] [data-ops-pref-retry]')).not.toBeNull()
     expect(loadPrefs().theme).toBe('gold-night')
 
     refuse = false

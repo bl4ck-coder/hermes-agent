@@ -58,6 +58,8 @@
 :where([data-sfr-control]) :where(input, select, button, [role='combobox']) { min-height: 40px; }
 :where([data-sfr-help], [data-sfr-status]) { margin: 0; font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); color: var(--muted-foreground, #9a9a9a); }
 :where([data-sfr-error]) { margin: 0; font-size: var(--type-meta, 14px); line-height: var(--type-meta-lh, 20px); color: var(--destructive, #e0898d); }
+:where([data-sfr-actions]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2, 8px); }
+:where([data-sfr-actions]) :where(button) { min-height: 40px; min-width: 40px; }
 @container settings-form (max-width: 40rem) { :where([data-settings-form-row]) { grid-template-columns: minmax(0, 1fr); row-gap: var(--space-2, 8px); } :where([data-sfr-label]) { padding-top: 0; } }
 :where([data-settings-form-actions]) { display: grid; grid-template-columns: minmax(12rem, 20rem) minmax(0, 1fr); column-gap: var(--space-4, 16px); padding: var(--space-2, 8px) 0 0; }
 :where([data-settings-form-actions]) > :where(*) { grid-column: 2; justify-self: start; }
