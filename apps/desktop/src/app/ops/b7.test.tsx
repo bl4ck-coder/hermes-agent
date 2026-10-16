@@ -289,12 +289,13 @@ describe('Skills to 9', () => {
     }
 
     render(<SkillsLens client={client as never} profile="p" />)
-    await waitFor(() => expect(document.querySelector('[data-ops-skill-shown]')?.textContent).toContain('Showing 3 of 3'))
+    // P25 (judge pass 19): one count in the toolbar: the total, or "Showing N of M" only while filtered.
+    await waitFor(() => expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('3 skills'))
     fireEvent.change(screen.getByLabelText('skill state'), { target: { value: 'off' } })
     fireEvent.change(screen.getByLabelText('skill type'), { target: { value: 'web' } })
-    expect(document.querySelector('[data-ops-skill-shown]')?.textContent).toContain('Showing 1 of 3')
+    expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('Showing 1 of 3')
     fireEvent.click(document.querySelector('[data-ops-skill-clear]')!)
-    expect(document.querySelector('[data-ops-skill-shown]')?.textContent).toContain('Showing 3 of 3')
+    expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('3 skills')
 
     const add = await waitFor(() => {
       const b = document.querySelector('[data-ops-add-all]') as HTMLButtonElement | null

@@ -223,7 +223,8 @@ export function CapabilitiesView({
           className="mx-4 mt-2"
           icon={<Codicon name="extensions" />}
           id="capabilities"
-          subtitle={typeof scope.profile === 'string' ? scope.profile : undefined}
+          // P25 (judge pass 19): when the scope selector below names the profile, the header does not repeat it.
+          subtitle={typeof scope.profile === 'string' && !(mode !== 'plugins' && scope.options.length > 1) ? scope.profile : undefined}
           title={{ connectors: t.connectorsPage.title, plugins: t.skills.tabPlugins, skills: t.skills.tabSkills, toolsets: t.skills.tabToolsets }[mode]}
         />
         {mode !== 'plugins' && <CapabilityScopeSelector scope={scope} />}

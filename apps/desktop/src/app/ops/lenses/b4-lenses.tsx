@@ -3,7 +3,7 @@
  * Reads go through Desktop's own API helpers; every connect / install / edit flow is Desktop's own
  * (Ops routes there), except skill installs, which use the hub install route after a confirm.
  */
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 
 import { connectionScoped, hermesApi } from '@/api/client'
 import { listOAuthProviders } from '@/api/config'
@@ -31,6 +31,7 @@ import {
   type ChannelsInput,
   type FleetProfile,
   fleetRows,
+  laneName,
   type OfficialLite,
   type RunStats,
   searchRows,
@@ -54,6 +55,8 @@ export interface B4Client {
   workers: () => Promise<ActiveWorker[]>
   /** R72 (P8 b6): task_runs per profile since `since` (epoch s); rejects on an older backend. */
   runStats?: (since: number) => Promise<RunStats>
+  /** P25: a stated purpose per lane id, when some source provides one. Without it Teams shows no purpose (never a guessed one). */
+  teamPurposes?: () => Promise<Record<string, string>>
   skills: (profile: string) => Promise<SkillLite[]>
   official: (profile: string) => Promise<OfficialLite[]>
   install: (identifier: string, profile: string) => Promise<unknown>
@@ -122,6 +125,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
     60_000
   )
 
+  const purposes = useOpsResource(() => (client.teamPurposes ? client.teamPurposes() : Promise.resolve(null)), [client], 60_000)
   const [tab, setTab] = useState<AgentsTab>('fleet')
   const [q, setQ] = useState('')
   // P14: the Fleet reads as one grouped list of agents; the sortable table stays one click away.
@@ -223,7 +227,7 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
           )}
         </>
       ) : tab === 'teams' ? (
-        <TeamsView onOpenRoute={onOpenRoute} tasks={tasks.value ?? null} tasksError={tasks.error} />
+        <TeamsView onOpenRoute={onOpenRoute} purposes={purposes.value ?? null} tasks={tasks.value ?? null} tasksError={tasks.error} />
       ) : (
         <ul data-ops-roles="">
           {rows.map(r => (
@@ -240,12 +244,12 @@ export function AgentsLens({ client: c, nowS, onOpenRoute }: { client?: B4Client
 
 const statusWord = (s: string) => ({ blocked: 'Blocked', running: 'Running', ready: 'Ready', todo: 'To do', triage: 'Triage', review: 'Review', scheduled: 'Scheduled' } as Record<string, string>)[s] ?? s
 
-function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | null; tasksError: unknown; onOpenRoute?: (r: string) => void }) {
+function TeamsView({ tasks, tasksError, purposes, onOpenRoute }: { tasks: BoardTask[] | null; tasksError: unknown; purposes: Record<string, string> | null; onOpenRoute?: (r: string) => void }) {
   if (!tasks) {
     return <State error={tasksError} what="Teams" />
   }
 
-  const list = teams(tasks)
+  const list = teams(tasks, purposes)
 
   if (list.length === 0) {
     return <p data-ops-empty="teams">{T("No tasks yet, so no lanes.")}</p>
@@ -255,63 +259,87 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
   const people = [...new Set(list.flatMap(x => x.members))]
   const openTotal = list.reduce((n, x) => n + x.open, 0)
 
-  const label = (lane: string) => (lane === 'No lane' ? T('Unassigned') : lane)
+  const label = (lane: string) => (lane === 'No lane' ? T('Unassigned') : laneName(lane))
 
-  // P14 (judge consult): one EntityRow per lane: name → current work with its state → open/blocked and members → projects and the rest in a disclosure.
+  // P14 (judge consult): one EntityRow per lane.
+  // P25 (judge pass 19): the closed row reads name → stated purpose (only if one exists) → the work in words, blocked first,
+  // then open. No counters in the row; the lane id, states, every task, members and projects sit in the expansion, in one rhythm.
   const row = (t: (typeof list)[number]) => {
-    const [head] = t.focus
-    const rest = t.work.filter(w => w.id !== head?.id)
+    const blocked = t.work.filter(w => w.status === 'blocked')
+    const open = t.work.filter(w => w.status !== 'blocked')
+    const more = (n: number) => (n > 0 ? <span data-ops-team-more-n=""> +{n}</span> : null)
 
     return (
       <EntityRow
         attrs={{ 'data-ops-team': t.lane, 'data-ops-team-busy': t.open > 0 ? '' : undefined, 'data-ops-team-unassigned': t.lane === 'No lane' ? '' : undefined }}
         context={
-          head ? (
-            <span data-ops-team-current="">
-              <span data-ops-team-now="">{T('Working on')}:</span>{' '}
-              {head.blocked ? <span data-ops-team-blocked-tag="">{T('Blocked')}</span> : null}
-              <span data-ops-team-task={head.id} data-ops-team-task-blocked={head.blocked ? '' : undefined}>{head.title}</span>
-            </span>
-          ) : (
-            <span data-ops-team-idle="">{T('No open work')}</span>
-          )
-        }
-        key={t.lane}
-        meta={
           <>
-            <span data-ops-team-open-n="">{P(t.open, '{n} open')}</span>
-            {t.blocked ? <span data-ops-team-blocked="">{P(t.blocked, '{n} blocked')}</span> : null}
-            <span>{P(t.members.length, '{n} members')}</span>
+            {t.purpose ? <span data-ops-team-purpose-line="">{t.purpose}</span> : null}
+            {blocked.length ? (
+              <span data-ops-team-work="blocked">
+                <span data-ops-team-blocked-tag="">{T('Blocked')}</span>{' '}
+                <span data-ops-team-task={blocked[0].id} data-ops-team-task-blocked="">{blocked[0].title}</span>
+                {more(blocked.length - 1)}
+              </span>
+            ) : null}
+            {open.length ? (
+              <span data-ops-team-work="open">
+                <span data-ops-team-now="">{T('Working on')}:</span> <span data-ops-team-task={open[0].id}>{open[0].title}</span>
+                {more(open.length - 1)}
+              </span>
+            ) : null}
+            {!t.work.length ? (
+              t.open > 0 ? <span data-ops-team-work="open">{P(t.open, '{n} open tasks')}</span> : <span data-ops-team-idle="">{T('No open work')}</span>
+            ) : null}
           </>
         }
+        key={t.lane}
         more={
           <Disclosure label={T('Work and members')}>
-            <div data-ops-team-detail="">
-              {rest.length ? (
-                <ul aria-label={T('Working on')} data-ops-team-rest="">
-                  {rest.map(f => (
-                    <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.status === 'blocked' ? '' : undefined} key={f.id}>
-                      <span data-ops-team-task-status={f.status}>{T(statusWord(f.status))}</span> {f.title}
-                    </li>
-                  ))}
-                </ul>
+            {/* P24 (judge pass 18): the expansion opens under the work. P25: one labelled line per fact, same rhythm as Fleet details. */}
+            <dl data-ops-team-detail="">
+              {t.lane !== 'No lane' ? (
+                <>
+                  <dt>{T('Lane')}</dt>
+                  <dd data-ops-team-lane-id="">{t.lane}</dd>
+                </>
               ) : null}
-              {/* P24 (judge pass 18): the expansion keeps reading the work; who and where follow on quiet labelled lines. */}
-              <p data-ops-team-members="">
-                <span data-ops-team-label="">{T('Members:')}</span>
+              <dt>{T('State')}</dt>
+              <dd data-ops-team-states="">
+                {t.blocked ? <span data-ops-team-blocked="">{P(t.blocked, '{n} blocked')}</span> : null}
+                <span data-ops-team-open-n="">{P(t.open, '{n} open')}</span>
+              </dd>
+              {t.work.length ? (
+                <>
+                  <dt>{T('Open tasks')}</dt>
+                  <dd>
+                    <ul aria-label={T('Open tasks')} data-ops-team-rest="">
+                      {t.work.map(f => (
+                        <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.status === 'blocked' ? '' : undefined} key={f.id}>
+                          <span data-ops-team-task-status={f.status}>{T(statusWord(f.status))}</span> {f.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </dd>
+                </>
+              ) : null}
+              <dt>{T('Members')}</dt>
+              <dd data-ops-team-members="">
                 {t.members.length ? t.members.map(m => <span data-ops-team-member={m} key={m}><Sigil name={m} size={20} /> {m}</span>) : <span data-ops-team-none="">{T('No members')}</span>}
-              </p>
+              </dd>
               {t.projects.length ? (
-                <p data-ops-team-projects="">
-                  <span data-ops-team-label="">{T('Projects:')}</span>
-                  {t.projects.map(pr => (
-                    <button data-ops-team-project={pr} disabled={!onOpenRoute} key={pr} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(pr)}`)} type="button">
-                      {pr}
-                    </button>
-                  ))}
-                </p>
+                <>
+                  <dt>{T('Projects')}</dt>
+                  <dd data-ops-team-projects="">
+                    {t.projects.map(pr => (
+                      <button data-ops-team-project={pr} disabled={!onOpenRoute} key={pr} onClick={() => onOpenRoute?.(`/kanban?project=${encodeURIComponent(pr)}`)} type="button">
+                        {pr}
+                      </button>
+                    ))}
+                  </dd>
+                </>
               ) : null}
-            </div>
+            </dl>
           </Disclosure>
         }
         title={label(t.lane)}
@@ -359,6 +387,21 @@ function TeamsView({ tasks, tasksError, onOpenRoute }: { tasks: BoardTask[] | nu
 /** P14 (judge consult): one list, each agent once. Attention first, then running, then no run observed.
  * name → work/problem → status and last activity → open profile; infrastructure in Details. */
 function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; now: number; onOpen?: (name: string) => void }) {
+  // P25 (judge pass 19): Details is a toggle beside Open profile, on the row's own line; its body opens under the row.
+  const uid = useId()
+  const [openDetails, setOpenDetails] = useState<ReadonlySet<string>>(() => new Set())
+
+  const toggleDetails = (name: string) =>
+    setOpenDetails(cur => {
+      const next = new Set(cur)
+
+      if (!next.delete(name)) {
+        next.add(name)
+      }
+
+      return next
+    })
+
   // P23c (judge pass 17): a failure in the last 7 days is history, not a current incident. Attention is what is failing
   // or unreadable now; recent failures get their own quieter group below it.
   const hot = (r: (typeof rows)[number]) => r.status === 'failing' || r.status === 'unknown'
@@ -371,72 +414,91 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
   const idleNow = rows.filter(r => !hot(r) && !recentFail(r) && r.status !== 'running' && (r.lastActive || (r.runs7d ?? 0) > 0))
   const quiet = rows.filter(r => !hot(r) && !recentFail(r) && r.status !== 'running' && !(r.lastActive || (r.runs7d ?? 0) > 0))
 
+  // P25: the context line says the present first; a running agent's past failures stay in Details (history), not in its line.
   const context = (r: (typeof rows)[number]) =>
     r.failingTask
       ? `${T('Failing task')}: ${r.failingTask.title} \u00b7 ${P(r.failingTask.failures, '{n} failures in a row')}`
       : r.status === 'unknown'
         ? T('No task or worker data for this agent.')
-        : (r.failed7d ?? 0) > 0
+        : r.status !== 'running' && (r.failed7d ?? 0) > 0
           ? `${P(r.failed7d ?? 0, '{n} failed runs')} ${T('in the last 7 days')}`
           : r.active
             ? P(r.active, '{n} active')
             : null
 
-  const row = (r: (typeof rows)[number]) => (
-    <EntityRow
-      attrs={{ 'data-ops-fleet-row': r.name, 'data-ops-fleet-attention-row': hot(r) ? r.name : undefined, 'data-ops-fleet-recent-fail': recentFail(r) ? r.name : undefined }}
-      context={context(r)}
-      key={r.name}
-      lead={<Sigil name={r.name} size={32} />}
-      meta={
-        <>
-          <span data-ops-fleet-status={r.status}>{T(r.status)}</span>
-          <span>{r.lastActive ? fmtAge(now - r.lastActive) : T('unknown')}</span>
-        </>
-      }
-      more={
-        <Disclosure label={T('Details')}>
-          {/* P23c: only facts that are known; unknown infrastructure does not take rows of height. */}
-          <dl data-ops-fleet-details="">
-            {r.model ? (
-              <>
-                <dt>{T('Model')}</dt>
-                <dd>{r.model}</dd>
-              </>
-            ) : null}
-            {r.lane ? (
-              <>
-                <dt>{T('Lane')}</dt>
-                <dd>{r.lane}</dd>
-              </>
-            ) : null}
-            {r.active ? (
-              <>
-                <dt>{T('Active tasks')}</dt>
-                <dd>{String(r.active)}</dd>
-              </>
-            ) : null}
-            <dt>{T('Runs 7d')}</dt>
-            <dd data-ops-runs-source={r.runsSource}>
-              {r.runs7d}
-              {r.failed7d ? ` \u00b7 ${r.failed7d} ${T('failed')}` : ''}
-            </dd>
-          </dl>
-        </Disclosure>
-      }
-      primary={
-        <button data-ops-fleet-profile={r.name} data-ops-primary="" disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
-          {T('Open profile')}</button>
-      }
-      title={
-        <button data-ops-fleet-open={r.name} data-ops-row-link="" disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
-          <span>{r.name}</span>
-          {r.role ? <small data-ops-role="">{r.role}</small> : null}
-        </button>
-      }
-      tone={r.status === 'failing' ? 'bad' : r.status === 'unknown' ? 'warn' : undefined}
-    />
-  )
+  const row = (r: (typeof rows)[number]) => {
+    const detailsOpen = openDetails.has(r.name)
+    const detailsId = `${uid}-fleet-${encodeURIComponent(r.name)}`
+
+    return (
+      <EntityRow
+        attrs={{ 'data-ops-fleet-row': r.name, 'data-ops-fleet-attention-row': hot(r) ? r.name : undefined, 'data-ops-fleet-recent-fail': recentFail(r) ? r.name : undefined }}
+        context={context(r)}
+        key={r.name}
+        lead={<Sigil name={r.name} size={32} />}
+        meta={
+          <>
+            <span data-ops-fleet-status={r.status}>{T(r.status)}</span>
+            <span>{r.lastActive ? fmtAge(now - r.lastActive) : T('unknown')}</span>
+          </>
+        }
+        more={
+          detailsOpen ? (
+            <div data-ops-disclosure-body="" id={detailsId}>
+              {/* P23c: only facts that are known; unknown infrastructure does not take rows of height. */}
+              <dl data-ops-fleet-details="">
+                {r.role ? (
+                  <>
+                    <dt>{T('Role')}</dt>
+                    <dd>{r.role}</dd>
+                  </>
+                ) : null}
+                {r.model ? (
+                  <>
+                    <dt>{T('Model')}</dt>
+                    <dd>{r.model}</dd>
+                  </>
+                ) : null}
+                {r.lane ? (
+                  <>
+                    <dt>{T('Lane')}</dt>
+                    <dd>{r.lane}</dd>
+                  </>
+                ) : null}
+                {r.active ? (
+                  <>
+                    <dt>{T('Active tasks')}</dt>
+                    <dd>{String(r.active)}</dd>
+                  </>
+                ) : null}
+                <dt>{T('Runs 7d')}</dt>
+                <dd data-ops-runs-source={r.runsSource}>
+                  {r.runs7d}
+                  {r.failed7d ? ` \u00b7 ${r.failed7d} ${T('failed')}` : ''}
+                </dd>
+              </dl>
+            </div>
+          ) : undefined
+        }
+        primary={
+          <>
+            <button data-ops-fleet-profile={r.name} data-ops-primary="" disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
+              {T('Open profile')}</button>
+            <button aria-controls={detailsOpen ? detailsId : undefined} aria-expanded={detailsOpen} data-ops-fleet-details-toggle={r.name} onClick={() => toggleDetails(r.name)} type="button">
+              {T('Details')}
+            </button>
+          </>
+        }
+        title={
+          <button data-ops-fleet-open={r.name} data-ops-row-link="" disabled={!onOpen} onClick={() => onOpen?.(r.name)} type="button">
+            <span>{r.name}</span>
+            {r.role ? <small data-ops-role="">{r.role}</small> : null}
+          </button>
+        }
+        tone={r.status === 'failing' ? 'bad' : r.status === 'unknown' ? 'warn' : undefined}
+      />
+    )
+  }
 
   const group = (id: string, title: string, xs: typeof rows) =>
     xs.length ? (
@@ -550,6 +612,12 @@ function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: Retur
       </div>
     ) : null
 
+  // P25 (judge pass 19): when every listed skill shares one state the group heading is one more header with nothing to
+  // separate; each row already says Enabled/Disabled. Headings appear only when both groups are present.
+  if (!on.length || !off.length) {
+    return <EntityList label={T('Skills')}>{sorted.map(row)}</EntityList>
+  }
+
   return (
     <>
       {group('on', T('Enabled in this profile'), on)}
@@ -638,10 +706,9 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
         </p>
       ) : null}
       {note ? <p role="status">{note}</p> : null}
-      <section aria-label={T("Individual skills")} data-ops-skills="">
-        <h3>
-          {T("Individual skills")}{' '}<span data-ops-skill-count="">{rows ? shown.length : '…'}</span>
-        </h3>
+      {/* P25 (judge pass 19): one main header (the h2 above) and one count, in the toolbar: the total, or "Showing N of M" only when
+          filtered. No nested framed section, no second heading. */}
+      <div aria-label={T("Individual skills")} data-ops-skills="" role="region">
         <div aria-label={T("Skill filters")} data-ops-skill-filters="" role="group">
           <Search label={T("search skills")} onChange={setQ} placeholder={T("Search by name, type, etc.")} value={q} />
           <select aria-label={T("skill state")} data-ops-skill-state={onFilter} onChange={e => setOnFilter(e.target.value as 'all' | 'on' | 'off')} value={onFilter}>
@@ -661,22 +728,22 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
             <button data-ops-skill-clear="" onClick={() => (setQ(''), setType(''), setOnFilter('all'))} type="button">
               {T("Clear filters")}</button>
           ) : null}
+          {rows ? (
+            <span aria-live="polite" data-ops-skill-count="" data-ops-skill-filtered={filtered ? '' : undefined}>
+              {filtered ? `${T('Showing')} ${shown.length} ${T('of')} ${rows.length}` : P(rows.length, '{n} skills', '{n} skill')}
+            </span>
+          ) : null}
+          {rows ? (
+            <span aria-label={T('Skills view')} data-ops-fleet-views="" data-ops-skill-views="" role="group">
+              {(['list', 'table'] as const).map(v => (
+                <button aria-pressed={skillView === v} data-ops-skill-view={v} key={v} onClick={() => setSkillView(v)} type="button">
+                  {v === 'list' ? T('List') : T('Table')}
+                </button>
+              ))}
+            </span>
+          ) : null}
         </div>
-        {rows ? (
-          <p data-ops-skill-shown="">
-            {T('Showing')}{' '}{shown.length} {T('of')} {rows.length}
-            {scanCapped && skillView === 'table' ? ` · ${T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}` : ''}
-          </p>
-        ) : null}
-        {rows ? (
-          <div aria-label={T('Skills view')} data-ops-fleet-views="" data-ops-skill-views="" role="group">
-            {(['list', 'table'] as const).map(v => (
-              <button aria-pressed={skillView === v} data-ops-skill-view={v} key={v} onClick={() => setSkillView(v)} type="button">
-                {v === 'list' ? T('List') : T('Table')}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        {rows && scanCapped && skillView === 'table' ? <p data-ops-skill-scan="">{T('Agents column covers the first {n} profiles').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}</p> : null}
         {!rows ? (
           <State error={skills.error} what="Skills" />
         ) : skillView === 'list' ? (
@@ -713,7 +780,7 @@ export function SkillsLens({ client: c, profile, onOpenRoute }: { client?: B4Cli
             viewToggleId="skills"
           />
         )}
-      </section>
+      </div>
       <details data-ops-packs-fold="" open={!!rows && rows.length === 0}>
       <summary>{T("Add by category")}</summary>
       <section aria-label={T("Starter packs")} data-ops-packs="">
@@ -847,6 +914,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
   const [cat, setCat] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [quick, setQuick] = useState(false)
+  const partialId = useId()
   const cards = useMemo(() => (r.value ? appCards(r.value) : null), [r.value])
 
   if (!cards || !r.value) {
@@ -872,8 +940,19 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
         <h2>{T("Channels & MCP")}</h2>
         <div role="tablist">
           {(['all', 'connected'] as const).map(f => (
-            <button aria-selected={filter === f} data-ops-app-filter={f} key={f} onClick={() => setFilter(f)} role="tab" type="button">
+            // P25 (judge pass 19): while a source failed, a tab total is a lower bound ("All 40+"), described by the failure notice.
+            <button
+              aria-describedby={missing.length ? partialId : undefined}
+              aria-selected={filter === f}
+              data-ops-app-filter={f}
+              data-ops-count-partial={missing.length ? '' : undefined}
+              key={f}
+              onClick={() => setFilter(f)}
+              role="tab"
+              type="button"
+            >
               {f === 'all' ? `${T('All')} ${cards.length}` : `${T('Connected')} ${cards.filter(x => x.connected).length}`}
+              {missing.length ? '+' : ''}
             </button>
           ))}
         </div>
@@ -884,7 +963,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
       </header>
       {/* P22b: name the failed source in plain words and say what is still shown. */}
       {missing.length ? (
-        <p data-ops-partial="" role="status">
+        <p data-ops-partial="" id={partialId} role="status">
           {T("Couldn't load {sources}. Showing everything else.").replace('{sources}', missing.map(k => T(SOURCE_NAMES[k])).join(', '))}{' '}
           {/* P24d: retry right where the failure is named; reuses the lens's own load. */}
           <button data-ops-partial-retry="" onClick={r.reload} type="button">
@@ -899,7 +978,8 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
             {T("All")}</button>
           {cats.map(x => (
             <button aria-pressed={cat === x} data-ops-app-cat={x} key={x} onClick={() => setCat(x)} type="button">
-              {x}{' '}
+              {/* P25: the rail speaks the UI language like the section headings (it was the one English label left). */}
+              {T(x)}{' '}
               {unknownCats.has(x) ? <span data-ops-count-unknown="">{T('unknown')}</span> : <span>{base.filter(c => c.category === x).length}</span>}
             </button>
           ))}

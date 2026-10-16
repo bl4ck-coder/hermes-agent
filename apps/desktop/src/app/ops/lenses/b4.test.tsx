@@ -150,7 +150,7 @@ describe('Skills lens', () => {
 
     render(<SkillsLens client={many} onOpenRoute={open} profile="builder" />)
     await waitFor(() => expect(document.querySelector('[data-ops-skill-open="figma"]')).toBeTruthy())
-    expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('1')
+    expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('1 skill') // P25: one count, worded
     expect(document.querySelector('[data-ops-skill-tag]')?.getAttribute('data-ops-skill-tag')).toBe(tagTone('design'))
     const agents = document.querySelector('[data-ops-skill-agents]') as HTMLElement
     // P15: every profile with the skill enabled is reachable from the row's disclosure (no +N popover).
@@ -158,10 +158,10 @@ describe('Skills lens', () => {
     fireEvent.click(within(agents).getByText('builder'))
     expect(open).toHaveBeenLastCalledWith('/profiles?profile=builder')
     fireEvent.change(screen.getByLabelText('search skills'), { target: { value: 'nothing' } })
-    expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('0')
+    expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('Showing 0 of 1')
     fireEvent.change(screen.getByLabelText('search skills'), { target: { value: 'figma files' } })
     fireEvent.change(screen.getByLabelText('search skills'), { target: { value: 'DESIGN' } })
-    expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('1')
+    expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('Showing 1 of 1')
     fireEvent.click(document.querySelector('[data-ops-skill-open="figma"]')!)
     expect(open).toHaveBeenLastCalledWith('/capabilities?tab=skills&skill=figma')
     fireEvent.click(document.querySelector('[data-ops-skill-create]')!)

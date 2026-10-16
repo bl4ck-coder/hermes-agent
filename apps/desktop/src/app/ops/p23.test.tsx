@@ -33,7 +33,8 @@ describe('P23c Fleet attention vs history', () => {
     await waitFor(() => expect(document.querySelector('[data-ops-rows-group="recent"] [data-ops-fleet-row="scribe"]')).toBeTruthy())
     expect(document.querySelector('[data-ops-rows-group="attention"] [data-ops-fleet-row="pixel"]')).toBeTruthy()
     expect(document.querySelector('[data-ops-rows-group="attention"] [data-ops-fleet-row="scribe"]')).toBeNull()
-    // Unknown infrastructure takes no detail rows: scribe has no model.
+    // Unknown infrastructure takes no detail rows: scribe has no model. P25: Details is a toggle beside Open profile.
+    fireEvent.click(document.querySelector('[data-ops-fleet-details-toggle="scribe"]')!)
     const details = document.querySelector('[data-ops-fleet-row="scribe"] [data-ops-fleet-details]')!
     expect(details.textContent).not.toContain('Model')
     expect(details.textContent).toContain('Runs 7d')

@@ -261,6 +261,51 @@ describe('CapabilitiesView toolset management', { timeout: 60_000 }, () => {
     expect(await screen.findByText(/Deep research steps/)).toBeTruthy()
   })
 
+  it('P25: the document opens with its content, not metadata repeating the name and description; the list row keeps only state', async () => {
+    getSkills.mockResolvedValue([
+      {
+        name: 'web-research',
+        description: 'Research the web',
+        category: 'research',
+        enabled: true,
+        usage: 3,
+        provenance: 'agent'
+      }
+    ])
+    getSkillContent.mockResolvedValue({
+      name: 'web-research',
+      path: '/skills/web-research/SKILL.md',
+      content:
+        '---\nname: web-research\ndescription: "Research the web"\nversion: 1.2.0\n---\n\n# web-research\n\nDeep research steps.'
+    })
+
+    await act(async () => {
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/capabilities?tab=skills']}>
+            <CapabilitiesView />
+          </MemoryRouter>
+        </QueryClientProvider>
+      )
+    })
+
+    const body = await screen.findByText(/Deep research steps/)
+    const column = body.closest('[data-skill-column]') as HTMLElement
+    const keys = [...column.querySelectorAll('[data-skill-meta] dt')].map(dt => dt.textContent)
+    expect(keys).toEqual(['version'])
+    // Reference metadata follows the document instead of opening it; the body does not restate the name as its first heading.
+    expect(
+      body.compareDocumentPosition(column.querySelector('[data-skill-meta]')!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(body.textContent?.trim().startsWith('Deep research steps')).toBe(true)
+    expect(column.querySelectorAll('h3')).toHaveLength(1)
+    // The side list row: name, category, on/off switch; origin and usage moved to the detail header.
+    const sw = await screen.findByRole('switch', { name: 'web-research' })
+    const row = sw.parentElement as HTMLElement
+    expect(row.textContent).not.toMatch(/learned|×/)
+    expect(column.textContent).toContain('×3')
+  })
+
   it('hub picker refuses to reinstall an already-installed skill', async () => {
     const { notify } = await import('@/store/notifications')
     const { EmbeddedHubPicker } = await import('./skills/embedded-hub-picker')
