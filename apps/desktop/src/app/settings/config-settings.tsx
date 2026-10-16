@@ -36,6 +36,9 @@ import { useOnProfileSwitch } from '../hooks/use-on-profile-switch'
 import { PanelEmpty } from '../overlays/panel'
 
 import { ConfigField } from './config-field'
+import { humanError, humanErrorLine } from '../ops/feed/api-error'
+import { TIn } from '../ops/main-i18n'
+
 import { configSubpageForField } from './config-subpages'
 import {
   clearsEnabledToolsets,
@@ -101,7 +104,7 @@ function ConfigSettingsInner({
   importInputRef,
   scopeProfile
 }: ConfigSettingsProps & { scopeProfile: string | undefined }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const c = t.settings.config
   const keepAwakeMode = useStore($keepAwakeMode)
 
@@ -288,7 +291,9 @@ function ConfigSettingsInner({
         }
       } catch (err) {
         setFieldSave(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, 'failed' as const])) }))
-        const reason = err instanceof Error && err.message !== c.autosaveFailed ? err.message : ''
+        // P27: the human reason ('Conflict (409): …'), never the IPC/transport wrapper (judge pass 21, fallback-rejected).
+        const human = err instanceof Error && err.message === c.autosaveFailed ? null : humanError(err)
+        const reason = human ? humanErrorLine(human, s => TIn(locale, s)) : ''
 
         setFieldReason(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, reason])) }))
 

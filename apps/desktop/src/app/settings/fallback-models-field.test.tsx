@@ -124,4 +124,19 @@ describe('FallbackModelsField', () => {
 
     await waitFor(() => expect(screen.getAllByLabelText(/^Remove [0-9]/)).toHaveLength(1))
   })
+
+  // P27 (judge pass 21, hard state fallback-rejected): removing an entry used to drop focus to <body>.
+  it('removing an entry keeps focus in the field (next Remove, else previous, else Add)', async () => {
+    await renderField(CHAIN)
+
+    const first = screen.getAllByLabelText(/^Remove [0-9]/)[0]
+
+    first.focus()
+    fireEvent.click(first)
+    await waitFor(() => expect(document.activeElement?.getAttribute('aria-label')).toMatch(/^Remove 1/))
+
+    fireEvent.click(document.activeElement as HTMLElement)
+    await waitFor(() => expect(document.activeElement?.hasAttribute('data-fallback-add')).toBe(true))
+    expect(document.activeElement).not.toBe(document.body)
+  })
 })

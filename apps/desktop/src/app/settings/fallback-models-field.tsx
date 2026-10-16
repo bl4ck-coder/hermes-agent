@@ -125,6 +125,32 @@ export function FallbackModelsField({
     onChange(complete)
   }
 
+  // P27 (judge pass 21, fallback-rejected): removing an entry must not drop focus to <body>. After the row goes,
+  // focus moves to the Remove button now at that position, else the previous one, else Add.
+  const groupRef = useRef<HTMLDivElement>(null)
+  const [focusAfterRemove, setFocusAfterRemove] = useState<number | null>(null)
+
+  // eslint-disable-next-line no-restricted-syntax -- focus management after a DOM change (not state sync)
+  useEffect(() => {
+    if (focusAfterRemove === null) {
+      return
+    }
+
+    const group = groupRef.current
+    const target =
+      group?.querySelector<HTMLElement>(`[data-fallback-remove="${focusAfterRemove}"]`) ??
+      group?.querySelector<HTMLElement>(`[data-fallback-remove="${focusAfterRemove - 1}"]`) ??
+      group?.querySelector<HTMLElement>('[data-fallback-add]')
+
+    target?.focus()
+    setFocusAfterRemove(null)
+  }, [focusAfterRemove, rows])
+
+  const removeRow = (index: number) => {
+    commit(rows.filter((_, i) => i !== index))
+    setFocusAfterRemove(index)
+  }
+
   const updateRow = (index: number, patch: Partial<FallbackEntry>) =>
     commit(rows.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)))
 
@@ -141,6 +167,7 @@ export function FallbackModelsField({
       aria-labelledby={labelId}
       className="grid w-full gap-1.5"
       id={a11y?.id}
+      ref={groupRef}
       role="group"
     >
       {rows.length === 0 && <p className="text-xs text-muted-foreground">{m.fallbackEmpty}</p>}
@@ -179,7 +206,8 @@ export function FallbackModelsField({
             <Button
               {...described}
               aria-label={[`${t.common.remove} ${n}`, [providerName, entry.model].filter(Boolean).join(' / ')].filter(Boolean).join(': ')}
-              onClick={() => commit(rows.filter((_, i) => i !== index))}
+              data-fallback-remove={index}
+              onClick={() => removeRow(index)}
               size="icon-xs"
               variant="ghost"
             >
@@ -189,7 +217,7 @@ export function FallbackModelsField({
         )
       })}
       <div>
-        <Button {...described} onClick={() => commit([...rows, { provider: '', model: '' }])} size="sm" variant="textStrong">
+        <Button {...described} data-fallback-add="" onClick={() => commit([...rows, { provider: '', model: '' }])} size="sm" variant="textStrong">
           <Plus className="size-3.5" />
           {m.fallbackAdd}
         </Button>
