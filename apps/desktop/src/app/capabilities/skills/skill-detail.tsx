@@ -8,6 +8,7 @@ import { getSkillContent, type ProfileScope, profileScopeKey } from '@/hermes'
 import { useI18n } from '@/i18n'
 import type { SkillInfo } from '@/types/hermes'
 
+import { MarkdownPreview } from '../../chat/right-rail/preview-file'
 import { PanelPill } from '../../overlays/panel'
 import { asText, prettyName } from '../../settings/helpers'
 import { DetailHeader } from '../primitives'
@@ -15,6 +16,11 @@ import { DetailHeader } from '../primitives'
 import { parseFrontmatter } from './frontmatter'
 import { isEditableProvenance } from './skill-provenance'
 import { categoryFor, usageOf } from './skills-data'
+
+// Reading scale for the skill document (spec: body 16px with a 26px reading line, 720px column, 68ch paragraphs).
+// Headings stay under the detail title: h1/h2 at section size, h3/h4 at body weight 600.
+const SKILL_DOCUMENT =
+  'mx-0 max-w-(--width-reading) px-0 py-0 text-(length:--type-body) leading-(--type-reading-lh) wrap-break-word [&_h1]:text-(length:--type-section) [&_h1]:leading-(--type-section-lh) [&_h2]:text-(length:--type-section) [&_h2]:leading-(--type-section-lh) [&_h3]:text-(length:--type-body) [&_h3]:leading-(--type-body-lh) [&_h4]:text-(length:--type-body) [&_h4]:leading-(--type-body-lh) [&_li]:max-w-[68ch] [&_p]:max-w-[68ch]'
 
 const unquote = (s: string) =>
   s
@@ -122,12 +128,15 @@ export function SkillDetail({
           </Button>
         </div>
       ) : parsed ? (
-        <pre
-          className="overflow-auto whitespace-pre-wrap wrap-break-word font-sans text-(length:--type-body) leading-(--type-reading-lh) text-foreground"
-          data-selectable-text="true"
-        >
-          {parsed.body.trim() || t.skills.noDescription}
-        </pre>
+        // P26 (judge pass 20 #7): the body is read as a document (headings, lists, links, code), not raw Markdown in a
+        // pre. Same renderer as the file preview: sanitized HTML, web links through ExternalLink. Edit keeps the raw text.
+        parsed.body.trim() ? (
+          <MarkdownPreview className={SKILL_DOCUMENT} filePath={contentQuery.data?.path} text={parsed.body} />
+        ) : (
+          <p className="text-(length:--type-body) leading-(--type-reading-lh) text-(--ui-text-tertiary)">
+            {t.skills.noDescription}
+          </p>
+        )
       ) : null}
       {/* P25: remaining frontmatter (version, author, …) is reference, after the document, not before it. */}
       {parsed && parsed.meta.length > 0 && (

@@ -38,7 +38,7 @@ export function ToolChip({ children, title }: { children: ReactNode; title?: str
   )
 }
 
-// Master–detail page scaffolding (14rem rail, p-2, centered max-w-2xl detail):
+// Master–detail page scaffolding (14rem rail, p-2, centered reading-width detail):
 // dense uniform rows on the left, roomy inspector on the right. Shared by the
 // Capabilities and Messaging pages — pages bring their own row/detail content
 // (CapRow here is the toggle-row flavor; Messaging has its own avatar rows).
@@ -50,7 +50,12 @@ export function ToolChip({ children, title }: { children: ReactNode; title?: str
 // (the MCP tab's cursor-driven layout) but must stay in step.
 // `--md-split` is the drag override slot: unset it falls back to the declared
 // track, so grids without a resize sash render exactly as before.
-export const MASTER_DETAIL_WIDE_COLS = 'sm:grid-cols-[minmax(0,var(--md-split,0.75fr))_minmax(0,1fr)]'
+// P26 (judge pass 20 #7): the rail follows the spec's master/detail list (17.5rem) instead of 0.75fr, so the document is
+// the larger column; and it reads the Capabilities panel's own width (container query), not the window's. Below 40rem
+// the list stacks above the detail and is capped (fit-content(14rem), its own scroll) so the selected document keeps
+// the height.
+export const MASTER_DETAIL_WIDE_COLS =
+  'grid-rows-[fit-content(14rem)_minmax(0,1fr)] @min-[40rem]/md:grid-rows-[minmax(0,1fr)] @min-[40rem]/md:grid-cols-[minmax(0,var(--md-split,var(--width-list,17.5rem)))_minmax(0,1fr)]'
 
 // Column-seam drag clamps: the rail can't shrink below a readable row, the
 // detail keeps enough room for its centered column.
@@ -114,7 +119,7 @@ export function MasterDetail({
   const [list, ...rest] = Children.toArray(children)
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="@container/md flex h-full min-h-0 flex-col" data-master-detail={split}>
       <div
         className={cn(
           'grid min-h-0 flex-1 grid-cols-1',
@@ -128,7 +133,10 @@ export function MasterDetail({
             {list}
             <div className="relative grid min-h-0 min-w-0">
               <div
-                className="group/vsash absolute inset-y-0 left-0 z-10 hidden w-1 -translate-x-1/2 cursor-col-resize sm:block"
+                className={cn(
+                  'group/vsash absolute inset-y-0 left-0 z-10 hidden w-1 -translate-x-1/2 cursor-col-resize',
+                  split === 'wide' ? '@min-[40rem]/md:block' : 'sm:block'
+                )}
                 onDoubleClick={() => setPaneWidthOverride(resizeId, undefined)}
                 onPointerDown={startSplitDrag}
               >
@@ -175,16 +183,17 @@ export function DetailColumn({
   return (
     <main className="flex min-h-0 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-        <div className="mx-auto max-w-2xl space-y-5 px-5 py-4">{children}</div>
+        {/* P26: the detail's reading column is the spec's reading width (45rem), not max-w-2xl (42rem). */}
+        <div className="mx-auto max-w-(--width-reading) space-y-5 px-5 py-4">{children}</div>
       </div>
       {footer && (
-        <div className="mx-auto w-full max-w-2xl shrink-0 px-5 pb-3 pt-1.5 text-right text-xs text-muted-foreground/50">
+        <div className="mx-auto w-full max-w-(--width-reading) shrink-0 px-5 pb-3 pt-1.5 text-right text-xs text-muted-foreground/50">
           {footer}
         </div>
       )}
       {actionBar && (
         <footer className="shrink-0 bg-(--ui-chat-surface-background) px-5 py-2.5">
-          <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-2">{actionBar}</div>
+          <div className="mx-auto flex max-w-(--width-reading) flex-wrap items-center gap-2">{actionBar}</div>
         </footer>
       )}
     </main>

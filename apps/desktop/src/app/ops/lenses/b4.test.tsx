@@ -153,6 +153,8 @@ describe('Skills lens', () => {
     expect(document.querySelector('[data-ops-skill-count]')?.textContent).toBe('1 skill') // P25: one count, worded
     expect(document.querySelector('[data-ops-skill-tag]')?.getAttribute('data-ops-skill-tag')).toBe(tagTone('design'))
     const agents = document.querySelector('[data-ops-skill-agents]') as HTMLElement
+    // P26: the profiles sit in the row's expansion; its trigger (Details) is on the action line, so open it first.
+    fireEvent.click(document.querySelector('[data-ops-skill="figma"] [data-ops-row-more-trigger]')!)
     // P15: every profile with the skill enabled is reachable from the row's disclosure (no +N popover).
     expect(within(agents).getAllByRole('button').map(b => b.textContent).sort()).toEqual(['a1', 'a2', 'a3', 'a4', 'builder'])
     fireEvent.click(within(agents).getByText('builder'))

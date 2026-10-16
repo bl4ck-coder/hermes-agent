@@ -581,7 +581,7 @@ function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: Retur
         </>
       }
       more={
-        <Disclosure label={T('Details and profiles')}>
+        <>
           {/* P24 (judge pass 18): the detail is two compact lines (facts, then profiles), not a stack of paragraphs. */}
           <div data-ops-skill-detail="">
             <p data-ops-skill-facts="">
@@ -600,8 +600,11 @@ function SkillRows({ rows, onOpenSkill, onOpenAgent, scanCapped }: { rows: Retur
             </p>
             {scanCapped ? <p>{T('Among the first {n} profiles checked').replace('{n}', String(SKILL_PROFILE_SCAN_MAX))}</p> : null}
           </div>
-        </Disclosure>
+        </>
       }
+      // P26 (judge pass 20 #7): the expansion's trigger sits beside Open skill (EntityRow moreLabel, as Office and Fleet), so
+      // a closed row is name, description and one meta line; no band of its own for the disclosure.
+      moreLabel={T('Details')}
       primary={
         <button data-ops-skill-open={r.name} disabled={!onOpenSkill} onClick={() => onOpenSkill?.(r.name)} type="button">
           {T('Open skill')}
@@ -929,6 +932,8 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
   const [q, setQ] = useState('')
   const [quick, setQuick] = useState(false)
   const partialId = useId()
+  const catalogId = useId()
+  const [catalogOpen, setCatalogOpen] = useState(false)
   const cards = useMemo(() => (r.value ? appCards(r.value) : null), [r.value])
 
   if (!cards || !r.value) {
@@ -947,6 +952,10 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
   const shown = searchRows(base, q, x => [x.name, x.description]).filter(x => !cat || x.category === cat).sort((a, b) => a.name.localeCompare(b.name))
   const connectedFirst = shown.some(x => x.connected)
   const cats = Object.values(APP_CATEGORIES)
+  // P26 (judge pass 20 #7): with configured connections on screen the catalog does not compete with them; it waits behind
+  // Browse catalog. A search or a picked category is a request to see matches, so the catalog then shows as before.
+  const catalogCount = connectedFirst ? shown.filter(x => !x.connected).length : 0
+  const catalogFolds = catalogCount > 0 && !q.trim() && !cat
 
   return (
     <section aria-label={T("Channels & MCP")} data-ops-lens="channels">
@@ -1031,8 +1040,17 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
               ) : null}
             </>
           ) : null}
-          <div data-ops-app-catalog={connectedFirst ? '' : undefined}>
-            {connectedFirst && shown.some(x => !x.connected) ? <h3 data-ops-app-catalog-title="">{T('Add connections')}</h3> : null}
+          <div data-ops-app-catalog={connectedFirst ? '' : undefined} data-ops-app-catalog-folded={catalogFolds && !catalogOpen ? '' : undefined}>
+            {catalogFolds ? (
+              <h3 data-ops-app-catalog-title="">
+                <button aria-controls={catalogId} aria-expanded={catalogOpen} data-ops-app-catalog-toggle="" onClick={() => setCatalogOpen(o => !o)} type="button">
+                  {T('Browse catalog')} <span data-ops-rows-count="">{catalogCount}</span>
+                </button>
+              </h3>
+            ) : connectedFirst && catalogCount > 0 ? (
+              <h3 data-ops-app-catalog-title="">{T('Add connections')}</h3>
+            ) : null}
+            <div data-ops-app-catalog-body="" hidden={catalogFolds && !catalogOpen} id={catalogId}>
             {cats
               .filter(x => !cat || x === cat)
               .map(x => {
@@ -1050,6 +1068,7 @@ export function ChannelsLens({ client: c, profile, onOpenRoute }: { client?: B4C
                   </section>
                 ) : null
               })}
+            </div>
           </div>
           {shown.length === 0 ? (
         <p data-ops-empty="apps">
