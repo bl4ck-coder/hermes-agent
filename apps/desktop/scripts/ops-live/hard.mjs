@@ -1,9 +1,12 @@
 // P19 hard-state pass: an isolated desktop instance with its OWN sandboxed HERMES_HOME (never the real gateway)
 // plus a mock layer on the test instance's hermes:api IPC handler, to capture opened sections, filters, editing,
 // rejected saves, errors, narrow panels and loaded lists. Writes state-matrix.json next to the screenshots.
+// P25: fail-closed (any exception in a state, including its screenshot, fails it), every state declares what it
+// proves, the unobstructed check probes every match, and OPS_HARD_SELFTEST=both writes selftest-matrix.json too.
+// Exit code: 0 only when every row of every matrix written by the run is ok; 3 otherwise.
 import { _electron } from '@playwright/test'
 import { spawnSync as spawnStop } from 'node:child_process'
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -16,9 +19,15 @@ const log = { console: [], pageErrors: [], failed: [], http: [], sections: {}, f
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 // P24: OPS_HARD_TAG gives a run its own userData dir and sandbox HERMES_HOME so parallel runs never collide
-// (unset: the original ops-hard-userdata / ops-hard-home paths). OPS_HARD_SELFTEST=1 runs the negative controls.
+// (unset: the original ops-hard-userdata / ops-hard-home paths). OPS_HARD_SELFTEST=1 runs the negative controls only;
+// P25: OPS_HARD_SELFTEST=both runs the states, then the negative controls, in the same output dir (state-matrix.json
+// and selftest-matrix.json side by side, so the judge receives both).
 const TAG = (process.env.OPS_HARD_TAG ?? '').replace(/[^a-z0-9_-]/gi, '')
-const SELFTEST = process.env.OPS_HARD_SELFTEST === '1'
+const SELFTEST_MODE = (process.env.OPS_HARD_SELFTEST ?? '').trim().toLowerCase()
+const RUN_STATES = SELFTEST_MODE !== '1' && SELFTEST_MODE !== 'true'
+const RUN_NEG = SELFTEST_MODE === '1' || SELFTEST_MODE === 'true' || SELFTEST_MODE === 'both'
+// The pass being run right now (false: states, true: negative controls).
+let SELFTEST = !RUN_STATES
 // Optional: OPS_HARD_ONLY=<regex on "screen-state"> runs a subset (e.g. "narrow").
 const ONLY = process.env.OPS_HARD_ONLY ? new RegExp(process.env.OPS_HARD_ONLY) : null
 const HOME = join(tmpdir(), TAG ? `ops-hard-home-${TAG}` : 'ops-hard-home')
@@ -98,7 +107,15 @@ const dismissToasts = async () => {
   }).catch(() => [])
   if (texts.length) { log.toastDismissed.push(...texts); await sleep(350) }
 }
-const shot = async name => { await dismissToasts(); await sleep(250); await dismissToasts(); return page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) })) }
+// P25 (judge pass 19 #1): fail-closed. A screenshot that cannot be taken, or that leaves no file, THROWS; the state
+// that asked for it fails with the reason (it used to be logged and absorbed, so ok stayed true).
+const shot = async name => {
+  await dismissToasts(); await sleep(250); await dismissToasts()
+  const file = join(OUT, `${name}.png`)
+  await page.screenshot({ path: file })
+  if (!existsSync(file) || statSync(file).size === 0) throw new Error(`screenshot ${name}.png was not written`)
+  return file
+}
 const save = () => writeFileSync(join(OUT, 'live.json'), JSON.stringify({ ...log, mainTail: typeof log.mainTail === 'function' ? log.mainTail() : '' }, null, 2))
 
 async function section(name, fn) {
@@ -106,7 +123,7 @@ async function section(name, fn) {
   let ok = true, note = ''
   try { note = (await fn()) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 300) }
   await sleep(1500)
-  await shot(name)
+  try { await shot(name) } catch (e) { ok = false; note = `${note} screenshot: ${String(e).slice(0, 200)}`.trim() }
   const stray = await page.evaluate(() => {
     const out = []
     const root = document.querySelector('[data-ops-root]')
@@ -186,7 +203,7 @@ log.mainTail = () => mainOut.join('').slice(-6000)
 await offscreen()
 await sleep(5000)
 log.bootMs = Date.now() - t0
-await shot('00-boot')
+await shot('00-boot').catch(e => { log.bootShotError = String(e).slice(0, 300) })
 
 // ---------------------------------------------------------------- mock layer
 // Wrap the test instance's own hermes:api handler (main process of THIS isolated Electron only). Every request path is
@@ -198,13 +215,22 @@ await app.evaluate(({ ipcMain }) => {
   globalThis.__opsMocks = []
   // P24: every served rule is recorded, so a state that depends on a mock can prove the mock answered.
   globalThis.__opsHits = []
+  // P25: every request (method, path, JSON body, sequence number), so a state can prove what was SENT (e.g. a Retry
+  // PUT body holds one key only) and what was NOT sent (a Revert writes nothing, a refused note sends no approve).
+  globalThis.__opsReqs = []
+  globalThis.__opsSeq = 0
   if (!orig) { globalThis.__opsMockErr = 'no _invokeHandlers'; return }
   m.set('hermes:api', async (e, req) => {
     const path = String(req?.path ?? ''), method = String(req?.method ?? 'GET').toUpperCase()
+    const seq = ++globalThis.__opsSeq
+    let body = null
+    try { const s = req?.body === undefined ? 'null' : JSON.stringify(req.body); body = s.length > 20000 ? { truncated: s.length } : JSON.parse(s) } catch { body = { unserializable: true } }
     globalThis.__opsSeen.push(`${method} ${path}`)
+    globalThis.__opsReqs.push({ seq, method, path, body, at: Date.now() })
+    if (globalThis.__opsReqs.length > 6000) globalThis.__opsReqs.splice(0, 1000)
     for (const r of globalThis.__opsMocks) {
       if (new RegExp(r.path).test(path) && (!r.method || r.method === method)) {
-        globalThis.__opsHits.push({ rule: r.path, method, path, at: Date.now() })
+        globalThis.__opsHits.push({ rule: r.path, method, path, seq, body, at: Date.now() })
         if (r.delay) await new Promise(res => setTimeout(res, r.delay))
         if (r.throw) throw new Error(r.throw)
         if (!('body' in r)) return orig(e, req)
@@ -218,6 +244,9 @@ await app.evaluate(({ ipcMain }) => {
 const mock = rules => app.evaluate((_, r) => { globalThis.__opsMocks = r; globalThis.__opsHits = [] }, rules)
 const seen = () => app.evaluate(() => [...new Set(globalThis.__opsSeen)].sort())
 const mockErr = await app.evaluate(() => globalThis.__opsMockErr ?? null)
+/** P25: the sequence number of the last request seen; requests(since) returns every request after it. */
+const reqSeq = () => app.evaluate(() => globalThis.__opsSeq ?? 0)
+const requests = (since = 0) => app.evaluate((_, s) => (globalThis.__opsReqs ?? []).filter(r => r.seq > s), since)
 
 // ---------------------------------------------------------------- assertions (P24)
 // A state is ok only when VISIBLE, specific evidence is on screen after the interaction: Playwright visibility
@@ -231,7 +260,38 @@ const poll = async (fn, ms) => {
   }
 }
 const CHECK_MS = 10_000
-/** see(sel, { count, min, max, text, attr, value, clear }): visible matches, with optional specifics on the first match. */
+/**
+ * P25 (judge pass 19 #7): unobstructed means EVERY visible match, not the first one. Each match is scrolled into view
+ * and probed with document.elementFromPoint at its centre and 4 points just inside its corners (inset past the
+ * border radius); each point must hit the match itself or a descendant. Scroll positions are restored afterwards so
+ * the screenshot shows the state as the user left it.
+ */
+const unobstructed = loc => loc.evaluateAll(els => {
+  const saved = new Map()
+  const remember = el => { for (let p = el.parentElement; p; p = p.parentElement) if (!saved.has(p) && (p.scrollHeight > p.clientHeight || p.scrollWidth > p.clientWidth)) saved.set(p, [p.scrollTop, p.scrollLeft]) }
+  const root = document.scrollingElement
+  if (root) saved.set(root, [root.scrollTop, root.scrollLeft])
+  const bad = []
+  let points = 0
+  els.forEach((el, i) => {
+    remember(el)
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    const r = el.getBoundingClientRect()
+    const s = getComputedStyle(el)
+    const rad = Math.max(...['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius'].map(k => parseFloat(s[k]) || 0))
+    const inset = Math.max(0.5, Math.min(Math.max(3, Math.ceil(rad * 0.3) + 1), r.width / 2 - 0.5, r.height / 2 - 0.5))
+    const pts = [['centre', r.left + r.width / 2, r.top + r.height / 2], ['top-left', r.left + inset, r.top + inset], ['top-right', r.right - inset, r.top + inset], ['bottom-left', r.left + inset, r.bottom - inset], ['bottom-right', r.right - inset, r.bottom - inset]]
+    for (const [label, x, y] of pts) {
+      points++
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) { bad.push(`#${i + 1} ${label} outside the window at ${Math.round(x)},${Math.round(y)}`); continue }
+      const hit = document.elementFromPoint(x, y)
+      if (!(hit && (hit === el || el.contains(hit)))) bad.push(`#${i + 1} ${label} covered by <${hit?.tagName.toLowerCase()} ${[...(hit?.attributes ?? [])].map(a => a.name).join(' ').slice(0, 100)}>`)
+    }
+  })
+  for (const [p, [t, l]] of saved) { p.scrollTop = t; p.scrollLeft = l }
+  return { n: els.length, points, bad }
+})
+/** see(sel, { count, min, max, text, attr, value, clear }): visible matches, with optional specifics (clear: on EVERY match). */
 const see = (sel, o = {}) => poll(async () => {
   const loc = visible(sel)
   const n = await loc.count()
@@ -244,19 +304,14 @@ const see = (sel, o = {}) => poll(async () => {
     if (v instanceof RegExp ? !v.test(got ?? '') : got !== v) throw new Error(`${sel}: ${k}=${JSON.stringify(got)}, want ${v}`)
   }
   if (o.value !== undefined) { const got = await loc.first().inputValue(); if (got !== o.value) throw new Error(`${sel}: value ${JSON.stringify(got)}, want ${JSON.stringify(o.value)}`) }
+  let clearNote = ''
   if (o.clear) {
-    // Unobstructed: the point a user would click on the first match hits the match itself, not an overlay.
-    const why = await loc.first().evaluate(el => {
-      el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-      const r = el.getBoundingClientRect()
-      const x = r.left + Math.min(r.width / 2, 48), y = r.top + Math.min(r.height / 2, 16)
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return `outside the window at ${Math.round(x)},${Math.round(y)}`
-      const hit = document.elementFromPoint(x, y)
-      return hit && (hit === el || el.contains(hit)) ? '' : `covered by <${hit?.tagName.toLowerCase()} ${[...(hit?.attributes ?? [])].map(a => a.name).join(' ').slice(0, 120)}>`
-    })
-    if (why) throw new Error(`${sel}: ${why}`)
+    const r = await unobstructed(loc)
+    if (r.n !== n) throw new Error(`${sel}: ${n} visible but ${r.n} probed`)
+    if (r.bad.length) throw new Error(`${sel}: ${r.bad.length}/${r.points} points obstructed: ${r.bad.slice(0, 4).join('; ')}`)
+    clearNote = ` unobstructed (all ${r.n} matches, ${r.points} points: centre + 4 corners)`
   }
-  return `${sel} x${n} visible${o.text ? ` with ${JSON.stringify(o.text)}` : ''}${o.attr ? ` ${JSON.stringify(o.attr)}` : ''}${o.value !== undefined ? ` value=${JSON.stringify(o.value)}` : ''}${o.clear ? ' unobstructed' : ''}`
+  return `${sel} x${n} visible${o.text ? ` with ${JSON.stringify(o.text)}` : ''}${o.attr ? ` ${JSON.stringify(o.attr)}` : ''}${o.value !== undefined ? ` value=${JSON.stringify(o.value)}` : ''}${clearNote}`
 }, o.ms ?? CHECK_MS)
 /** none(sel): no visible match (hidden or absent). */
 const none = (sel, o = {}) => poll(async () => {
@@ -289,65 +344,104 @@ const noBlockingModal = async () => {
   if (hit !== null) throw new Error(`blocking modal: ${hit}`)
   return 'no modal over the app'
 }
-const MATRIX = SELFTEST ? 'selftest-matrix.json' : 'state-matrix.json'
+const matrixFile = () => (SELFTEST ? 'selftest-matrix.json' : 'state-matrix.json')
+const writeMatrix = (extra = {}) => writeFileSync(join(OUT, matrixFile()), JSON.stringify({ mode: SELFTEST ? 'selftest' : 'states', run: SELFTEST_MODE || 'states', tag: TAG || null, mockErr, generatedAt: new Date().toISOString(), ok: matrix.filter(x => x.ok).length, total: matrix.length, ...extra, matrix }, null, 2))
 const within = (pr, ms, what) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error(`watchdog: ${what} > ${ms} ms`)), ms))])
+const msg = e => String(e?.message ?? e).replace(/\s+/g, ' ').slice(0, 300)
 /** Run labelled checks; every check runs (no short-circuit) so a negative control shows exactly which ones failed. */
-const runChecks = async (checks, ms) => {
+const runChecks = async (checks, ms, ctx) => {
   const out = []
   for (const [label, fn] of Object.entries(checks)) {
-    try { out.push({ label, pass: true, detail: await within(fn(ms), ms + 5000, label) }) } catch (e) { out.push({ label, pass: false, detail: String(e?.message ?? e).slice(0, 240) }) }
+    try { out.push({ label, pass: true, detail: await within(Promise.resolve().then(() => fn(ms, ctx)), ms + 5000, label) }) } catch (e) { out.push({ label, pass: false, detail: msg(e).slice(0, 240) }) }
   }
   return out
 }
 /**
- * state(screen, st, spec)
- *   spec.mocks: rules installed before act (default: none); spec.act(): the interaction; spec.checks: { label: ms => Promise };
- *   spec.neg: { mocks?, act?, fails?: [labels] } the same checks with the precondition removed (default: same mocks, act
- *   = spec.open only). Normal run: ok = every check passes after act AND again after the screenshot.
- *   OPS_HARD_SELFTEST=1: ok = every label in neg.fails (default: all) FAILS. spec.after(): cleanup in both modes.
- * Legacy form state(screen, st, fn) is kept: fn's return is the note (it should throw when its state is not shown).
+ * evalState(name, spec, neg, opts) runs one state and returns { ok, note, errors, checks, shots }.
+ *   spec.proves: the behaviour the state proves (required: a state without it fails); spec.checks: { label: (ms, ctx) =>
+ *   Promise } named checks; spec.mocks: rules installed before act; spec.act(ctx): the interaction (it may record
+ *   evidence in ctx for the checks, and take extra screenshots with ctx.shot(label)); spec.neg: { mocks?, act?, fails? }
+ *   the negative control (default: same mocks, act = spec.open; fails = every check). spec.after(ctx): cleanup.
+ *   neg=false: ok = no exception anywhere (mock, act, screenshot, re-check, after) AND every check passes after act
+ *   AND again right after the screenshot. neg=true: ok = no exception AND every label in neg.fails FAILS.
+ *   opts.shot replaces the screenshot function (used by the forced screenshot-failure control).
  */
-const state = async (screen, st, spec) => {
-  if (ONLY && !ONLY.test(`${screen}-${st}`)) return
-  const name = `${SELFTEST ? 's' : 'h'}-${screen}-${st}`.replace(/[^a-z0-9-]/gi, '_')
-  let ok = true, note = '', checks = []
-  if (typeof spec === 'function') {
-    if (SELFTEST) return
-    try { note = (await within(Promise.resolve().then(spec), 45000, 'state')) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 200) }
-    await sleep(1200); await within(shot(name), 20000, 'shot').catch(e => { ok = false; note += ` ${e}` })
-  } else {
-    const neg = spec.neg ?? {}
-    const mocks = SELFTEST && 'mocks' in neg ? neg.mocks : spec.mocks ?? []
-    const act = SELFTEST ? neg.act ?? spec.open : spec.act
+const evalState = async (name, spec, neg, opts = {}) => {
+  const errors = []
+  const fail = (where, e) => errors.push(`${where}: ${msg(e)}`)
+  const takeShot = opts.shot ?? shot
+  const n = spec.neg ?? {}
+  const shots = []
+  const ctx = { neg, shot: async label => { const f = await within(Promise.resolve().then(() => takeShot(`${name}-${label}`)), 20000, `screenshot ${label}`); shots.push(`${name}-${label}.png`); return f } }
+  let checks = []
+  try {
+    if (!spec.proves || typeof spec.proves !== 'string') fail('matrix', 'state declares no "proves" behaviour')
+    if (!spec.checks || !Object.keys(spec.checks).length) fail('matrix', 'state declares no named checks')
+    const mocks = neg && 'mocks' in n ? n.mocks : spec.mocks ?? []
+    const act = neg ? n.act ?? spec.open : spec.act
+    if (typeof act !== 'function') fail('matrix', `no ${neg ? 'negative (neg.act / open)' : 'act'} interaction`)
     // A modal over the app (boot failure, any open dialog) makes every visibility check meaningless: Playwright's
     // visible() ignores occlusion. It is a check of every state, so a covered screen can never be 'verified'.
     const allChecks = { ...spec.checks, 'no-blocking-modal': noBlockingModal }
-    try {
-      await mock(mocks)
-      await within(Promise.resolve().then(act), 60000, 'act')
-      checks = await runChecks(allChecks, CHECK_MS)
-      await sleep(600)
-      await within(shot(name), 20000, 'shot').catch(e => { note += ` ${e}` })
-      if (!SELFTEST) {
-        // The screenshot must show the asserted state: re-check right after it, briefly.
-        const again = await runChecks(allChecks, 1500)
-        for (const [i, c] of again.entries()) if (!c.pass && checks[i].pass) checks[i] = { ...c, detail: `changed before the shot: ${c.detail}` }
-      }
-    } catch (e) { note += ` act failed: ${String(e?.message ?? e).slice(0, 200)}`; ok = false }
-    if (SELFTEST) {
-      const must = neg.fails ?? Object.keys(spec.checks)
-      const held = checks.filter(c => must.includes(c.label) && !c.pass).map(c => c.label)
-      const leaked = must.filter(l => !held.includes(l))
-      if (ok) ok = checks.length > 0 && leaked.length === 0
-      note = (note + (leaked.length ? ` FALSE POSITIVE: passed without precondition: ${leaked.join(', ')}` : ` negative control held: ${held.join(', ')} failed`)).trim()
-    } else if (ok) {
-      ok = checks.length > 0 && checks.every(c => c.pass)
-      note = (note + ' ' + (ok ? 'verified' : `failed: ${checks.filter(c => !c.pass).map(c => c.label).join(', ')}`)).trim()
+    let mocked = false
+    try { await mock(mocks); mocked = true } catch (e) { fail('mock', e) }
+    if (mocked && typeof act === 'function') { try { await within(Promise.resolve().then(() => act(ctx)), opts.actMs ?? spec.actMs ?? 90000, 'act') } catch (e) { fail('act', e) } }
+    checks = await runChecks(allChecks, CHECK_MS, ctx)
+    await sleep(600)
+    try { await within(Promise.resolve().then(() => takeShot(name)), 20000, 'screenshot'); shots.unshift(`${name}.png`) } catch (e) { fail('screenshot', e) }
+    if (!neg) {
+      // The screenshot must show the asserted state: re-check right after it, briefly.
+      const again = await runChecks(allChecks, 1500, ctx)
+      for (const [i, c] of again.entries()) if (!c.pass && checks[i].pass) checks[i] = { ...c, detail: `changed before the shot: ${c.detail}` }
     }
-    await Promise.resolve().then(spec.after).catch(() => {})
+  } catch (e) { fail('harness', e) }
+  if (spec.after) { try { await within(Promise.resolve().then(() => spec.after(ctx)), 60000, 'after') } catch (e) { fail('after', e) } }
+  let ok, note
+  if (neg) {
+    const must = n.fails ?? Object.keys(spec.checks ?? {})
+    const missing = must.filter(l => !checks.some(c => c.label === l))
+    const held = checks.filter(c => must.includes(c.label) && !c.pass).map(c => c.label)
+    const leaked = must.filter(l => !held.includes(l) && !missing.includes(l))
+    ok = errors.length === 0 && checks.length > 0 && must.length > 0 && leaked.length === 0 && missing.length === 0
+    note = [errors.join(' | '), missing.length ? `negative control names unknown checks: ${missing.join(', ')}` : '', leaked.length ? `FALSE POSITIVE: passed without precondition: ${leaked.join(', ')}` : held.length ? `negative control held: ${held.join(', ')} failed` : ''].filter(Boolean).join(' | ')
+  } else {
+    const failed = checks.filter(c => !c.pass).map(c => c.label)
+    ok = errors.length === 0 && checks.length > 0 && failed.length === 0
+    note = [errors.join(' | '), failed.length ? `failed: ${failed.join(', ')}` : '', ok ? 'verified' : ''].filter(Boolean).join(' | ')
   }
-  matrix.push({ screen, state: st, shot: `${name}.png`, ok, note, checks })
-  writeFileSync(join(OUT, MATRIX), JSON.stringify({ mode: SELFTEST ? 'selftest' : 'states', tag: TAG || null, mockErr, ok: matrix.filter(x => x.ok).length, total: matrix.length, matrix }, null, 2))
+  return { ok, note, errors, checks, shots, ctx }
+}
+const state = async (screen, st, spec) => {
+  if (ONLY && !ONLY.test(`${screen}-${st}`)) return
+  const name = `${SELFTEST ? 's' : 'h'}-${screen}-${st}`.replace(/[^a-z0-9-]/gi, '_')
+  let row
+  if (typeof spec === 'function') {
+    // Legacy form: no declared behaviour or named checks, so it can never be 'verified' (fail-closed).
+    row = { ok: false, note: 'legacy state without "proves" and named checks', errors: [], checks: [], shots: [] }
+  } else {
+    row = await evalState(name, spec, SELFTEST)
+  }
+  matrix.push({ screen, state: st, proves: spec?.proves ?? null, shot: row.shots[0] ?? null, shots: row.shots, ok: row.ok, note: row.note, errors: row.errors, ...(SELFTEST ? { mustFail: spec?.neg?.fails ?? Object.keys(spec?.checks ?? {}) } : {}), checks: row.checks })
+  writeMatrix()
+}
+/**
+ * control(screen, st, { proves, run }): a harness-level negative control (selftest pass only). run() returns
+ * { held, detail, checks? }; the row is ok only when held is true and run() threw nothing.
+ */
+const control = async (screen, st, spec) => {
+  if (!SELFTEST) return
+  if (ONLY && !ONLY.test(`${screen}-${st}`)) return
+  let ok = false, note = '', checks = [], shots = []
+  try {
+    if (!spec.proves) throw new Error('control declares no "proves" behaviour')
+    const r = await within(Promise.resolve().then(spec.run), 180000, 'control')
+    ok = r.held === true
+    note = `${ok ? 'negative control held' : 'NOT HELD'}: ${r.detail ?? ''}`.trim()
+    checks = r.checks ?? []
+    shots = r.shots ?? []
+  } catch (e) { ok = false; note = `control failed: ${msg(e)}` }
+  matrix.push({ screen, state: st, proves: spec.proves ?? null, shot: shots[0] ?? null, shots, ok, note, errors: [], checks })
+  writeMatrix()
 }
 // Legacy helper (kept): now visibility-based, never a node count.
 const need = async (...sels) => { for (const sel of sels) await see(sel); return `verified: ${sels.join(' + ')}` }
@@ -360,10 +454,32 @@ if (want('discover')) {
   writeFileSync(join(OUT, 'seen.json'), JSON.stringify({ mockErr, seen: await seen() }, null, 2))
 }
 
+const summary = {}
 if (existsSync(join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs'))) {
   const mod = await import('file://' + join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs').replace(/\\/g, '/'))
-  await mod.default({ page, app, go, goApp, lens, state, mock, narrow, sleep, shot, want, offscreen, need, reload, see, none, served, tap, type, visible, selftest: SELFTEST })
+  const api = { page, app, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, offscreen, need, reload, see, none, served, tap, type, visible, reqSeq, requests, unobstructed, isSelftest: () => SELFTEST, selftest: SELFTEST }
+  const passes = [...(RUN_STATES ? [false] : []), ...(RUN_NEG ? [true] : [])]
+  for (const neg of passes) {
+    SELFTEST = neg
+    matrix.length = 0
+    writeMatrix({ running: true })
+    try {
+      await mod.default({ ...api, selftest: neg })
+      writeMatrix()
+    } catch (e) {
+      // A pass that crashes is recorded as such (never a silent partial matrix).
+      matrix.push({ screen: 'harness', state: 'pass-crashed', proves: 'the pass ran to the end', shot: null, shots: [], ok: false, note: `pass crashed: ${msg(e)}`, errors: [msg(e)], checks: [] })
+      writeMatrix({ crashed: msg(e) })
+    }
+    summary[matrixFile()] = { ok: matrix.filter(x => x.ok).length, total: matrix.length, failed: matrix.filter(x => !x.ok).map(x => `${x.screen}-${x.state}: ${x.note}`.slice(0, 300)) }
+    await narrow(1600).catch(() => {})
+  }
 }
 save()
+writeFileSync(join(OUT, 'run-summary.json'), JSON.stringify(summary, null, 2))
+for (const [file, s] of Object.entries(summary)) {
+  console.log(`${file}: ${s.ok}/${s.total}`)
+  for (const f of s.failed) console.log(`  FAIL ${f}`)
+}
 await app.close().catch(() => {})
-process.exit(0)
+process.exit(Object.values(summary).every(s => s.ok === s.total && s.total > 0) ? 0 : 3)
