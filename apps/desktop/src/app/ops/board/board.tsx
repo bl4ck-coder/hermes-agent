@@ -152,24 +152,25 @@ function Windowed({ tasks, viewport, render, expandedId }: { tasks: BoardTask[];
   const pitch = index >= 0 && measured && measured.id === expandedId ? measured.pitch : ROW_H
   const w = windowRange(tasks.length, top, viewport, ROW_H, 4, index >= 0 ? { index, pitch } : null)
   const kept = w.kept ? render(tasks[w.kept.index]) : null
+  // P26 (judge pass 20 #5): spacers, the kept card and the slice are one keyed list, so a card moving between the
+  // slice and the kept slot is the same element (same key, same parent): never remounted, focus and expansion survive.
+  const rows: ReactNode[] = [<div key="pad-top" style={{ height: w.padTop }} />]
+
+  if (w.kept?.side === 'before') {
+    rows.push(kept, <div key="gap-before" style={{ height: w.kept.gap }} />)
+  }
+
+  rows.push(...tasks.slice(w.start, w.end).map(render))
+
+  if (w.kept?.side === 'after') {
+    rows.push(<div key="gap-after" style={{ height: w.kept.gap }} />, kept)
+  }
+
+  rows.push(<div key="pad-bottom" style={{ height: w.padBottom }} />)
 
   return (
     <div data-ops-window="" onScroll={e => setTop((e.target as HTMLElement).scrollTop)} ref={ref} role="list" style={{ maxHeight: viewport, overflowY: 'auto' }}>
-      <div style={{ height: w.padTop }} />
-      {w.kept?.side === 'before' ? (
-        <>
-          {kept}
-          <div style={{ height: w.kept.gap }} />
-        </>
-      ) : null}
-      {tasks.slice(w.start, w.end).map(render)}
-      {w.kept?.side === 'after' ? (
-        <>
-          <div style={{ height: w.kept.gap }} />
-          {kept}
-        </>
-      ) : null}
-      <div style={{ height: w.padBottom }} />
+      {rows}
     </div>
   )
 }
