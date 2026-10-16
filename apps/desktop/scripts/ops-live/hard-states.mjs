@@ -232,16 +232,27 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
   await state('skills', 'details-open', {
     proves: "A skill row's disclosure opens and shows its body.",
     mocks: base, open: () => open('skills'),
-    act: async () => { await open('skills'); await tap('[data-ops-skill] [data-ops-row-more-slot] summary') },
-    checks: { 'disclosure-body': ms => see(openBody('[data-ops-skill]'), { ms }) }
+    // P26: Skills rows use the EntityRow action-line trigger (a button), its slot hidden until open.
+    act: async () => { await open('skills'); await tap('[data-ops-skill] [data-ops-row-more-trigger]') },
+    checks: {
+      'trigger-expanded': ms => see('[data-ops-skill] [data-ops-row-more-trigger]', { attr: { 'aria-expanded': 'true' }, ms }),
+      'disclosure-body': ms => see('[data-ops-skill] [data-ops-row-more-slot]:not([hidden]) [data-ops-disclosure-body] > *', { ms })
+    }
   })
 
   // Channels
   const lensC = '[data-ops-lens="channels"]'
+  // P26: with configured connections on screen the catalog is folded behind 'Browse catalog'. Unfold it first, so the
+  // negative (no filter) really shows unconnected rows and other categories; otherwise the fold alone would pass the checks.
+  const openChannels = async () => {
+    await open('channels')
+    const fold = visible('[data-ops-app-catalog-toggle][aria-expanded="false"]')
+    if (await fold.count()) { await fold.first().click(); await sleep(600) }
+  }
   await state('channels', 'connected-filter', {
     proves: 'The Connected filter is selected and no unconnected channel row stays visible.',
-    mocks: base, open: () => open('channels'),
-    act: async () => { await open('channels'); await tap('[data-ops-app-filter="connected"]') },
+    mocks: base, open: openChannels,
+    act: async () => { await openChannels(); await tap('[data-ops-app-filter="connected"]') },
     checks: {
       'tab-selected': ms => see('[data-ops-app-filter="connected"]', { attr: { 'aria-selected': 'true' }, ms }),
       'no-unconnected-rows': ms => none(`${lensC} [data-ops-row]:not([data-ops-app-connected])`, { ms }),
@@ -252,8 +263,8 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
   const others = `${lensC} [data-ops-app-section]:not([data-ops-app-section="Tools (MCP)"]):not([data-ops-app-section="warn"]):not([data-ops-app-section="connected"])`
   await state('channels', 'category-filter', {
     proves: 'The Tools (MCP) category filter is pressed and every other category section is hidden.',
-    mocks: base, open: () => open('channels'),
-    act: async () => { await open('channels'); await tap('[data-ops-app-cat="Tools (MCP)"]') },
+    mocks: base, open: openChannels,
+    act: async () => { await openChannels(); await tap('[data-ops-app-cat="Tools (MCP)"]') },
     checks: {
       'category-pressed': ms => see('[data-ops-app-cat="Tools (MCP)"]', { attr: { 'aria-pressed': 'true' }, ms }),
       'other-categories-hidden': ms => none(others, { ms }),
@@ -578,8 +589,9 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
       },
       'board-mock': ms => served(R_BOARD, { ms })
     },
-    // Negative: scroll the column far enough that the focused card leaves it (windowing unmounts it).
-    neg: { act: boardFocusAct(2000), fails: ['scrolled-while-visible', 'stays-mounted', 'stays-focused'] },
+    // Negative: scroll the column far enough that the focused card leaves the viewport. Since P26 the focused card is
+    // deliberately kept mounted and focused out of range (same keyed node), so only 'scrolled-while-visible' must fail.
+    neg: { act: boardFocusAct(2000), fails: ['scrolled-while-visible'] },
     after: reload
   })
 
