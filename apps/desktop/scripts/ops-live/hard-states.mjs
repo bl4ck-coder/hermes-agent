@@ -776,7 +776,8 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
         const a = await see(nodeFacts, { count: 1, clear: true, ms })
         // The one surface must be the SELECTED node's facts (with nothing selected the inspector shows the profile summary).
         const head = await visible(nodeFacts).first().evaluate(e => (e.matches('[data-ops-node-detail]') ? e.getAttribute('aria-label') : e.querySelector('[data-ops-inspector-title]')?.textContent) ?? '')
-        if (!/^\s*(model|modelo)\b/i.test(head)) throw new Error(`the facts surface is titled "${head.trim()}", not the selected Model node`)
+        // The title names the node ('Model details' / 'Detalles de Modelo'); with nothing selected it names the profile.
+        if (!/\b(model|modelo)\b/i.test(head)) throw new Error(`the facts surface is titled "${head.trim()}", not the selected Model node`)
         return `${a}; titled "${head.trim()}"`
       },
       'facts-match-node': ms => see(nodeFacts, { text: /Provider|Proveedor/, ms })
