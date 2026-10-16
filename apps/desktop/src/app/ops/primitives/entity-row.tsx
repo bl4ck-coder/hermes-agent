@@ -26,7 +26,8 @@ export function EntityRow({
   more,
   attrs,
   focusable,
-  moreLabel
+  moreLabel,
+  defaultOpen
 }: {
   lead?: ReactNode
   title: ReactNode
@@ -43,8 +44,10 @@ export function EntityRow({
    * action's line; closed, the slot is hidden and takes no row of its own.
    */
   moreLabel?: ReactNode
+  /** P27: start with the expansion open (a kept draft is shown again, not hidden behind the trigger). */
+  defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(Boolean(defaultOpen))
   const slotId = useId()
   const toggle = moreLabel && more
 

@@ -61,8 +61,9 @@ describe('P24 Office one intent per line, refusal in place', () => {
     await waitFor(() => expect(row.querySelector('[data-ops-intent="request-changes"] [role="alert"]')?.textContent).toContain('409'))
     expect(input.value).toBe('Split the commit')
     expect((row.querySelector('[data-ops-approve]') as HTMLButtonElement).disabled).toBe(false)
-    // Comment is its own folded intent; Open task is a quiet link on the links line.
+    // Comment is its own folded intent. P27: the task is reviewed from the context line, not from the links line.
     expect(row.querySelector('[data-ops-intent="links"] [data-ops-disclosure="comment"]')).toBeTruthy()
-    expect(row.querySelector('[data-ops-intent="links"] [data-ops-row-link]')?.textContent).toBe('Open task')
+    expect(row.querySelector('[data-ops-intent="links"] [data-ops-row-link]')).toBeNull()
+    expect(row.querySelector('[data-ops-row-context] [data-ops-review-task]')?.textContent).toBe('Review task')
   })
 })

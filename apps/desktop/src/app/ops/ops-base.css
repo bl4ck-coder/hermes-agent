@@ -1048,6 +1048,13 @@
 /* P26 (judge pass 20 #3): a refusal is one wrapping line (human reason) and a folded raw detail; neither widens the row at 420px. */
 :where([data-ops-refused]) > :where([data-ops-disclosure]) { min-width: 0; max-width: 100%; }
 :where([data-ops-refused]) > :where([data-ops-disclosure][open]) { flex: 1 1 100%; }
+/* P27 (judge pass 21 #7): Review task sits with the reason on the context line, before Approve; a long reason is two lines until focused. */
+:where([data-ops-review-context]) { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-3,12px); min-width: 0; max-width: 100%; }
+:where([data-ops-review-context]) > :where([data-ops-why]) { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+:where(button[data-ops-review-task]) { display: inline-flex; align-items: center; min-height: 40px; color: var(--ops-muted); font-size: var(--type-meta,14px); text-decoration: underline; text-underline-offset: 3px; }
+:where([data-ops-why-long]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+:where([data-ops-why-long][data-ops-why-expanded], [data-ops-why-long]:focus) { display: block; -webkit-line-clamp: unset; overflow: visible; }
+:where([data-ops-why-long]):focus-visible { outline: 2px solid var(--ops-gold,#c9a227); outline-offset: 2px; border-radius: 4px; }
 :where([data-ops-refused-raw]) { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; line-height: 16px; color: var(--ops-muted); }
 :where([data-ops-refused]) { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2,8px); max-width: 100%; min-width: 0; overflow-wrap: anywhere; color: var(--ops-bad, #e5484d); font-size: var(--type-meta,14px); }
 @container ops-rows (max-width: 40rem) { :where([data-ops-row]) { grid-template-columns: auto minmax(0, 1fr); } :where([data-ops-row-actions]) { grid-column: 2; max-width: none; justify-content: flex-start; padding-top: var(--space-2,8px); } :where([data-ops-row-more-slot]) { grid-column: 2; grid-row: auto; justify-content: flex-start; } }
