@@ -492,13 +492,14 @@ const MARKDOWN_COMPONENTS = {
 const PREVIEW_REMARK_PLUGINS = [...Object.values(defaultRemarkPlugins), remarkPreviewFileLinks]
 const PREVIEW_REHYPE_PLUGINS = [...Object.values(defaultRehypePlugins), rehypePreviewHeadingIds]
 
-export function MarkdownPreview({ filePath, text }: { filePath?: string; text: string }) {
+// `className` lets a host that is not the preview rail (the Capabilities skill document) set its own scale and width.
+export function MarkdownPreview({ className, filePath, text }: { className?: string; filePath?: string; text: string }) {
   const mathText = useMemo(() => normalizeFilePreviewMath(text), [text])
 
   return (
     <PreviewNoteContext.Provider value={filePath}>
       <div
-        className="preview-markdown mx-auto max-w-3xl px-4 py-3 text-sm text-foreground"
+        className={cn('preview-markdown mx-auto max-w-3xl px-4 py-3 text-sm text-foreground', className)}
         data-preview-markdown=""
         data-selectable-text="true"
       >

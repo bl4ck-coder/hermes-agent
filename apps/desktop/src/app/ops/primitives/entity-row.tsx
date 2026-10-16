@@ -49,7 +49,8 @@ export function EntityRow({
   const toggle = moreLabel && more
 
   return (
-    <li data-ops-row="" data-ops-row-tone={tone} tabIndex={focusable ? -1 : undefined} {...attrs}>
+    // P26: `data-ops-row-open` lets a list style the open row (Skills unclamps its description while its details show).
+    <li data-ops-row="" data-ops-row-open={toggle && open ? '' : undefined} data-ops-row-tone={tone} tabIndex={focusable ? -1 : undefined} {...attrs}>
       {lead ? <span data-ops-row-lead="">{lead}</span> : null}
       <div data-ops-row-main="">
         <div data-ops-row-title="">{title}</div>

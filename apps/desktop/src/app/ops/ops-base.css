@@ -1137,3 +1137,24 @@
 :where([data-ops-root]) :where([data-ops-app-section]) { background: none; border: 0; border-radius: 0; padding: 0; margin: 0; }
 :where([data-ops-skill-count]) { color: var(--ops-muted); font-size: var(--type-meta,14px); font-variant-numeric: tabular-nums; }
 :where([data-ops-skill-filters]) :where([data-ops-skill-views]) { margin: 0; }
+
+/* P26 (judge pass 20 #7, Skills): a row pays for name, what it does and one meta line. Compact wrapper (8px/16px, the 64px
+   two-line minimum), no gap inside the main block; body type stays 16/24. Category and state share one line that never wraps
+   (the category truncates first); a long description clamps to two lines until the row has focus or its details are open. */
+:where(li[data-ops-row][data-ops-skill]) { min-height: var(--row2-min,64px); padding: var(--space-2,8px) var(--space-4,16px); }
+:where([data-ops-skill]) :where([data-ops-row-main]) { gap: 0; }
+:where([data-ops-skill]) :where([data-ops-row-meta]) { flex-wrap: nowrap; min-width: 0; overflow: hidden; white-space: nowrap; }
+:where([data-ops-skill]) :where([data-ops-row-meta] > [data-ops-skill-tag]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+:where([data-ops-skill]) :where([data-ops-row-meta] > :not([data-ops-skill-tag])) { flex: none; }
+:where([data-ops-skill]) :where([data-ops-skill-desc]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+:where([data-ops-skill]:focus-within, [data-ops-skill][data-ops-row-open]) :where([data-ops-skill-desc]) { display: block; -webkit-line-clamp: unset; overflow: visible; }
+
+/* P26 (Channels): configured connections lead; the catalog follows behind one Browse catalog trigger. The tab totals keep
+   their N+ on one line at any width. */
+:where([data-ops-app-filter]) { white-space: nowrap; }
+:where([data-ops-app-catalog-title]) :where([data-ops-app-catalog-toggle]) { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2,8px); min-height: 40px; border-radius: 6px; }
+:where([data-ops-app-catalog-toggle]):focus-visible { outline: 2px solid var(--ops-gold,#c9a227); outline-offset: 2px; }
+:where([data-ops-app-catalog-toggle])::after { content: '\203A' / ''; display: inline-block; color: var(--ops-muted); transition: transform 120ms ease; }
+:where([data-ops-app-catalog-toggle][aria-expanded='true'])::after { transform: rotate(90deg); }
+:where([data-ops-app-catalog-body][hidden]) { display: none; }
+@media (prefers-reduced-motion: reduce) { :where([data-ops-app-catalog-toggle])::after { transition: none; } }
