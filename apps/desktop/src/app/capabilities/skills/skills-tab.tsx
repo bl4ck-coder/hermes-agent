@@ -1,11 +1,9 @@
-import { compactNumber } from '@hermes/shared'
 import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
-import { type ReactNode, useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { ArchiveSkillConfirmDialog } from '@/app/learning/archive-skill-confirm-dialog'
 import { CodeEditor } from '@/components/chat/code-editor'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   editLearningNode,
@@ -46,27 +44,9 @@ import { categoryFor, filteredOfficial, filteredSkills, skillsQueryKey, usageOf 
 // most/least-used across navigations and restarts.
 const $skillsSortDesc = persistentAtom('hermes.desktop.capabilities.skillsSortDesc', true, Codecs.bool)
 
-// Row subtitle: category, with non-default origins badged.
-function skillSubtitle(skill: SkillInfo): ReactNode {
-  const category = prettyName(categoryFor(skill))
-  const provenance = skill.provenance
-
-  return (
-    <>
-      <span className="truncate">{category}</span>
-      {provenance === 'agent' && (
-        <Badge className="shrink-0 normal-case" variant="default">
-          learned
-        </Badge>
-      )}
-      {provenance === 'hub' && (
-        <Badge className="shrink-0 normal-case" variant="muted">
-          hub
-        </Badge>
-      )}
-    </>
-  )
-}
+// Row subtitle: the category only. P25 (judge pass 19): the side list keeps the one state that changes a decision
+// (the on/off switch); origin and usage live in the detail header.
+const skillSubtitle = (skill: SkillInfo): string => prettyName(categoryFor(skill))
 
 interface SkillsTabProps {
   /** The scope's skill list, straight from the shell's query. */
@@ -307,7 +287,6 @@ export function SkillsTab({ onRefresh, profile, query, skills }: SkillsTabProps)
                 busy={bulkBusy}
                 enabled={skill.enabled}
                 key={skill.name}
-                meta={usageOf(skill) > 0 ? `×${compactNumber(usageOf(skill))}` : undefined}
                 onSelect={() => {
                   setSelectedSkill(skill.name)
                   setSelectedOfficial(null)

@@ -555,5 +555,5 @@ html[data-hermes-theme^='gold-night'] [data-panel-empty][data-panel-empty-align=
 
 
 /* P15: Channels rows are EntityRows; drop the connected-tile ring. */
-html[data-hermes-theme^='gold-night'] [data-ops-app][data-ops-row] { box-shadow: none; border-radius: 0; }
+html[data-hermes-theme^='gold-night'] [data-ops-app][data-ops-row] { box-shadow: none; border-radius: 0; background: none; }
 

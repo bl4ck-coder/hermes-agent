@@ -1103,3 +1103,37 @@
 :where([data-ops-card][data-ops-card-expanded]) > :where([data-ops-assignee], [data-ops-card-signals]) { visibility: visible; }
 :where([data-ops-card][data-ops-card-expanded]) > :where([data-ops-quick]) { grid-area: quick; position: static; flex-wrap: wrap; justify-content: flex-start; gap: var(--space-2,8px); opacity: 1; pointer-events: auto; background: none; padding: 0; }
 :where([data-ops-card][data-ops-card-expanded]) :where([data-ops-quick]) :where(button, select) { min-height: 40px; min-width: 40px; font-size: var(--type-meta,14px); }
+
+/* P25 (judge pass 19, Fleet): a compact two-line row: name (role on the same line, one line) / context · status · age.
+   Details sits beside Open profile on the row's own line; its body opens under the row. Scoped to the Fleet list
+   ([data-ops-fleet-row] alone also marks Office and rail rows). */
+:where([data-ops-fleet-rows]) :where([data-ops-row]) { min-height: 64px; padding-block: var(--space-2,8px); align-items: center; }
+:where([data-ops-fleet-rows]) :where([data-ops-row-main]) { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2,8px); }
+:where([data-ops-fleet-rows]) :where([data-ops-row-title]) { flex: 1 1 100%; min-width: 0; }
+:where([data-ops-fleet-rows]) :where([data-ops-row-title] [data-ops-row-link]) { flex-wrap: nowrap; max-width: 100%; min-width: 0; }
+:where([data-ops-fleet-rows]) :where([data-ops-role]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where([data-ops-fleet-rows]) :where([data-ops-row-context]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); min-width: 0; }
+:where([data-ops-fleet-rows]) :where([data-ops-row-actions]) { max-width: none; flex-wrap: nowrap; }
+:where([data-ops-fleet-rows]) :where([data-ops-row-actions]) :where([data-ops-fleet-details-toggle]) { background: transparent; border-color: transparent; color: var(--ops-muted); }
+:where([data-ops-fleet-rows]) :where([data-ops-row-actions]) :where([data-ops-fleet-details-toggle][aria-expanded='true']) { color: var(--ops-fg); }
+:where([data-ops-fleet-rows]) :where([data-ops-row-more-slot]) { justify-content: flex-start; }
+@container ops-rows (max-width: 40rem) { :where([data-ops-fleet-rows]) :where([data-ops-row-actions]) { flex-wrap: wrap; } }
+
+/* P25 (Teams): purpose and work are separate lines of the context; the expansion is one labelled fact per line (Fleet's rhythm). */
+:where([data-ops-team]) :where([data-ops-row-context]) { display: grid; gap: var(--space-1,4px); }
+:where([data-ops-team-purpose-line]) { color: var(--ops-fg); }
+:where([data-ops-team-work]) { display: block; overflow-wrap: anywhere; }
+:where([data-ops-team-more-n]) { color: var(--ops-muted); font-size: var(--type-meta,14px); }
+:where(dl[data-ops-team-detail]) { grid-template-columns: auto minmax(0, 1fr); gap: var(--space-1,4px) var(--space-3,12px); margin: 0; }
+:where(dl[data-ops-team-detail]) :where(dt) { color: var(--ops-muted); }
+:where(dl[data-ops-team-detail]) :where(dd) { margin: 0; min-width: 0; }
+:where(dl[data-ops-team-detail]) :where([data-ops-team-states]) { display: flex; flex-wrap: wrap; gap: 0 var(--space-2,8px); }
+:where(dl[data-ops-team-detail]) :where([data-ops-team-rest]) { list-style: none; padding: 0; display: grid; gap: var(--space-1,4px); }
+:where(dl[data-ops-team-detail]) :where([data-ops-team-task-status]) { display: inline; margin-right: var(--space-2,8px); }
+:where(dl[data-ops-team-detail]) :where([data-ops-team-member]) { background: none; border: 0; padding: 0; font-size: var(--type-meta,14px); }
+:where(dl[data-ops-team-detail]) :where([data-ops-team-project]) { font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); }
+
+/* P25 (Skills/Channels): one header per lens. The list regions inside a lens are not framed cards: the rows are already the structure. */
+:where([data-ops-root]) :where([data-ops-app-section]) { background: none; border: 0; border-radius: 0; padding: 0; margin: 0; }
+:where([data-ops-skill-count]) { color: var(--ops-muted); font-size: var(--type-meta,14px); font-variant-numeric: tabular-nums; }
+:where([data-ops-skill-filters]) :where([data-ops-skill-views]) { margin: 0; }

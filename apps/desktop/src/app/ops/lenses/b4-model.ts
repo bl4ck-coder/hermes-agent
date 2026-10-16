@@ -116,6 +116,15 @@ export interface Team {
   /** P15: every open task with its real status, blocked first then newest (focus is the first three). */
   work: { id: string; title: string; status: string }[]
   blocked: number
+  /** P25: the lane's stated purpose when a source provides one; never deduced from the name or the work. */
+  purpose: string | null
+}
+
+/** P25 (judge pass 19): the lane id is technical; the row reads it as words ('ops-panel' -> 'Ops panel'). The exact id stays in the expansion. */
+export function laneName(lane: string): string {
+  const words = lane.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : lane
 }
 
 const openSorted = (ts: BoardTask[]) =>
@@ -127,7 +136,7 @@ const openSorted = (ts: BoardTask[]) =>
 const focusOf = (ts: BoardTask[]) => openSorted(ts).slice(0, 3)
 
 /** R73: a team is a tenant lane: its projects, open tasks and the profiles that work it. */
-export function teams(tasks: BoardTask[]): Team[] {
+export function teams(tasks: BoardTask[], purposes: Record<string, string> | null = null): Team[] {
   const by = new Map<string, BoardTask[]>()
 
   for (const t of tasks) {
@@ -143,7 +152,8 @@ export function teams(tasks: BoardTask[]): Team[] {
       members: [...new Set(ts.map(t => t.assignee).filter((x): x is string => !!x))].sort(),
       work: openSorted(ts).map(t => ({ id: t.id, title: String(t.title), status: String(t.status) })),
       focus: focusOf(ts).map(t => ({ id: t.id, title: String(t.title), blocked: t.status === 'blocked' })),
-      blocked: ts.filter(t => t.status === 'blocked').length
+      blocked: ts.filter(t => t.status === 'blocked').length,
+      purpose: purposes?.[lane]?.trim() || null
     }))
     .sort((a, b) => (a.lane === 'No lane' ? 1 : b.lane === 'No lane' ? -1 : b.open - a.open || a.lane.localeCompare(b.lane)))
 }
