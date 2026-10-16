@@ -6,7 +6,7 @@
  * (R71/R58), favourites (R74), card menu (R20), New-task modal (R40), inline rename (R47), Markdown body (R17).
  */
 
-import { type KeyboardEvent, type ReactNode, useMemo, useRef, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -119,14 +119,56 @@ export function pushBadge(pushMode: BoardViewProps['pushMode'] | null | undefine
   }
 }
 
-function Windowed({ tasks, viewport, render }: { tasks: BoardTask[]; viewport: number; render: (t: BoardTask) => ReactNode }) {
+/** P25: the card bottom margin (ops-base.css); a card's pitch is its measured height plus this gap. */
+const CARD_GAP = 6
+
+function Windowed({ tasks, viewport, render, expandedId }: { tasks: BoardTask[]; viewport: number; render: (t: BoardTask) => ReactNode; expandedId?: string | null }) {
   const [top, setTop] = useState(0)
-  const w = windowRange(tasks.length, top, viewport, ROW_H)
+  const ref = useRef<HTMLDivElement | null>(null)
+  // P25 (judge pass 19 #4): the focused card grows in flow; its measured pitch feeds the window so later rows are
+  // offset by its real height and it is never unmounted while focused.
+  const [measured, setMeasured] = useState<{ id: string; pitch: number } | null>(null)
+  const index = expandedId ? tasks.findIndex(t => t.id === expandedId) : -1
+
+  useLayoutEffect(() => {
+    const el = expandedId && index >= 0 ? ref.current?.querySelector<HTMLElement>(`[data-ops-card="${CSS.escape(expandedId)}"]`) : null
+
+    if (!el || !expandedId) {
+      return
+    }
+
+    const measure = () => {
+      const pitch = Math.round(el.getBoundingClientRect().height) + CARD_GAP
+      setMeasured(m => (m?.id === expandedId && m.pitch === pitch ? m : { id: expandedId, pitch }))
+    }
+
+    measure()
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+    ro?.observe(el)
+
+    return () => ro?.disconnect()
+  }, [expandedId, index])
+
+  const pitch = index >= 0 && measured?.id === expandedId ? measured.pitch : ROW_H
+  const w = windowRange(tasks.length, top, viewport, ROW_H, 4, index >= 0 ? { index, pitch } : null)
+  const kept = w.kept ? render(tasks[w.kept.index]) : null
 
   return (
-    <div data-ops-window="" onScroll={e => setTop((e.target as HTMLElement).scrollTop)} role="list" style={{ maxHeight: viewport, overflowY: 'auto' }}>
+    <div data-ops-window="" onScroll={e => setTop((e.target as HTMLElement).scrollTop)} ref={ref} role="list" style={{ maxHeight: viewport, overflowY: 'auto' }}>
       <div style={{ height: w.padTop }} />
+      {w.kept?.side === 'before' ? (
+        <>
+          {kept}
+          <div style={{ height: w.kept.gap }} />
+        </>
+      ) : null}
       {tasks.slice(w.start, w.end).map(render)}
+      {w.kept?.side === 'after' ? (
+        <>
+          <div style={{ height: w.kept.gap }} />
+          {kept}
+        </>
+      ) : null}
       <div style={{ height: w.padBottom }} />
     </div>
   )
@@ -565,7 +607,7 @@ export function BoardView(props: BoardViewProps) {
               <h3>
                 {T(col.name)} <span data-ops-count={col.name}>{c[col.name]}</span>
               </h3>
-              <Windowed render={card} tasks={pinnedFirst(col.tasks)} viewport={viewport} />
+              <Windowed expandedId={focusCard} render={card} tasks={pinnedFirst(col.tasks)} viewport={viewport} />
               {!readOnly && (MOVABLE as readonly string[]).includes(col.name) ? (
                 adding === col.name ? (
                   <form

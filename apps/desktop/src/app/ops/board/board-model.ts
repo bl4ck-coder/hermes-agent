@@ -269,12 +269,51 @@ export function timelineOrder(tasks: BoardTask[]): BoardTask[] {
   return [...tasks].sort((a, b) => at(a) - at(b))
 }
 
-/** Fixed-row windowing: which rows of `total` are mounted for a viewport. */
-export function windowRange(total: number, scrollTop: number, viewport: number, rowH: number, overscan = 4) {
-  const start = Math.max(0, Math.floor(scrollTop / rowH) - overscan)
-  const end = Math.min(total, Math.ceil((scrollTop + viewport) / rowH) + overscan)
+export interface WindowRange {
+  start: number
+  end: number
+  padTop: number
+  padBottom: number
+  /** P25: the expanded row when it lies outside [start, end): mounted anyway, `gap` px away from the window. */
+  kept?: { index: number; side: 'before' | 'after'; gap: number }
+}
 
-  return { start, end, padTop: start * rowH, padBottom: (total - end) * rowH }
+/**
+ * Fixed-row windowing: which rows of `total` are mounted for a viewport.
+ * P25 (judge pass 19 #4): one row may be expanded (the focused card grows in flow). Its measured `pitch` replaces
+ * `rowH` for that row, so later rows are offset by its real height, and it is always mounted (kept), so a tall
+ * focused card crossing the viewport is never skipped and focus is never lost by scrolling.
+ */
+export function windowRange(total: number, scrollTop: number, viewport: number, rowH: number, overscan = 4, expanded?: { index: number; pitch: number } | null): WindowRange {
+  const k = expanded && expanded.index >= 0 && expanded.index < total ? expanded.index : -1
+
+  if (k < 0) {
+    const start = Math.max(0, Math.floor(scrollTop / rowH) - overscan)
+    const end = Math.min(total, Math.ceil((scrollTop + viewport) / rowH) + overscan)
+
+    return { start, end, padTop: start * rowH, padBottom: (total - end) * rowH }
+  }
+
+  const pitch = Math.max(rowH, expanded?.pitch ?? rowH)
+  const topK = k * rowH
+  const bottomK = topK + pitch
+  const height = total * rowH + pitch - rowH
+  const offset = (i: number) => i * rowH + (i > k ? pitch - rowH : 0)
+  // Rows whose bottom is at or above y (they have scrolled out above), and rows whose top is above y.
+  const ended = (y: number) => (y < bottomK ? Math.min(Math.floor(y / rowH), k) : k + 1 + Math.floor((y - bottomK) / rowH))
+  const begun = (y: number) => (y <= topK ? Math.ceil(y / rowH) : y <= bottomK ? k + 1 : k + 1 + Math.ceil((y - bottomK) / rowH))
+  const start = Math.min(total, Math.max(0, ended(scrollTop) - overscan))
+  const end = Math.min(total, Math.max(start, begun(scrollTop + viewport) + overscan))
+
+  if (k < start) {
+    return { start, end, padTop: topK, padBottom: height - offset(end), kept: { index: k, side: 'before', gap: offset(start) - bottomK } }
+  }
+
+  if (k >= end) {
+    return { start, end, padTop: offset(start), padBottom: height - bottomK, kept: { index: k, side: 'after', gap: topK - offset(end) } }
+  }
+
+  return { start, end, padTop: offset(start), padBottom: height - offset(end) }
 }
 
 export function createBoardClient(api: OpsApi = hermesApi) {
