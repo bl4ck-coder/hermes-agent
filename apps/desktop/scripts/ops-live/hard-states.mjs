@@ -7,6 +7,8 @@
 // (two rejected fields), Diagnostics (recovered probe), Office (refusals in place, also at a 420px panel), Board
 // (focused long title while the column scrolls), Sessions (focus unclamp, Clear search) and Artifacts (filtered empty,
 // failed thumbnail, same-name files); harness controls prove a failed screenshot and a covered non-first row fail.
+import { AssertionFailure, fail } from './assertion.mjs'
+
 const now = Math.floor(Date.now() / 1000)
 const task = (id, title, status, tenant, assignee, extra = {}) => ({ id, title, status, tenant, assignee, project_id: tenant === 'web' ? 'brand' : null, created_at: now - 3600 * Number(id.slice(1)), ...extra })
 const BOARD = {
@@ -99,12 +101,12 @@ const PREVIEW_UNAVAILABLE = /Preview unavailable|Vista previa no disponible/
 /** A check that reads evidence the interaction recorded in ctx (it fails when the interaction never got there). */
 const ev = (key, fn) => async (ms, ctx) => {
   const v = ctx?.[key]
-  if (v === undefined) throw new Error(`no evidence for "${key}": the interaction did not reach that step`)
+  if (v === undefined) throw new AssertionFailure(`no evidence for "${key}": the interaction did not reach that step`)
   return fn(v, ctx)
 }
 const flatKeys = (o, p = '') => (o && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).flatMap(([k, v]) => flatKeys(v, p ? `${p}.${k}` : k)) : p ? [p] : [])
 
-export default async function ({ page, app, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, reload, see, none, served, tap, type, visible, reqSeq, requests, gateway, harness }) {
+export default async function ({ page, app, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, reload, see, none, served, tap, type, visible, reqSeq, requests, gateway, runPython, harness }) {
   if (!want('hard') && !want('all')) return
   // Office and Board are pinned routes, not rail lenses.
   const open = async id => { if (id === 'office' || id === 'board') { await go(`/ops/${id}`); await sleep(1500); return } await go('/ops'); await lens(id) }
@@ -163,7 +165,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     act: boardFilterAct(boardFilter),
     checks: {
       'board-filter-value': ms => see(boardFilter, { value: 'pricing', ms }),
-      'whole-board-before': ev('before', ids => { const want = BOARD.columns.flatMap(c => c.tasks.map(t => t.id)).filter(id => id !== 't7'); const miss = want.filter(id => !ids.includes(id)); if (miss.length) throw new Error(`before filtering, fixture cards not visible: ${miss.join(', ')} (saw ${ids.join(', ')})`); return `before filtering ${ids.length} cards visible (${ids.join(', ')})` }),
+      'whole-board-before': ev('before', ids => { const want = BOARD.columns.flatMap(c => c.tasks.map(t => t.id)).filter(id => id !== 't7'); const miss = want.filter(id => !ids.includes(id)); if (miss.length) throw new AssertionFailure(`before filtering, fixture cards not visible: ${miss.join(', ')} (saw ${ids.join(', ')})`); return `before filtering ${ids.length} cards visible (${ids.join(', ')})` }),
       'match-shown': ms => see('[data-ops-card="t1"]', { text: 'pricing', ms }),
       'all-others-hidden': ms => none('[data-ops-card]:not([data-ops-card="t1"])', { ms }).then(a => see('[data-ops-card]', { count: 1, ms }).then(b => `${a}; ${b}`))
     },
@@ -216,7 +218,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
   const allRowsMatch = (sel, needle) => ms => see(sel, { ms }).then(async () => {
     const texts = await visible(sel).allInnerTexts()
     const off = texts.filter(t => !t.toLowerCase().includes(needle))
-    if (off.length) throw new Error(`${off.length}/${texts.length} visible rows lack "${needle}": ${off[0].slice(0, 60)}`)
+    if (off.length) throw new AssertionFailure(`${off.length}/${texts.length} visible rows lack "${needle}": ${off[0].slice(0, 60)}`)
     return `${texts.length} visible rows all contain "${needle}"`
   })
   await state('skills', 'filtered', {
@@ -343,7 +345,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: 'After a failed probe and fixed feeds, Probe again shows every check ok and the header reflects the present probe (good), not the history.',
     mocks: diagMocks, open: diagTab, act: recoveredAct(true), actMs: 180000,
     checks: {
-      'first-probe-failed': ev('firstProbe', t => { if (t.length < 2) throw new Error(`first probe listed ${t.length} failing checks, want >= 2`); return `first probe failed ${t.length} checks: ${t.map(x => x.split('\n')[0]).join(', ')}` }),
+      'first-probe-failed': ev('firstProbe', t => { if (t.length < 2) throw new AssertionFailure(`first probe listed ${t.length} failing checks, want >= 2`); return `first probe failed ${t.length} checks: ${t.map(x => x.split('\n')[0]).join(', ')}` }),
       'second-probe-ran': ev('secondProbe', ms => `probed again after the fix (${ms} ms)`),
       'no-failing-check-now': ms => none('[data-ops-probe-failing] [data-ops-probe-fail]', { ms }),
       'all-checks-ok-now': ms => see('[data-ops-diag-checked] [data-ops-probe-state="ok"]', { min: 7, ms }),
@@ -366,10 +368,10 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     act: async ctx => { await goApp('/settings'); ctx.key = await visible(field).first().evaluate(el => el.closest('[data-tour^="field-"]')?.getAttribute('data-tour')?.slice(6) ?? null); await type(field, '180000'); await page.keyboard.press('Tab').catch(() => {}); await sleep(1500) },
     checks: {
       'saving-in-edited-row': async (ms, ctx) => {
-        if (!ctx?.key) throw new Error('the edited field has no [data-tour=field-<key>] row')
+        if (!ctx?.key) throw new AssertionFailure('the edited field has no [data-tour=field-<key>] row')
         return see(`[data-tour="field-${ctx.key}"] [data-settings-field-status="${ctx.key}"]`, { text: SAVING, clear: true, ms: Math.min(ms, 5000) })
       },
-      'only-this-field-saving': async (ms, ctx) => { const n = await visible('[data-settings-field-status]').count(); if (n !== 1) throw new Error(`${n} visible field statuses, want exactly 1 (the edited ${ctx?.key})`); return `one field status, on ${ctx?.key}` },
+      'only-this-field-saving': async (ms, ctx) => { const n = await visible('[data-settings-field-status]').count(); if (n !== 1) throw new AssertionFailure(`${n} visible field statuses, want exactly 1 (the edited ${ctx?.key})`); return `one field status, on ${ctx?.key}` },
       'put-mock': ms => served(R_PUT, { method: 'PUT', ms })
     },
     after: () => sleep(8000)
@@ -422,15 +424,15 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     checks: {
       'both-fields-rejected': ev('bothRejected', v => v),
       'retry-sends-only-its-key': ev('retryPuts', puts => {
-        if (puts.length !== 1) throw new Error(`${puts.length} config PUTs after Retry, want 1`)
+        if (puts.length !== 1) throw new AssertionFailure(`${puts.length} config PUTs after Retry, want 1`)
         const keys = flatKeys(puts[0].body?.config)
-        if (keys.length !== 1 || keys[0] !== F_A) throw new Error(`Retry PUT body keys ${JSON.stringify(keys)}, want ["${F_A}"]`)
+        if (keys.length !== 1 || keys[0] !== F_A) throw new AssertionFailure(`Retry PUT body keys ${JSON.stringify(keys)}, want ["${F_A}"]`)
         return `one PUT ${puts[0].path} with body ${JSON.stringify(puts[0].body)}`
       }),
-      'other-field-untouched-by-retry': ev('bAfterRetry', n => { if (n !== 1) throw new Error(`${F_B} error visible x${n} after Retry on ${F_A}, want 1`); return `${F_B} still rejected after Retry on ${F_A}` }),
+      'other-field-untouched-by-retry': ev('bAfterRetry', n => { if (n !== 1) throw new AssertionFailure(`${F_B} error visible x${n} after Retry on ${F_A}, want 1`); return `${F_B} still rejected after Retry on ${F_A}` }),
       'retry-cleared-its-error': ms => none(errA, { ms }).then(a => see(inA, { value: '2345', ms }).then(b => `${a}; ${b}`)),
-      'revert-sends-nothing': ev('revertReqs', rs => { if (rs.length) throw new Error(`Revert was followed by ${rs.map(r => `${r.method} ${r.path}`).join(', ')}`); return 'no write and no /api/config request after Revert' }),
-      'revert-restores-and-clears': async (ms, ctx) => { if (ctx?.origB === undefined) throw new Error('saved value not recorded'); return none(errB, { ms }).then(a => see(inB, { value: ctx.origB, ms }).then(b => `${a}; ${b}`)) },
+      'revert-sends-nothing': ev('revertReqs', rs => { if (rs.length) throw new AssertionFailure(`Revert was followed by ${rs.map(r => `${r.method} ${r.path}`).join(', ')}`); return 'no write and no /api/config request after Revert' }),
+      'revert-restores-and-clears': async (ms, ctx) => { if (ctx?.origB === undefined) throw new AssertionFailure('saved value not recorded'); return none(errB, { ms }).then(a => see(inB, { value: ctx.origB, ms }).then(b => `${a}; ${b}`)) },
       'put-mock': ms => served(R_PUT, { method: 'PUT', ms })
     },
     neg: { act: twoFieldsAct(false), fails: ['retry-sends-only-its-key', 'other-field-untouched-by-retry', 'revert-restores-and-clears'] },
@@ -470,8 +472,8 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     'errors-not-crossed': async () => {
       const rc = await visible(`${ROW_T6} [data-ops-intent="request-changes"] [data-ops-refused]`).allInnerTexts()
       const cm = await visible(`${ROW_T6} [data-ops-intent="comment"] [data-ops-refused]`).allInnerTexts()
-      if (rc.some(t => /comment refused/.test(t)) || cm.some(t => /request changes refused/.test(t))) throw new Error(`errors crossed: request-changes=${JSON.stringify(rc)} comment=${JSON.stringify(cm)}`)
-      if (!rc.length || !cm.length) throw new Error(`missing refusal: request-changes x${rc.length}, comment x${cm.length}`)
+      if (rc.some(t => /comment refused/.test(t)) || cm.some(t => /request changes refused/.test(t))) throw new AssertionFailure(`errors crossed: request-changes=${JSON.stringify(rc)} comment=${JSON.stringify(cm)}`)
+      if (!rc.length || !cm.length) throw new AssertionFailure(`missing refusal: request-changes x${rc.length}, comment x${cm.length}`)
       return 'each refusal only beside its own intent'
     },
     'notes-kept': ms => see(`${ROW_T6} input[aria-label="changes for t6"]`, { value: NOTE_R, ms }).then(a => see(`${ROW_T6} input[aria-label="comment for t6"]`, { value: NOTE_C, ms }).then(b => `${a}; ${b}`)),
@@ -479,8 +481,8 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     'no-approve-sent': ev('writes', ws => {
       const posts = ws.filter(w => w.method === 'POST' && /\/tasks\/t6\/comments$/.test(w.path))
       const bad = ws.filter(w => /\/api\/approvals\/respond/.test(w.path) || (/\/tasks\/t6$/.test(w.path) && w.method === 'PATCH'))
-      if (bad.length) throw new Error(`sent ${bad.map(w => `${w.method} ${w.path} ${JSON.stringify(w.body)}`).join(', ')}`)
-      if (posts.length !== 2) throw new Error(`${posts.length} comment POSTs, want 2 (one per refused intent)`)
+      if (bad.length) throw new AssertionFailure(`sent ${bad.map(w => `${w.method} ${w.path} ${JSON.stringify(w.body)}`).join(', ')}`)
+      if (posts.length !== 2) throw new AssertionFailure(`${posts.length} comment POSTs, want 2 (one per refused intent)`)
       return '2 refused comment POSTs, no task transition and no approvals/respond'
     })
   }
@@ -507,7 +509,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: 'At a 420px Ops panel the Office refusals still stay in place: both notes kept, each error unobstructed beside its own intent, no approve sent.',
     mocks: base, open: () => panelAt(420), act: rejectAct(true, () => panelAt(420)),
     checks: {
-      'panel-420': async () => { const w = await paneWidth(); if (Math.abs(w - 420) > 16) throw new Error(`Ops pane is ${w}px wide, want 420 +- 16`); return `Ops pane ${w}px wide` },
+      'panel-420': async () => { const w = await paneWidth(); if (Math.abs(w - 420) > 16) throw new AssertionFailure(`Ops pane is ${w}px wide, want 420 +- 16`); return `Ops pane ${w}px wide` },
       ...rejectChecks
     },
     neg: { act: rejectAct(false, () => panelAt(420)), fails: ['request-changes-refused-in-place', 'comment-refused-in-place', 'errors-not-crossed'] },
@@ -562,29 +564,29 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: 'Board: a focused card with a long title shows the full title, stays mounted, focused and in place (no jump) while its windowed column scrolls; blur restores the compact title and meta.',
     mocks: [{ path: R_BOARD, body: BOARD_LONG }, { path: R_PENDING, body: PENDING }], open: () => open('board'), act: boardFocusAct(150),
     checks: {
-      'long-title-clamped-at-rest': ev('rest', s => { if (!s.mounted || s.titleClamped !== true) throw new Error(`at rest: ${JSON.stringify(s)}`); return 'the long title is clamped at rest' }),
+      'long-title-clamped-at-rest': ev('rest', s => { if (!s.mounted || s.titleClamped !== true) throw new AssertionFailure(`at rest: ${JSON.stringify(s)}`); return 'the long title is clamped at rest' }),
       'focus-shows-full-title': ev('focusedBefore', s => {
-        if (!s.focused || !s.expanded || s.titleClamped !== false || s.titleText !== LONG_CARD_TITLE) throw new Error(`focused card: ${JSON.stringify({ ...s, titleText: s.titleText?.slice(0, 60) })}`)
+        if (!s.focused || !s.expanded || s.titleClamped !== false || s.titleText !== LONG_CARD_TITLE) throw new AssertionFailure(`focused card: ${JSON.stringify({ ...s, titleText: s.titleText?.slice(0, 60) })}`)
         return `focused card expanded to ${Math.round(s.height)}px with the full title unclamped`
       }),
       'scrolled-while-visible': ev('afterScroll', (s, ctx) => {
         const d = s.scrollTop - ctx.focusedBefore.scrollTop
-        if (d < 40) throw new Error(`column scrolled ${d}px, want >= 40`)
-        if (!s.mounted || s.bottom <= 0 || s.top >= s.winHeight) throw new Error(`card not visible in the column after scrolling ${d}px (${JSON.stringify(s)})`)
+        if (d < 40) throw new AssertionFailure(`column scrolled ${d}px, want >= 40`)
+        if (!s.mounted || s.bottom <= 0 || s.top >= s.winHeight) throw new AssertionFailure(`card not visible in the column after scrolling ${d}px (${JSON.stringify(s)})`)
         return `column scrolled ${d}px (${ctx.scrollMethod}), card still visible at ${Math.round(s.top)}px`
       }),
-      'stays-mounted': ev('afterScroll', s => { if (!s.mounted || s.mark !== 'ops-hard-mark') throw new Error(s.mounted ? 'the card was remounted (a new node)' : 'the card was unmounted'); return 'same card node after scrolling' }),
-      'stays-focused': ev('afterScroll', s => { if (!s.mounted || !s.focused || !s.expanded) throw new Error(`focused=${s.focused} expanded=${s.expanded} mounted=${s.mounted}`); return 'still focused and expanded' }),
+      'stays-mounted': ev('afterScroll', s => { if (!s.mounted || s.mark !== 'ops-hard-mark') throw new AssertionFailure(s.mounted ? 'the card was remounted (a new node)' : 'the card was unmounted'); return 'same card node after scrolling' }),
+      'stays-focused': ev('afterScroll', s => { if (!s.mounted || !s.focused || !s.expanded) throw new AssertionFailure(`focused=${s.focused} expanded=${s.expanded} mounted=${s.mounted}`); return 'still focused and expanded' }),
       'no-jump': ev('afterScroll', (s, ctx) => {
-        if (!s.mounted) throw new Error('card unmounted')
+        if (!s.mounted) throw new AssertionFailure('card unmounted')
         const moved = ctx.focusedBefore.top - s.top, scrolled = s.scrollTop - ctx.focusedBefore.scrollTop
-        if (Math.abs(moved - scrolled) > 2) throw new Error(`card moved ${Math.round(moved)}px for a ${scrolled}px scroll (jump ${Math.round(moved - scrolled)}px)`)
+        if (Math.abs(moved - scrolled) > 2) throw new AssertionFailure(`card moved ${Math.round(moved)}px for a ${scrolled}px scroll (jump ${Math.round(moved - scrolled)}px)`)
         return `card moved exactly with the scroll (${Math.round(moved)}px)`
       }),
       'blur-restores-compact': async ms => {
         await see(LC, { ms })
         const s = await cardState()
-        if (s.focused || s.expanded || s.titleClamped !== true || Math.abs(s.height - 94) > 2) throw new Error(`after blur: ${JSON.stringify({ ...s, titleText: undefined })}`)
+        if (s.focused || s.expanded || s.titleClamped !== true || Math.abs(s.height - 94) > 2) throw new AssertionFailure(`after blur: ${JSON.stringify({ ...s, titleText: undefined })}`)
         return see(`${LC} [data-ops-assignee]`, { text: 'builder', ms }).then(m => `compact again (${Math.round(s.height)}px, title clamped); ${m}`)
       },
       'board-mock': ms => served(R_BOARD, { ms })
@@ -652,10 +654,10 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: 'Sessions: keyboard focus on a row reveals its whole title and context (clamped to 2 lines at rest).',
     mocks: longSessions, open: sessionsOpen, act: sessionsFocusAct(true),
     checks: {
-      'clamped-at-rest': ev('rest', s => { if (!s?.title?.clamped || !s?.context?.clamped) throw new Error(`at rest: ${JSON.stringify(s)}`); return 'title and context clamped at rest' }),
-      'row-focused': async () => { const s = await clampOf(S2); if (!s?.focused) throw new Error('the long row does not hold focus'); return 'row holds keyboard focus' },
-      'full-title-visible': async ms => { const s = await clampOf(S2); if (!s || s.title.clamped || s.title.text !== LONG_SESSION_TITLE) throw new Error(`title: ${JSON.stringify(s?.title).slice(0, 160)}`); return see(`${S2} [data-session-title]`, { ms }).then(() => 'whole title visible, unclamped') },
-      'full-context-visible': async ms => { const s = await clampOf(S2); if (!s || s.context.clamped || !s.context.text.includes(LONG_SESSION_PREVIEW)) throw new Error(`context: ${JSON.stringify(s?.context).slice(0, 160)}`); return see(`${S2} [data-session-context]`, { ms }).then(() => 'whole context visible, unclamped') }
+      'clamped-at-rest': ev('rest', s => { if (!s?.title?.clamped || !s?.context?.clamped) throw new AssertionFailure(`at rest: ${JSON.stringify(s)}`); return 'title and context clamped at rest' }),
+      'row-focused': async () => { const s = await clampOf(S2); if (!s?.focused) throw new AssertionFailure('the long row does not hold focus'); return 'row holds keyboard focus' },
+      'full-title-visible': async ms => { const s = await clampOf(S2); if (!s || s.title.clamped || s.title.text !== LONG_SESSION_TITLE) throw new AssertionFailure(`title: ${JSON.stringify(s?.title).slice(0, 160)}`); return see(`${S2} [data-session-title]`, { ms }).then(() => 'whole title visible, unclamped') },
+      'full-context-visible': async ms => { const s = await clampOf(S2); if (!s || s.context.clamped || !s.context.text.includes(LONG_SESSION_PREVIEW)) throw new AssertionFailure(`context: ${JSON.stringify(s?.context).slice(0, 160)}`); return see(`${S2} [data-session-context]`, { ms }).then(() => 'whole context visible, unclamped') }
     },
     neg: { act: sessionsFocusAct(false), fails: ['row-focused', 'full-title-visible', 'full-context-visible'] }
   })
@@ -676,12 +678,12 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: 'Sessions: a search with no match offers Clear search (not New session); Clear search empties the field and brings back the same 4 rows in the same order.',
     mocks: populated, open: sessionsOpen, act: sessionsSearchAct('zz-no-session-matches-this'),
     checks: {
-      'clear-search-offered': ev('clearOffered', (n, ctx) => { if (n !== 1) throw new Error(`empty action x${n}`); return `empty action "${ctx.clearText}" offered` }),
+      'clear-search-offered': ev('clearOffered', (n, ctx) => { if (n !== 1) throw new AssertionFailure(`empty action x${n}`); return `empty action "${ctx.clearText}" offered` }),
       'search-cleared': ms => see('[data-sessions-search] input', { value: '', ms }),
       'same-four-rows': async (ms, ctx) => {
         await see('[data-session-row]', { count: 4, ms })
         const now = await rowTitles()
-        if (!ctx?.before || JSON.stringify(now) !== JSON.stringify(ctx.before)) throw new Error(`rows ${JSON.stringify(now)} != before ${JSON.stringify(ctx?.before)}`)
+        if (!ctx?.before || JSON.stringify(now) !== JSON.stringify(ctx.before)) throw new AssertionFailure(`rows ${JSON.stringify(now)} != before ${JSON.stringify(ctx?.before)}`)
         return 'the same 4 rows, same order'
       }
     },
@@ -730,20 +732,20 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
           return { imgs, preview, empty }
         }))
         const bad = cards.filter(c => c.imgs.some(h => h > 48) || c.preview > 48 || c.empty.length)
-        if (bad.length) throw new Error(`${bad.length}/${cards.length} failed items keep a large box: ${JSON.stringify(bad[0])}`)
+        if (bad.length) throw new AssertionFailure(`${bad.length}/${cards.length} failed items keep a large box: ${JSON.stringify(bad[0])}`)
         return `${cards.length} failed item(s): preview row ${cards.map(c => c.preview + 'px').join(', ')}, no image, no empty box > 48px`
       },
       'failed-mark-32px': async ms => {
         await see(`${imageCards} [data-artifact-thumb="failed"]`, { min: 1, ms })
         const sizes = await visible(`${imageCards} [data-artifact-thumb="failed"] > span[aria-hidden]`).evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)] }))
-        if (!sizes.length || sizes.some(([w, h]) => w !== 32 || h !== 32)) throw new Error(`monogram sizes ${JSON.stringify(sizes)}, want 32x32`)
+        if (!sizes.length || sizes.some(([w, h]) => w !== 32 || h !== 32)) throw new AssertionFailure(`monogram sizes ${JSON.stringify(sizes)}, want 32x32`)
         return `${sizes.length} failed thumbnails as 32x32 monograms`
       },
       'no-large-empty-box': async () => {
         const boxes = await visible(imageCards).evaluateAll(els => els.map(a => { const f = a.firstElementChild; const r = f.getBoundingClientRect(); const img = f.querySelector('img'); return { h: Math.round(r.height), failed: f.matches('[data-artifact-thumb="failed"]'), loaded: Boolean(img && img.complete && img.naturalWidth > 0) } }))
         const empty = boxes.filter(b => !b.failed && !b.loaded && b.h > 48)
-        if (!boxes.length) throw new Error('no image cards visible')
-        if (empty.length) throw new Error(`${empty.length}/${boxes.length} image cards keep an empty ${empty[0].h}px box`)
+        if (!boxes.length) throw new AssertionFailure('no image cards visible')
+        if (empty.length) throw new AssertionFailure(`${empty.length}/${boxes.length} image cards keep an empty ${empty[0].h}px box`)
         return `${boxes.length} image cards, none with an empty preview box`
       }
     },
@@ -762,8 +764,8 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
         await see(`${sameNameRows} [data-artifact-path-hint]`, { min: 2, ms })
         const rows = await visible(sameNameRows).evaluateAll(els => els.map(e => ({ hint: e.querySelector('[data-artifact-path-hint]')?.textContent?.trim() ?? null, text: e.innerText.replace(/\s+/g, ' ').slice(0, 120) })))
         const hints = new Set(rows.map(r => r.hint))
-        if (rows.some(r => !r.hint)) throw new Error(`a report.md row has no path hint: ${JSON.stringify(rows.find(r => !r.hint))}`)
-        if (!hints.has('alpha') || !hints.has('beta')) throw new Error(`hints ${JSON.stringify([...hints])}, want alpha and beta`)
+        if (rows.some(r => !r.hint)) throw new AssertionFailure(`a report.md row has no path hint: ${JSON.stringify(rows.find(r => !r.hint))}`)
+        if (!hints.has('alpha') || !hints.has('beta')) throw new AssertionFailure(`hints ${JSON.stringify([...hints])}, want alpha and beta`)
         return `report.md rows show ${[...hints].join(' / ')}`
       }
     },
@@ -777,9 +779,14 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
   // not docked), the selection mark is on that node only.
   const canvasOpen = async () => { await reload(); await go('/ops/canvas'); await see('[data-ops-node="model"] [data-ops-node-title]', { ms: 20000 }) }
   const nodeFacts = '[data-ops-node-detail], aside[data-ops-inspector] [data-ops-inspector-detail="node"]'
+  // P27 (judge pass 21 #2): the model node's source answers fixed, recognisable values, and 'facts-match-node' compares
+  // the EXACT Provider and Model values of the facts surface with them and with what the selected node itself shows.
+  const R_MODEL = '^/api/ops/profiles/[^/]+/nodes/model'
+  const MODEL_FIXED = { provider: 'opshardprov', model: 'ops-hard-model-7' }
+  const factPairs = () => visible(nodeFacts).first().evaluate(e => [...e.querySelectorAll('dt')].map(dt => [(dt.textContent || '').trim(), (dt.nextElementSibling?.textContent || '').trim()]))
   await state('canvas', 'node-selected', {
-    proves: 'Canvas: selecting the Model node marks that node only, and its facts (Provider/Model) are shown once, in one place (inspector or popover, never both).',
-    mocks: base, open: canvasOpen,
+    proves: 'Canvas: selecting the Model node marks that node only, and its facts are shown once, in one place (inspector or popover, never both), with the exact provider and model the node shows (served by the model source).',
+    mocks: [{ path: R_MODEL, body: MODEL_FIXED }, ...base], open: canvasOpen,
     act: async () => { await canvasOpen(); await tap('[data-ops-node="model"] [data-ops-node-title]'); await sleep(1200) },
     checks: {
       'one-node-selected': ms => see('[data-ops-selected]', { count: 1, attr: { 'data-ops-node': 'model' }, ms }),
@@ -789,18 +796,28 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
         // The one surface must be the SELECTED node's facts (with nothing selected the inspector shows the profile summary).
         const head = await visible(nodeFacts).first().evaluate(e => (e.matches('[data-ops-node-detail]') ? e.getAttribute('aria-label') : e.querySelector('[data-ops-inspector-title]')?.textContent) ?? '')
         // The title names the node ('Model details' / 'Detalles de Modelo'); with nothing selected it names the profile.
-        if (!/\b(model|modelo)\b/i.test(head)) throw new Error(`the facts surface is titled "${head.trim()}", not the selected Model node`)
+        if (!/\b(model|modelo)\b/i.test(head)) throw new AssertionFailure(`the facts surface is titled "${head.trim()}", not the selected Model node`)
         return `${a}; titled "${head.trim()}"`
       },
-      'facts-match-node': ms => see(nodeFacts, { text: /Provider|Proveedor/, ms })
+      'facts-match-node': async ms => {
+        await see(nodeFacts, { count: 1, ms })
+        const node = (await visible('[data-ops-node="model"] [data-ops-node-body]').first().innerText()).replace(/\s+/g, ' ').trim()
+        const want = `${MODEL_FIXED.provider} · ${MODEL_FIXED.model}`
+        if (node !== want) fail(`the selected node shows "${node}", want "${want}" (served by the model source)`)
+        const pairs = await factPairs()
+        const val = re => pairs.filter(([k]) => re.test(k)).map(([, v]) => v)
+        const prov = val(/^(Provider|Proveedor)$/i), model = val(/^(Model|Modelo)$/i)
+        if (prov.length !== 1 || prov[0] !== MODEL_FIXED.provider) fail(`facts Provider ${JSON.stringify(prov)}, want exactly ["${MODEL_FIXED.provider}"] (pairs ${JSON.stringify(pairs).slice(0, 160)})`)
+        if (model.length !== 1 || model[0] !== MODEL_FIXED.model) fail(`facts Model ${JSON.stringify(model)}, want exactly ["${MODEL_FIXED.model}"] (pairs ${JSON.stringify(pairs).slice(0, 160)})`)
+        return `facts Provider="${prov[0]}" Model="${model[0]}" equal the selected node's "${node}"`
+      },
+      'model-mock': ms => served(R_MODEL, { ms })
     },
     // Negative: the canvas opened with nothing selected.
     neg: { fails: ['one-node-selected', 'title-expanded', 'facts-in-one-place', 'facts-match-node'] },
     after: reload
   })
   // Canvas: the model node's source fails (unknown), then recovers on the next poll (30 s).
-  const R_MODEL = '^/api/ops/profiles/[^/]+/nodes/model'
-  const MODEL_FIXED = { provider: 'opshardprov', model: 'ops-hard-model-7' }
   const canvasRecoverAct = fixed => async ctx => {
     await canvasOpen()
     await see('[data-ops-node="model"][data-ops-port="unknown"]', { ms: 15000 })
@@ -814,7 +831,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     mocks: [{ path: R_MODEL, throw: '503: model node source unavailable (mock)' }, ...base], open: canvasOpen,
     act: canvasRecoverAct(true), actMs: 150000,
     checks: {
-      'unknown-while-failing': ev('unknown', t => { if (!/unknown|desconocido/i.test(t)) throw new Error(`model node said "${t}" while its source failed`); return `model node said "${t.trim()}" while its source failed` }),
+      'unknown-while-failing': ev('unknown', t => { if (!/unknown|desconocido/i.test(t)) throw new AssertionFailure(`model node said "${t}" while its source failed`); return `model node said "${t.trim()}" while its source failed` }),
       'recovered-value-shown': ms => see('[data-ops-node="model"] [data-ops-node-body]', { text: 'opshardprov · ops-hard-model-7', ms }),
       'port-not-unknown': ms => see('[data-ops-node="model"]:not([data-ops-port="unknown"])', { ms }),
       'model-mock': ms => served(R_MODEL, { ms })
@@ -824,40 +841,99 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     after: reload
   })
 
-  // Profiles: saving SOUL.md is refused with a 409 conflict. The typed text stays in the editor, the error sits in the
-  // SOUL section next to the document, focus stays in it, the draft stays dirty.
+  // Profiles: saving SOUL.md is refused with a 409 conflict.
+  // P27 (judge pass 21 #3, lines 113-116, 155-157): a LONG SOUL document (120 short lines: no soft wrap, so ArrowDown
+  // moves one document line), edited in its middle (the caret is moved there with the keyboard, as a person reaches line 40), saved with Ctrl+S and refused with 409. The exact text and the
+  // focus stay IN the editor, and the short reason with a recovery action is visible in the SAME viewport as the edited
+  // line, measured without any scrolling by the harness. If the product still places the error below the editor (out of
+  // the viewport) this state fails: that is the product defect, never a reason to scroll or weaken the check.
   const R_SOUL = '^/api/profiles/[^/]+/soul'
   const SOUL_DRAFT = 'Ops hard draft line that must survive a refused save'
+  const SOUL_ANCHOR = 'EDIT-ANCHOR-40'
+  const LONG_SOUL = ['# Ops hard SOUL', '', ...Array.from({ length: 118 }, (_, i) => (i + 3 === 40 ? `Line 40 ${SOUL_ANCHOR}: keep answers short.` : `Line ${i + 3}: keep answers short and cite the file read.`))].join('\n')
+  const SOUL_EXPECTED = LONG_SOUL.split('\n').map(l => (l.includes(SOUL_ANCHOR) ? `${l}\n${SOUL_DRAFT}` : l)).join('\n')
+  const SOUL_CONFLICT = 'SOUL.md changed on disk since it was opened (mock)'
   const soulAct = async ctx => {
     await reload(); await goApp('/profiles')
     if (!(await see('[data-profile-soul-editor] .cm-content', { ms: 8000 }).then(() => true, () => false))) { await tap('[data-panel-row]'); await sleep(1500) }
     await see('[data-profile-soul-editor] .cm-content', { ms: 20000 })
+    await see('[data-profile-soul-editor] .cm-content', { text: 'Ops hard SOUL', ms: 10000 })
     await tap('[data-profile-soul-editor] .cm-content')
-    await page.keyboard.press('Control+End')
+    // Keyboard navigation to line 40 (CodeMirror scrolls the caret into view as a person would see it).
+    await page.keyboard.press('Control+Home')
+    for (let i = 1; i < 40; i++) await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('End')
     await page.keyboard.type(`\n${SOUL_DRAFT}`)
     await sleep(400)
     const s0 = await reqSeq()
     await page.keyboard.press('Control+s')
     await sleep(2500)
-    const puts = (await requests(s0)).filter(r => r.method === 'PUT' && /\/soul$/.test(r.path))
+    let puts = (await requests(s0)).filter(r => r.method === 'PUT' && /\/soul$/.test(r.path))
     ctx.saveMethod = puts.length ? 'Ctrl+S in the editor' : 'Save button'
-    if (!puts.length) { await tap('[data-profile-soul-actions] button'); await sleep(2500) }
-    ctx.focus = await page.evaluate(() => { const a = document.activeElement; return { inSoul: Boolean(a?.closest('[data-profile-soul]')), inEditor: Boolean(a?.closest('[data-profile-soul-editor]')), tag: a?.tagName ?? null } })
+    if (!puts.length) { await tap('[data-profile-soul-actions] button'); await sleep(2500); puts = (await requests(s0)).filter(r => r.method === 'PUT' && /\/soul$/.test(r.path)) }
+    ctx.putBody = puts[0]?.body ?? null
+    // Measured right after the refusal, WITHOUT scrolling anything.
+    ctx.view = await page.evaluate(([draft, conflict]) => {
+      const a = document.activeElement
+      const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' }
+      const box = el => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) } }
+      const line = [...document.querySelectorAll('[data-profile-soul-editor] .cm-line')].find(l => (l.textContent || '').includes(draft))
+      const soul = document.querySelector('[data-profile-soul]')
+      const hits = soul ? [...soul.querySelectorAll('*')].filter(e => vis(e) && (e.textContent || '').includes(conflict.slice(0, 30)) && ![...e.children].some(c => (c.textContent || '').includes(conflict.slice(0, 30)))) : []
+      const err = hits[0] ?? null
+      const holder = err ? (err.closest('[role="alert"], [data-profile-soul-conflict]') ?? err.parentElement) : null
+      const buttons = holder ? [...holder.querySelectorAll('button, a[href]')].filter(vis).map(b => ({ text: (b.textContent || b.getAttribute('aria-label') || '').trim().slice(0, 40), ...box(b) })) : []
+      const content = document.querySelector('[data-profile-soul-editor] .cm-content')
+      const cm = content?.cmView?.rootView?.view ?? content?.cmView?.view ?? null
+      return {
+        vh: innerHeight, vw: innerWidth,
+        focus: { inEditor: Boolean(a?.closest('[data-profile-soul-editor] .cm-editor')), inSoul: Boolean(a?.closest('[data-profile-soul]')), tag: a?.tagName ?? null },
+        line: line ? box(line) : null,
+        error: err ? { text: (err.textContent || '').replace(/\s+/g, ' ').trim(), ...box(err) } : null,
+        buttons,
+        doc: cm ? cm.state.doc.toString() : null
+      }
+    }, [SOUL_DRAFT, SOUL_CONFLICT])
   }
-  const soulText = () => visible('[data-profile-soul-editor] .cm-content').first().innerText()
+  const inView = (b, vh) => b && b.top >= 0 && b.bottom <= vh
   await state('profiles', 'soul-conflict', {
-    proves: 'Profiles: a SOUL.md save refused with 409 (conflict) keeps the typed text in the editor and focus next to the document, shows the reason inside the SOUL section and leaves the draft unsaved.',
-    mocks: [{ path: R_SOUL, method: 'PUT', throw: '409: SOUL.md changed on disk since it was opened (mock)' }, ...base],
+    proves: 'Profiles: a long SOUL.md edited in its middle and refused with 409 keeps the exact text and the focus in the editor, and shows a short reason with a recovery action in the same viewport as the edited line (no scrolling), the draft still unsaved.',
+    mocks: [{ path: R_SOUL, method: 'GET', body: { content: LONG_SOUL, exists: true } }, { path: R_SOUL, method: 'PUT', throw: `409: ${SOUL_CONFLICT}` }, ...base],
     open: async () => { await reload(); await goApp('/profiles') }, act: soulAct,
     checks: {
-      'conflict-shown-in-soul-section': ms => see('[data-profile-soul] span:has-text("changed on disk since it was opened (mock)")', { clear: true, ms }),
-      'text-preserved': async ms => { await see('[data-profile-soul-editor] .cm-content', { ms }); const t = await soulText(); if (!t.includes(SOUL_DRAFT)) throw new Error(`editor lost the typed line (${t.length} chars, tail "${t.slice(-80)}")`); return 'the typed line is still in the editor' },
+      'long-document-loaded': ms => served(R_SOUL, { method: 'GET', ms }).then(a => `${a}; ${LONG_SOUL.split('\n').length} lines`),
+      'text-exact-in-editor': ev('putBody', (body, ctx) => {
+        if (!body || body.content !== SOUL_EXPECTED) fail(`the refused PUT did not carry the exact edited text (${body?.content?.length ?? 'no body'} chars, want ${SOUL_EXPECTED.length})`)
+        const doc = ctx.view?.doc
+        if (doc !== null && doc !== undefined && doc !== SOUL_EXPECTED) fail(`after the refusal the editor holds ${doc.length} chars, not the exact edited text (${SOUL_EXPECTED.length})`)
+        if ((doc === null || doc === undefined) && !ctx.view?.line) fail('the edited line is not rendered in the editor after the refusal')
+        return `the exact edited text (${SOUL_EXPECTED.length} chars) was sent and ${doc != null ? 'is still the editor document' : 'its edited line is still in the editor'}`
+      }),
+      'focus-in-editor': ev('view', v => { if (!v.focus.inEditor) fail(`focus is on <${v.focus.tag}> (${v.focus.inSoul ? 'in the SOUL section but not in the editor' : 'outside the SOUL section'})`); return 'focus stayed in the editor' }),
+      'conflict-in-viewport-with-edit': ev('view', v => {
+        if (!v.line) fail('the edited line is not rendered')
+        if (!inView(v.line, v.vh)) fail(`the edited line is outside the viewport (${v.line.top}-${v.line.bottom} of ${v.vh})`)
+        if (!v.error) fail('no visible conflict reason in the SOUL section')
+        if (!inView(v.error, v.vh)) fail(`the conflict reason is outside the viewport (${v.error.top}-${v.error.bottom} of ${v.vh}) while the edited line is at ${v.line.top}: not perceptible while editing`)
+        return `edited line at ${v.line.top}px and reason at ${v.error.top}px, both in the ${v.vh}px viewport, no scrolling`
+      }),
+      'reason-short': ev('view', v => {
+        if (!v.error) fail('no visible conflict reason')
+        if (v.error.text.length > 160) fail(`reason is ${v.error.text.length} chars: "${v.error.text.slice(0, 80)}…"`)
+        // The raw IPC/transport wrapper or a bare status prefix is not a reason a person reads ("mensaje crudo").
+        if (/invoking remote method|hermes:api|(^|:\s*)\d{3}\s*:/i.test(v.error.text)) fail(`reason is the raw transport text "${v.error.text.slice(0, 100)}"`)
+        return `reason "${v.error.text}"`
+      }),
+      'recovery-beside-reason': ev('view', v => {
+        const ok = v.buttons.filter(b => inView(b, v.vh))
+        if (!ok.length) fail(`no visible recovery action with the conflict reason (${v.buttons.length} buttons in its block)`)
+        return `recovery in view: ${ok.map(b => `"${b.text}"`).join(', ')}`
+      }),
       'still-unsaved': ms => see('[data-profile-soul-actions]', { text: /Unsaved changes|Cambios sin guardar/, ms }),
-      'focus-next-to-document': ev('focus', (f, ctx) => { if (!f.inSoul) throw new Error(`focus left the SOUL section (on <${f.tag}>)`); return `focus stayed in the SOUL section (${f.inEditor ? 'in the editor' : `on <${f.tag}>`}; saved with ${ctx.saveMethod})` }),
       'put-mock': ms => served(R_SOUL, { method: 'PUT', ms })
     },
     // Negative: the save is accepted (mocked, nothing is written): no conflict, nothing unsaved.
-    neg: { mocks: [{ path: R_SOUL, method: 'PUT', body: { ok: true } }, ...base], fails: ['conflict-shown-in-soul-section', 'still-unsaved'] },
+    neg: { mocks: [{ path: R_SOUL, method: 'GET', body: { content: LONG_SOUL, exists: true } }, { path: R_SOUL, method: 'PUT', body: { ok: true } }, ...base], fails: ['conflict-in-viewport-with-edit', 'reason-short', 'recovery-beside-reason', 'still-unsaved'] },
     after: reload
   })
 
@@ -899,8 +975,8 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: "Sessions: from the list's search box, Tab key presses (no programmatic focus) reach a session row, which shows a visible focus ring.",
     mocks: populated, open: sessionsOpen, act: sessionsTabAct(25),
     checks: {
-      'reached-by-tab': ev('reach', r => { if (!r.row) throw new Error(`no session row after ${r.path.length} Tab presses: ${r.path.join(' > ')}`); return `reached "${r.row.title.slice(0, 40)}" after ${r.row.presses} Tab presses (${r.path.join(' > ')})` }),
-      'row-focused-visibly': async () => { const f = await page.evaluate(() => { const e = document.activeElement; const c = e ? getComputedStyle(e) : null; return { row: Boolean(e?.closest('[data-session-row]')), fv: Boolean(e?.matches(':focus-visible')), ring: c ? c.outlineStyle !== 'none' && c.outlineWidth !== '0px' || c.boxShadow !== 'none' : false } }); if (!f.row || !f.fv) throw new Error(`focus: ${JSON.stringify(f)}`); if (!f.ring) throw new Error('the focused row shows no focus ring (outline / shadow)'); return 'a session row holds keyboard focus with a visible ring' }
+      'reached-by-tab': ev('reach', r => { if (!r.row) throw new AssertionFailure(`no session row after ${r.path.length} Tab presses: ${r.path.join(' > ')}`); return `reached "${r.row.title.slice(0, 40)}" after ${r.row.presses} Tab presses (${r.path.join(' > ')})` }),
+      'row-focused-visibly': async () => { const f = await page.evaluate(() => { const e = document.activeElement; const c = e ? getComputedStyle(e) : null; return { row: Boolean(e?.closest('[data-session-row]')), fv: Boolean(e?.matches(':focus-visible')), ring: c ? c.outlineStyle !== 'none' && c.outlineWidth !== '0px' || c.boxShadow !== 'none' : false } }); if (!f.row || !f.fv) throw new AssertionFailure(`focus: ${JSON.stringify(f)}`); if (!f.ring) throw new AssertionFailure('the focused row shows no focus ring (outline / shadow)'); return 'a session row holds keyboard focus with a visible ring' }
     },
     // Negative: the search box is focused but no Tab is pressed.
     neg: { act: sessionsTabAct(0), fails: ['reached-by-tab', 'row-focused-visibly'] },
@@ -936,7 +1012,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
       'failing-once-in-attention': onceIn(FLEET_NAMES.failing, 'attention'),
       'running-once-in-running': onceIn(FLEET_NAMES.running, 'running'),
       'recovered-once-in-recent': onceIn(FLEET_NAMES.recovered, 'recent'),
-      'running-line-present-first': async ms => { await see(`[data-ops-fleet-row="${FLEET_NAMES.running}"]`, { ms }); const t = await visible(`[data-ops-fleet-row="${FLEET_NAMES.running}"]`).first().innerText(); if (/failed run|ejecuciones fallidas|fallid/i.test(t)) throw new Error(`the running row's line speaks about history: "${t.replace(/\s+/g, ' ').slice(0, 120)}"`); return 'the running row does not lead with its past failures' },
+      'running-line-present-first': async ms => { await see(`[data-ops-fleet-row="${FLEET_NAMES.running}"]`, { ms }); const t = await visible(`[data-ops-fleet-row="${FLEET_NAMES.running}"]`).first().innerText(); if (/failed run|ejecuciones fallidas|fallid/i.test(t)) throw new AssertionFailure(`the running row's line speaks about history: "${t.replace(/\s+/g, ' ').slice(0, 120)}"`); return 'the running row does not lead with its past failures' },
       'stats-mock': ms => served('^/api/plugins/kanban/runs/stats', { ms })
     },
     // Negative: no worker, no stats, no failing task: none of the three groups may hold them.
@@ -963,7 +1039,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
           const openIds = BOARD.columns.flatMap(c => c.tasks).filter(t => (t.tenant ?? 'No lane') === r.lane && t.status !== 'done')
           if (/Working on|Trabajando en/.test(r.text) && openIds.length && openIds.every(t => t.status !== 'running') && !bad.some(b => b.startsWith(`${r.lane}:`))) bad.push(`${r.lane}: says Working on with no running task`)
         }
-        if (bad.length) throw new Error(`triage/ready described as in progress: ${bad.join('; ')}`)
+        if (bad.length) throw new AssertionFailure(`triage/ready described as in progress: ${bad.join('; ')}`)
         return `${rows.length} team rows; 'Working on' only for running work`
       }
     },
@@ -992,15 +1068,15 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: 'Artifacts at a ~420px content width: the two report.md rows each show their distinguishing folder (alpha / beta), visible, unobstructed and not truncated.',
     mocks: withMessages(SAME_NAME), open: artifactsOpen, act: artifacts420Act,
     checks: {
-      'content-420': ev('width', w => { if (w === null || Math.abs(w - 420) > 16) throw new Error(`artifacts content is ${w}px wide, want 420 +- 16`); return `artifacts content ${w}px wide` }),
+      'content-420': ev('width', w => { if (w === null || Math.abs(w - 420) > 16) throw new AssertionFailure(`artifacts content is ${w}px wide, want 420 +- 16`); return `artifacts content ${w}px wide` }),
       'hints-visible-unobstructed': ms => see(`${sameNameRows} [data-artifact-path-hint]`, { min: 2, clear: true, ms }),
       'hints-distinguish-untruncated': async ms => {
         await see(`${sameNameRows} [data-artifact-path-hint]`, { min: 2, ms })
         const hs = await visible(`${sameNameRows} [data-artifact-path-hint]`).evaluateAll(els => els.map(e => ({ t: (e.textContent || '').replace(/ · $/, '').trim(), trunc: e.scrollWidth > e.clientWidth + 1, w: Math.round(e.getBoundingClientRect().width) })))
         const set = new Set(hs.map(h => h.t))
-        if (!set.has('alpha') || !set.has('beta')) throw new Error(`hints ${JSON.stringify(hs)}, want alpha and beta`)
+        if (!set.has('alpha') || !set.has('beta')) throw new AssertionFailure(`hints ${JSON.stringify(hs)}, want alpha and beta`)
         const cut = hs.filter(h => h.trunc)
-        if (cut.length) throw new Error(`truncated hint(s): ${JSON.stringify(cut)}`)
+        if (cut.length) throw new AssertionFailure(`truncated hint(s): ${JSON.stringify(cut)}`)
         return `hints ${hs.map(h => `${h.t} (${h.w}px)`).join(' / ')}, none truncated`
       }
     },
@@ -1056,11 +1132,11 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
   }
   const block = goal => `[data-slot="tool-block"]:has(> button:has-text("${goal}"))`
   const treeChecks = {
-    'agents-screen-not-fleet': async ms => { const h = await page.evaluate(() => location.hash); if (!h.startsWith('#/agents')) throw new Error(`route ${h}`); return none('[data-ops-fleet-row]', { ms }).then(() => `route ${h}, no Fleet row`) },
+    'agents-screen-not-fleet': async ms => { const h = await page.evaluate(() => location.hash); if (!h.startsWith('#/agents')) throw new AssertionFailure(`route ${h}`); return none('[data-ops-fleet-row]', { ms }).then(() => `route ${h}, no Fleet row`) },
     'parent-with-two-children': async ms => {
       await see('[data-slot="tool-block"]', { count: 3, ms })
       const kids = await visible(block('Prepare the release notes for 2.4')).first().evaluate(e => e.querySelectorAll('[data-slot="tool-block"]').length)
-      if (kids !== 2) throw new Error(`the parent row holds ${kids} child rows, want 2`)
+      if (kids !== 2) throw new AssertionFailure(`the parent row holds ${kids} child rows, want 2`)
       return '3 rows: the parent holds both children'
     },
     'progress-recognisable': ms => see(block('Prepare the release notes for 2.4'), { text: 'Waiting on two children', ms }),
@@ -1073,7 +1149,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     await state('agents', `tree-populated-${w}`, {
       proves: `Agents (delegated-work tree, /agents) at a ${w}px panel: a running parent with two children shows its progress, one child's result and the other's failure, recognisable and unobstructed (not Fleet).`,
       mocks: base, open: agentsOpen, act: agentsTreeAct(w, true),
-      checks: { [`panel-${w}`]: ev('width', v => { if (v === null || Math.abs(v - w) > 16) throw new Error(`Agents panel is ${v}px wide, want ${w} +- 16`); return `Agents panel ${v}px wide` }), ...treeChecks },
+      checks: { [`panel-${w}`]: ev('width', v => { if (v === null || Math.abs(v - w) > 16) throw new AssertionFailure(`Agents panel is ${v}px wide, want ${w} +- 16`); return `Agents panel ${v}px wide` }), ...treeChecks },
       // Negative: the same screen without the fixture (the empty tree).
       neg: { act: agentsTreeAct(w, false), fails: treeFails },
       after: async () => { await narrow(1600); await reload() }
@@ -1102,10 +1178,10 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: 'Chat: a send refused by the gateway keeps the typed draft in the composer, shows the refusal, and does not add the text as a sent message.',
     mocks: base, open: () => goApp('/'), act: chatAct(true), keepToasts: true,
     checks: {
-      'gateway-refused-the-send': ev('refused', ms => { if (!ms.length) throw new Error('no session.create / prompt.submit reached the gateway route'); return `refused by the mocked gateway: ${ms.join(', ')}` }),
-      'draft-kept-in-composer': async ms => { await see(composer, { ms }); const t = await visible(composer).first().innerText(); if (t.trim() !== CHAT_DRAFT) throw new Error(`composer holds "${t.slice(0, 80)}"`); return 'the draft is still in the composer' },
+      'gateway-refused-the-send': ev('refused', ms => { if (!ms.length) throw new AssertionFailure('no session.create / prompt.submit reached the gateway route'); return `refused by the mocked gateway: ${ms.join(', ')}` }),
+      'draft-kept-in-composer': async ms => { await see(composer, { ms }); const t = await visible(composer).first().innerText(); if (t.trim() !== CHAT_DRAFT) throw new AssertionFailure(`composer holds "${t.slice(0, 80)}"`); return 'the draft is still in the composer' },
       'refusal-visible': ms => see('[role="alert"], [role="status"], [data-slot="composer-restored-draft"]', { text: 'send refused by the gateway (mock)', ms }),
-      'no-duplicate-message': ev('outside', list => { if (list.length) throw new Error(`the draft text also appears outside the composer: ${list.join(', ')}`); return 'the draft text appears only in the composer' })
+      'no-duplicate-message': ev('outside', list => { if (list.length) throw new AssertionFailure(`the draft text also appears outside the composer: ${list.join(', ')}`); return 'the draft text appears only in the composer' })
     },
     // Negative: typed but never sent: nothing refused, nothing to show.
     neg: { act: chatAct(false), fails: ['gateway-refused-the-send', 'refusal-visible'] },
@@ -1144,10 +1220,596 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     proves: 'At a 900px window the Agents screen (/agents, the delegated-work tree, not Fleet) shows its populated tree: parent and both children unobstructed.',
     mocks: base, open: agentsOpen,
     act: async ctx => { await narrow(900); await agentsTreeAct(0, true)(ctx) },
-    checks: { 'window-900': async () => { const w = await page.evaluate(() => innerWidth); if (Math.abs(w - 900) > 20) throw new Error(`window ${w}px`); return `window ${w}px` }, 'agents-screen-not-fleet': treeChecks['agents-screen-not-fleet'], 'parent-with-two-children': treeChecks['parent-with-two-children'], 'tree-unobstructed': treeChecks['tree-unobstructed'] },
+    checks: { 'window-900': async () => { const w = await page.evaluate(() => innerWidth); if (Math.abs(w - 900) > 20) throw new AssertionFailure(`window ${w}px`); return `window ${w}px` }, 'agents-screen-not-fleet': treeChecks['agents-screen-not-fleet'], 'parent-with-two-children': treeChecks['parent-with-two-children'], 'tree-unobstructed': treeChecks['tree-unobstructed'] },
     neg: { act: async ctx => { await narrow(900); await agentsTreeAct(0, false)(ctx) }, fails: ['parent-with-two-children', 'tree-unobstructed'] },
     after: async () => { await narrow(1600); await reload() }
   })
+  await narrow(1600)
+
+  // ---------------------------------------------------------------- P27 (judge pass 21 #3-#8): hard states, each with its negative
+  /**
+   * In-page: which of `tokens` are fully VISIBLE inside `rootSel` (the first visible match): some occurrence of the token
+   * whose every client rect is inside the viewport and inside every clipping ancestor (overflow != visible, line clamp),
+   * with no hidden / transparent ancestor. Native title tooltips do not count. Never scrolls.
+   */
+  const visTokens = (rootSel, tokens, { nth = 0, hasText = null } = {}) => page.evaluate(([sel, toks, i, has]) => {
+    const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' }
+    const root = [...document.querySelectorAll(sel)].filter(vis).filter(e => !has || (e.textContent || '').includes(has))[i]
+    if (!root) return { found: false, visible: [] }
+    const clipOK = (rect, node) => {
+      if (rect.width <= 0 || rect.height <= 0) return false
+      if (rect.left < -1 || rect.top < -1 || rect.right > innerWidth + 1 || rect.bottom > innerHeight + 1) return false
+      for (let a = node.parentElement; a; a = a.parentElement) {
+        const cs = getComputedStyle(a)
+        if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) return false
+        if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+          const r = a.getBoundingClientRect()
+          if (rect.left < r.left - 1 || rect.right > r.right + 1 || rect.top < r.top - 1 || rect.bottom > r.bottom + 1) return false
+        }
+      }
+      return true
+    }
+    const out = []
+    for (const tok of toks) {
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      let ok = false
+      for (let n = w.nextNode(); n && !ok; n = w.nextNode()) {
+        const t = n.textContent || ''
+        for (let at = t.indexOf(tok); at >= 0 && !ok; at = t.indexOf(tok, at + 1)) {
+          const r = document.createRange(); r.setStart(n, at); r.setEnd(n, at + tok.length)
+          const rects = [...r.getClientRects()]
+          ok = rects.length > 0 && rects.every(x => clipOK(x, n))
+        }
+      }
+      if (ok) out.push(tok)
+    }
+    return { found: true, visible: out }
+  }, [rootSel, tokens, nth, hasText])
+  const paneW = (w, what) => ev('width', v => { if (v === null || Math.abs(v - w) > 16) fail(`${what} is ${v}px wide, want ${w} +- 16`); return `${what} ${v}px wide` })
+
+  // (#4, lines 107-111, 159-161) App Settings: the Fallback models field refused, at 320/420/760 settings panes. Its
+  // selects are named ('Provider 1' ...) and invalid while refused, the error, Retry and Revert sit under the control
+  // together with the focus, Revert sends nothing and puts the saved chain back, Retry sends one PUT holding only
+  // fallback_providers.
+  const FB = 'fallback_providers'
+  const FB_ROW = `[data-tour="field-${FB}"]`
+  const FB_GROUP = `${FB_ROW} [role="group"]`
+  const FB_ERR = `[data-settings-field-error="${FB}"]`
+  const FALLBACKS = [{ provider: 'openrouter', model: 'ops-hard/fallback-one' }, { provider: 'anthropic', model: 'ops-hard-fallback-two' }]
+  const R_CFG_GET = '^/api/config(\\?|$)'
+  const fbMocks = async reject => {
+    const real = await page.evaluate(() => window.hermesDesktop.api({ path: '/api/config' })).catch(() => ({}))
+    return [reject ? { path: R_PUT, method: 'PUT', throw: '422: fallback chain rejected by schema (mock)' } : { path: R_PUT, method: 'PUT', body: { ok: true } }, { path: R_CFG_GET, method: 'GET', body: { ...(real && typeof real === 'object' ? real : {}), [FB]: FALLBACKS } }, ...base]
+  }
+  const fbEntries = () => visible(`${FB_GROUP} > div:has(button[role="combobox"])`).count()
+  const removeEntry = async n => { const b = visible(`${FB_GROUP} > div:has(button[role="combobox"])`).nth(n - 1).locator('button:not([role="combobox"])').last(); await b.waitFor({ state: 'visible', timeout: 8000 }); await b.click() }
+  const fbLayout = () => page.evaluate(([row, err]) => {
+    const vis = el => { const r = el?.getBoundingClientRect(); return Boolean(r && r.width > 0 && r.height > 0) }
+    const box = el => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) } }
+    const R = document.querySelector(row)
+    if (!R) return null
+    const control = R.querySelector('[data-sfr-control]'), error = R.querySelector(err), actions = R.querySelector('[data-sfr-actions]')
+    const retry = R.querySelector('[data-settings-field-retry]'), revert = R.querySelector('[data-settings-field-revert]')
+    const a = document.activeElement
+    const combos = [...R.querySelectorAll('[role="group"] button[role="combobox"]')].map(c => ({ name: c.getAttribute('aria-label') ?? '', labelledby: c.getAttribute('aria-labelledby') ?? '', invalid: c.getAttribute('aria-invalid'), describedby: c.getAttribute('aria-describedby') ?? '' }))
+    return {
+      vh: innerHeight, vw: innerWidth,
+      control: vis(control) ? box(control) : null, error: vis(error) ? { ...box(error), text: (error.textContent || '').trim() } : null, actions: vis(actions) ? box(actions) : null,
+      retry: vis(retry) ? box(retry) : null, revert: vis(revert) ? box(revert) : null,
+      errorId: R.querySelector('[data-sfr-error]')?.id ?? null,
+      focus: { inRow: Boolean(a && R.contains(a)), tag: a?.tagName ?? null, name: (a?.getAttribute?.('aria-label') || a?.textContent || '').trim().slice(0, 40) },
+      combos
+    }
+  }, [FB_ROW, FB_ERR])
+  const fbAct = (w, reject) => async ctx => {
+    await mock(await fbMocks(reject))
+    await reload(); await goApp('/settings?tab=config:model&page=fallbacks')
+    await see(FB_GROUP, { ms: 20000 })
+    ctx.width = await fitWidth('[data-settings-scroll]', w)
+    await sleep(800)
+    await visible(FB_ROW).first().scrollIntoViewIfNeeded().catch(() => {})
+    ctx.entriesBefore = await fbEntries()
+    // The edit: remove the 2nd fallback (the chain autosaves 550 ms later and the server refuses it).
+    await removeEntry(2)
+    await sleep(3000)
+    ctx.rejected = await fbLayout()
+    ctx.entriesRejected = await fbEntries()
+    await ctx.shot('rejected')
+    if (!reject) return
+    // Revert: local only; no request may follow, the saved two-entry chain comes back and the error clears.
+    let s0 = await reqSeq()
+    await tap(`[data-settings-field-revert="${FB}"]`)
+    await sleep(2500)
+    ctx.revertReqs = (await requests(s0)).filter(r => r.method !== 'GET' || /^\/api\/config/.test(r.path))
+    ctx.entriesAfterRevert = await fbEntries()
+    ctx.errorAfterRevert = await visible(FB_ERR).count()
+    // Refused again, then Retry with the server accepting: one PUT whose body holds only fallback_providers.
+    await removeEntry(2)
+    await see(FB_ERR, { ms: 10000 })
+    await mock(await fbMocks(false))
+    s0 = await reqSeq()
+    await tap(`[data-settings-field-retry="${FB}"]`)
+    await sleep(2500)
+    ctx.retryPuts = configWrites(await requests(s0))
+    ctx.errorAfterRetry = await visible(FB_ERR).count()
+  }
+  for (const w of [320, 420, 760]) {
+    await state('app-settings', `fallback-rejected-${w}`, {
+      proves: `App Settings at a ${w}px settings pane: the Fallback models chain refused by the server keeps named, invalid-marked selects; the error, Retry and Revert sit together under the control with the focus in the field; Revert sends nothing and restores the saved chain; Retry sends one PUT holding only fallback_providers.`,
+      mocks: base, open: () => goApp('/settings?tab=config:model&page=fallbacks'), act: fbAct(w, true), actMs: 120000,
+      checks: {
+        [`pane-${w}`]: paneW(w, 'settings pane'),
+        'edit-made': ev('entriesRejected', (n, ctx) => { if (ctx.entriesBefore !== 2 || n !== 1) fail(`fallback entries ${ctx.entriesBefore} -> ${n}, want 2 -> 1`); return 'the 2nd fallback was removed (2 -> 1 entries)' }),
+        'controls-named-and-invalid': ev('rejected', l => {
+          if (!l?.combos?.length) fail('no fallback selects in the field')
+          const bad = l.combos.filter(c => !/\b\d+\b/.test(c.name) || !c.labelledby || c.invalid !== 'true' || !(l.errorId && c.describedby.split(' ').includes(l.errorId)))
+          if (bad.length) fail(`${bad.length}/${l.combos.length} selects not named+invalid+described by the error: ${JSON.stringify(bad[0])}`)
+          return `${l.combos.length} selects named (${l.combos.map(c => c.name).join(', ')}), aria-invalid and described by the error`
+        }),
+        'error-under-control': ev('rejected', l => {
+          if (!l?.error) fail('no visible field error')
+          if (!/fallback chain rejected by schema \(mock\)/.test(l.error.text)) fail(`error says "${l.error.text.slice(0, 80)}"`)
+          if (!l.control || l.error.top < l.control.bottom - 1) fail(`error at ${l.error.top}px is not under the control (control bottom ${l.control?.bottom})`)
+          return `error "${l.error.text.slice(0, 60)}" under the control`
+        }),
+        'recovery-together-in-view': ev('rejected', l => {
+          if (!l?.retry || !l?.revert || !l.error) fail(`retry=${Boolean(l?.retry)} revert=${Boolean(l?.revert)} error=${Boolean(l?.error)}`)
+          if (l.retry.top < l.error.top || l.revert.top < l.error.top) fail('Retry/Revert are not after the error')
+          const all = [l.control, l.error, l.retry, l.revert]
+          const out = all.filter(b => !b || b.top < 0 || b.bottom > l.vh || b.left < 0 || b.right > l.vw + 1)
+          if (out.length) fail(`${out.length} of control/error/Retry/Revert outside the ${l.vw}x${l.vh} viewport`)
+          if (Math.max(...all.map(b => b.bottom)) - Math.min(...all.map(b => b.top)) > l.vh * 0.6) fail('control, error and recovery are spread over more than 60% of the viewport height')
+          return `control ${l.control.top}-${l.control.bottom}, error ${l.error.top}, Retry/Revert ${l.retry.top}: together in view`
+        }),
+        'focus-in-field': ev('rejected', l => { if (!l?.focus?.inRow) fail(`after the refused edit focus is on <${l?.focus?.tag}> "${l?.focus?.name}", outside the field`); return `focus on <${l.focus.tag}> "${l.focus.name}" inside the field` }),
+        'revert-sends-nothing-restores': ev('revertReqs', (rs, ctx) => {
+          if (rs.length) fail(`Revert was followed by ${rs.map(r => `${r.method} ${r.path}`).join(', ')}`)
+          if (ctx.entriesAfterRevert !== 2 || ctx.errorAfterRevert !== 0) fail(`after Revert: ${ctx.entriesAfterRevert} entries, error x${ctx.errorAfterRevert} (want 2, 0)`)
+          return 'Revert: no request, saved 2-entry chain back, error cleared'
+        }),
+        'retry-sends-only-fallbacks': ev('retryPuts', (puts, ctx) => {
+          if (puts.length !== 1) fail(`${puts.length} config PUTs after Retry, want 1`)
+          const keys = Object.keys(puts[0].body?.config ?? {})
+          if (keys.length !== 1 || keys[0] !== FB) fail(`Retry PUT body keys ${JSON.stringify(keys)}, want ["${FB}"]`)
+          const sent = puts[0].body.config[FB]
+          if (JSON.stringify(sent) !== JSON.stringify([FALLBACKS[0]])) fail(`Retry sent ${JSON.stringify(sent)}, want the kept entry only`)
+          if (ctx.errorAfterRetry !== 0) fail('the error stayed after a successful Retry')
+          return `one PUT with only ${FB} = ${JSON.stringify(sent)}; error cleared`
+        }),
+        'put-mock': ms => served(R_PUT, { method: 'PUT', ms })
+      },
+      // Negative: the server accepts the edit: no error, no recovery, nothing invalid.
+      neg: { act: fbAct(w, false), fails: ['controls-named-and-invalid', 'error-under-control', 'recovery-together-in-view'] },
+      after: async () => { await mock(base); await narrow(1600); await reload() }
+    })
+  }
+
+  // (#4, lines 97-100) Ops Settings: a preference save refused (the device storage refuses the write; a server-side
+  // preference route, if the product moves there, is refused too). No success is shown, the error and its recovery sit
+  // in the row, the storage keeps the saved value, and Revert puts the saved value back in the control.
+  const OPS_PREF = 'hermes.ops.prefs'
+  const DATE_SEL = '[data-ops-settings-group="dates"] select:has(option[value="iso"])'
+  const DATE_ROW = '[data-ops-settings-group="dates"] [data-settings-form-row]:has(option[value="iso"])'
+  const prefRow = () => page.evaluate(([row, sel]) => {
+    const vis = el => { const r = el?.getBoundingClientRect(); return Boolean(r && r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden') }
+    const R = [...document.querySelectorAll(row)].find(vis)
+    if (!R) return null
+    const t = el => (vis(el) ? (el.textContent || '').trim() : null)
+    return { value: R.querySelector(sel)?.value ?? null, error: t(R.querySelector('[data-sfr-error]')), status: t(R.querySelector('[data-sfr-status]')), retry: vis(R.querySelector('[data-ops-pref-retry]')), revert: vis(R.querySelector('[data-ops-pref-revert]')), invalid: R.querySelector(sel)?.getAttribute('aria-invalid') ?? null }
+  }, [DATE_ROW, 'select:has(option[value="iso"])'])
+  const refuseStorage = () => page.evaluate(k => {
+    if (window.__opsOrigSetItem) return
+    const orig = Storage.prototype.setItem
+    window.__opsOrigSetItem = orig
+    Storage.prototype.setItem = function (key, v) { if (key === k) throw new DOMException('storage refused the write (mock)', 'QuotaExceededError'); return orig.call(this, key, v) }
+  }, OPS_PREF)
+  const restoreStorage = () => page.evaluate(() => { if (window.__opsOrigSetItem) { Storage.prototype.setItem = window.__opsOrigSetItem; delete window.__opsOrigSetItem } }).catch(() => {})
+  const prefAct = refuse => async ctx => {
+    await restoreStorage()
+    await page.evaluate(k => localStorage.removeItem(k), OPS_PREF)
+    await reload(); await open('settings')
+    await see(DATE_SEL, { ms: 15000 })
+    ctx.before = await visible(DATE_SEL).first().inputValue()
+    ctx.storedBefore = await page.evaluate(k => localStorage.getItem(k), OPS_PREF)
+    if (refuse) await refuseStorage()
+    await visible(DATE_SEL).first().selectOption('iso')
+    await sleep(1200)
+    ctx.rejected = await prefRow()
+    ctx.storedAfterReject = await page.evaluate(k => localStorage.getItem(k), OPS_PREF)
+    await ctx.shot('rejected')
+    if (ctx.rejected?.revert) { await tap(`${DATE_ROW} [data-ops-pref-revert]`); await sleep(1000) }
+    ctx.afterRevert = await prefRow()
+    ctx.storedAfterRevert = await page.evaluate(k => localStorage.getItem(k), OPS_PREF)
+  }
+  const R_OPS_PREFS = '^/api/ops/(prefs|preferences)'
+  await state('ops-settings', 'pref-rejected', {
+    proves: 'Ops Settings: a refused preference save (Date format) shows no success, says why in its row with Retry and Revert, keeps the saved value in storage, and Revert restores the saved value in the control.',
+    mocks: [{ path: R_OPS_PREFS, method: 'PUT', throw: '507: preference store refused the write (mock)' }, { path: R_OPS_PREFS, method: 'POST', throw: '507: preference store refused the write (mock)' }, ...base],
+    open: () => open('settings'), act: prefAct(true),
+    checks: {
+      'draft-shown-while-refused': ev('rejected', r => { if (r?.value !== 'iso') fail(`the control shows ${JSON.stringify(r?.value)} after the refused edit, want "iso"`); return 'the refused choice (iso) stays visible as a draft' }),
+      'no-success-shown': ev('rejected', r => { if (!r) fail('date format row not found'); if (r.status) fail(`the row says "${r.status}" after a refused save`); if (!r.error) fail('no error shown, so the save reads as done'); return 'no success status in the row' }),
+      'error-with-reason': ev('rejected', r => { if (!r?.error || !/refused the write \(mock\)/.test(r.error)) fail(`row error ${JSON.stringify(r?.error)}`); if (r.invalid !== 'true') fail('the control is not marked aria-invalid'); return `row error "${r.error.slice(0, 70)}", control invalid` }),
+      'recovery-offered': ev('rejected', r => { if (!r?.retry || !r?.revert) fail(`retry=${r?.retry} revert=${r?.revert}`); return 'Retry and Revert in the row' }),
+      'storage-kept-saved-value': ev('storedAfterReject', (v, ctx) => { if (v !== ctx.storedBefore) fail(`storage changed to ${v} after a refused save`); return 'storage still holds the saved preferences' }),
+      'revert-restores-value': ev('afterRevert', (r, ctx) => { if (!r || r.value !== ctx.before || r.error) fail(`after Revert: value ${JSON.stringify(r?.value)} (want ${JSON.stringify(ctx.before)}), error ${JSON.stringify(r?.error)}`); if (ctx.storedAfterRevert !== ctx.storedBefore) fail('Revert wrote to storage'); return `Revert put "${ctx.before}" back, cleared the error and wrote nothing` })
+    },
+    // Negative: the storage accepts: the row says saved and offers no recovery.
+    neg: { act: prefAct(false), fails: ['no-success-shown', 'error-with-reason', 'recovery-offered'] },
+    after: async () => { await restoreStorage(); await page.evaluate(k => localStorage.removeItem(k), OPS_PREF).catch(() => {}); await reload() }
+  })
+
+  // (#5, lines 102-105, 163-165) Chat: an EXISTING session with a long history (seeded into the sandbox state.db, opened
+  // by its route and resumed through the sandbox gateway); only prompt.submit is refused. The intercepted method must be
+  // prompt.submit (no session.create), the draft stays once, the error sits beside the composer, focus stays in the
+  // composer, and messages and composer share one column, at 420 and 760.
+  const LONG_SID = '20261016_120000_0a7c27'
+  const LONG_LAST = 'OPS-HARD-LAST-MARKER'
+  const SUBMIT_DRAFT = 'Ops hard draft for an existing session that must survive a refused submit'
+  const SUBMIT_REFUSAL = 'prompt refused by the gateway (mock)'
+  const seedLong = () => { const out = runPython([`${harness.scripts}/seed-session.py`, LONG_SID, 'Release checklist review (ops hard)', '24', LONG_LAST]); return JSON.parse(out.split('\n').filter(Boolean).pop()) }
+  const chatGeom = () => page.evaluate(([draft, refusal, last]) => {
+    const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' }
+    const box = el => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) } }
+    const deepest = text => [...document.querySelectorAll('body *')].filter(e => vis(e) && (e.textContent || '').includes(text) && ![...e.children].some(c => (c.textContent || '').includes(text)))
+    const comp = document.querySelector('[data-slot="composer-root"]')
+    const box2 = comp && vis(comp) ? box(comp) : null
+    const tb = document.querySelector('[data-slot="composer-root"] [role="textbox"]')
+    const a = document.activeElement
+    const err = deepest(refusal)[0] ?? null
+    const lastMsg = deepest(last)[0] ?? null
+    const thread = document.querySelector('[data-slot="thread"]')
+    const scroller = thread ? [thread, ...thread.querySelectorAll('*')].find(e => e.scrollHeight > e.clientHeight + 50 && /(auto|scroll)/.test(getComputedStyle(e).overflowY)) : null
+    return {
+      vh: innerHeight, hash: location.hash, composer: box2,
+      draft: tb ? (tb.innerText || '').trim() : null,
+      outside: [...document.querySelectorAll('body *')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.includes(draft))).filter(e => !e.closest('[data-slot="composer-root"]')).map(e => `<${e.tagName.toLowerCase()}> in ${e.closest('[data-slot]')?.getAttribute('data-slot') ?? 'body'}`),
+      focusInComposer: Boolean(a && tb && (a === tb || tb.contains(a))), focusTag: a?.tagName ?? null,
+      error: err ? { ...box(err), text: (err.textContent || '').trim().slice(0, 160) } : null,
+      lastMsg: lastMsg ? box(lastMsg) : null,
+      history: scroller ? { scrollHeight: scroller.scrollHeight, clientHeight: scroller.clientHeight } : null
+    }
+  }, [SUBMIT_DRAFT, SUBMIT_REFUSAL, LONG_LAST])
+  const submitAct = (w, send) => async ctx => {
+    ctx.seed = seedLong()
+    ctx.route = await gateway.install()
+    gateway.setRules([{ method: '^prompt\\.submit$', error: SUBMIT_REFUSAL }])
+    await goApp(`/${LONG_SID}`)
+    await see('[data-slot="thread"]', { text: LONG_LAST, ms: 30000 })
+    ctx.width = await fitWidth('[data-chat-surface]', w)
+    await sleep(1000)
+    await tap('[data-slot="composer-root"] [role="textbox"]', 15000)
+    await page.keyboard.press('Control+a'); await page.keyboard.press('Delete'); await sleep(200)
+    await page.keyboard.type(SUBMIT_DRAFT)
+    await sleep(400)
+    const n0 = gateway.sent.length
+    if (send) await page.keyboard.press('Enter')
+    await sleep(5000)
+    ctx.sent = { hits: gateway.hits.map(h => ({ method: h.method, session: h.params?.session_id ?? null })), creates: gateway.sent.slice(n0).filter(m => m.method === 'session.create').length, methods: [...new Set(gateway.sent.slice(n0).map(m => m.method))] }
+    ctx.geom = await chatGeom()
+  }
+  for (const w of [420, 760]) {
+    await state('chat', `existing-session-submit-rejected-${w}`, {
+      proves: `Chat at a ${w}px chat pane: in an EXISTING session with a long history, a send whose prompt.submit is refused keeps the draft once, in the composer, with the focus; the refusal sits beside the composer; messages and composer share one column; no session is created.`,
+      mocks: base, open: () => goApp('/'), act: submitAct(w, true), keepToasts: true, actMs: 150000,
+      checks: {
+        [`pane-${w}`]: paneW(w, 'chat pane'),
+        'existing-long-session-open': ev('geom', (g, ctx) => {
+          if (!g.hash.includes(LONG_SID)) fail(`route ${g.hash}, not the seeded session`)
+          if ((ctx.seed?.messages ?? 0) < 48) fail(`seeded session has ${ctx.seed?.messages} messages, want >= 48`)
+          if (!g.lastMsg) fail('the last seeded message is not on screen')
+          if (!g.history || g.history.scrollHeight < g.history.clientHeight * 2) fail(`the transcript is not a long history (${JSON.stringify(g.history)})`)
+          return `session ${LONG_SID} (${ctx.seed.messages} stored messages) open, transcript ${g.history.scrollHeight}px tall in a ${g.history.clientHeight}px view`
+        }),
+        'prompt-submit-intercepted': ev('sent', s => {
+          if (!s.hits.length) fail(`nothing intercepted (client sent: ${s.methods.join(', ') || 'nothing'})`)
+          const other = s.hits.filter(h => h.method !== 'prompt.submit')
+          if (other.length) fail(`intercepted ${other.map(h => h.method).join(', ')}, not prompt.submit`)
+          if (s.creates) fail(`${s.creates} session.create sent: the existing session was not used`)
+          return `intercepted prompt.submit x${s.hits.length} (session ${s.hits[0].session ?? 'n/a'}), no session.create`
+        }),
+        'draft-unique-in-composer': ev('geom', g => { if (g.draft !== SUBMIT_DRAFT) fail(`composer holds "${(g.draft ?? '').slice(0, 80)}"`); if (g.outside.length) fail(`the draft also appears outside the composer: ${g.outside.join(', ')}`); return 'the draft is in the composer, once' }),
+        'error-beside-composer': ev('geom', g => {
+          if (!g.error) fail('the refusal is not visible')
+          if (!g.composer) fail('composer not visible')
+          const gap = g.error.bottom <= g.composer.top ? g.composer.top - g.error.bottom : g.error.top >= g.composer.bottom ? g.error.top - g.composer.bottom : 0
+          const overlap = Math.min(g.error.right, g.composer.right) - Math.max(g.error.left, g.composer.left)
+          if (g.error.top < 0 || g.error.bottom > g.vh) fail('the refusal is outside the viewport')
+          if (gap > 160 || overlap <= 0) fail(`the refusal is ${gap}px from the composer (horizontal overlap ${overlap}px): not beside it`)
+          return `refusal "${g.error.text.slice(0, 50)}" ${gap}px from the composer, same column`
+        }),
+        'focus-in-composer': ev('geom', g => { if (!g.focusInComposer) fail(`focus on <${g.focusTag}>, not the composer`); return 'focus stayed in the composer' }),
+        'messages-and-composer-one-column': ev('geom', g => {
+          if (!g.lastMsg || !g.composer) fail('message or composer not visible')
+          const overlap = Math.min(g.lastMsg.right, g.composer.right) - Math.max(g.lastMsg.left, g.composer.left)
+          const narrower = Math.min(g.lastMsg.right - g.lastMsg.left, g.composer.right - g.composer.left)
+          if (overlap < narrower * 0.8) fail(`message ${g.lastMsg.left}-${g.lastMsg.right} vs composer ${g.composer.left}-${g.composer.right}: overlap ${overlap}px of ${narrower}px`)
+          return `message and composer share the column (overlap ${overlap}px of ${narrower}px)`
+        })
+      },
+      // Negative: the same session, the draft typed but never sent: nothing intercepted, nothing refused.
+      neg: { act: submitAct(w, false), fails: ['prompt-submit-intercepted', 'error-beside-composer'] },
+      after: async () => { gateway.setRules([]); await narrow(1600); await reload(); await goApp('/') }
+    })
+  }
+
+  // (#6, lines 134-137, 167-169) Agents: tree first. At 420/760 the first viewport shows the tree's work, progress and
+  // failure before any repeated counter (hero metrics, '3 agents · 1 active · 1 failed · 3 tools'), and the tree rows are
+  // reached by Tab.
+  const COUNTER = /\b\d+\s*(agents?|agentes?|active|activos?|failed|fallid[oa]s?|tools?|herramientas?|workers?)\b/i
+  const treeView = () => page.evaluate(([panel, counterSrc]) => {
+    const re = new RegExp(counterSrc, 'i')
+    const P = [...document.querySelectorAll(panel)].find(e => e.getBoundingClientRect().width > 0)
+    if (!P) return null
+    const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' }
+    const blocks = [...P.querySelectorAll('[data-slot="tool-block"]')].filter(vis)
+    // A counter: a phrase like '3 agents' / '1 fallidos', or a bare number shown as a metric (hero stats), outside the tree.
+    const counters = [...P.querySelectorAll('*')].filter(e => vis(e) && !e.closest('[data-slot="tool-block"]') && ((re.test(e.textContent || '') && ![...e.children].some(c => re.test(c.textContent || ''))) || (!e.children.length && /^\s*\d+\s*$/.test(e.textContent || '')))).map(e => ({ text: (e.textContent || '').trim().slice(0, 60), top: Math.round(e.getBoundingClientRect().top) }))
+    return { firstBlockTop: blocks.length ? Math.round(blocks[0].getBoundingClientRect().top) : null, blocks: blocks.length, counters }
+  }, [AGENTS_PANEL, COUNTER.source])
+  const tabToTree = async presses => {
+    await page.evaluate(panel => { const P = [...document.querySelectorAll(panel)].find(e => e.getBoundingClientRect().width > 0); const f = P?.querySelector('button, [href], input, [tabindex]:not([tabindex="-1"])'); f?.focus() }, AGENTS_PANEL)
+    const path = []
+    for (let i = 1; i <= presses; i++) {
+      const a = await page.evaluate(() => { const e = document.activeElement; return { d: `${e?.tagName.toLowerCase()}:${(e?.getAttribute('aria-label') || e?.textContent || '').trim().slice(0, 24)}`, tree: Boolean(e?.closest('[data-slot="tool-block"]')) } })
+      path.push(a.d)
+      if (a.tree) return { reached: true, presses: i - 1, path }
+      await page.keyboard.press('Tab'); await sleep(120)
+    }
+    return { reached: false, presses, path }
+  }
+  const TREE_WORK = ['Waiting on two children', 'Result: 14 PR titles collected', 'Failed: changelog tool exited with code 2']
+  for (const w of [420, 760]) {
+    await state('agents', `tree-first-${w}`, {
+      proves: `Agents at a ${w}px panel: the first viewport shows the delegated tree's work, progress, result and failure before any repeated counter, and the tree rows are reached by Tab.`,
+      mocks: base, open: agentsOpen,
+      act: async ctx => { await agentsTreeAct(w, true)(ctx); ctx.view = await treeView(); ctx.work = await visTokens(AGENTS_PANEL, TREE_WORK); ctx.tab = await tabToTree(25) },
+      checks: {
+        [`panel-${w}`]: paneW(w, 'Agents panel'),
+        'work-in-first-viewport': ev('work', r => { const miss = TREE_WORK.filter(t => !r.visible.includes(t)); if (miss.length) fail(`not visible in the first viewport without scrolling: ${miss.join(' | ')}`); return 'progress, result and failure all visible without scrolling' }),
+        'tree-before-counters': ev('view', v => {
+          if (!v?.blocks) fail('no tree rows')
+          const before = v.counters.filter(c => c.top < v.firstBlockTop)
+          if (before.length) fail(`${before.length} counter(s) above the tree: ${before.slice(0, 3).map(c => `"${c.text}" at ${c.top}px`).join(', ')} (tree starts at ${v.firstBlockTop}px)`)
+          return `tree starts at ${v.firstBlockTop}px; ${v.counters.length} counter(s), none above it`
+        }),
+        'tree-actions-by-tab': ev('tab', t => { if (!t.reached) fail(`no tree row after ${t.presses} Tab presses: ${t.path.slice(0, 12).join(' > ')}`); return `a tree row is reached after ${t.presses} Tab presses` })
+      },
+      // Negative: the same screen without the fixture (no tree).
+      neg: { act: async ctx => { await agentsTreeAct(w, false)(ctx); ctx.view = await treeView(); ctx.work = await visTokens(AGENTS_PANEL, TREE_WORK); ctx.tab = await tabToTree(25) }, fails: ['work-in-first-viewport', 'tree-before-counters', 'tree-actions-by-tab'] },
+      after: async () => { await narrow(1600); await reload() }
+    })
+  }
+
+  // (#7, lines 69-73, 171-173) Office at a 420px panel: review before approving. One decision without a reason (it says
+  // so), one with a long context (readable, or revealed by focus); opening the task to inspect it does not lose the typed
+  // note; a 409 on Request changes keeps the reason and the draft visible; one primary action per row; nothing approves.
+  const LONG_WHY = 'The reviewer asked for the memory limits section to be split: the RFC mixes the per-session cap with the per-profile cap, the migration plan depends on which one ships first, and two linked tasks are waiting on this answer before they can start END-OF-CONTEXT'
+  const reviewItems = withReason => ({
+    items: [
+      item('kanban_review', 't6', 'Review the RFC for agent memory', 'builder', 86400, withReason ? { why: 'Second review requested by the author' } : {}),
+      item('kanban_review', 't9', 'Approve the onboarding email copy', 'writer', 43200, { why: LONG_WHY })
+    ],
+    observed_at: { jsonrpc: now, kanban: now }
+  })
+  const REVIEW_NOTE = 'Split the memory limits section before approving'
+  const R_T6_C = '^/api/plugins/kanban/tasks/t6/comments'
+  const reviewAct = (refuse, withReason) => async ctx => {
+    await mock([{ path: R_PENDING, body: reviewItems(withReason) }, { path: R_BOARD, body: BOARD }, { path: R_ATTACH, method: 'GET', body: { attachments: [] } }])
+    await panelAt(420)
+    ctx.width = await paneWidth()
+    const trig = `${ROW_T6} [data-ops-row-more-trigger]`
+    const expand = async () => { if ((await visible(trig).first().getAttribute('aria-expanded').catch(() => null)) !== 'true') { await tap(trig); await sleep(600) } }
+    await see(ROW_T6, { ms: 15000 })
+    await expand()
+    await type(`${ROW_T6} input[aria-label="changes for t6"]`, REVIEW_NOTE)
+    // Long context: visible at rest, or revealed when the row holds focus.
+    ctx.whyRest = await visTokens('[data-ops-approval="kanban_review:t9"]', ['END-OF-CONTEXT'])
+    if (!ctx.whyRest.visible.length) { await visible('[data-ops-approval="kanban_review:t9"]').first().focus().catch(() => {}); await sleep(500); ctx.whyFocus = await visTokens('[data-ops-approval="kanban_review:t9"]', ['END-OF-CONTEXT']) }
+    // Inspect the task (Open task), then come back the way a person does (Back).
+    await tap(`${ROW_T6} [data-ops-intent="links"] [data-ops-row-link]`)
+    await sleep(2000)
+    ctx.opened = await page.evaluate(() => ({ hash: location.hash, inspector: document.querySelector('[data-ops-inspector-detail]')?.getAttribute('data-ops-inspector-detail') ?? null }))
+    await ctx.shot('task-open')
+    if (!/\/ops\/office/.test(await page.evaluate(() => location.hash))) { await page.evaluate(() => history.back()); await sleep(2000); ctx.returnedBy = 'history.back()' }
+    if (!/\/ops\/office/.test(await page.evaluate(() => location.hash))) { await page.evaluate(() => { location.hash = '#/ops/office' }); await sleep(2000); ctx.returnedBy = 'Office route' }
+    ctx.returnedBy = ctx.returnedBy ?? 'stayed on Office'
+    await see(ROW_T6, { ms: 10000 })
+    ctx.expandedAfterOpen = (await visible(trig).first().getAttribute('aria-expanded').catch(() => null)) === 'true'
+    await expand()
+    ctx.noteAfterOpen = await visible(`${ROW_T6} input[aria-label="changes for t6"]`).first().inputValue().catch(() => null)
+    // Request changes refused with 409 (or accepted, for the negative); nothing else may be written.
+    const s0 = await reqSeq()
+    await mock([refuse ? { path: R_T6_C, method: 'POST', throw: '409: review changed since you opened it (mock)' } : { path: R_T6_C, method: 'POST', body: { ok: true } }, { path: R_PENDING, body: reviewItems(withReason) }, { path: R_BOARD, body: BOARD }, { path: R_ATTACH, method: 'GET', body: { attachments: [] } }])
+    if ((ctx.noteAfterOpen ?? '') !== REVIEW_NOTE) await type(`${ROW_T6} input[aria-label="changes for t6"]`, REVIEW_NOTE)
+    await tap(`${ROW_T6} [data-ops-request-changes]`)
+    await sleep(2500)
+    ctx.writes = (await requests(s0)).filter(r => r.method !== 'GET')
+  }
+  await state('office', 'review-before-approve-420', {
+    proves: 'Office at a 420px panel: a decision without a reason says so; a long context is readable or revealed by focus; opening the task to inspect it keeps the typed note; a 409 on Request changes keeps the reason and the draft visible beside the intent; one primary action per row; nothing approves.',
+    mocks: base, open: () => panelAt(420), act: reviewAct(true, false), actMs: 120000,
+    checks: {
+      'panel-420': ev('width', w => { if (Math.abs(w - 420) > 16) fail(`Ops pane is ${w}px wide, want 420 +- 16`); return `Ops pane ${w}px wide` }),
+      'missing-reason-said': ms => see(`${ROW_T6} [data-ops-why-missing]`, { ms }),
+      'long-context-readable': ev('whyRest', (r, ctx) => { if (r.visible.length) return 'the long context is visible to its end at rest'; if (ctx.whyFocus?.visible.length) return 'the long context is revealed to its end when the row holds focus'; fail('the end of the long context is hidden at rest and on focus') }),
+      'note-survives-inspect': ev('noteAfterOpen', (v, ctx) => { if (v !== REVIEW_NOTE) fail(`after Open task (${ctx.opened?.hash}, inspector ${ctx.opened?.inspector}) and back (${ctx.returnedBy}) the note is ${JSON.stringify(v)}`); return `note kept after Open task (${ctx.opened?.hash}) and back (${ctx.returnedBy}); expansion ${ctx.expandedAfterOpen ? 'still open' : 'reopened'}` }),
+      'refusal-beside-intent-420': ms => see(`${ROW_T6} [data-ops-intent="request-changes"] [data-ops-refused]`, { count: 1, text: 'review changed since you opened it', clear: true, ms }),
+      'draft-visible-after-refusal': ms => see(`${ROW_T6} input[aria-label="changes for t6"]`, { value: REVIEW_NOTE, clear: true, ms }),
+      'one-primary-per-row': async ms => {
+        await see('[data-ops-approval]', { min: 2, ms })
+        const n = await visible('[data-ops-approval]').evaluateAll(rows => rows.map(r => ({ id: r.getAttribute('data-ops-approval'), n: [...r.querySelectorAll('[data-ops-primary]')].filter(b => b.getBoundingClientRect().width > 0).length })))
+        const bad = n.filter(x => x.n !== 1)
+        if (bad.length) fail(`rows without exactly one primary: ${JSON.stringify(bad)}`)
+        return `${n.length} rows, one primary each`
+      },
+      'no-approve-sent': ev('writes', ws => { const bad = ws.filter(w => /\/api\/approvals\/respond/.test(w.path) || (/\/tasks\/t6$/.test(w.path) && w.method === 'PATCH')); if (bad.length) fail(`sent ${bad.map(w => `${w.method} ${w.path}`).join(', ')}`); return `${ws.length} write(s), none approves or moves t6` })
+    },
+    // Negative: t6 HAS a reason and Request changes is accepted: no missing-reason line, no refusal.
+    neg: { act: reviewAct(false, true), fails: ['missing-reason-said', 'refusal-beside-intent-420'] },
+    after: async () => { await page.evaluate(k => localStorage.removeItem(k), OPS_SPLIT); await mock(base); await reload() }
+  })
+
+  // (#8, lines 118-122, 175-177) Narrow reading. Capabilities: a long skill document with a table and code at a 420px
+  // pane: the selected skill stays selected, the document starts in the first viewport, nothing overflows the column
+  // (table and code scroll in their own box), paragraphs keep a readable measure.
+  const SK_LONG = 'ops-hard-long-doc', SK_SHORT = 'ops-hard-alpha'
+  const LONG_MD = ['## Release runbook', '', 'Read this before every release. It lists who signs off, which checks run and what to do when a step fails. Keep the steps in order.', '', '| Step | Owner | Command | Timeout |', '|---|---|---|---|', ...Array.from({ length: 8 }, (_, i) => `| ${i + 1} | owner-${i + 1} | \`hermes release step-${i + 1} --verify --profile default\` | ${(i + 1) * 5} min |`), '', '```bash', 'hermes release verify --all-profiles --strict --timeout 1800 --report ./out/release-report-ops-hard-code-marker.json', '```', '', ...Array.from({ length: 14 }, (_, i) => `### Step ${i + 1}\n\nRun the step, read its output, and write the result in the release thread before moving on. Paragraph ${i + 1} of the long document.\n`)].join('\n')
+  const skillMocks = long => [
+    { path: '^/api/skills(\\?|$)', method: 'GET', body: [{ name: SK_SHORT, description: 'Short fixture skill (ops hard)', category: 'ops', enabled: true, provenance: 'agent' }, { name: SK_LONG, description: 'Long fixture document with a table and code (ops hard)', category: 'ops', enabled: true, provenance: 'agent' }] },
+    { path: `^/api/skills/content\\?name=${SK_LONG}`, body: { name: SK_LONG, path: `C:/ops-hard/skills/${SK_LONG}/SKILL.md`, content: long ? LONG_MD : 'A short document with one paragraph and nothing else.' } },
+    { path: `^/api/skills/content\\?name=${SK_SHORT}`, body: { name: SK_SHORT, path: `C:/ops-hard/skills/${SK_SHORT}/SKILL.md`, content: 'Short fixture.' } },
+    ...base
+  ]
+  const capLayout = () => page.evaluate(() => {
+    const col = [...document.querySelectorAll('[data-skill-column]')].find(e => e.getBoundingClientRect().width > 0)
+    if (!col) return null
+    const md = col.closest('[data-master-detail]')
+    const cr = col.getBoundingClientRect(), mr = md?.getBoundingClientRect()
+    const scrollBox = el => { for (let a = el.parentElement; a && a !== col.parentElement; a = a.parentElement) { const s = getComputedStyle(a); if (/(auto|scroll)/.test(s.overflowX) && a.getBoundingClientRect().right <= cr.right + 1) return a } return null }
+    const over = []
+    for (const el of col.querySelectorAll('table, pre')) {
+      const r = el.getBoundingClientRect()
+      if (r.right > cr.right + 1 && !scrollBox(el)) over.push(`<${el.tagName.toLowerCase()}> ends at ${Math.round(r.right)} past the column (${Math.round(cr.right)}) with no own scroll box`)
+    }
+    for (const el of col.querySelectorAll('p, li, h2, h3')) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > cr.right + 1) over.push(`<${el.tagName.toLowerCase()}> overflows the column`) }
+    const ps = [...col.querySelectorAll('p')].filter(p => p.getBoundingClientRect().width > 0 && (p.textContent || '').length > 60)
+    const pre = col.querySelector('pre'), table = col.querySelector('table')
+    const first = col.querySelector('h2, h3, p, table, pre')
+    return {
+      vh: innerHeight, colWidth: Math.round(cr.width), colRight: Math.round(cr.right), mdRight: mr ? Math.round(mr.right) : null, over,
+      minParaWidth: ps.length ? Math.min(...ps.map(p => Math.round(p.getBoundingClientRect().width))) : null,
+      paraFont: ps.length ? parseFloat(getComputedStyle(ps[0]).fontSize) : null,
+      codeFont: pre ? parseFloat(getComputedStyle(pre).fontSize) : null, tableFont: table ? parseFloat(getComputedStyle(table).fontSize) : null,
+      firstTop: first ? Math.round(first.getBoundingClientRect().top) : null,
+      title: (col.querySelector('h1, h2, [data-detail-title]')?.textContent ?? '').trim()
+    }
+  })
+  const capAct = long => async ctx => {
+    await mock(skillMocks(long))
+    await reload(); await goApp('/capabilities')
+    await tap(`button:has-text("${SK_LONG}")`, 20000)
+    await see('[data-skill-column]', { text: SK_LONG, ms: 15000 })
+    await sleep(1500)
+    ctx.width = await fitWidth('[data-master-detail]', 420)
+    await sleep(1200)
+    ctx.layout = await capLayout()
+  }
+  await state('capabilities', 'long-markdown-420', {
+    proves: 'Capabilities at a 420px pane: the selected long skill document (headings, table, code) stays selected, starts in the first viewport, keeps table and code inside the column (own scroll box), and paragraphs keep a readable measure.',
+    mocks: base, open: () => goApp('/capabilities'), act: capAct(true),
+    checks: {
+      'pane-420': paneW(420, 'capabilities pane'),
+      'selection-kept': ms => see('[data-skill-column]', { text: SK_LONG, ms }),
+      'table-and-code-rendered': ms => see('[data-skill-column] table', { ms }).then(a => see('[data-skill-column] pre', { text: 'ops-hard-code-marker', ms }).then(b => `${a}; ${b}`)),
+      'nothing-overflows-column': ev('layout', l => { if (!l) fail('no skill column'); if (l.over.length) fail(l.over.slice(0, 3).join('; ')); if (l.mdRight !== null && l.colRight > l.mdRight + 1) fail(`the column ends at ${l.colRight}, past its pane (${l.mdRight})`); return `table/code/text inside the ${l.colWidth}px column` }),
+      'readable-measure': ev('layout', l => { if (!l?.minParaWidth || l.minParaWidth < 280) fail(`paragraphs ${l?.minParaWidth}px wide, want >= 280`); if ((l.paraFont ?? 0) < 14 || (l.codeFont ?? 0) < 12 || (l.tableFont ?? 0) < 12) fail(`fonts: paragraph ${l.paraFont}px, code ${l.codeFont}px, table ${l.tableFont}px`); return `paragraphs >= ${l.minParaWidth}px at ${l.paraFont}px; code ${l.codeFont}px; table ${l.tableFont}px` }),
+      'document-starts-in-first-viewport': ev('layout', l => { if (l?.firstTop === null || l.firstTop === undefined || l.firstTop > l.vh - 60) fail(`the document starts at ${l?.firstTop}px of a ${l?.vh}px viewport`); return `document starts at ${l.firstTop}px` }),
+      'content-mock': ms => served(`^/api/skills/content\\?name=${SK_LONG}`, { ms })
+    },
+    // Negative: the same skill with a one-paragraph document: no table, no code.
+    neg: { act: capAct(false), fails: ['table-and-code-rendered'] },
+    after: async () => { await mock(base); await narrow(1600); await reload() }
+  })
+
+  // Sessions: two sessions whose titles and previews differ only at their end, at a 420px list. Each must be told apart
+  // by something visible at rest, or revealed when its row holds focus.
+  const SIM_T = 'Investigate the flaky login test on CI, collect the failing logs, find the common stack and write the fix plan for the '
+  const SIM_P = 'We narrowed it to the session cookie written after the redirect; next we pin the warm-up and rerun the suite fifty times on the '
+  const simSessions = same => {
+    const a = sess('s1', `${SIM_T}Windows runner`, 300, 24, { preview: `${SIM_P}Windows runner` })
+    const b = sess('s2', `${SIM_T}${same ? 'Windows' : 'Linux'} runner`, 5400, 61, { preview: `${SIM_P}${same ? 'Windows' : 'Linux'} runner` })
+    const list = [a, b, SESSIONS.sessions[2], SESSIONS.sessions[3]]
+    return [{ path: R_SIDEBAR, body: { ...SIDEBAR, recents: { sessions: list } } }, { path: R_SLICE, body: { ...SESSIONS, sessions: list } }, { path: R_MESSAGES, body: MESSAGES }, ...base]
+  }
+  const simAct = same => async ctx => {
+    await mock(simSessions(same))
+    await sessionsOpen()
+    await see('[data-session-row]', { count: 4, ms: 15000 })
+    ctx.width = await fitWidth('[data-sessions-search]', 420)
+    await sleep(900)
+    ctx.rows = []
+    for (const i of [0, 1]) {
+      const toks = i === 0 ? ['Windows'] : [same ? 'Windows' : 'Linux']
+      const other = i === 0 ? [same ? 'Windows' : 'Linux'] : ['Windows']
+      const own = toks.filter(t => !other.includes(t))
+      const rest = await visTokens('[data-session-row]', own, { nth: i })
+      let focus = null
+      if (!rest.visible.length && own.length) { await visible('[data-session-row] > button').nth(i).focus(); await sleep(500); focus = await visTokens('[data-session-row]', own, { nth: i }) }
+      ctx.rows.push({ own, rest: rest.visible, focus: focus?.visible ?? null })
+    }
+    await page.evaluate(() => document.activeElement?.blur())
+  }
+  await state('sessions', 'similar-titles-420', {
+    proves: 'Sessions at a 420px list: two sessions whose titles and previews differ only at their end are told apart, each by a differentiator visible at rest or revealed when its row holds focus.',
+    mocks: populated, open: sessionsOpen, act: simAct(false),
+    checks: {
+      'list-420': paneW(420, 'sessions list'),
+      'each-row-distinguishable': ev('rows', rows => {
+        const bad = rows.filter(r => !r.own.length || !(r.rest.length || r.focus?.length))
+        if (bad.length) fail(`${bad.length} of 2 near-identical rows show no differentiator at rest or on focus: ${JSON.stringify(bad)}`)
+        return rows.map((r, i) => `row ${i + 1}: "${r.own[0]}" ${r.rest.length ? 'visible at rest' : 'revealed on focus'}`).join('; ')
+      }),
+      'sidebar-mock': ms => served(R_SIDEBAR, { ms })
+    },
+    // Negative: the two sessions are identical: nothing can tell them apart.
+    neg: { act: simAct(true), fails: ['each-row-distinguishable'] },
+    after: async () => { await mock(base); await narrow(1600); await reload() }
+  })
+
+  // Artifacts: the same file name in long folder paths, from two sessions of two projects, at 420 and 760: each row
+  // shows (or reveals on focus) the folder part that tells them apart.
+  const HOMO = proj => `C:\\Users\\nachi\\projects\\client-${proj}\\packages\\reporting\\generated\\2026\\october\\weekly\\summary.md`
+  const homoMocks = same => {
+    const list = [sess('s1', 'Weekly report for the storefront client', 300, 6, { cwd: 'C:/Users/nachi/projects/client-alpha-storefront' }), sess('s2', 'Weekly report for the warehouse client', 5400, 6, { cwd: `C:/Users/nachi/projects/client-${same ? 'alpha-storefront' : 'beta-warehouse'}` }), SESSIONS.sessions[2], SESSIONS.sessions[3]]
+    return [
+      { path: R_SIDEBAR, body: { ...SIDEBAR, recents: { sessions: list } } }, { path: R_SLICE, body: { ...SESSIONS, sessions: list } },
+      { path: '^/api/sessions/s1/messages', body: msgWith(`Saved the weekly summary to ${HOMO('alpha-storefront')}`) },
+      { path: '^/api/sessions/s2/messages', body: msgWith(`Saved the weekly summary to ${HOMO(same ? 'alpha-storefront' : 'beta-warehouse')}`) },
+      { path: R_MESSAGES, body: msgWith('No files in this conversation.') },
+      ...base
+    ]
+  }
+  const homoRows = `${artifactRows}:has-text("summary.md")`
+  const homoAct = (w, same) => async ctx => {
+    await mock(homoMocks(same))
+    await artifactsOpen()
+    await see(homoRows, { min: 1, ms: 15000 })
+    ctx.width = await fitWidth('[data-page-shell]', w)
+    await sleep(900)
+    ctx.count = await visible(homoRows).count()
+    ctx.rows = []
+    for (let i = 0; i < Math.min(ctx.count, 4); i++) {
+      const rest = await visTokens(artifactRows, ['alpha', 'beta'], { nth: i, hasText: 'summary.md' })
+      let focus = null
+      if (!rest.visible.length) { await visible(homoRows).nth(i).locator('button, a, [tabindex]').first().focus().catch(() => {}); await sleep(500); focus = (await visTokens(artifactRows, ['alpha', 'beta'], { nth: i, hasText: 'summary.md' })).visible }
+      ctx.rows.push({ rest: rest.visible, focus })
+    }
+    await page.evaluate(() => document.activeElement?.blur())
+    await ctx.shot('rows')
+  }
+  for (const w of [420, 760]) {
+    await state('artifacts', `homonyms-long-folders-${w}`, {
+      proves: `Artifacts at a ${w}px page: two summary.md files in long folder paths of two sessions/projects each show, at rest or on focus, the folder part that tells them apart (client-alpha… / client-beta…).`,
+      mocks: populated, open: artifactsOpen, act: homoAct(w, false),
+      checks: {
+        [`page-${w}`]: paneW(w, 'artifacts page'),
+        'two-homonym-rows': ev('count', n => { if (n < 2) fail(`${n} summary.md row(s), want 2`); return `${n} summary.md rows` }),
+        'homonyms-distinguishable': ev('rows', rows => {
+          const shown = rows.map(r => (r.rest.length ? r.rest : r.focus ?? []))
+          const how = rows.map(r => (r.rest.length ? 'at rest' : r.focus?.length ? 'on focus' : 'never'))
+          if (rows.length < 2) fail('fewer than 2 rows')
+          if (shown.some(s => s.length !== 1)) fail(`differentiators per row ${JSON.stringify(shown)} (${how.join(', ')}): each row needs exactly its own (alpha or beta)`)
+          if (shown[0][0] === shown[1][0]) fail(`both rows show "${shown[0][0]}": they cannot be told apart`)
+          return rows.map((r, i) => `row ${i + 1}: ${shown[i][0]} ${how[i]}`).join('; ')
+        }),
+        'messages-mock': ms => served('^/api/sessions/s2/messages', { ms })
+      },
+      // Negative: both sessions saved the same path: nothing tells the rows apart.
+      neg: { act: homoAct(w, true), fails: ['homonyms-distinguishable'] },
+      after: async () => { await mock(base); await narrow(1600); await reload() }
+    })
+  }
   await narrow(1600)
 
   // P25 harness controls (selftest pass only): the new fail-closed rules must bite.
@@ -1233,4 +1895,28 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
   await infraControl('modal-is-infrastructure-not-rejection', 'A negative control whose must-fail checks fail because a modal covers the app is NOT held: no-blocking-modal failing marks it as infrastructure.', { act: async () => { await officeLoaded.neg.act(); await page.evaluate(MODAL_JS) } }, {}, /blocking modal/)
   await infraControl('act-exception-is-infrastructure-not-rejection', 'A negative control whose act throws is NOT held, even though its must-fail checks fail.', { act: async () => { await officeLoaded.neg.act(); throw new Error('forced act failure (selftest)') } }, {}, /act: forced act failure/)
   await infraControl('act-timeout-is-infrastructure-not-rejection', 'A negative control whose act exceeds its time budget (watchdog) is NOT held.', { act: async () => { await sleep(4000) } }, { actMs: 1500 }, /watchdog: act/)
+  // P27 (judge pass 21 #2): a must-fail check that THROWS (a TypeError, an invalid selector) is not an assertion failure;
+  // the negative control must come out NOT HELD (infrastructure), never counted as the expected rejection.
+  const checkControl = (st, proves, brokenCheck, expect) => control('harness', st, {
+    proves,
+    run: async () => {
+      const spec = { ...officeLoaded, checks: { ...officeLoaded.checks, 'decision-row': brokenCheck }, neg: { ...officeLoaded.neg, fails: ['decision-row'] } }
+      const r = await evalState(`s-harness-${st}`, spec, true)
+      const c = r.checks.find(x => x.label === 'decision-row')
+      const held = !r.ok && Boolean(c) && !c.pass && c.infra === true && c.failure !== 'assertion' && expect.test(r.note) && /NOT HELD \(infrastructure/.test(r.note)
+      return { held, detail: `negative row ok=${r.ok} (must be false); decision-row failure=${c?.failure}; note: ${r.note}`.slice(0, 600), checks: r.checks, shots: r.shots }
+    }
+  })
+  await checkControl('typeerror-check-is-infrastructure-not-rejection', 'A negative control whose must-fail check throws a TypeError (not an AssertionFailure) is NOT held: the exception is infrastructure.', async () => { const o = null; return o.missing.value }, /threw TypeError/)
+  await checkControl('invalid-selector-check-is-infrastructure-not-rejection', 'A negative control whose must-fail check uses an invalid selector (the lookup throws) is NOT held: the exception is infrastructure.', ms => see('[data-ops-approval=', { ms: Math.min(ms, 3000) }), /threw (Error|SyntaxError|DOMException)/)
+  // And the converse: a deliberate AssertionFailure from the same check IS the expected rejection (held).
+  await control('harness', 'assertion-failure-is-held', {
+    proves: 'The same negative control whose must-fail check fails by AssertionFailure (semantic absence) IS held, with no modal.',
+    run: async () => {
+      const spec = { ...officeLoaded, checks: { ...officeLoaded.checks, 'decision-row': ms => see('[data-ops-approval="ops-hard-no-such-row"]', { ms: Math.min(ms, 3000) }) }, neg: { ...officeLoaded.neg, fails: ['decision-row'] } }
+      const r = await evalState('s-harness-assertion-failure-is-held', spec, true)
+      const c = r.checks.find(x => x.label === 'decision-row')
+      return { held: r.ok === true && c?.failure === 'assertion', detail: `negative row ok=${r.ok} (must be true); decision-row failure=${c?.failure}; note: ${r.note}`.slice(0, 600), checks: r.checks, shots: r.shots }
+    }
+  })
 }

@@ -9,6 +9,7 @@ import { spawnSync as spawnStop } from 'node:child_process'
 import { mkdirSync, writeFileSync, existsSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
+import { AssertionFailure, isAssertionFailure, fail as assertFail } from './assertion.mjs'
 
 const DESKTOP = resolve(process.argv[2] ?? '.')
 const OUT = resolve(process.argv[3] ?? join(tmpdir(), 'ops-live'))
@@ -376,24 +377,25 @@ const unobstructed = loc => loc.evaluateAll(els => {
   for (const [p, [t, l]] of saved) { p.scrollTop = t; p.scrollLeft = l }
   return { n: els.length, points, bad }
 })
-/** see(sel, { count, min, max, text, attr, value, clear }): visible matches, with optional specifics (clear: on EVERY match). */
+/** see(sel, { count, min, max, text, attr, value, clear }): visible matches, with optional specifics (clear: on EVERY match).
+ *  P27: a missing/wrong match is an AssertionFailure; an exception while looking (invalid selector, closed page) is not. */
 const see = (sel, o = {}) => poll(async () => {
   const loc = visible(sel)
   const n = await loc.count()
-  if (o.count !== undefined && n !== o.count) throw new Error(`${sel}: ${n} visible, want ${o.count}`)
-  if (n < (o.min ?? 1)) throw new Error(`${sel}: ${n} visible, want >= ${o.min ?? 1}`)
-  if (o.max !== undefined && n > o.max) throw new Error(`${sel}: ${n} visible, want <= ${o.max}`)
-  for (const t of [].concat(o.text ?? [])) if (!(await loc.filter({ hasText: t }).count())) throw new Error(`${sel}: no visible match contains "${t}"`)
+  if (o.count !== undefined && n !== o.count) assertFail(`${sel}: ${n} visible, want ${o.count}`)
+  if (n < (o.min ?? 1)) assertFail(`${sel}: ${n} visible, want >= ${o.min ?? 1}`)
+  if (o.max !== undefined && n > o.max) assertFail(`${sel}: ${n} visible, want <= ${o.max}`)
+  for (const t of [].concat(o.text ?? [])) if (!(await loc.filter({ hasText: t }).count())) assertFail(`${sel}: no visible match contains "${t}"`)
   for (const [k, v] of Object.entries(o.attr ?? {})) {
     const got = await loc.first().getAttribute(k)
-    if (v instanceof RegExp ? !v.test(got ?? '') : got !== v) throw new Error(`${sel}: ${k}=${JSON.stringify(got)}, want ${v}`)
+    if (v instanceof RegExp ? !v.test(got ?? '') : got !== v) assertFail(`${sel}: ${k}=${JSON.stringify(got)}, want ${v}`)
   }
-  if (o.value !== undefined) { const got = await loc.first().inputValue(); if (got !== o.value) throw new Error(`${sel}: value ${JSON.stringify(got)}, want ${JSON.stringify(o.value)}`) }
+  if (o.value !== undefined) { const got = await loc.first().inputValue(); if (got !== o.value) assertFail(`${sel}: value ${JSON.stringify(got)}, want ${JSON.stringify(o.value)}`) }
   let clearNote = ''
   if (o.clear) {
     const r = await unobstructed(loc)
-    if (r.n !== n) throw new Error(`${sel}: ${n} visible but ${r.n} probed`)
-    if (r.bad.length) throw new Error(`${sel}: ${r.bad.length}/${r.points} points obstructed: ${r.bad.slice(0, 4).join('; ')}`)
+    if (r.n !== n) assertFail(`${sel}: ${n} visible but ${r.n} probed`)
+    if (r.bad.length) assertFail(`${sel}: ${r.bad.length}/${r.points} points obstructed: ${r.bad.slice(0, 4).join('; ')}`)
     clearNote = ` unobstructed (all ${r.n} matches, ${r.points} points: centre + 4 corners)`
   }
   return `${sel} x${n} visible${o.text ? ` with ${JSON.stringify(o.text)}` : ''}${o.attr ? ` ${JSON.stringify(o.attr)}` : ''}${o.value !== undefined ? ` value=${JSON.stringify(o.value)}` : ''}${clearNote}`
@@ -404,14 +406,14 @@ const none = (sel, o = {}) => poll(async () => {
   if (n) {
     // Say where the stray match is, so a failure can be traced to a surface.
     const at = await loc.first().evaluate(el => { const r = el.getBoundingClientRect(); return `${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)} in ${el.closest('[data-ops-root]') ? 'the active Ops root' : el.closest('[data-ops-native]') ? 'an inactive Ops instance' : 'the app'}` }).catch(() => '?')
-    throw new Error(`${sel}: ${n} visible, want 0 (first at ${at})`)
+    assertFail(`${sel}: ${n} visible, want 0 (first at ${at})`)
   }
   return `no visible ${sel}`
 }, o.ms ?? CHECK_MS)
 /** served(rule): the named mock rule answered at least once since it was installed. */
 const served = (rule, o = {}) => poll(async () => {
   const hits = await app.evaluate((_, p) => (globalThis.__opsHits ?? []).filter(h => h.rule === p.rule && (!p.method || h.method === p.method)).length, { rule, method: o.method ?? null })
-  if (!hits) throw new Error(`mock ${o.method ?? ''} ${rule} never served`)
+  if (!hits) assertFail(`mock ${o.method ?? ''} ${rule} never served`)
   return `mock ${o.method ?? ''} ${rule} served x${hits}`
 }, o.ms ?? CHECK_MS)
 /** Click the first VISIBLE match; throws when there is none (an interaction that cannot happen is a failure). */
@@ -433,12 +435,21 @@ const matrixFile = () => (SELFTEST ? 'selftest-matrix.json' : 'state-matrix.json
 const writeMatrix = (extra = {}) => writeFileSync(join(OUT, matrixFile()), JSON.stringify({ mode: SELFTEST ? 'selftest' : 'states', run: RUN_ID, selftestMode: SELFTEST_MODE || 'states', tag: TAG || null, build: BUILD, mockErr, generatedAt: new Date().toISOString(), ok: matrix.filter(x => x.ok).length, total: matrix.length, ...extra, matrix }, null, 2))
 const within = (pr, ms, what) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error(`watchdog: ${what} > ${ms} ms`)), ms))])
 const msg = e => String(e?.message ?? e).replace(/\s+/g, ' ').slice(0, 300)
+/** P27 (judge pass 21 #2): how a check failed. 'assertion' = an AssertionFailure (the state did not hold, the only
+ *  failure a negative control may count as held); 'watchdog' = it hung past its budget; anything else ('TypeError',
+ *  'Error', 'TimeoutError', ...) = the check itself broke: infrastructure, never a rejection of the state. */
+const failureKind = e => (isAssertionFailure(e) ? 'assertion' : /^watchdog: /.test(msg(e)) ? 'watchdog' : (e?.name && e.name !== 'Error' ? e.name : e instanceof Error ? 'Error' : typeof e))
 /** Run labelled checks; every check runs (no short-circuit) so a negative control shows exactly which ones failed.
- *  P26: a check that hangs past its own budget (watchdog) is marked infra: it is not a rejection of the state. */
+ *  P26: a check that hangs past its own budget (watchdog) is marked infra: it is not a rejection of the state.
+ *  P27: so is a check that throws anything but an AssertionFailure (TypeError, invalid selector, page closed). */
 const runChecks = async (checks, ms, ctx) => {
   const out = []
   for (const [label, fn] of Object.entries(checks)) {
-    try { out.push({ label, pass: true, detail: await within(Promise.resolve().then(() => fn(ms, ctx)), ms + 5000, label) }) } catch (e) { const d = msg(e).slice(0, 240); out.push({ label, pass: false, detail: d, ...(/^watchdog: /.test(d) ? { infra: true } : {}) }) }
+    try { out.push({ label, pass: true, detail: await within(Promise.resolve().then(() => fn(ms, ctx)), ms + 5000, label) }) } catch (e) {
+      const kind = failureKind(e)
+      const d = `${kind === 'assertion' ? '' : `[${kind}] `}${msg(e)}`.slice(0, 240)
+      out.push({ label, pass: false, detail: d, failure: kind, ...(kind === 'assertion' ? {} : { infra: true }) })
+    }
   }
   return out
 }
@@ -485,7 +496,7 @@ const evalState = async (name, spec, neg, opts = {}) => {
   let ok, note
   if (neg) {
     // P26 (judge pass 20 #1): a negative control holds only on the EXPECTED rejection: every must-fail check fails by its
-    // own assertion (not by a watchdog), no-blocking-modal still passes (a modal or the boot-failure overlay would make
+    // own assertion (P27: an AssertionFailure; not a watchdog, not a TypeError or any other exception), no-blocking-modal still passes (a modal or the boot-failure overlay would make
     // every visibility check fail for the wrong reason) and nothing threw (mock, act, screenshot, after). Any of those is
     // infrastructure, never 'held'.
     const must = n.fails ?? Object.keys(spec.checks ?? {})
@@ -494,11 +505,11 @@ const evalState = async (name, spec, neg, opts = {}) => {
     const infraChecks = checks.filter(c => must.includes(c.label) && !c.pass && c.infra).map(c => c.label)
     const leaked = must.filter(l => !held.includes(l) && !missing.includes(l) && !infraChecks.includes(l))
     const modal = checks.find(c => c.label === 'no-blocking-modal')
-    const infra = [...errors.map(e => `infrastructure: ${e}`), ...(modal && !modal.pass ? [`infrastructure: ${modal.detail}`] : []), ...infraChecks.map(l => `infrastructure: check ${l} hung (watchdog)`)]
+    const infra = [...errors.map(e => `infrastructure: ${e}`), ...(modal && !modal.pass ? [`infrastructure: ${modal.detail}`] : []), ...infraChecks.map(l => { const c = checks.find(x => x.label === l); return c?.failure === 'watchdog' ? `infrastructure: check ${l} hung (watchdog)` : `infrastructure: check ${l} threw ${c?.failure ?? 'an exception'}, not an AssertionFailure (${(c?.detail ?? '').slice(0, 120)})` })]
     ok = infra.length === 0 && checks.length > 0 && must.length > 0 && leaked.length === 0 && missing.length === 0
-    note = [infra.length ? `NOT HELD (infrastructure, not the expected rejection): ${infra.join(' | ')}` : '', missing.length ? `negative control names unknown checks: ${missing.join(', ')}` : '', leaked.length ? `FALSE POSITIVE: passed without precondition: ${leaked.join(', ')}` : '', ok ? `negative control held: ${held.join(', ')} failed; no-blocking-modal passed; act ran without exception` : ''].filter(Boolean).join(' | ')
+    note = [infra.length ? `NOT HELD (infrastructure, not the expected rejection): ${infra.join(' | ')}` : '', missing.length ? `negative control names unknown checks: ${missing.join(', ')}` : '', leaked.length ? `FALSE POSITIVE: passed without precondition: ${leaked.join(', ')}` : '', ok ? `negative control held: ${held.join(', ')} failed by AssertionFailure; no-blocking-modal passed; act ran without exception` : ''].filter(Boolean).join(' | ')
   } else {
-    const failed = checks.filter(c => !c.pass).map(c => c.label)
+    const failed = checks.filter(c => !c.pass).map(c => (c.failure && c.failure !== 'assertion' ? `${c.label} (${c.failure})` : c.label))
     ok = errors.length === 0 && checks.length > 0 && failed.length === 0
     note = [errors.join(' | '), failed.length ? `failed: ${failed.join(', ')}` : '', ok ? 'verified' : ''].filter(Boolean).join(' | ')
   }
@@ -541,6 +552,12 @@ const control = async (screen, st, spec) => {
 // Legacy helper (kept): now visibility-based, never a node count.
 const need = async (...sels) => { for (const sel of sels) await see(sel); return `verified: ${sels.join(' + ')}` }
 const reload = async () => { await page.reload(); await sleep(3000) }
+/** P27: run a Python script of this checkout against the SANDBOX home (same env as the app: HERMES_HOME = sandbox). */
+const runPython = (args, timeout = 120_000) => {
+  const r = spawnStop(process.env.OPS_LIVE_PYTHON, args, { cwd: resolve(DESKTOP, '..', '..'), env, encoding: 'utf8', timeout })
+  if (r.status !== 0) throw new Error(`python ${args[0]} exited ${r.status}: ${(r.stderr || r.stdout || String(r.error ?? '')).slice(-400)}`)
+  return (r.stdout || '').trim()
+}
 const narrow = w => app.evaluate(({ BrowserWindow }, w) => { for (const x of BrowserWindow.getAllWindows()) x.setSize(w, 1000) }, w)
 
 if (want('discover')) {
@@ -551,7 +568,7 @@ if (want('discover')) {
 
 const summary = {}
 {
-  const api = { page, app, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, offscreen, need, reload, see, none, served, tap, type, visible, reqSeq, requests, unobstructed, gateway, noBlockingModal, harness: { DESKTOP, OUT, TAG, RUN_ID, BUILD, exitCodeFor, hardScript: join(DESKTOP, 'scripts', 'ops-live', 'hard.mjs') }, isSelftest: () => SELFTEST, selftest: SELFTEST }
+  const api = { page, app, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, offscreen, need, reload, see, none, served, tap, type, visible, reqSeq, requests, unobstructed, gateway, noBlockingModal, AssertionFailure, isAssertionFailure, runPython, harness: { DESKTOP, OUT, TAG, RUN_ID, BUILD, HOME, exitCodeFor, hardScript: join(DESKTOP, 'scripts', 'ops-live', 'hard.mjs'), scripts: join(DESKTOP, 'scripts', 'ops-live') }, isSelftest: () => SELFTEST, selftest: SELFTEST }
   const passes = [...(RUN_STATES ? [false] : []), ...(RUN_NEG ? [true] : [])]
   for (const neg of passes) {
     SELFTEST = neg

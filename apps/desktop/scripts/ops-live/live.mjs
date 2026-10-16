@@ -2,9 +2,13 @@
 // a SNAPSHOT of the real HERMES_HOME made by snapshot-home.py: real data, no secrets, platforms/hooks/dispatcher
 // off, cron paused), visit every Ops section with safe reads only,
 // collect console errors, page errors, failed requests and HTTP >= 400, and screenshot each section.
+// P27 (judge pass 21 #1, lines 43-47, 147-149): fail-closed. Every resting section has a readiness selector; a section
+// whose interaction throws (navigation error, missing control, timeout), whose readiness is not reached, whose screenshot
+// fails, or that raises a page error is ok=false; live.json carries a summary that counts READY / NOT READY / FAILED
+// separately, and the process exits non-zero (5) unless every section is READY and ok.
 import { _electron } from '@playwright/test'
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, statSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -86,7 +90,14 @@ const dismissToasts = async () => {
   }).catch(() => [])
   if (texts.length) { log.toastDismissed.push(...texts); await sleep(350) }
 }
-const shot = async name => { await dismissToasts(); await sleep(250); await dismissToasts(); return page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) })) }
+// P27: a screenshot that cannot be taken, or leaves no file, THROWS (it used to be logged and absorbed).
+const shot = async name => {
+  await dismissToasts(); await sleep(250); await dismissToasts()
+  const file = join(OUT, `${name}.png`)
+  await page.screenshot({ path: file, timeout: 20000 })
+  if (!existsSync(file) || statSync(file).size === 0) throw new Error(`screenshot ${name}.png was not written`)
+  return file
+}
 const save = () => writeFileSync(join(OUT, 'live.json'), JSON.stringify({ ...log, mainTail: typeof log.mainTail === 'function' ? log.mainTail() : '' }, null, 2))
 
 // P26 (judge pass 20 #1/#3): semantic readiness. Before a section's resting screenshot, wait (up to READY_MS) for the
@@ -99,14 +110,20 @@ const READY = {
   '01-office': '[data-ops-approval], [data-ops-empty], [data-ops-needs-you]',
   '02-board': '[data-ops-card], [data-ops-empty]',
   '02b-board-card': '[data-ops-inspector-detail], [data-ops-card]',
+  // P27: the five sections that had no readiness selector. The resting shot of each is taken after its interaction.
+  '02c-board-drag-over': '[data-ops-columns] [data-ops-card]',
+  '10-focus': ':focus-visible',
+  '08b-settings-inspector': '[data-ops-prefs-reset-row], [data-ops-settings-group]',
+  '03d-canvas-compose': '[data-ops-compose] textarea',
+  '03b-canvas-draft': '[data-ops-node] [data-ops-node-body]',
   '03-canvas': '[data-ops-node] [data-ops-node-body]',
   '03c-canvas-node': '[data-ops-selected], [data-ops-inspector-detail="node"], [data-ops-node-detail]',
   '04-fleet': '[data-ops-fleet-row], [data-ops-lens="agents"] table tbody tr',
-  // P14 replaced Fleet cards with List|Table: the section's toggle now lands on the table (or the list). Loaded = rows.
-  '04b-fleet-cards': '[data-ops-roster] > li, [data-ops-lens="agents"] table tbody tr, [data-ops-fleet-row]',
+  // P27: Fleet and Skills are List|Table; the Table view has its own Table|Cards toggle. These sections capture Cards.
+  '04b-fleet-cards': '[data-ops-lens="agents"] [data-ops-roster] > li',
   '05-teams': '[data-ops-team], [data-ops-lens="agents"] [data-ops-empty]',
   '06-skills': '[data-ops-skill], [data-ops-lens="skills"] [data-ops-empty]',
-  '06b-skills-cards': '[data-ops-roster] > li, [data-ops-lens="skills"] table tbody tr, [data-ops-skill]',
+  '06b-skills-cards': '[data-ops-lens="skills"] [data-ops-roster] > li',
   '07-channels': '[data-ops-app], [data-ops-lens="channels"] [data-ops-row], [data-ops-empty="apps"]',
   '08-settings': '[data-ops-prefs-reset-row], [data-ops-settings-group]',
   '08c-settings-top': '[data-ops-prefs-reset-row], [data-ops-settings-group]',
@@ -124,7 +141,7 @@ const READY = {
 }
 const waitReady = async name => {
   const sel = READY[name]
-  if (!sel) return { state: 'no readiness selector', ms: 0 }
+  if (!sel) return { state: 'FAILED', ms: 0, why: 'no readiness selector' }
   const t = Date.now()
   const probe = () => page.evaluate(([sel, loading]) => {
     const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' }
@@ -145,12 +162,18 @@ log.readiness = {}
 
 async function section(name, fn) {
   const before = { c: log.console.filter(x => x.type === 'error').length, p: log.pageErrors.length, h: log.http.length, f: log.failed.length }
-  let ok = true, note = ''
-  try { note = (await fn()) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 300) }
+  const failures = []
+  let note = ''
+  // The interaction is bounded: a hung section is a failure, never a silent wait.
+  try { note = (await Promise.race([Promise.resolve().then(fn), sleep(120_000).then(() => { throw new Error('section interaction timed out after 120 s') })])) ?? '' } catch (e) { failures.push(`interaction: ${String(e?.message ?? e).split('\n')[0].slice(0, 260)}`) }
+  if (/^chrome-error:/.test(page.url())) failures.push(`navigation error: ${page.url().slice(0, 120)}`)
   await sleep(1500)
   const readiness = await waitReady(name)
-  log.readiness[name] = readiness.state === 'READY' ? `READY (${readiness.hits} x ${readiness.selector.split(',')[0].trim()}, ${readiness.ms} ms)` : readiness.state === 'NOT READY' ? `NOT READY after ${Math.round(readiness.ms / 1000)} s (${readiness.hits} visible; loading: ${(readiness.loading ?? []).join(' ; ') || 'none'})` : readiness.state
-  await shot(name)
+  log.readiness[name] = readiness.state === 'READY' ? `READY (${readiness.hits} x ${readiness.selector.split(',')[0].trim()}, ${readiness.ms} ms)` : readiness.state === 'NOT READY' ? `NOT READY after ${Math.round(readiness.ms / 1000)} s (${readiness.hits} visible; loading: ${(readiness.loading ?? []).join(' ; ') || 'none'})` : `FAILED: ${readiness.why}`
+  if (readiness.state === 'FAILED') failures.push(readiness.why)
+  try { await shot(name) } catch (e) { failures.push(`screenshot: ${String(e?.message ?? e).slice(0, 200)}`) }
+  const pageErrors = log.pageErrors.length - before.p
+  if (pageErrors > 0) failures.push(`${pageErrors} page error(s): ${log.pageErrors.slice(before.p).map(x => x.text.slice(0, 120)).join(' | ')}`)
   const stray = await page.evaluate(() => {
     const out = []
     const root = document.querySelector('[data-ops-root]')
@@ -168,14 +191,18 @@ async function section(name, fn) {
     }
     return out.slice(0, 10)
   }).catch(e => [String(e)])
+  // P27: one verdict per section. FAILED (the interaction, navigation, readiness selector, screenshot or a page error
+  // failed) wins over NOT READY (the readiness selector never matched loaded content); READY means ok.
+  const verdict = failures.length ? 'FAILED' : readiness.state === 'READY' ? 'READY' : 'NOT READY'
   log.sections[name] = {
-    ok, note, readiness: log.readiness[name],
+    ok: verdict === 'READY', verdict, note, failures, readiness: log.readiness[name],
     consoleErrors: log.console.filter(x => x.type === 'error').length - before.c,
-    pageErrors: log.pageErrors.length - before.p,
+    pageErrors,
     http4xx5xx: log.http.slice(before.h).map(x => `${x.status} ${x.url}`),
     failed: log.failed.slice(before.f).map(x => `${x.err} ${x.url}`),
     stray
   }
+  if (verdict !== 'READY') console.log(`${verdict} ${name}: ${failures.join(' | ') || log.readiness[name]}`)
   save()
 }
 
@@ -230,7 +257,7 @@ log.mainTail = () => mainOut.join('').slice(-6000)
 await offscreen()
 await sleep(5000)
 log.bootMs = Date.now() - t0
-await shot('00-boot')
+await shot('00-boot').catch(e => { log.bootShotError = String(e).slice(0, 300) })
 
 log.boardBefore = await page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') }).catch(e => 'ERR ' + e)
 if (want('probe')) {
@@ -300,6 +327,9 @@ if (want('drag')) await section('02c-board-drag-over', async () => {
   await sleep(400); await shot('02c-board-drag-over-live')
   const lit = await page.locator('[data-ops-drop="over"]').count()
   await page.evaluate(() => document.querySelector('[data-ops-card][data-ops-dragging]')?.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: window.__opsDt })))
+  // P27: no draggable card, or no drop highlight mid-drag, is a failed section (it used to pass with highlighted=0).
+  if (r === 'no-card') throw new Error('no draggable card and target column on the board')
+  if (!lit) throw new Error(`${r}: no column showed the drop highlight mid-drag`)
   return `${r}; highlighted=${lit}`
 })
 if (want('canvas')) await section('03-canvas', async () => { await go('/ops/canvas'); await page.evaluate(() => document.querySelector('[data-ops-canvas-hero]')?.scrollIntoView({ block: 'start' })); await sleep(300); return `nodes=${await page.locator('[data-ops-node-title]').count()}` })
@@ -346,6 +376,9 @@ if (want('focus')) await section('10-focus', async () => {
     await sleep(120)
     seen.push(await page.evaluate(() => { const e = document.activeElement; if (!e) return 'none'; const cs = getComputedStyle(e); return `${e.tagName.toLowerCase()}:${(e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 18)}|ring=${cs.outlineStyle !== 'none' && cs.outlineWidth !== '0px' ? cs.outlineWidth : cs.boxShadow !== 'none' ? 'shadow' : 'NONE'}` }))
   }
+  // P27: every Tab stop must show a focus ring.
+  const bare = seen.filter(x => x === 'none' || /ring=NONE$/.test(x))
+  if (bare.length) throw new Error(`${bare.length}/${seen.length} Tab stops without a visible focus ring: ${bare.join(' ; ')}`)
   return seen.join(' ; ')
 })
 if (want('settings-inspector')) await section('08b-settings-inspector', async () => {
@@ -364,6 +397,9 @@ if (want('compose')) await section('03d-canvas-compose', async () => {
   const items = await page.locator('[data-ops-proposal-item]').count()
   await page.locator('[data-ops-proposal-discard]').click({ timeout: 5000 })
   const staged = await page.locator('[data-ops-dirty]').count()
+  // P27: a proposal with no items, or a Discard that leaves something staged, is a failed section.
+  if (!items) throw new Error('the compose proposal listed no items')
+  if (staged) throw new Error(`Discard left ${staged} staged change(s)`)
   return `items=${items}; discarded; dirty=${staged}`
 })
 if (want('draft')) await section('03b-canvas-draft', async () => {
@@ -395,11 +431,27 @@ if (want('diagnostics')) await section('09-diagnostics', async () => {
   await page.locator('[data-ops-probe]').first().click({ timeout: 8000 }); await sleep(4000); await d.scrollIntoViewIfNeeded()
   return await page.evaluate(() => { const e = document.querySelector('[data-ops-diag-connection]'); return `${e?.getAttribute('data-ops-diag-connection')} writes=${e?.getAttribute('data-ops-writes')}` })
 })
-// B33: roster views. Switch to Cards, capture, switch back so the stored choice is unchanged.
-for (const [n, id, tab] of [['04b-fleet-cards', 'agents', 'fleet'], ['06b-skills-cards', 'skills']]) {
+// B33: roster views. P27 (judge pass 21 lines 43-45): Fleet and Skills are List|Table now; the old toggle selector
+// (DataTable's Table|Cards) only exists inside the Table view, so the section timed out waiting for it. Switch the lens
+// to Table, then the table to Cards, capture, and put both choices back as they were.
+for (const [n, id, tab, viewAttr] of [['04b-fleet-cards', 'agents', 'fleet', 'data-ops-fleet-view'], ['06b-skills-cards', 'skills', null, 'data-ops-skill-view']]) {
   if (!want(n.slice(4)) && !want(n.slice(4, -6))) continue
-  await section(n, async () => { await go('/ops/office'); await lens(id); if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 }); globalThis.__origView = await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).evaluateAll(bs => bs.findIndex(b => b.getAttribute('aria-pressed') === 'true')).catch(() => 0); const tg = page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(1); await tg.scrollIntoViewIfNeeded({ timeout: 8000 }); await tg.click({ timeout: 8000, force: true }); await sleep(600); return await page.evaluate(() => document.querySelectorAll('[data-ops-roster] > li').length + ' cards') })
-  await page.locator(`[data-ops-lens="${id}"] [data-ops-view-toggle] button`).nth(Math.max(0, globalThis.__origView ?? 0)).click({ timeout: 4000 }).catch(() => {})
+  const lensSel = `[data-ops-lens="${id}"]`
+  const restore = {}
+  await section(n, async () => {
+    await go('/ops/office'); await lens(id)
+    if (tab) await page.locator(`[data-ops-agents-tab="${tab}"]`).first().click({ timeout: 8000 })
+    restore.lensView = await page.locator(`${lensSel} [${viewAttr}][aria-pressed="true"]`).first().getAttribute(viewAttr, { timeout: 15000 })
+    await page.locator(`${lensSel} [${viewAttr}="table"]`).first().click({ timeout: 8000 })
+    const toggle = page.locator(`${lensSel} [data-ops-view-toggle] button`)
+    await toggle.first().waitFor({ state: 'visible', timeout: 15000 })
+    restore.tableView = await toggle.evaluateAll(bs => bs.findIndex(b => b.getAttribute('aria-pressed') === 'true'))
+    await toggle.nth(1).click({ timeout: 8000 })
+    await page.locator(`${lensSel} [data-ops-roster] > li`).first().waitFor({ state: 'visible', timeout: 15000 })
+    return `${await page.locator(`${lensSel} [data-ops-roster] > li`).count()} cards (lens view was ${restore.lensView}, table view was ${restore.tableView === 1 ? 'cards' : 'table'})`
+  })
+  await page.locator(`${lensSel} [data-ops-view-toggle] button`).nth(Math.max(0, restore.tableView ?? 0)).click({ timeout: 4000 }).catch(() => {})
+  if (restore.lensView) await page.locator(`${lensSel} [${viewAttr}="${restore.lensView}"]`).first().click({ timeout: 4000 }).catch(() => {})
 }
 // Glass/IA pass: the main Hermes screens outside Ops (read-only visits; Escape closes overlays).
 for (const [n, route] of [['20-app-chat', '/'], ['21-app-settings', '/settings'], ['22-app-profiles', '/profiles'], ['23-app-capabilities', '/capabilities'], ['24-app-messaging', '/messaging'], ['25-app-artifacts', '/artifacts'], ['26-app-cron', '/cron'], ['27-app-command-center', '/command-center'], ['28-app-agents', '/agents']]) {
@@ -430,10 +482,32 @@ const boardSig = () => page.evaluate(async () => { const b = await window.hermes
 log.boardAfter = await boardSig().catch(e => 'ERR ' + e)
 log.boardUnchanged = log.boardBefore === log.boardAfter
 save()
+// P27: the summary separates READY / NOT READY / FAILED (never one number), and is what decides the exit code.
+{
+  const entries = Object.entries(log.sections)
+  const by = v => entries.filter(([, x]) => x.verdict === v).map(([k]) => k)
+  log.summary = {
+    total: entries.length,
+    READY: by('READY').length,
+    'NOT READY': by('NOT READY').length,
+    FAILED: by('FAILED').length,
+    notReady: by('NOT READY').map(k => ({ section: k, readiness: log.sections[k].readiness })),
+    failed: by('FAILED').map(k => ({ section: k, why: log.sections[k].failures })),
+    bootReady: log.bootReady,
+    pageErrors: log.pageErrors.length,
+    boardUnchanged: log.boardUnchanged,
+    exit: 0
+  }
+  log.summary.exit = log.summary.total > 0 && log.summary.READY === log.summary.total && log.bootReady && log.boardUnchanged ? 0 : 5
+  save()
+}
 console.log(JSON.stringify({ boardUnchanged: log.boardUnchanged, sections: log.sections, fps: log.fps, bootMs: log.bootMs, console: log.console.length, pageErrors: log.pageErrors.length }, null, 1))
+console.log('READINESS ' + JSON.stringify(log.readiness, null, 1))
+console.log(`SUMMARY sections=${log.summary.total} READY=${log.summary.READY} NOT READY=${log.summary['NOT READY']} FAILED=${log.summary.FAILED} pageErrors=${log.summary.pageErrors} boardUnchanged=${log.boardUnchanged} exit=${log.summary.exit}`)
+for (const f of log.summary.failed) console.log(`  FAILED ${f.section}: ${f.why.join(' | ')}`)
+for (const f of log.summary.notReady) console.log(`  NOT READY ${f.section}: ${f.readiness}`)
 // P26 (judge pass 20): the last run hung after finishing. A bounded close, then the app process is killed, the
 // snapshot gateway stopped, and the process exits (nothing left holding the event loop).
-console.log('READINESS ' + JSON.stringify(log.readiness, null, 1))
 await Promise.race([app.close().catch(() => {}), sleep(20000)])
 try { app.process().kill() } catch {}
-process.exit(Object.values(log.readiness).some(v => /^NOT READY/.test(v)) ? 5 : 0)
+process.exit(log.summary.exit)
