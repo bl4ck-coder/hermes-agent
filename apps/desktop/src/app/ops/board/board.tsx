@@ -149,7 +149,7 @@ function Windowed({ tasks, viewport, render, expandedId }: { tasks: BoardTask[];
     return () => ro?.disconnect()
   }, [expandedId, index])
 
-  const pitch = index >= 0 && measured?.id === expandedId ? measured.pitch : ROW_H
+  const pitch = index >= 0 && measured && measured.id === expandedId ? measured.pitch : ROW_H
   const w = windowRange(tasks.length, top, viewport, ROW_H, 4, index >= 0 ? { index, pitch } : null)
   const kept = w.kept ? render(tasks[w.kept.index]) : null
 
