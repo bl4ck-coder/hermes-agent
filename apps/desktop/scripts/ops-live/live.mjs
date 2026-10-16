@@ -102,10 +102,11 @@ const READY = {
   '03-canvas': '[data-ops-node] [data-ops-node-body]',
   '03c-canvas-node': '[data-ops-selected], [data-ops-inspector-detail="node"], [data-ops-node-detail]',
   '04-fleet': '[data-ops-fleet-row], [data-ops-lens="agents"] table tbody tr',
-  '04b-fleet-cards': '[data-ops-roster] > li',
+  // P14 replaced Fleet cards with List|Table: the section's toggle now lands on the table (or the list). Loaded = rows.
+  '04b-fleet-cards': '[data-ops-roster] > li, [data-ops-lens="agents"] table tbody tr, [data-ops-fleet-row]',
   '05-teams': '[data-ops-team], [data-ops-lens="agents"] [data-ops-empty]',
   '06-skills': '[data-ops-skill], [data-ops-lens="skills"] [data-ops-empty]',
-  '06b-skills-cards': '[data-ops-roster] > li',
+  '06b-skills-cards': '[data-ops-roster] > li, [data-ops-lens="skills"] table tbody tr, [data-ops-skill]',
   '07-channels': '[data-ops-app], [data-ops-lens="channels"] [data-ops-row], [data-ops-empty="apps"]',
   '08-settings': '[data-ops-prefs-reset-row], [data-ops-settings-group]',
   '08c-settings-top': '[data-ops-prefs-reset-row], [data-ops-settings-group]',
@@ -114,8 +115,9 @@ const READY = {
   '21-app-settings': '[data-settings-form-row] input, [data-settings-form-row] button[role="combobox"], [data-settings-row] input, [data-settings-row] [role="combobox"], [data-settings-row] [role="switch"]',
   '22-app-profiles': '[data-profile-soul-editor] .cm-content',
   '23-app-capabilities': '[data-skill-column] [data-selectable-text], [data-skill-load-error]',
-  '24-app-messaging': 'main h1, main h2, [data-panel-empty]',
-  '25-app-artifacts': '[data-artifact-card], tbody tr.group\/artifact, [data-artifacts-empty], [data-artifacts-empty-action]',
+  // Messaging has no data hooks: its platform list rows (PlatformRow buttons) are the loaded content.
+  '24-app-messaging': 'ul.space-y-1 > li > button.row-hover, [data-panel-empty]',
+  '25-app-artifacts': '[data-artifact-card], tbody tr.group\\/artifact, [data-artifacts-empty], [data-artifacts-empty-action]',
   '26-app-cron': '[data-panel-row], [data-cron-glance], [data-panel-empty]',
   '27-app-command-center': '[data-session-row], [data-sessions-empty-action]',
   '28-app-agents': '[data-slot="tool-block"], [data-panel-empty="agents"]'
