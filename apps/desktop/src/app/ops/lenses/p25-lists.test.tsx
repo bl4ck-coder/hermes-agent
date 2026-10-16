@@ -98,9 +98,9 @@ describe('P25 Fleet: compact rows, Details beside the primary action, present an
     expect(document.querySelector('[data-ops-rows-group="running"] [data-ops-fleet-row="builder"]')).toBeTruthy()
     expect(document.querySelector('[data-ops-rows-group="recent"] [data-ops-fleet-row="scribe"]')).toBeTruthy()
     expect(document.querySelector('[data-ops-rows-group="quiet"] [data-ops-fleet-row="quiet"]')).toBeTruthy()
-    // The running agent's line is about now; its earlier failures are history and wait in Details.
+    // The running agent's line is about now (P26: the work it runs, by title); its earlier failures wait in Details.
     const running = document.querySelector('[data-ops-fleet-row="builder"] [data-ops-row-context]')?.textContent ?? ''
-    expect(running).toBe('1 active')
+    expect(running).toBe('Working on: Ship it')
     expect(document.querySelector('[data-ops-fleet-row="scribe"] [data-ops-row-context]')?.textContent).toContain(
       '1 failed run'
     )
@@ -154,18 +154,18 @@ describe('P25 Teams: name, stated purpose, then the work in words; lane ids in t
       'Blocked Ship the onboarding emails'
     )
     expect(context.querySelector('[data-ops-team-work="open"]')?.textContent).toMatch(
-      /^Working on: (Decide the pricing copy|Migrate the CDN) \+1$/
+      /^Open work: (Decide the pricing copy|Migrate the CDN) \+1$/
     )
     // No counters and no technical id outside the expansion.
     const body = row.querySelector('[data-ops-disclosure-body]') as HTMLElement
     expect(row.querySelector('[data-ops-row-main]')?.textContent).not.toContain('ops-panel')
     expect(row.querySelector('[data-ops-row-meta]')).toBeNull()
     expect(row.querySelector('[data-ops-row-main] [data-ops-team-open-n]')).toBeNull()
-    // Expansion: lane id, states, every task with its state, members, projects, as one labelled list under the work.
+    // Expansion: lane id, states, the tasks the summary does not show (P26: each task once), members, projects.
     const detail = within(body)
     expect(body.querySelector('[data-ops-team-lane-id]')?.textContent).toBe('ops-panel')
     expect(body.querySelector('[data-ops-team-states]')?.textContent).toBe('1 blocked3 open')
-    expect(body.querySelectorAll('[data-ops-team-rest] li')).toHaveLength(3)
+    expect(body.querySelectorAll('[data-ops-team-rest] li')).toHaveLength(1)
     expect(detail.getByText('Members').tagName).toBe('DT')
     expect(body.querySelector('[data-ops-team-members]')?.textContent).toContain('writer')
     expect(body.querySelector('[data-ops-team-project="brand"]')).toBeTruthy()

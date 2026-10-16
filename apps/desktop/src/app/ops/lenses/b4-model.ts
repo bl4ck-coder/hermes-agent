@@ -36,10 +36,14 @@ export interface FleetRow {
   status: FleetStatus
   /** P8: the open task that is failing (most consecutive failures), so attention says why. */
   failingTask?: { id: string; title: string; failures: number } | null
+  /** P26: the work this agent is running, when a source names it: its worker's task, else a running board task. Never a queued task. */
+  runningTask?: { id: string; title: string } | null
+  /** P26: how many other running tasks the agent has beyond runningTask. */
+  runningMore?: number
 }
 
 export const WEEK_S = 7 * 86_400
-const OPEN = new Set(['triage', 'todo', 'ready', 'running', 'blocked', 'review'])
+const OPEN = new Set(['triage', 'todo', 'scheduled', 'ready', 'running', 'blocked', 'review'])
 
 /** O76: role = first clause of the profile description. */
 export function roleOf(description?: string | null): string | null {
@@ -81,6 +85,10 @@ export function fleetRows(
     const failingTasks = (mine ?? []).filter(t => OPEN.has(t.status) && (t.consecutive_failures ?? 0) > 0)
     const failing = failingTasks.length > 0
     const worst = failingTasks.sort((a, b) => (b.consecutive_failures ?? 0) - (a.consecutive_failures ?? 0))[0]
+    // P26 (judge pass 20 #4): the running work, by title, only when some source names it (worker task first).
+    const byId = new Map((tasks ?? []).map(t => [t.id, t]))
+    const workerTasks = (workers ?? []).filter(w => w.profile === p.name).map(w => byId.get(w.task_id))
+    const runningTasks = [...new Set([...workerTasks, ...(mine ?? []).filter(t => t.status === 'running')])].filter((t): t is BoardTask => !!t?.title)
 
     return {
       name: p.name,
@@ -93,7 +101,9 @@ export function fleetRows(
       failed7d: stats ? (stats[p.name]?.failed ?? 0) : null,
       lastActive: Math.max(last ?? 0, stats?.[p.name]?.last_started_at ?? 0) || null,
       status: !tasks && !workers ? 'unknown' : failing ? 'failing' : live ? 'running' : 'idle',
-      failingTask: worst ? { id: worst.id, title: worst.title || worst.id, failures: worst.consecutive_failures ?? 0 } : null
+      failingTask: worst ? { id: worst.id, title: worst.title || worst.id, failures: worst.consecutive_failures ?? 0 } : null,
+      runningTask: runningTasks[0] ? { id: runningTasks[0].id, title: String(runningTasks[0].title) } : null,
+      runningMore: Math.max(0, runningTasks.length - 1)
     }
   })
 }
