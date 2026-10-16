@@ -124,9 +124,9 @@ export function ConfigField({
 
   // `fallback_providers` is a list of {provider, model} objects; the generic
   // `list` branch below would stringify them to "[object Object]". Render the
-  // dedicated structured editor instead.
+  // dedicated structured editor instead. P26: it gets the row's a11y and wires it into each of its controls.
   if (schemaKey === 'fallback_providers') {
-    return wideRow(<FallbackModelsField onChange={onChange} value={value} />)
+    return wideRow(<FallbackModelsField a11y={a11y} onChange={onChange} value={value} />)
   }
 
   if (schema.type === 'boolean') {

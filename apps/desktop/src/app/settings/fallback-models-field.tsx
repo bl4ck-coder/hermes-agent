@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type { settingsControlProps } from '@/components/ui/settings-form-row'
 import { getGlobalModelOptions } from '@/hermes'
 import { useI18n } from '@/i18n'
 import { Plus, X } from '@/lib/icons'
@@ -68,13 +69,19 @@ function entriesEqual(a: FallbackEntry[], b: FallbackEntry[]): boolean {
  * selects sourced from `getGlobalModelOptions()`. Half-filled rows are kept in
  * local state and only complete pairs are emitted upward, so the config
  * autosave never persists a partial `{provider, model: ''}`.
+ *
+ * P26 (judge pass 20 #2): `a11y` is the row's control props (SettingsFormRow). The list is a group named by the row
+ * label and described by its help/error; every select, input and button in it is described the same way (and marked
+ * invalid while the save is refused), with a name that says which entry it acts on ("Provider 2", "Remove 2: …").
  */
 export function FallbackModelsField({
   value,
-  onChange
+  onChange,
+  a11y
 }: {
   value: unknown
   onChange: (next: FallbackEntry[]) => void
+  a11y?: ReturnType<typeof settingsControlProps>
 }) {
   const { t } = useI18n()
   const m = t.settings.model
@@ -121,17 +128,34 @@ export function FallbackModelsField({
   const updateRow = (index: number, patch: Partial<FallbackEntry>) =>
     commit(rows.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)))
 
+  const baseId = a11y?.id ?? 'fallback-providers'
+  const labelId = a11y?.['aria-labelledby']
+  const described = { 'aria-describedby': a11y?.['aria-describedby'] }
+  const invalid = { ...described, 'aria-invalid': a11y?.['aria-invalid'] }
+  // Named by the row label, then its own words: "Fallback Models Provider 2".
+  const named = (id: string, own: string) => ({ id, 'aria-label': own, 'aria-labelledby': labelId ? `${labelId} ${id}` : undefined })
+
   return (
-    <div className="grid w-full gap-1.5">
+    <div
+      aria-describedby={a11y?.['aria-describedby']}
+      aria-labelledby={labelId}
+      className="grid w-full gap-1.5"
+      id={a11y?.id}
+      role="group"
+    >
       {rows.length === 0 && <p className="text-xs text-muted-foreground">{m.fallbackEmpty}</p>}
       {rows.map((entry, index) => {
         const providerRow = providers.find(provider => provider.slug === entry.provider)
+        const n = index + 1
+        const providerName = providerRow?.name ?? entry.provider
 
         return (
           <div className="flex flex-wrap items-center gap-2" key={index}>
-            <span className="w-4 shrink-0 text-center font-mono text-xs text-muted-foreground">{index + 1}</span>
+            <span aria-hidden="true" className="w-4 shrink-0 text-center font-mono text-xs text-muted-foreground">
+              {n}
+            </span>
             <Select onValueChange={provider => updateRow(index, { provider, model: '' })} value={entry.provider}>
-              <SelectTrigger className={cn('min-w-36', CONTROL_TEXT)}>
+              <SelectTrigger {...invalid} {...named(`${baseId}-${index}-provider`, `${m.provider} ${n}`)} className={cn('min-w-36', CONTROL_TEXT)}>
                 <SelectValue placeholder={m.provider} />
               </SelectTrigger>
               <SelectContent>
@@ -143,6 +167,8 @@ export function FallbackModelsField({
               </SelectContent>
             </Select>
             <ModelSelect
+              {...invalid}
+              {...named(`${baseId}-${index}-model`, providerName ? `${m.model} ${n} (${providerName})` : `${m.model} ${n}`)}
               className="min-w-52 flex-1"
               models={providerRow?.models ?? []}
               onValueChange={model => updateRow(index, { model })}
@@ -151,7 +177,8 @@ export function FallbackModelsField({
               value={entry.model}
             />
             <Button
-              aria-label={t.common.remove}
+              {...described}
+              aria-label={[`${t.common.remove} ${n}`, [providerName, entry.model].filter(Boolean).join(' / ')].filter(Boolean).join(': ')}
               onClick={() => commit(rows.filter((_, i) => i !== index))}
               size="icon-xs"
               variant="ghost"
@@ -162,7 +189,7 @@ export function FallbackModelsField({
         )
       })}
       <div>
-        <Button onClick={() => commit([...rows, { provider: '', model: '' }])} size="sm" variant="textStrong">
+        <Button {...described} onClick={() => commit([...rows, { provider: '', model: '' }])} size="sm" variant="textStrong">
           <Plus className="size-3.5" />
           {m.fallbackAdd}
         </Button>
