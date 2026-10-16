@@ -264,9 +264,14 @@ function TeamsView({ tasks, tasksError, purposes, onOpenRoute }: { tasks: BoardT
   // P14 (judge consult): one EntityRow per lane.
   // P25 (judge pass 19): the closed row reads name → stated purpose (only if one exists) → the work in words, blocked first,
   // then open. No counters in the row; the lane id, states, every task, members and projects sit in the expansion, in one rhythm.
+  // P26 (judge pass 20 #4): "Working on" only for running tasks; other open work says so. The summary shows the lead task
+  // of each kind; the expansion lists the rest once, with their state, then members and projects.
   const row = (t: (typeof list)[number]) => {
     const blocked = t.work.filter(w => w.status === 'blocked')
-    const open = t.work.filter(w => w.status !== 'blocked')
+    const running = t.work.filter(w => w.status === 'running')
+    const open = t.work.filter(w => w.status !== 'blocked' && w.status !== 'running')
+    const shown = new Set([blocked[0], running[0], open[0]].filter(Boolean).map(w => w.id))
+    const rest = t.work.filter(w => !shown.has(w.id))
     const more = (n: number) => (n > 0 ? <span data-ops-team-more-n=""> +{n}</span> : null)
 
     return (
@@ -282,9 +287,15 @@ function TeamsView({ tasks, tasksError, purposes, onOpenRoute }: { tasks: BoardT
                 {more(blocked.length - 1)}
               </span>
             ) : null}
+            {running.length ? (
+              <span data-ops-team-work="running">
+                <span data-ops-team-now="">{T('Working on')}:</span> <span data-ops-team-task={running[0].id}>{running[0].title}</span>
+                {more(running.length - 1)}
+              </span>
+            ) : null}
             {open.length ? (
               <span data-ops-team-work="open">
-                <span data-ops-team-now="">{T('Working on')}:</span> <span data-ops-team-task={open[0].id}>{open[0].title}</span>
+                <span data-ops-team-open-tag="">{T('Open work')}:</span> <span data-ops-team-task={open[0].id}>{open[0].title}</span>
                 {more(open.length - 1)}
               </span>
             ) : null}
@@ -309,12 +320,12 @@ function TeamsView({ tasks, tasksError, purposes, onOpenRoute }: { tasks: BoardT
                 {t.blocked ? <span data-ops-team-blocked="">{P(t.blocked, '{n} blocked')}</span> : null}
                 <span data-ops-team-open-n="">{P(t.open, '{n} open')}</span>
               </dd>
-              {t.work.length ? (
+              {rest.length ? (
                 <>
-                  <dt>{T('Open tasks')}</dt>
+                  <dt>{T('Other open tasks')}</dt>
                   <dd>
-                    <ul aria-label={T('Open tasks')} data-ops-team-rest="">
-                      {t.work.map(f => (
+                    <ul aria-label={T('Other open tasks')} data-ops-team-rest="">
+                      {rest.map(f => (
                         <li data-ops-team-task={f.id} data-ops-team-task-blocked={f.status === 'blocked' ? '' : undefined} key={f.id}>
                           <span data-ops-team-task-status={f.status}>{T(statusWord(f.status))}</span> {f.title}
                         </li>
@@ -422,7 +433,10 @@ function FleetRows({ rows, now, onOpen }: { rows: ReturnType<typeof fleetRows>; 
         ? T('No task or worker data for this agent.')
         : r.status !== 'running' && (r.failed7d ?? 0) > 0
           ? `${P(r.failed7d ?? 0, '{n} failed runs')} ${T('in the last 7 days')}`
-          : r.active
+          : // P26 (judge pass 20 #4): a running agent reads as the work it runs when a source names it; the count is the fallback.
+            r.status === 'running' && r.runningTask
+            ? `${T('Working on')}: ${r.runningTask.title}${r.runningMore ? ` +${r.runningMore}` : ''}`
+            : r.active
             ? P(r.active, '{n} active')
             : null
 
