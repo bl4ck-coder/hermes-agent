@@ -1,0 +1,22 @@
+{
+  "Your edits are kept in the editor.": {
+    "es": "Tus cambios siguen en el editor.",
+    "fr": "Vos modifications restent dans l’éditeur.",
+    "de": "Deine Änderungen bleiben im Editor.",
+    "ru": "Ваши изменения остаются в редакторе.",
+    "ja": "編集内容はエディターに残っています。",
+    "zh": "你的修改仍保留在编辑器中。",
+    "zh-hant": "你的修改仍保留在編輯器中。",
+    "ar": "تعديلاتك ما زالت في المحرر."
+  },
+  "storage kept the previous value": {
+    "es": "el almacenamiento conservó el valor anterior",
+    "fr": "le stockage a conservé la valeur précédente",
+    "de": "der Speicher hat den vorherigen Wert behalten",
+    "ru": "хранилище сохранило прежнее значение",
+    "ja": "ストレージには以前の値が残っています",
+    "zh": "存储仍保留之前的值",
+    "zh-hant": "儲存空間仍保留先前的值",
+    "ar": "احتفظ التخزين بالقيمة السابقة"
+  }
+}
