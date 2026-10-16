@@ -38,13 +38,18 @@ const env = {
   HERMES_DESKTOP_SKIP_QUIT_CONFIRM: '1'
 }
 delete env.HERMES_DESKTOP_DEV_SERVER
+// P26: OPS_LIVE_PYTHON is a self-contained venv. An inherited PYTHONPATH/PYTHONHOME (e.g. another Hermes env's
+// site-packages) makes it import foreign compiled modules and fail; the preflight, the Electron launch (its pooled
+// backend) and the gateway stop all use this env, without them.
+delete env.PYTHONPATH
+delete env.PYTHONHOME
 
 // B11 safety: never launch a test window whose backend cannot start (a wrong interpreter makes the
 // isolated instance loop on 'Hermes couldn't start' in a visible window on the user's desktop).
 {
   const { spawnSync } = await import('node:child_process')
   const py = process.env.OPS_LIVE_PYTHON
-  const probe = py ? spawnSync(py, ['-c', 'import hermes_cli.web_server'], { cwd: resolve(DESKTOP, '..', '..'), encoding: 'utf8', timeout: 120_000 }) : null
+  const probe = py ? spawnSync(py, ['-c', 'import hermes_cli.web_server'], { cwd: resolve(DESKTOP, '..', '..'), env, encoding: 'utf8', timeout: 120_000 }) : null
   if (!probe || probe.status !== 0) {
     console.error('ops-live preflight failed: OPS_LIVE_PYTHON must import hermes_cli.web_server from this checkout.', probe?.stderr?.slice(-400) ?? 'unset')
     process.exit(2)
@@ -84,11 +89,65 @@ const dismissToasts = async () => {
 const shot = async name => { await dismissToasts(); await sleep(250); await dismissToasts(); return page.screenshot({ path: join(OUT, `${name}.png`) }).catch(e => log.console.push({ type: 'shot', text: String(e) })) }
 const save = () => writeFileSync(join(OUT, 'live.json'), JSON.stringify({ ...log, mainTail: typeof log.mainTail === 'function' ? log.mainTail() : '' }, null, 2))
 
+// P26 (judge pass 20 #1/#3): semantic readiness. Before a section's resting screenshot, wait (up to READY_MS) for the
+// selector that proves the screen LOADED its content (rows, form fields, the SOUL editor, documents, an empty state),
+// with no loading marker (skeleton, spinner, PageLoader, 'loading.' notice) visible in the main surface. If it is not
+// reached the section is recorded NOT READY in live.json (and still screenshotted), never silently a loading shot.
+const READY_MS = 90_000
+const LOADING = '[data-slot="skeleton"], .animate-pulse, [aria-busy="true"], [role="status"]:has(> [role="presentation"][aria-hidden="true"]), [data-ops-unavailable]'
+const READY = {
+  '01-office': '[data-ops-approval], [data-ops-empty], [data-ops-needs-you]',
+  '02-board': '[data-ops-card], [data-ops-empty]',
+  '02b-board-card': '[data-ops-inspector-detail], [data-ops-card]',
+  '03-canvas': '[data-ops-node] [data-ops-node-body]',
+  '03c-canvas-node': '[data-ops-selected], [data-ops-inspector-detail="node"], [data-ops-node-detail]',
+  '04-fleet': '[data-ops-fleet-row], [data-ops-lens="agents"] table tbody tr',
+  '04b-fleet-cards': '[data-ops-roster] > li',
+  '05-teams': '[data-ops-team], [data-ops-lens="agents"] [data-ops-empty]',
+  '06-skills': '[data-ops-skill], [data-ops-lens="skills"] [data-ops-empty]',
+  '06b-skills-cards': '[data-ops-roster] > li',
+  '07-channels': '[data-ops-app], [data-ops-lens="channels"] [data-ops-row], [data-ops-empty="apps"]',
+  '08-settings': '[data-ops-prefs-reset-row], [data-ops-settings-group]',
+  '08c-settings-top': '[data-ops-prefs-reset-row], [data-ops-settings-group]',
+  '09-diagnostics': '[data-ops-diag-hero]:not([data-ops-diag-hero="idle"])',
+  '20-app-chat': '[data-slot="composer-root"] [aria-label]',
+  '21-app-settings': '[data-settings-form-row] input, [data-settings-form-row] button[role="combobox"], [data-settings-row] input, [data-settings-row] [role="combobox"], [data-settings-row] [role="switch"]',
+  '22-app-profiles': '[data-profile-soul-editor] .cm-content',
+  '23-app-capabilities': '[data-skill-column] [data-selectable-text], [data-skill-load-error]',
+  '24-app-messaging': 'main h1, main h2, [data-panel-empty]',
+  '25-app-artifacts': '[data-artifact-card], tbody tr.group\/artifact, [data-artifacts-empty], [data-artifacts-empty-action]',
+  '26-app-cron': '[data-panel-row], [data-cron-glance], [data-panel-empty]',
+  '27-app-command-center': '[data-session-row], [data-sessions-empty-action]',
+  '28-app-agents': '[data-slot="tool-block"], [data-panel-empty="agents"]'
+}
+const waitReady = async name => {
+  const sel = READY[name]
+  if (!sel) return { state: 'no readiness selector', ms: 0 }
+  const t = Date.now()
+  const probe = () => page.evaluate(([sel, loading]) => {
+    const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' }
+    const hits = [...document.querySelectorAll(sel)].filter(vis)
+    const busy = [...document.querySelectorAll(loading)].filter(vis).filter(el => !el.matches('[data-ops-unavailable]') || /loading/i.test(el.textContent || ''))
+    return { hits: hits.length, busy: busy.map(el => `<${el.tagName.toLowerCase()} ${[...el.attributes].map(a => a.name).filter(n => n.startsWith('data-') || n.startsWith('aria') || n === 'role' || n === 'class').join(' ').slice(0, 80)}> ${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 60)}`).slice(0, 4) }
+  }, [sel, LOADING]).catch(e => ({ hits: 0, busy: [`probe failed: ${String(e).slice(0, 120)}`] }))
+  let last = { hits: 0, busy: [] }
+  while (Date.now() - t < READY_MS) {
+    last = await probe()
+    if (last.hits > 0 && last.busy.length === 0) return { state: 'READY', ms: Date.now() - t, selector: sel, hits: last.hits }
+    await sleep(500)
+  }
+  console.log(`NOT READY ${name}: ${last.hits} visible '${sel}', loading markers: ${last.busy.join(' ; ') || 'none'}`)
+  return { state: 'NOT READY', ms: Date.now() - t, selector: sel, hits: last.hits, loading: last.busy }
+}
+log.readiness = {}
+
 async function section(name, fn) {
   const before = { c: log.console.filter(x => x.type === 'error').length, p: log.pageErrors.length, h: log.http.length, f: log.failed.length }
   let ok = true, note = ''
   try { note = (await fn()) ?? '' } catch (e) { ok = false; note = String(e).slice(0, 300) }
   await sleep(1500)
+  const readiness = await waitReady(name)
+  log.readiness[name] = readiness.state === 'READY' ? `READY (${readiness.hits} x ${readiness.selector.split(',')[0].trim()}, ${readiness.ms} ms)` : readiness.state === 'NOT READY' ? `NOT READY after ${Math.round(readiness.ms / 1000)} s (${readiness.hits} visible; loading: ${(readiness.loading ?? []).join(' ; ') || 'none'})` : readiness.state
   await shot(name)
   const stray = await page.evaluate(() => {
     const out = []
@@ -108,7 +167,7 @@ async function section(name, fn) {
     return out.slice(0, 10)
   }).catch(e => [String(e)])
   log.sections[name] = {
-    ok, note,
+    ok, note, readiness: log.readiness[name],
     consoleErrors: log.console.filter(x => x.type === 'error').length - before.c,
     pageErrors: log.pageErrors.length - before.p,
     http4xx5xx: log.http.slice(before.h).map(x => `${x.status} ${x.url}`),
@@ -369,5 +428,10 @@ const boardSig = () => page.evaluate(async () => { const b = await window.hermes
 log.boardAfter = await boardSig().catch(e => 'ERR ' + e)
 log.boardUnchanged = log.boardBefore === log.boardAfter
 save()
-await app.close().catch(() => {})
 console.log(JSON.stringify({ boardUnchanged: log.boardUnchanged, sections: log.sections, fps: log.fps, bootMs: log.bootMs, console: log.console.length, pageErrors: log.pageErrors.length }, null, 1))
+// P26 (judge pass 20): the last run hung after finishing. A bounded close, then the app process is killed, the
+// snapshot gateway stopped, and the process exits (nothing left holding the event loop).
+console.log('READINESS ' + JSON.stringify(log.readiness, null, 1))
+await Promise.race([app.close().catch(() => {}), sleep(20000)])
+try { app.process().kill() } catch {}
+process.exit(Object.values(log.readiness).some(v => /^NOT READY/.test(v)) ? 5 : 0)

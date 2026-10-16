@@ -92,6 +92,10 @@ const withMessages = m => [{ path: R_SIDEBAR, body: SIDEBAR }, { path: R_SLICE, 
 // A 1x1 transparent PNG, served for the thumbnail negative control (the image loads, so nothing may fail).
 const PNG_1PX = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64')
 
+// The test instance follows the OS locale (es on this machine): visible words are matched in English or Spanish.
+const SAVING = /Saving|Guardando/
+const PREVIEW_UNAVAILABLE = /Preview unavailable|Vista previa no disponible/
+
 /** A check that reads evidence the interaction recorded in ctx (it fails when the interaction never got there). */
 const ev = (key, fn) => async (ms, ctx) => {
   const v = ctx?.[key]
@@ -100,7 +104,7 @@ const ev = (key, fn) => async (ms, ctx) => {
 }
 const flatKeys = (o, p = '') => (o && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).flatMap(([k, v]) => flatKeys(v, p ? `${p}.${k}` : k)) : p ? [p] : [])
 
-export default async function ({ page, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, reload, see, none, served, tap, type, visible, reqSeq, requests }) {
+export default async function ({ page, app, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, reload, see, none, served, tap, type, visible, reqSeq, requests, gateway, harness }) {
   if (!want('hard') && !want('all')) return
   // Office and Board are pinned routes, not rail lenses.
   const open = async id => { if (id === 'office' || id === 'board') { await go(`/ops/${id}`); await sleep(1500); return } await go('/ops'); await lens(id) }
@@ -150,18 +154,22 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
     neg: { mocks: [{ path: R_PENDING, body: PENDING }], act: async () => { await reload(); await open('board') } }
   })
   const clearFilters = async () => { for (const sel of ['input[data-ops-filter]', boardFilter]) { const l = visible(sel); for (let i = await l.count(); i--;) await l.nth(i).fill('').catch(() => {}) } }
+  const boardFilterAct = input => async ctx => { await open('board'); await see('[data-ops-card="t1"]'); ctx.before = await visible('[data-ops-card]').evaluateAll(els => els.map(e => e.getAttribute('data-ops-card'))); await type(input, 'pricing') }
   await state('board', 'filtered', {
     proves: "Typing in the Board's own filter keeps the matching card and hides the others.",
     mocks: base, open: () => open('board'),
-    act: async () => { await open('board'); await type(boardFilter, 'pricing') },
+    // P26 (judge pass 20 #2): every non-matching fixture card is hidden, not only t2/t3/t5. The act records which
+    // fixture cards were visible before typing, so 'hidden' is measured against the whole board.
+    act: boardFilterAct(boardFilter),
     checks: {
       'board-filter-value': ms => see(boardFilter, { value: 'pricing', ms }),
+      'whole-board-before': ev('before', ids => { const want = BOARD.columns.flatMap(c => c.tasks.map(t => t.id)).filter(id => id !== 't7'); const miss = want.filter(id => !ids.includes(id)); if (miss.length) throw new Error(`before filtering, fixture cards not visible: ${miss.join(', ')} (saw ${ids.join(', ')})`); return `before filtering ${ids.length} cards visible (${ids.join(', ')})` }),
       'match-shown': ms => see('[data-ops-card="t1"]', { text: 'pricing', ms }),
-      'others-hidden': ms => none('[data-ops-card="t2"], [data-ops-card="t3"], [data-ops-card="t5"]', { ms })
+      'all-others-hidden': ms => none('[data-ops-card]:not([data-ops-card="t1"])', { ms }).then(a => see('[data-ops-card]', { count: 1, ms }).then(b => `${a}; ${b}`))
     },
     // The P21 bug as the negative: the same text typed into the side rail filter must not pass. ('match-shown' only
     // guards against over-filtering, so it holds either way.)
-    neg: { act: async () => { await open('board'); await type('input[data-ops-filter]', 'pricing') }, fails: ['board-filter-value', 'others-hidden'] },
+    neg: { act: boardFilterAct('input[data-ops-filter]'), fails: ['board-filter-value', 'all-others-hidden'] },
     after: clearFilters
   })
   await state('board', 'refresh-failed', {
@@ -339,12 +347,18 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
   const field = '[data-tour*="context_length"] input, [data-tour*="context"] input[type="number"]'
   const R_PUT = '^/api/config'
   await state('app-settings', 'save-pending', {
-    proves: 'An App Settings field edit that is still being saved shows its saving status beside the field.',
+    proves: "An App Settings field edit that is still being saved shows 'Saving' in THAT field's own row (its status slot), and no other field claims to be saving.",
     mocks: [{ path: R_PUT, method: 'PUT', delay: 8000, throw: '422: rejected by schema (mock)' }, ...base],
     open: () => goApp('/settings'),
-    act: async () => { await goApp('/settings'); await type(field, '180000'); await page.keyboard.press('Tab').catch(() => {}); await sleep(1500) },
+    // P26 (judge pass 20 #2): the edited field's schema key is read from its own row, and the Saving text must sit in that
+    // row's status slot ([data-settings-field-status=<key>] inside [data-tour=field-<key>]), not in any status.
+    act: async ctx => { await goApp('/settings'); ctx.key = await visible(field).first().evaluate(el => el.closest('[data-tour^="field-"]')?.getAttribute('data-tour')?.slice(6) ?? null); await type(field, '180000'); await page.keyboard.press('Tab').catch(() => {}); await sleep(1500) },
     checks: {
-      'saving-status': ms => see('[data-settings-field-status]', { ms: Math.min(ms, 5000) }),
+      'saving-in-edited-row': async (ms, ctx) => {
+        if (!ctx?.key) throw new Error('the edited field has no [data-tour=field-<key>] row')
+        return see(`[data-tour="field-${ctx.key}"] [data-settings-field-status="${ctx.key}"]`, { text: SAVING, clear: true, ms: Math.min(ms, 5000) })
+      },
+      'only-this-field-saving': async (ms, ctx) => { const n = await visible('[data-settings-field-status]').count(); if (n !== 1) throw new Error(`${n} visible field statuses, want exactly 1 (the edited ${ctx?.key})`); return `one field status, on ${ctx?.key}` },
       'put-mock': ms => served(R_PUT, { method: 'PUT', ms })
     },
     after: () => sleep(8000)
@@ -690,6 +704,23 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
     mocks: populated, open: artifactsOpen, act: thumbAct(false),
     checks: {
       'thumbnail-404-served': ev('thumbHits', n => `the 404 route answered x${n}`),
+      // P26 (judge pass 20 #2): the words, not only the mark.
+      'preview-unavailable-text': ms => see(`${imageCards} [data-artifact-thumb="failed"]`, { text: PREVIEW_UNAVAILABLE, ms }),
+      // P26: for the failed item itself, no image and no box taller than 48px without content remains (the detector no
+      // longer skips a card because it is marked failed).
+      'no-large-box-for-failed-item': async ms => {
+        await see(`${imageCards}:has([data-artifact-thumb="failed"])`, { min: 1, ms })
+        const cards = await visible(`${imageCards}:has([data-artifact-thumb="failed"])`).evaluateAll(els => els.map(a => {
+          const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden' }
+          const imgs = [...a.querySelectorAll('img')].filter(vis).map(i => Math.round(i.getBoundingClientRect().height))
+          const preview = Math.round(a.firstElementChild.getBoundingClientRect().height)
+          const empty = [...a.querySelectorAll('*')].filter(vis).filter(e => e.getBoundingClientRect().height > 48 && !(e.innerText || '').trim() && !e.querySelector('svg')).map(e => `<${e.tagName.toLowerCase()}> ${Math.round(e.getBoundingClientRect().height)}px`)
+          return { imgs, preview, empty }
+        }))
+        const bad = cards.filter(c => c.imgs.some(h => h > 48) || c.preview > 48 || c.empty.length)
+        if (bad.length) throw new Error(`${bad.length}/${cards.length} failed items keep a large box: ${JSON.stringify(bad[0])}`)
+        return `${cards.length} failed item(s): preview row ${cards.map(c => c.preview + 'px').join(', ')}, no image, no empty box > 48px`
+      },
       'failed-mark-32px': async ms => {
         await see(`${imageCards} [data-artifact-thumb="failed"]`, { min: 1, ms })
         const sizes = await visible(`${imageCards} [data-artifact-thumb="failed"] > span[aria-hidden]`).evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)] }))
@@ -705,7 +736,7 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
       }
     },
     // Negative: the thumbnail loads (200 PNG), so no failed mark may appear.
-    neg: { act: thumbAct(true), fails: ['failed-mark-32px'] },
+    neg: { act: thumbAct(true), fails: ['failed-mark-32px', 'preview-unavailable-text', 'no-large-box-for-failed-item'] },
     after: async () => { await page.unroute(THUMB); await reload() }
   })
   // P25: two report.md in different folders show the parent that tells them apart.
@@ -729,11 +760,352 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
     after: reload
   })
 
+  // ---------------------------------------------------------------- P26 (judge pass 20 #6, #8): populated and usage states
+  // Canvas: one node selected. Its facts live in ONE place (the docked inspector, or the popover when the inspector is
+  // not docked), the selection mark is on that node only.
+  const canvasOpen = async () => { await reload(); await go('/ops/canvas'); await see('[data-ops-node="model"] [data-ops-node-title]', { ms: 20000 }) }
+  const nodeFacts = '[data-ops-node-detail], aside[data-ops-inspector] [data-ops-inspector-detail="node"]'
+  await state('canvas', 'node-selected', {
+    proves: 'Canvas: selecting the Model node marks that node only, and its facts (Provider/Model) are shown once, in one place (inspector or popover, never both).',
+    mocks: base, open: canvasOpen,
+    act: async () => { await canvasOpen(); await tap('[data-ops-node="model"] [data-ops-node-title]'); await sleep(1200) },
+    checks: {
+      'one-node-selected': ms => see('[data-ops-selected]', { count: 1, attr: { 'data-ops-node': 'model' }, ms }),
+      'title-expanded': ms => see('[data-ops-node="model"] [data-ops-node-title]', { attr: { 'aria-expanded': 'true' }, ms }),
+      'facts-in-one-place': async ms => {
+        const a = await see(nodeFacts, { count: 1, clear: true, ms })
+        // The one surface must be the SELECTED node's facts (with nothing selected the inspector shows the profile summary).
+        const head = await visible(nodeFacts).first().evaluate(e => (e.matches('[data-ops-node-detail]') ? e.getAttribute('aria-label') : e.querySelector('[data-ops-inspector-title]')?.textContent) ?? '')
+        if (!/^\s*(model|modelo)\b/i.test(head)) throw new Error(`the facts surface is titled "${head.trim()}", not the selected Model node`)
+        return `${a}; titled "${head.trim()}"`
+      },
+      'facts-match-node': ms => see(nodeFacts, { text: /Provider|Proveedor/, ms })
+    },
+    // Negative: the canvas opened with nothing selected.
+    neg: { fails: ['one-node-selected', 'title-expanded', 'facts-in-one-place', 'facts-match-node'] },
+    after: reload
+  })
+  // Canvas: the model node's source fails (unknown), then recovers on the next poll (30 s).
+  const R_MODEL = '^/api/ops/profiles/[^/]+/nodes/model'
+  const MODEL_FIXED = { provider: 'opshardprov', model: 'ops-hard-model-7' }
+  const canvasRecoverAct = fixed => async ctx => {
+    await canvasOpen()
+    await see('[data-ops-node="model"][data-ops-port="unknown"]', { ms: 15000 })
+    ctx.unknown = await visible('[data-ops-node="model"] [data-ops-node-body]').first().innerText()
+    await ctx.shot('unknown')
+    if (fixed) await mock([{ path: R_MODEL, body: MODEL_FIXED }, ...base])
+    ctx.waited = await see('[data-ops-node="model"]:not([data-ops-port="unknown"])', { ms: 45000 }).then(() => 'recovered', () => 'still unknown after 45 s')
+  }
+  await state('canvas', 'unknown-then-recovered', {
+    proves: "Canvas: when the Model node's source fails the node says unknown (not a value); when the source answers again the node shows the served provider and model without a reload.",
+    mocks: [{ path: R_MODEL, throw: '503: model node source unavailable (mock)' }, ...base], open: canvasOpen,
+    act: canvasRecoverAct(true), actMs: 150000,
+    checks: {
+      'unknown-while-failing': ev('unknown', t => { if (!/unknown|desconocido/i.test(t)) throw new Error(`model node said "${t}" while its source failed`); return `model node said "${t.trim()}" while its source failed` }),
+      'recovered-value-shown': ms => see('[data-ops-node="model"] [data-ops-node-body]', { text: 'opshardprov · ops-hard-model-7', ms }),
+      'port-not-unknown': ms => see('[data-ops-node="model"]:not([data-ops-port="unknown"])', { ms }),
+      'model-mock': ms => served(R_MODEL, { ms })
+    },
+    // Negative: the source stays down, so nothing may recover.
+    neg: { act: canvasRecoverAct(false), fails: ['recovered-value-shown', 'port-not-unknown'] },
+    after: reload
+  })
+
+  // Profiles: saving SOUL.md is refused with a 409 conflict. The typed text stays in the editor, the error sits in the
+  // SOUL section next to the document, focus stays in it, the draft stays dirty.
+  const R_SOUL = '^/api/profiles/[^/]+/soul'
+  const SOUL_DRAFT = 'Ops hard draft line that must survive a refused save'
+  const soulAct = async ctx => {
+    await reload(); await goApp('/profiles')
+    if (!(await see('[data-profile-soul-editor] .cm-content', { ms: 8000 }).then(() => true, () => false))) { await tap('[data-panel-row]'); await sleep(1500) }
+    await see('[data-profile-soul-editor] .cm-content', { ms: 20000 })
+    await tap('[data-profile-soul-editor] .cm-content')
+    await page.keyboard.press('Control+End')
+    await page.keyboard.type(`\n${SOUL_DRAFT}`)
+    await sleep(400)
+    const s0 = await reqSeq()
+    await page.keyboard.press('Control+s')
+    await sleep(2500)
+    const puts = (await requests(s0)).filter(r => r.method === 'PUT' && /\/soul$/.test(r.path))
+    ctx.saveMethod = puts.length ? 'Ctrl+S in the editor' : 'Save button'
+    if (!puts.length) { await tap('[data-profile-soul-actions] button'); await sleep(2500) }
+    ctx.focus = await page.evaluate(() => { const a = document.activeElement; return { inSoul: Boolean(a?.closest('[data-profile-soul]')), inEditor: Boolean(a?.closest('[data-profile-soul-editor]')), tag: a?.tagName ?? null } })
+  }
+  const soulText = () => visible('[data-profile-soul-editor] .cm-content').first().innerText()
+  await state('profiles', 'soul-conflict', {
+    proves: 'Profiles: a SOUL.md save refused with 409 (conflict) keeps the typed text in the editor and focus next to the document, shows the reason inside the SOUL section and leaves the draft unsaved.',
+    mocks: [{ path: R_SOUL, method: 'PUT', throw: '409: SOUL.md changed on disk since it was opened (mock)' }, ...base],
+    open: async () => { await reload(); await goApp('/profiles') }, act: soulAct,
+    checks: {
+      'conflict-shown-in-soul-section': ms => see('[data-profile-soul] span:has-text("changed on disk since it was opened (mock)")', { clear: true, ms }),
+      'text-preserved': async ms => { await see('[data-profile-soul-editor] .cm-content', { ms }); const t = await soulText(); if (!t.includes(SOUL_DRAFT)) throw new Error(`editor lost the typed line (${t.length} chars, tail "${t.slice(-80)}")`); return 'the typed line is still in the editor' },
+      'still-unsaved': ms => see('[data-profile-soul-actions]', { text: /Unsaved changes|Cambios sin guardar/, ms }),
+      'focus-next-to-document': ev('focus', (f, ctx) => { if (!f.inSoul) throw new Error(`focus left the SOUL section (on <${f.tag}>)`); return `focus stayed in the SOUL section (${f.inEditor ? 'in the editor' : `on <${f.tag}>`}; saved with ${ctx.saveMethod})` }),
+      'put-mock': ms => served(R_SOUL, { method: 'PUT', ms })
+    },
+    // Negative: the save is accepted (mocked, nothing is written): no conflict, nothing unsaved.
+    neg: { mocks: [{ path: R_SOUL, method: 'PUT', body: { ok: true } }, ...base], fails: ['conflict-shown-in-soul-section', 'still-unsaved'] },
+    after: reload
+  })
+
+  // Cron: the last run succeeded but its delivery failed, with last_error null. It must not read as success.
+  const cronJob = (id, name, status) => ({ id, name, enabled: true, state: 'scheduled', last_status: status, last_error: null, last_run_at: new Date((now - 3600) * 1000).toISOString(), next_run_at: new Date((now + 82800) * 1000).toISOString(), schedule: { kind: 'cron', expr: '0 8 * * *', display: '0 8 * * *' }, schedule_display: '0 8 * * *', deliver: 'local', prompt: 'Summarize the overnight changes', no_agent: false })
+  const DLV = 'ops-hard-dlv'
+  const cronMocks = status => { const job = cronJob(DLV, 'Morning brief (ops hard)', status); return [{ path: '^/api/cron/jobs/[^/?]+/runs', body: { runs: [] } }, { path: `^/api/cron/jobs/${DLV}(\\?|$)`, method: 'GET', body: job }, { path: '^/api/cron/jobs(\\?|$)', method: 'GET', body: [job, cronJob('ops-hard-ok', 'Nightly digest (ops hard)', 'ok')] }, ...base] }
+  const cronAct = async () => { await reload(); await goApp('/cron'); await tap(`[data-panel-row="${DLV}"]`, 15000); await sleep(1500) }
+  await state('cron', 'delivery-failed', {
+    proves: 'Cron: a job whose last run succeeded but whose delivery failed (last_error null) reads as a failure (Ran, but delivery failed), never as success.',
+    mocks: cronMocks('delivery_failed'), open: async () => { await reload(); await goApp('/cron') }, act: cronAct,
+    checks: {
+      'job-open': ms => see('[data-cron-glance]', { ms }).then(() => see('h3', { text: 'Morning brief (ops hard)', ms })),
+      'last-result-failed': ms => see('[data-cron-glance-tile="last"]', { attr: { 'data-result': 'failed' }, text: /delivery failed|entrega/i, ms }),
+      'not-read-as-success': ms => none('[data-cron-glance-tile="last"][data-result="ok"]', { ms }),
+      'jobs-mock': ms => served('^/api/cron/jobs(\\?|$)', { ms })
+    },
+    // Negative: the same job with last_status ok must read as success, so the failure checks fail.
+    neg: { mocks: cronMocks('ok'), act: cronAct, fails: ['last-result-failed', 'not-read-as-success'] },
+    after: reload
+  })
+
+  // Sessions: a row is reached from the list's search box by Tab key presses (no .focus()).
+  const sessionsTabAct = presses => async ctx => {
+    await sessionsOpen()
+    await see('[data-session-row]', { count: 4 })
+    await tap('[data-sessions-search] input')
+    const path = []
+    let row = null
+    for (let i = 1; i <= presses; i++) {
+      await page.keyboard.press('Tab'); await sleep(120)
+      const a = await page.evaluate(() => { const e = document.activeElement; const r = e?.closest('[data-session-row]'); return { d: `${e?.tagName.toLowerCase()}:${(e?.getAttribute('aria-label') || e?.textContent || '').trim().slice(0, 24)}`, row: r ? (r.querySelector('[data-session-title]')?.textContent ?? '').trim() : null, ring: e ? (() => { const c = getComputedStyle(e); return e.matches(':focus-visible') && (c.outlineStyle !== 'none' || c.boxShadow !== 'none') })() : false } })
+      path.push(a.d)
+      if (a.row) { row = { presses: i, title: a.row, ring: a.ring }; break }
+    }
+    ctx.reach = { row, path }
+  }
+  await state('sessions', 'tab-reach', {
+    proves: "Sessions: from the list's search box, Tab key presses (no programmatic focus) reach a session row, which shows a visible focus ring.",
+    mocks: populated, open: sessionsOpen, act: sessionsTabAct(25),
+    checks: {
+      'reached-by-tab': ev('reach', r => { if (!r.row) throw new Error(`no session row after ${r.path.length} Tab presses: ${r.path.join(' > ')}`); return `reached "${r.row.title.slice(0, 40)}" after ${r.row.presses} Tab presses (${r.path.join(' > ')})` }),
+      'row-focused-visibly': async () => { const f = await page.evaluate(() => { const e = document.activeElement; const c = e ? getComputedStyle(e) : null; return { row: Boolean(e?.closest('[data-session-row]')), fv: Boolean(e?.matches(':focus-visible')), ring: c ? c.outlineStyle !== 'none' && c.outlineWidth !== '0px' || c.boxShadow !== 'none' : false } }); if (!f.row || !f.fv) throw new Error(`focus: ${JSON.stringify(f)}`); if (!f.ring) throw new Error('the focused row shows no focus ring (outline / shadow)'); return 'a session row holds keyboard focus with a visible ring' }
+    },
+    // Negative: the search box is focused but no Tab is pressed.
+    neg: { act: sessionsTabAct(0), fails: ['reached-by-tab', 'row-focused-visibly'] },
+    after: reload
+  })
+
+  // Fleet: failing now, running with failures in the last 7 days, and recovered (failed earlier, fine now) together.
+  const FLEET_NAMES = { failing: 'alpha-failing', running: 'bravo-running', recovered: 'charlie-recovered' }
+  const fleetBoard = mixed => ({
+    columns: [
+      { name: 'blocked', tasks: mixed ? [task('f1', 'Restore the nightly backup', 'blocked', 'infra', FLEET_NAMES.failing, { consecutive_failures: 4 })] : [] },
+      { name: 'running', tasks: [task('f2', 'Index the support inbox', 'running', 'web', FLEET_NAMES.running, { current_run_started_at: now - 600 })] },
+      { name: 'done', tasks: [task('f3', 'Rotate the CDN certificate', 'done', 'infra', FLEET_NAMES.recovered, { completed_at: now - 7200 })] }
+    ],
+    tenants: ['web', 'infra'], assignees: Object.values(FLEET_NAMES), now
+  })
+  const fleetMocks = async mixed => {
+    const real = await page.evaluate(() => window.hermesDesktop.api({ path: '/api/profiles' })).catch(() => ({ profiles: [] }))
+    const extra = Object.values(FLEET_NAMES).map(name => ({ name, path: `C:/ops-hard/${name}`, is_default: false, has_env: false, model: 'mock-model', provider: 'mock', skill_count: 3 }))
+    return [
+      { path: '^/api/profiles(\\?|$)', method: 'GET', body: { ...real, profiles: [...(real?.profiles ?? []), ...extra] } },
+      { path: '^/api/plugins/kanban/workers/active', body: mixed ? { workers: [{ profile: FLEET_NAMES.running, task_id: 'f2', pid: 4242, started_at: now - 600 }], count: 1, checked_at: now } : { workers: [], count: 0, checked_at: now } },
+      { path: '^/api/plugins/kanban/runs/stats', body: { profiles: mixed ? { [FLEET_NAMES.failing]: { runs: 6, failed: 4, last_started_at: now - 1200 }, [FLEET_NAMES.running]: { runs: 5, failed: 2, last_started_at: now - 600 }, [FLEET_NAMES.recovered]: { runs: 4, failed: 1, last_started_at: now - 7200 } } : {} } },
+      { path: R_BOARD, body: fleetBoard(mixed) }, { path: R_PENDING, body: PENDING }, { path: R_ATTACH, method: 'GET', body: { attachments: [] } }
+    ]
+  }
+  const fleetAct = mixed => async () => { await mock(await fleetMocks(mixed)); await reload(); await open('agents'); await see('[data-ops-fleet-row]', { ms: 20000 }); await sleep(1500) }
+  const onceIn = (name, group) => ms => see(`[data-ops-fleet-row="${name}"]`, { count: 1, ms }).then(a => see(`[data-ops-rows-group="${group}"] [data-ops-fleet-row="${name}"]`, { count: 1, ms }).then(b => `${a}; in group ${group}`))
+  await state('fleet', 'mixed', {
+    proves: 'Fleet: a failing-now agent, a running agent with failures in the last 7 days and a recovered agent each appear exactly once, in Needs attention / Running / Failed in the last 7 days; the running line speaks about the present.',
+    mocks: base, open: () => open('agents'), act: fleetAct(true),
+    checks: {
+      'failing-once-in-attention': onceIn(FLEET_NAMES.failing, 'attention'),
+      'running-once-in-running': onceIn(FLEET_NAMES.running, 'running'),
+      'recovered-once-in-recent': onceIn(FLEET_NAMES.recovered, 'recent'),
+      'running-line-present-first': async ms => { await see(`[data-ops-fleet-row="${FLEET_NAMES.running}"]`, { ms }); const t = await visible(`[data-ops-fleet-row="${FLEET_NAMES.running}"]`).first().innerText(); if (/failed run|ejecuciones fallidas|fallid/i.test(t)) throw new Error(`the running row's line speaks about history: "${t.replace(/\s+/g, ' ').slice(0, 120)}"`); return 'the running row does not lead with its past failures' },
+      'stats-mock': ms => served('^/api/plugins/kanban/runs/stats', { ms })
+    },
+    // Negative: no worker, no stats, no failing task: none of the three groups may hold them.
+    neg: { act: fleetAct(false), fails: ['failing-once-in-attention', 'running-once-in-running', 'recovered-once-in-recent'] },
+    after: async () => { await mock(base); await reload() }
+  })
+
+  // Teams: a lane whose open work is only triage/ready must never say 'Working on' / 'Trabajando en'.
+  const statusOf = Object.fromEntries(BOARD.columns.flatMap(c => c.tasks.map(t => [t.id, t.status])))
+  const BOARD_NO_INFRA = { ...BOARD, columns: BOARD.columns.map(c => ({ ...c, tasks: c.tasks.filter(t => t.tenant !== 'infra') })) }
+  const teamsHonestAct = async () => { await reload(); await teamsTab(); await see('[data-ops-team]', { ms: 15000 }) }
+  await state('teams', 'honest-open', {
+    proves: "Teams: a lane whose open tasks are triage/ready is never described as 'Working on' / 'Trabajando en'; only a running task may be.",
+    mocks: base, open: teamsTab, act: teamsHonestAct,
+    checks: {
+      'ready-only-lane-shown': ms => see('[data-ops-team="infra"]', { ms }),
+      'phrase-detectable-on-running-lane': ms => see('[data-ops-team="research"]', { text: /Working on|Trabajando en/, ms }),
+      'triage-ready-never-working-on': async ms => {
+        await see('[data-ops-team]', { ms })
+        const rows = await visible('[data-ops-team]').evaluateAll(els => els.map(e => ({ lane: e.getAttribute('data-ops-team'), now: [...e.querySelectorAll('[data-ops-team-now]')].map(n => n.parentElement?.querySelector('[data-ops-team-task]')?.getAttribute('data-ops-team-task') ?? null), text: (e.innerText || '').replace(/\s+/g, ' ') })))
+        const bad = []
+        for (const r of rows) {
+          for (const id of r.now) if (statusOf[id] !== 'running') bad.push(`${r.lane}: "Working on" ${id} (${statusOf[id] ?? 'unknown status'})`)
+          const openIds = BOARD.columns.flatMap(c => c.tasks).filter(t => (t.tenant ?? 'No lane') === r.lane && t.status !== 'done')
+          if (/Working on|Trabajando en/.test(r.text) && openIds.length && openIds.every(t => t.status !== 'running') && !bad.some(b => b.startsWith(`${r.lane}:`))) bad.push(`${r.lane}: says Working on with no running task`)
+        }
+        if (bad.length) throw new Error(`triage/ready described as in progress: ${bad.join('; ')}`)
+        return `${rows.length} team rows; 'Working on' only for running work`
+      }
+    },
+    // Negative: without the ready-only lane the precondition is gone.
+    neg: { mocks: [{ path: R_BOARD, body: BOARD_NO_INFRA }, ...base], fails: ['ready-only-lane-shown'] },
+    after: reload
+  })
+
+  // Artifacts: two report.md in different folders at a ~420px content width: the folder that tells them apart is
+  // visible, unobstructed and not truncated.
+  const minWin = () => app.evaluate(({ BrowserWindow }) => { for (const w of BrowserWindow.getAllWindows()) w.setMinimumSize(320, 400) })
+  /** Resize the window until `sel` measures `target` px wide (within 12px); returns the measured width. */
+  const fitWidth = async (sel, target) => {
+    await minWin()
+    let W = target + 320, w = null
+    for (let i = 0; i < 5; i++) {
+      await narrow(W); await sleep(900)
+      w = await visible(sel).first().evaluate(e => Math.round(e.getBoundingClientRect().width)).catch(() => null)
+      if (w === null || Math.abs(w - target) <= 12) return w
+      W = Math.max(330, W + (target - w))
+    }
+    return w
+  }
+  const artifacts420Act = async ctx => { await artifactsOpen(); await see(sameNameRows, { min: 2, ms: 15000 }).catch(() => {}); ctx.width = await fitWidth('[data-page-shell]', 420); await sleep(800) }
+  await state('artifacts', 'same-name-420', {
+    proves: 'Artifacts at a ~420px content width: the two report.md rows each show their distinguishing folder (alpha / beta), visible, unobstructed and not truncated.',
+    mocks: withMessages(SAME_NAME), open: artifactsOpen, act: artifacts420Act,
+    checks: {
+      'content-420': ev('width', w => { if (w === null || Math.abs(w - 420) > 16) throw new Error(`artifacts content is ${w}px wide, want 420 +- 16`); return `artifacts content ${w}px wide` }),
+      'hints-visible-unobstructed': ms => see(`${sameNameRows} [data-artifact-path-hint]`, { min: 2, clear: true, ms }),
+      'hints-distinguish-untruncated': async ms => {
+        await see(`${sameNameRows} [data-artifact-path-hint]`, { min: 2, ms })
+        const hs = await visible(`${sameNameRows} [data-artifact-path-hint]`).evaluateAll(els => els.map(e => ({ t: (e.textContent || '').replace(/ · $/, '').trim(), trunc: e.scrollWidth > e.clientWidth + 1, w: Math.round(e.getBoundingClientRect().width) })))
+        const set = new Set(hs.map(h => h.t))
+        if (!set.has('alpha') || !set.has('beta')) throw new Error(`hints ${JSON.stringify(hs)}, want alpha and beta`)
+        const cut = hs.filter(h => h.trunc)
+        if (cut.length) throw new Error(`truncated hint(s): ${JSON.stringify(cut)}`)
+        return `hints ${hs.map(h => `${h.t} (${h.w}px)`).join(' / ')}, none truncated`
+      }
+    },
+    // Negative: the same path twice is one file: no hint may appear.
+    neg: { mocks: withMessages(SAME_PATH), fails: ['hints-visible-unobstructed', 'hints-distinguish-untruncated'] },
+    after: async () => { await narrow(1600); await reload() }
+  })
+
+  // Agents (app route /agents, the delegated-work tree): a parent with two children, one finished with a result, one
+  // failed, the parent still running with progress. The fixture is put in the renderer's own subagent store (the
+  // Agents view's useStore atoms, reached through its React fiber: no product code, no gateway), under a harness
+  // session that is made the active one (finished rows only show for the active session).
+  const AGENTS_PANEL = '[data-overlay-surface] [data-glass-raised]'
+  const TREE_SID = 'ops-hard-tree-session'
+  const treeFixture = () => {
+    const t = Date.now()
+    const sp = (id, parentId, goal, status, taskIndex, stream, extra = {}) => ({ id, parentId, goal, status, taskCount: parentId ? 2 : 1, taskIndex, startedAt: t - 120000 + taskIndex * 1000 + (parentId ? 1000 : 0), updatedAt: t - 2000, filesRead: [], filesWritten: [], stream: stream.map(([kind, text, isError]) => ({ at: t - 3000, kind, text, ...(isError ? { isError: true } : {}) })), model: 'mock-model', ...extra })
+    return [
+      sp('ops-tree-parent', null, 'Prepare the release notes for 2.4', 'running', 0, [['progress', 'Waiting on two children: one finished, one failed']], { toolCount: 3 }),
+      sp('ops-tree-child-a', 'ops-tree-parent', 'Collect the merged PR titles', 'completed', 0, [['tool', 'Search PRs("merged since 2.3")'], ['summary', 'Result: 14 PR titles collected']], { durationSeconds: 42, summary: 'Result: 14 PR titles collected' }),
+      sp('ops-tree-child-b', 'ops-tree-parent', 'Build the changelog file', 'failed', 1, [['tool', 'Run changelog tool'], ['summary', 'Failed: changelog tool exited with code 2', true]], { durationSeconds: 7, summary: 'Failed: changelog tool exited with code 2' })
+    ]
+  }
+  const injectTree = () => page.evaluate(([sid, items]) => {
+    const el = document.querySelector('[data-panel-empty="agents"], [data-slot="tool-block"]')
+    if (!el) return { ok: false, why: 'the Agents view is not mounted' }
+    const key = Object.keys(el).find(k => k.startsWith('__reactFiber$'))
+    if (!key) return { ok: false, why: 'no React fiber on the Agents view' }
+    const isAtom = a => a && typeof a.get === 'function' && typeof a.set === 'function' && typeof a.listen === 'function'
+    for (let f = el[key]; f; f = f.return) {
+      const atoms = []
+      for (let h = f.memoizedState; h && typeof h === 'object' && 'next' in h && 'queue' in h; h = h.next) {
+        const m = h.memoizedState
+        if (Array.isArray(m) && m.length === 2 && Array.isArray(m[1]) && isAtom(m[1][0])) atoms.push(m[1][0])
+      }
+      const subs = atoms.find(a => { const v = a.get(); return v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every(Array.isArray) })
+      const active = atoms.find(a => a !== subs && (a.get() === null || typeof a.get() === 'string'))
+      if (subs && active) {
+        const before = active.get()
+        active.set(sid)
+        subs.set({ ...subs.get(), [sid]: items })
+        return { ok: true, previousActive: before, sessions: Object.keys(subs.get()).length }
+      }
+    }
+    return { ok: false, why: 'the Agents view atoms ($subagentsBySession, $activeSessionId) were not found' }
+  }, [TREE_SID, treeFixture()])
+  const agentsOpen = async () => { await reload(); await goApp('/agents'); await see('[data-panel-empty="agents"], [data-slot="tool-block"]', { ms: 15000 }) }
+  const agentsTreeAct = (width, populate) => async ctx => {
+    await agentsOpen()
+    if (populate) { ctx.inject = await injectTree(); if (!ctx.inject.ok) throw new Error(`tree fixture not injected: ${ctx.inject.why}`) }
+    ctx.width = width ? await fitWidth(AGENTS_PANEL, width) : null
+    await sleep(900)
+  }
+  const block = goal => `[data-slot="tool-block"]:has(> button:has-text("${goal}"))`
+  const treeChecks = {
+    'agents-screen-not-fleet': async ms => { const h = await page.evaluate(() => location.hash); if (!h.startsWith('#/agents')) throw new Error(`route ${h}`); return none('[data-ops-fleet-row]', { ms }).then(() => `route ${h}, no Fleet row`) },
+    'parent-with-two-children': async ms => {
+      await see('[data-slot="tool-block"]', { count: 3, ms })
+      const kids = await visible(block('Prepare the release notes for 2.4')).first().evaluate(e => e.querySelectorAll('[data-slot="tool-block"]').length)
+      if (kids !== 2) throw new Error(`the parent row holds ${kids} child rows, want 2`)
+      return '3 rows: the parent holds both children'
+    },
+    'progress-recognisable': ms => see(block('Prepare the release notes for 2.4'), { text: 'Waiting on two children', ms }),
+    'result-recognisable': ms => see(block('Collect the merged PR titles'), { text: 'Result: 14 PR titles collected', ms }),
+    'failure-recognisable': ms => see(block('Build the changelog file'), { text: 'Failed: changelog tool exited with code 2', ms }).then(a => see('p', { text: /1 failed|1 fallidos/, ms }).then(b => `${a}; summary says 1 failed`)),
+    'tree-unobstructed': ms => see('[data-slot="tool-block"] > button', { count: 3, clear: true, ms })
+  }
+  const treeFails = ['parent-with-two-children', 'progress-recognisable', 'result-recognisable', 'failure-recognisable', 'tree-unobstructed']
+  for (const w of [760, 420]) {
+    await state('agents', `tree-populated-${w}`, {
+      proves: `Agents (delegated-work tree, /agents) at a ${w}px panel: a running parent with two children shows its progress, one child's result and the other's failure, recognisable and unobstructed (not Fleet).`,
+      mocks: base, open: agentsOpen, act: agentsTreeAct(w, true),
+      checks: { [`panel-${w}`]: ev('width', v => { if (v === null || Math.abs(v - w) > 16) throw new Error(`Agents panel is ${v}px wide, want ${w} +- 16`); return `Agents panel ${v}px wide` }), ...treeChecks },
+      // Negative: the same screen without the fixture (the empty tree).
+      neg: { act: agentsTreeAct(w, false), fails: treeFails },
+      after: async () => { await narrow(1600); await reload() }
+    })
+  }
+
+  // Chat: the send is refused by the gateway (mocked JSON-RPC error on session.create / prompt.submit). The draft stays
+  // in the composer, the refusal is visible, the text is not duplicated as a sent message.
+  const CHAT_DRAFT = 'Ops hard draft that must survive a refused send'
+  const composer = '[data-slot="composer-root"] [role="textbox"]'
+  const chatAct = send => async ctx => {
+    ctx.route = await gateway.install()
+    gateway.setRules([{ method: '^(session\\.create|prompt\\.submit)$', error: 'send refused by the gateway (mock)' }])
+    await goApp('/')
+    await tap(composer, 15000)
+    // A draft left by an earlier run (drafts persist in the test userData) is cleared first.
+    await page.keyboard.press('Control+a'); await page.keyboard.press('Delete'); await sleep(200)
+    await page.keyboard.type(CHAT_DRAFT)
+    await sleep(400)
+    if (send) await page.keyboard.press('Enter')
+    await sleep(5000)
+    ctx.refused = gateway.hits.map(h => h.method)
+    ctx.outside = await page.evaluate(d => [...document.querySelectorAll('body *')].filter(e => [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.includes(d))).filter(e => !e.closest('[data-slot="composer-root"]')).map(e => `<${e.tagName.toLowerCase()}> in ${e.closest('[data-slot]')?.getAttribute('data-slot') ?? 'body'}`), CHAT_DRAFT)
+  }
+  await state('chat', 'send-rejected', {
+    proves: 'Chat: a send refused by the gateway keeps the typed draft in the composer, shows the refusal, and does not add the text as a sent message.',
+    mocks: base, open: () => goApp('/'), act: chatAct(true), keepToasts: true,
+    checks: {
+      'gateway-refused-the-send': ev('refused', ms => { if (!ms.length) throw new Error('no session.create / prompt.submit reached the gateway route'); return `refused by the mocked gateway: ${ms.join(', ')}` }),
+      'draft-kept-in-composer': async ms => { await see(composer, { ms }); const t = await visible(composer).first().innerText(); if (t.trim() !== CHAT_DRAFT) throw new Error(`composer holds "${t.slice(0, 80)}"`); return 'the draft is still in the composer' },
+      'refusal-visible': ms => see('[role="alert"], [role="status"], [data-slot="composer-restored-draft"]', { text: 'send refused by the gateway (mock)', ms }),
+      'no-duplicate-message': ev('outside', list => { if (list.length) throw new Error(`the draft text also appears outside the composer: ${list.join(', ')}`); return 'the draft text appears only in the composer' })
+    },
+    // Negative: typed but never sent: nothing refused, nothing to show.
+    neg: { act: chatAct(false), fails: ['gateway-refused-the-send', 'refusal-visible'] },
+    after: async () => { gateway.setRules([]); await reload() }
+  })
+
   // Narrow panel for the row screens: the WORK must be readable, so the inspector is closed and nothing covers it.
   const WORK = { office: '[data-ops-approval]', board: '[data-ops-card="t1"]', agents: '[data-ops-fleet-row]', skills: '[data-ops-skill]', channels: '[data-ops-app]', settings: '[data-ops-prefs-reset-row]' }
   for (const id of Object.keys(WORK)) {
-    await state(id, 'narrow-900', {
-      proves: `At a 900px window the ${id} work is readable: inspector closed and every visible ${WORK[id]} unobstructed (centre and corners).`,
+    // P26 (judge pass 20 #2): the Ops 'agents' lens is Fleet and is reported as 'fleet'. The Agents screen (the
+    // delegated-work tree, app route /agents) has its own narrow state.
+    await state(id === 'agents' ? 'fleet' : id, 'narrow-900', {
+      proves: `At a 900px window the ${id === 'agents' ? 'Fleet' : id} work is readable: inspector closed and every visible ${WORK[id]} unobstructed (centre and corners).`,
       mocks: base,
       open: async () => { await narrow(900); await open(id); await setInspector(true) },
       act: async () => { await narrow(900); await open(id); await setInspector(false) },
@@ -753,6 +1125,15 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
     open: async () => { await narrow(900); await open('office') },
     act: async () => { await narrow(900); await goApp('/settings') },
     checks: { 'form-field-unobstructed': ms => see(field, { clear: true, ms }) }
+  })
+  // P26 (judge pass 20 #2): the Agents screen itself (delegated-work tree), not Fleet, at a 900px window.
+  await state('agents', 'narrow-900', {
+    proves: 'At a 900px window the Agents screen (/agents, the delegated-work tree, not Fleet) shows its populated tree: parent and both children unobstructed.',
+    mocks: base, open: agentsOpen,
+    act: async ctx => { await narrow(900); await agentsTreeAct(0, true)(ctx) },
+    checks: { 'window-900': async () => { const w = await page.evaluate(() => innerWidth); if (Math.abs(w - 900) > 20) throw new Error(`window ${w}px`); return `window ${w}px` }, 'agents-screen-not-fleet': treeChecks['agents-screen-not-fleet'], 'parent-with-two-children': treeChecks['parent-with-two-children'], 'tree-unobstructed': treeChecks['tree-unobstructed'] },
+    neg: { act: async ctx => { await narrow(900); await agentsTreeAct(0, false)(ctx) }, fails: ['parent-with-two-children', 'tree-unobstructed'] },
+    after: async () => { await narrow(1600); await reload() }
   })
   await narrow(1600)
 
@@ -799,4 +1180,44 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
       return { held, shots, detail: `uncovered rows: ${clean.pass ? 'pass' : `FAIL (${clean.detail.slice(0, 160)})`}; 2nd row covered: ${covered.pass ? 'PASS (false positive)' : `fail (${covered.detail.slice(0, 220)})`}`, checks: [{ label: 'uncovered-rows-pass', ...clean }, { label: 'covered-second-row-fails', pass: !covered.pass, detail: covered.detail }] }
     }
   })
+
+  // P26 harness controls (judge pass 20 #1): infrastructure is never mistaken for the expected rejection, and a states
+  // module that is missing or broken fails the run.
+  await control('harness', 'module-missing-or-broken-fails-run', {
+    proves: 'A missing states module and one that fails to import each make hard.mjs exit 3 with a failing module-load row (it used to exit 0 with an empty summary). Runs hard.mjs as a child; no app is launched.',
+    run: async () => {
+      const { spawnSync } = await import('node:child_process')
+      const { mkdtempSync, writeFileSync: wf, readFileSync: rf } = await import('node:fs')
+      const { join: j } = await import('node:path')
+      const { tmpdir: td } = await import('node:os')
+      const dir = mkdtempSync(j(td(), 'ops-hard-ctl-'))
+      wf(j(dir, 'broken.mjs'), 'export default 1 +\n')
+      const cases = [['missing', j(dir, 'no-such-hard-states.mjs')], ['broken', j(dir, 'broken.mjs')]]
+      const checks = []
+      for (const [label, path] of cases) {
+        const out = j(dir, label)
+        const r = spawnSync(process.execPath, [harness.hardScript, harness.DESKTOP, out, 'all'], { env: { ...process.env, OPS_HARD_STATES: path, OPS_HARD_TAG: 'ctl', OPS_HARD_SELFTEST: '' }, encoding: 'utf8', timeout: 120000 })
+        let m = null
+        try { m = JSON.parse(rf(j(out, 'state-matrix.json'), 'utf8')) } catch {}
+        const row = m?.matrix?.[0]
+        const pass = r.status === 3 && m?.ok === 0 && m?.total === 1 && row?.state === 'module-load' && row?.ok === false && Boolean(row?.run) && Boolean(row?.at)
+        checks.push({ label: `${label}-module-exits-3`, pass, detail: `exit ${r.status}; matrix ${m ? `${m.ok}/${m.total}` : 'missing'}; row ${row ? `${row.state} ok=${row.ok} run=${row.run}` : 'none'}; ${(r.stdout || '').trim().slice(0, 160)}` })
+      }
+      return { held: checks.every(c => c.pass), detail: checks.map(c => `${c.label}: ${c.pass ? 'held' : 'NOT HELD'} (${c.detail})`).join(' | '), checks }
+    }
+  })
+  // A negative control whose screen is covered by a modal must NOT count as held (its checks fail for the wrong reason).
+  const MODAL_JS = () => { const d = document.createElement('div'); d.id = 'ops-hard-modal'; d.setAttribute('role', 'alertdialog'); d.setAttribute('aria-modal', 'true'); d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,0.6);color:#fff;font:20px sans-serif;padding:40px'; d.innerHTML = '<h2>Injected modal (selftest)</h2>'; document.body.appendChild(d) }
+  const dropModal = () => page.evaluate(() => document.getElementById('ops-hard-modal')?.remove())
+  const infraControl = (st, proves, negOverride, opts, expect) => control('harness', st, {
+    proves,
+    run: async () => {
+      const r = await evalState(`s-harness-${st}`, { ...officeLoaded, neg: { ...officeLoaded.neg, ...negOverride }, after: dropModal }, true, opts)
+      const held = !r.ok && expect.test(r.note) && /infrastructure/.test(r.note)
+      return { held, detail: `negative row ok=${r.ok} (must be false); note: ${r.note}`.slice(0, 600), checks: r.checks, shots: r.shots }
+    }
+  })
+  await infraControl('modal-is-infrastructure-not-rejection', 'A negative control whose must-fail checks fail because a modal covers the app is NOT held: no-blocking-modal failing marks it as infrastructure.', { act: async () => { await officeLoaded.neg.act(); await page.evaluate(MODAL_JS) } }, {}, /blocking modal/)
+  await infraControl('act-exception-is-infrastructure-not-rejection', 'A negative control whose act throws is NOT held, even though its must-fail checks fail.', { act: async () => { await officeLoaded.neg.act(); throw new Error('forced act failure (selftest)') } }, {}, /act: forced act failure/)
+  await infraControl('act-timeout-is-infrastructure-not-rejection', 'A negative control whose act exceeds its time budget (watchdog) is NOT held.', { act: async () => { await sleep(4000) } }, { actMs: 1500 }, /watchdog: act/)
 }

@@ -14,6 +14,39 @@ const DESKTOP = resolve(process.argv[2] ?? '.')
 const OUT = resolve(process.argv[3] ?? join(tmpdir(), 'ops-live'))
 const STEPS = (process.argv[4] ?? 'all').split(',')
 mkdirSync(OUT, { recursive: true })
+
+// P26 (judge pass 20 #1): the evidence signature. Every matrix row carries the run id, the build stamp of the app under
+// test (build/install-stamp.json) and its own timestamp, so rows consolidated from re-runs stay traceable.
+const RUN_ID = `${(process.env.OPS_HARD_TAG ?? '').replace(/[^a-z0-9_-]/gi, '') || 'run'}-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${process.pid}`
+const BUILD = (() => {
+  try {
+    const s = JSON.parse(readFileSync(join(DESKTOP, 'build', 'install-stamp.json'), 'utf8'))
+    const m = existsSync(join(DESKTOP, 'build', 'install-stamp.json')) ? statSync(join(DESKTOP, 'build', 'install-stamp.json')).mtime.toISOString() : null
+    return { commit: s.commit ?? null, branch: s.branch ?? null, builtAt: s.builtAt ?? null, dirty: s.dirty ?? null, stampWritten: m }
+  } catch (e) { return { commit: null, error: `install-stamp.json unreadable: ${String(e?.message ?? e).slice(0, 160)}` } }
+})()
+// P26: the states module is loaded BEFORE anything is launched. A missing module, one that fails to import, or one with
+// no default export fails the run (exit 3, a failing module-load row in state-matrix.json); it used to leave the summary
+// empty and exit 0. OPS_HARD_STATES overrides the path (used by the selftest control that proves this).
+const STATES_PATH = process.env.OPS_HARD_STATES ? resolve(process.env.OPS_HARD_STATES) : join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs')
+const loadStates = async path => {
+  if (!existsSync(path)) throw new Error(`states module not found: ${path}`)
+  const mod = await import('file://' + path.replace(/\\/g, '/'))
+  if (typeof mod.default !== 'function') throw new Error(`states module has no default export function: ${path}`)
+  return mod.default
+}
+/** 0 only when at least one matrix was written and every one of them has rows, all ok. */
+const exitCodeFor = summary => (Object.keys(summary).length > 0 && Object.values(summary).every(s => s.total > 0 && s.ok === s.total) ? 0 : 3)
+let statesFn
+try { statesFn = await loadStates(STATES_PATH) } catch (e) {
+  const note = `states module failed to load: ${String(e?.message ?? e).replace(/\s+/g, ' ').slice(0, 300)}`
+  const row = { screen: 'harness', state: 'module-load', proves: 'the hard-states module loaded', ok: false, note, errors: [note], checks: [], shots: [], shot: null, run: RUN_ID, build: BUILD.commit, at: new Date().toISOString() }
+  writeFileSync(join(OUT, 'state-matrix.json'), JSON.stringify({ mode: 'states', run: RUN_ID, build: BUILD, generatedAt: new Date().toISOString(), ok: 0, total: 1, moduleError: note, matrix: [row] }, null, 2))
+  const summary = { 'state-matrix.json': { ok: 0, total: 1, failed: [`harness-module-load: ${note}`] } }
+  writeFileSync(join(OUT, 'run-summary.json'), JSON.stringify({ run: RUN_ID, build: BUILD, exit: exitCodeFor(summary), ...summary }, null, 2))
+  console.log(`state-matrix.json: 0/1\n  FAIL harness-module-load: ${note}`)
+  process.exit(exitCodeFor(summary))
+}
 const electronBin = join(DESKTOP, 'node_modules', 'electron', 'dist', 'electron.exe')
 const log = { console: [], pageErrors: [], failed: [], http: [], sections: {}, fps: {} }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
@@ -46,6 +79,11 @@ const env = {
   HERMES_DESKTOP_SKIP_QUIT_CONFIRM: '1'
 }
 delete env.HERMES_DESKTOP_DEV_SERVER
+// P26: OPS_LIVE_PYTHON is a self-contained venv. An inherited PYTHONPATH/PYTHONHOME (e.g. another Hermes env's
+// site-packages) makes it import foreign compiled modules and fail; the preflight, the Electron launch (its pooled
+// backend) and the gateway stop all use this env, without them.
+delete env.PYTHONPATH
+delete env.PYTHONHOME
 if (process.env.OPS_LIVE_HERMES_HOME) { console.error('hard.mjs never uses OPS_LIVE_HERMES_HOME'); process.exit(4) }
 mkdirSync(HOME, { recursive: true })
 // The sandbox has no provider, so the first-run setup dialog can cover the app mid-run (it depended on
@@ -65,7 +103,7 @@ if (resolve(HOME).toLowerCase().startsWith(resolve(process.env.LOCALAPPDATA ?? '
 {
   const { spawnSync } = await import('node:child_process')
   const py = process.env.OPS_LIVE_PYTHON
-  const probe = py ? spawnSync(py, ['-c', 'import hermes_cli.web_server'], { cwd: resolve(DESKTOP, '..', '..'), encoding: 'utf8', timeout: 120_000 }) : null
+  const probe = py ? spawnSync(py, ['-c', 'import hermes_cli.web_server'], { cwd: resolve(DESKTOP, '..', '..'), env, encoding: 'utf8', timeout: 120_000 }) : null
   if (!probe || probe.status !== 0) {
     console.error('ops-live preflight failed: OPS_LIVE_PYTHON must import hermes_cli.web_server from this checkout.', probe?.stderr?.slice(-400) ?? 'unset')
     process.exit(2)
@@ -109,8 +147,9 @@ const dismissToasts = async () => {
 }
 // P25 (judge pass 19 #1): fail-closed. A screenshot that cannot be taken, or that leaves no file, THROWS; the state
 // that asked for it fails with the reason (it used to be logged and absorbed, so ok stayed true).
-const shot = async name => {
-  await dismissToasts(); await sleep(250); await dismissToasts()
+// P26: keepToasts (a state whose evidence IS a toast, e.g. a refused chat send) screenshots with its alerts in place.
+const shot = async (name, o = {}) => {
+  if (!o.keepToasts) { await dismissToasts(); await sleep(250); await dismissToasts() } else await sleep(250)
   const file = join(OUT, `${name}.png`)
   await page.screenshot({ path: file })
   if (!existsSync(file) || statSync(file).size === 0) throw new Error(`screenshot ${name}.png was not written`)
@@ -248,6 +287,52 @@ const mockErr = await app.evaluate(() => globalThis.__opsMockErr ?? null)
 const reqSeq = () => app.evaluate(() => globalThis.__opsSeq ?? 0)
 const requests = (since = 0) => app.evaluate((_, s) => (globalThis.__opsReqs ?? []).filter(r => r.seq > s), since)
 
+// ---------------------------------------------------------------- gateway (WebSocket) layer (P26)
+// Chat sends and subagent events travel over the gateway WebSocket, not hermes:api. gateway.install() routes every
+// WebSocket of THIS test page through Playwright (connectToServer: the sandbox gateway still answers everything), then
+// reloads so the app reconnects through the route. Rules [{ method: regex, error?: msg, result?: json }] answer a
+// client JSON-RPC request in place of the server (it never reaches the sandbox gateway); push(frame) delivers a
+// server frame (e.g. a subagent.* event) to the page. Every client request is recorded (method, params, socket).
+const gateway = {
+  installed: false, rules: [], sent: [], hits: [], sockets: new Set(),
+  async install() {
+    if (this.installed) return 'already routed'
+    await page.routeWebSocket(() => true, ws => {
+      const server = ws.connectToServer()
+      const entry = { ws, url: ws.url(), rpc: false }
+      this.sockets.add(entry)
+      ws.onMessage(m => {
+        let f = null
+        if (typeof m === 'string') { try { f = JSON.parse(m) } catch {} }
+        if (f && typeof f.method === 'string') {
+          entry.rpc = true
+          this.sent.push({ method: f.method, id: f.id ?? null, params: f.params ?? null, at: Date.now(), url: entry.url.slice(0, 120) })
+          if (this.sent.length > 4000) this.sent.splice(0, 1000)
+          const rule = f.id !== undefined && this.rules.find(r => new RegExp(r.method).test(f.method))
+          if (rule) {
+            this.hits.push({ method: f.method, id: f.id, params: f.params ?? null, at: Date.now() })
+            ws.send(JSON.stringify(rule.error ? { id: f.id, jsonrpc: '2.0', error: { code: rule.code ?? -32000, message: rule.error } } : { id: f.id, jsonrpc: '2.0', result: rule.result ?? null }))
+            return
+          }
+        }
+        server.send(m)
+      })
+      server.onMessage(m => { if (typeof m === 'string' && /"jsonrpc"/.test(m)) entry.rpc = true; ws.send(m) })
+      ws.onClose((code, reason) => { this.sockets.delete(entry); server.close({ code, reason }) })
+      server.onClose((code, reason) => { this.sockets.delete(entry); ws.close({ code, reason }) })
+    })
+    this.installed = true
+    await page.reload()
+    await page.waitForFunction(() => { const t = document.body?.innerText ?? ''; return t.length > 0 && !/Starting Hermes|Waiting for Hermes backend/.test(t) }, null, { timeout: 120_000 })
+    await sleep(4000)
+    return 'gateway WebSocket routed through the harness'
+  },
+  setRules(rules) { this.rules = rules; this.hits = [] },
+  /** Deliver a server frame to every JSON-RPC socket of the page; returns how many sockets got it. */
+  push(frame) { let n = 0; for (const e of this.sockets) if (e.rpc) { e.ws.send(JSON.stringify(frame)); n++ } return n },
+  rpcSockets() { return [...this.sockets].filter(e => e.rpc).length }
+}
+
 // ---------------------------------------------------------------- assertions (P24)
 // A state is ok only when VISIBLE, specific evidence is on screen after the interaction: Playwright visibility
 // (non-empty box, not display:none / visibility:hidden), plus text / attribute / value checks. Node counts never pass.
@@ -345,14 +430,15 @@ const noBlockingModal = async () => {
   return 'no modal over the app'
 }
 const matrixFile = () => (SELFTEST ? 'selftest-matrix.json' : 'state-matrix.json')
-const writeMatrix = (extra = {}) => writeFileSync(join(OUT, matrixFile()), JSON.stringify({ mode: SELFTEST ? 'selftest' : 'states', run: SELFTEST_MODE || 'states', tag: TAG || null, mockErr, generatedAt: new Date().toISOString(), ok: matrix.filter(x => x.ok).length, total: matrix.length, ...extra, matrix }, null, 2))
+const writeMatrix = (extra = {}) => writeFileSync(join(OUT, matrixFile()), JSON.stringify({ mode: SELFTEST ? 'selftest' : 'states', run: RUN_ID, selftestMode: SELFTEST_MODE || 'states', tag: TAG || null, build: BUILD, mockErr, generatedAt: new Date().toISOString(), ok: matrix.filter(x => x.ok).length, total: matrix.length, ...extra, matrix }, null, 2))
 const within = (pr, ms, what) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error(`watchdog: ${what} > ${ms} ms`)), ms))])
 const msg = e => String(e?.message ?? e).replace(/\s+/g, ' ').slice(0, 300)
-/** Run labelled checks; every check runs (no short-circuit) so a negative control shows exactly which ones failed. */
+/** Run labelled checks; every check runs (no short-circuit) so a negative control shows exactly which ones failed.
+ *  P26: a check that hangs past its own budget (watchdog) is marked infra: it is not a rejection of the state. */
 const runChecks = async (checks, ms, ctx) => {
   const out = []
   for (const [label, fn] of Object.entries(checks)) {
-    try { out.push({ label, pass: true, detail: await within(Promise.resolve().then(() => fn(ms, ctx)), ms + 5000, label) }) } catch (e) { out.push({ label, pass: false, detail: msg(e).slice(0, 240) }) }
+    try { out.push({ label, pass: true, detail: await within(Promise.resolve().then(() => fn(ms, ctx)), ms + 5000, label) }) } catch (e) { const d = msg(e).slice(0, 240); out.push({ label, pass: false, detail: d, ...(/^watchdog: /.test(d) ? { infra: true } : {}) }) }
   }
   return out
 }
@@ -369,7 +455,7 @@ const runChecks = async (checks, ms, ctx) => {
 const evalState = async (name, spec, neg, opts = {}) => {
   const errors = []
   const fail = (where, e) => errors.push(`${where}: ${msg(e)}`)
-  const takeShot = opts.shot ?? shot
+  const takeShot = opts.shot ?? (n2 => shot(n2, { keepToasts: Boolean(spec.keepToasts) }))
   const n = spec.neg ?? {}
   const shots = []
   const ctx = { neg, shot: async label => { const f = await within(Promise.resolve().then(() => takeShot(`${name}-${label}`)), 20000, `screenshot ${label}`); shots.push(`${name}-${label}.png`); return f } }
@@ -398,12 +484,19 @@ const evalState = async (name, spec, neg, opts = {}) => {
   if (spec.after) { try { await within(Promise.resolve().then(() => spec.after(ctx)), 60000, 'after') } catch (e) { fail('after', e) } }
   let ok, note
   if (neg) {
+    // P26 (judge pass 20 #1): a negative control holds only on the EXPECTED rejection: every must-fail check fails by its
+    // own assertion (not by a watchdog), no-blocking-modal still passes (a modal or the boot-failure overlay would make
+    // every visibility check fail for the wrong reason) and nothing threw (mock, act, screenshot, after). Any of those is
+    // infrastructure, never 'held'.
     const must = n.fails ?? Object.keys(spec.checks ?? {})
     const missing = must.filter(l => !checks.some(c => c.label === l))
-    const held = checks.filter(c => must.includes(c.label) && !c.pass).map(c => c.label)
-    const leaked = must.filter(l => !held.includes(l) && !missing.includes(l))
-    ok = errors.length === 0 && checks.length > 0 && must.length > 0 && leaked.length === 0 && missing.length === 0
-    note = [errors.join(' | '), missing.length ? `negative control names unknown checks: ${missing.join(', ')}` : '', leaked.length ? `FALSE POSITIVE: passed without precondition: ${leaked.join(', ')}` : held.length ? `negative control held: ${held.join(', ')} failed` : ''].filter(Boolean).join(' | ')
+    const held = checks.filter(c => must.includes(c.label) && !c.pass && !c.infra).map(c => c.label)
+    const infraChecks = checks.filter(c => must.includes(c.label) && !c.pass && c.infra).map(c => c.label)
+    const leaked = must.filter(l => !held.includes(l) && !missing.includes(l) && !infraChecks.includes(l))
+    const modal = checks.find(c => c.label === 'no-blocking-modal')
+    const infra = [...errors.map(e => `infrastructure: ${e}`), ...(modal && !modal.pass ? [`infrastructure: ${modal.detail}`] : []), ...infraChecks.map(l => `infrastructure: check ${l} hung (watchdog)`)]
+    ok = infra.length === 0 && checks.length > 0 && must.length > 0 && leaked.length === 0 && missing.length === 0
+    note = [infra.length ? `NOT HELD (infrastructure, not the expected rejection): ${infra.join(' | ')}` : '', missing.length ? `negative control names unknown checks: ${missing.join(', ')}` : '', leaked.length ? `FALSE POSITIVE: passed without precondition: ${leaked.join(', ')}` : '', ok ? `negative control held: ${held.join(', ')} failed; no-blocking-modal passed; act ran without exception` : ''].filter(Boolean).join(' | ')
   } else {
     const failed = checks.filter(c => !c.pass).map(c => c.label)
     ok = errors.length === 0 && checks.length > 0 && failed.length === 0
@@ -411,6 +504,8 @@ const evalState = async (name, spec, neg, opts = {}) => {
   }
   return { ok, note, errors, checks, shots, ctx }
 }
+/** P26: the evidence signature of one row: which run, which build, when. */
+const stamp = () => ({ run: RUN_ID, build: BUILD.commit, at: new Date().toISOString() })
 const state = async (screen, st, spec) => {
   if (ONLY && !ONLY.test(`${screen}-${st}`)) return
   const name = `${SELFTEST ? 's' : 'h'}-${screen}-${st}`.replace(/[^a-z0-9-]/gi, '_')
@@ -421,7 +516,7 @@ const state = async (screen, st, spec) => {
   } else {
     row = await evalState(name, spec, SELFTEST)
   }
-  matrix.push({ screen, state: st, proves: spec?.proves ?? null, shot: row.shots[0] ?? null, shots: row.shots, ok: row.ok, note: row.note, errors: row.errors, ...(SELFTEST ? { mustFail: spec?.neg?.fails ?? Object.keys(spec?.checks ?? {}) } : {}), checks: row.checks })
+  matrix.push({ screen, state: st, proves: spec?.proves ?? null, shot: row.shots[0] ?? null, shots: row.shots, ok: row.ok, note: row.note, errors: row.errors, ...(SELFTEST ? { mustFail: spec?.neg?.fails ?? Object.keys(spec?.checks ?? {}) } : {}), checks: row.checks, ...stamp() })
   writeMatrix()
 }
 /**
@@ -440,7 +535,7 @@ const control = async (screen, st, spec) => {
     checks = r.checks ?? []
     shots = r.shots ?? []
   } catch (e) { ok = false; note = `control failed: ${msg(e)}` }
-  matrix.push({ screen, state: st, proves: spec.proves ?? null, shot: shots[0] ?? null, shots, ok, note, errors: [], checks })
+  matrix.push({ screen, state: st, proves: spec.proves ?? null, shot: shots[0] ?? null, shots, ok, note, errors: [], checks, ...stamp() })
   writeMatrix()
 }
 // Legacy helper (kept): now visibility-based, never a node count.
@@ -455,31 +550,34 @@ if (want('discover')) {
 }
 
 const summary = {}
-if (existsSync(join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs'))) {
-  const mod = await import('file://' + join(DESKTOP, 'scripts', 'ops-live', 'hard-states.mjs').replace(/\\/g, '/'))
-  const api = { page, app, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, offscreen, need, reload, see, none, served, tap, type, visible, reqSeq, requests, unobstructed, isSelftest: () => SELFTEST, selftest: SELFTEST }
+{
+  const api = { page, app, go, goApp, lens, state, control, evalState, mock, narrow, sleep, shot, want, offscreen, need, reload, see, none, served, tap, type, visible, reqSeq, requests, unobstructed, gateway, noBlockingModal, harness: { DESKTOP, OUT, TAG, RUN_ID, BUILD, exitCodeFor, hardScript: join(DESKTOP, 'scripts', 'ops-live', 'hard.mjs') }, isSelftest: () => SELFTEST, selftest: SELFTEST }
   const passes = [...(RUN_STATES ? [false] : []), ...(RUN_NEG ? [true] : [])]
   for (const neg of passes) {
     SELFTEST = neg
     matrix.length = 0
     writeMatrix({ running: true })
     try {
-      await mod.default({ ...api, selftest: neg })
+      await statesFn({ ...api, selftest: neg })
       writeMatrix()
     } catch (e) {
       // A pass that crashes is recorded as such (never a silent partial matrix).
-      matrix.push({ screen: 'harness', state: 'pass-crashed', proves: 'the pass ran to the end', shot: null, shots: [], ok: false, note: `pass crashed: ${msg(e)}`, errors: [msg(e)], checks: [] })
+      matrix.push({ screen: 'harness', state: 'pass-crashed', proves: 'the pass ran to the end', shot: null, shots: [], ok: false, note: `pass crashed: ${msg(e)}`, errors: [msg(e)], checks: [], ...stamp() })
       writeMatrix({ crashed: msg(e) })
     }
+    // P26: a pass that wrote no row at all (STEPS without 'hard'/'all', an ONLY filter matching nothing) is a failure too.
+    if (!matrix.length) { matrix.push({ screen: 'harness', state: 'empty-pass', proves: 'the pass ran at least one state', shot: null, shots: [], ok: false, note: `no state ran (steps=${STEPS.join(',')}, only=${ONLY ?? 'none'})`, errors: [], checks: [], ...stamp() }); writeMatrix() }
     summary[matrixFile()] = { ok: matrix.filter(x => x.ok).length, total: matrix.length, failed: matrix.filter(x => !x.ok).map(x => `${x.screen}-${x.state}: ${x.note}`.slice(0, 300)) }
     await narrow(1600).catch(() => {})
   }
 }
 save()
-writeFileSync(join(OUT, 'run-summary.json'), JSON.stringify(summary, null, 2))
+const exitCode = exitCodeFor(summary)
+writeFileSync(join(OUT, 'run-summary.json'), JSON.stringify({ run: RUN_ID, build: BUILD, exit: exitCode, ...summary }, null, 2))
 for (const [file, s] of Object.entries(summary)) {
   console.log(`${file}: ${s.ok}/${s.total}`)
   for (const f of s.failed) console.log(`  FAIL ${f}`)
 }
-await app.close().catch(() => {})
-process.exit(Object.values(summary).every(s => s.ok === s.total && s.total > 0) ? 0 : 3)
+// P26: a bounded close; then the process is killed and the sandbox gateway stopped (process 'exit' handler).
+await within(app.close(), 20000, 'app.close').catch(() => {})
+process.exit(exitCode)
