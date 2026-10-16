@@ -1443,11 +1443,12 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
   // by its route and resumed through the sandbox gateway); only prompt.submit is refused. The intercepted method must be
   // prompt.submit (no session.create), the draft stays once, the error sits beside the composer, focus stays in the
   // composer, and messages and composer share one column, at 420 and 760.
-  const LONG_SID = '20261016_120000_0a7c27'
+  // A fresh session id per seeding: a deleted session leaves a tombstone, so an id can never be seeded twice.
+  const freshSid = () => `${new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15)}_${Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0')}`
   const LONG_LAST = 'OPS-HARD-LAST-MARKER'
   const SUBMIT_DRAFT = 'Ops hard draft for an existing session that must survive a refused submit'
   const SUBMIT_REFUSAL = 'prompt refused by the gateway (mock)'
-  const seedLong = () => { const out = runPython([`${harness.scripts}/seed-session.py`, LONG_SID, 'Release checklist review (ops hard)', '24', LONG_LAST]); return JSON.parse(out.split('\n').filter(Boolean).pop()) }
+  const seedLong = sid => { const out = runPython([`${harness.scripts}/seed-session.py`, sid, 'Release checklist review (ops hard)', '24', LONG_LAST]); return JSON.parse(out.split('\n').filter(Boolean).pop()) }
   const chatGeom = () => page.evaluate(([draft, refusal, last]) => {
     const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' }
     const box = el => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) } }
@@ -1471,10 +1472,11 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     }
   }, [SUBMIT_DRAFT, SUBMIT_REFUSAL, LONG_LAST])
   const submitAct = (w, send) => async ctx => {
-    ctx.seed = seedLong()
+    ctx.sid = freshSid()
+    ctx.seed = seedLong(ctx.sid)
     ctx.route = await gateway.install()
     gateway.setRules([{ method: '^prompt\\.submit$', error: SUBMIT_REFUSAL }])
-    await goApp(`/${LONG_SID}`)
+    await goApp(`/${ctx.sid}`)
     await see('[data-slot="thread"]', { text: LONG_LAST, ms: 30000 })
     ctx.width = await fitWidth('[data-chat-surface]', w)
     await sleep(1000)
@@ -1495,11 +1497,11 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
       checks: {
         [`pane-${w}`]: paneW(w, 'chat pane'),
         'existing-long-session-open': ev('geom', (g, ctx) => {
-          if (!g.hash.includes(LONG_SID)) fail(`route ${g.hash}, not the seeded session`)
+          if (!g.hash.includes(ctx.sid)) fail(`route ${g.hash}, not the seeded session ${ctx.sid}`)
           if ((ctx.seed?.messages ?? 0) < 48) fail(`seeded session has ${ctx.seed?.messages} messages, want >= 48`)
           if (!g.lastMsg) fail('the last seeded message is not on screen')
           if (!g.history || g.history.scrollHeight < g.history.clientHeight * 2) fail(`the transcript is not a long history (${JSON.stringify(g.history)})`)
-          return `session ${LONG_SID} (${ctx.seed.messages} stored messages) open, transcript ${g.history.scrollHeight}px tall in a ${g.history.clientHeight}px view`
+          return `session ${ctx.sid} (${ctx.seed.messages} stored messages) open, transcript ${g.history.scrollHeight}px tall in a ${g.history.clientHeight}px view`
         }),
         'prompt-submit-intercepted': ev('sent', s => {
           if (!s.hits.length) fail(`nothing intercepted (client sent: ${s.methods.join(', ') || 'nothing'})`)
@@ -1531,7 +1533,7 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
       neg: { act: submitAct(w, false), fails: ['prompt-submit-intercepted', 'error-beside-composer'] },
       // The seeded session is deleted again: the sandbox home persists across runs, and the empty Sessions/Artifacts
       // states (earlier in the next run) must not find it.
-      after: async () => { gateway.setRules([]); await narrow(1600); await goApp('/'); await sleep(1500); runPython([`${harness.scripts}/seed-session.py`, '--delete', LONG_SID]); await reload() }
+      after: async ctx => { gateway.setRules([]); await narrow(1600); await goApp('/'); await sleep(1500); if (ctx?.sid) runPython([`${harness.scripts}/seed-session.py`, '--delete', ctx.sid]); await reload() }
     })
   }
 
