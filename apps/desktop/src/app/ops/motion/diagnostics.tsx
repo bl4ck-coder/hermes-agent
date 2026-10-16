@@ -1,8 +1,9 @@
 /** P8 b5: Diagnostics group (L1 probe, L6 stream/policy/errors, S7 redacted copy, R77 dev-only simulation). */
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 import { connectionScoped, hermesApi } from '@/api/client'
 
+import { humanError, humanErrorLine } from '../feed/api-error'
 import {
   clearOpsErrors,
   connectionView,
@@ -20,7 +21,29 @@ import {
 } from '../feed/diag'
 import { useKanbanStream } from '../feed/kanban-stream'
 import { setOpsConnection } from '../feed/write-gate'
-import { T } from '../main-i18n'
+import { opsMainLocale, T } from '../main-i18n'
+
+/** P26: "now", "2 minutes ago", "3 hours ago" in the Ops locale (Intl), for a timestamp in ms. */
+export function relativeAgo(at: number, now: number): string {
+  const s = Math.max(0, Math.round((now - at) / 1000))
+  const loc = opsMainLocale()
+  const rtf = new Intl.RelativeTimeFormat(loc === 'en' ? 'en' : loc, { numeric: 'auto' })
+
+  return s < 10 ? rtf.format(0, 'second') : s < 60 ? rtf.format(-s, 'second') : s < 3600 ? rtf.format(-Math.floor(s / 60), 'minute') : s < 86400 ? rtf.format(-Math.floor(s / 3600), 'hour') : rtf.format(-Math.floor(s / 86400), 'day')
+}
+
+/** P26: re-render on a clock so relative times stay true while the panel is open. */
+function useNow(ms = 15_000): number {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), ms)
+
+    return () => window.clearInterval(id)
+  }, [ms])
+
+  return now
+}
 
 
 /** B16: the connection line is localized at render; the copied diagnostics report stays English. */
@@ -60,6 +83,9 @@ export function DiagnosticsPanel({
   const [probing, setProbing] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const [conn, setConn] = useState<ConnectionView | null>(null)
+  // P26 (judge pass 20 #3): when the present probe ran, so the verdict is never without its time.
+  const [probedAt, setProbedAt] = useState<number | null>(null)
+  const now = useNow()
   const fetcher = get ?? ((path: string) => hermesApi({ ...connectionScoped(), path }))
 
   const runProbe = async () => {
@@ -76,6 +102,7 @@ export function DiagnosticsPanel({
     }
 
     setResults(await probe(fetcher))
+    setProbedAt(Date.now())
     setProbing(false)
   }
 
@@ -95,6 +122,11 @@ export function DiagnosticsPanel({
         <h3 data-ops-diag-state="">
           {!results ? T('Not probed yet') : tone === 'good' ? T('All capabilities available') : T('Some capabilities need attention')}
         </h3>
+        {results && probedAt !== null ? (
+          <p data-ops-diag-checked-at="">
+            <time dateTime={new Date(probedAt).toISOString()}>{T('Checked {when}').replace('{when}', relativeAgo(probedAt, Math.max(now, probedAt)))}</time>
+          </p>
+        ) : null}
         {!results ? (
           <p data-ops-diag-unprobed="">{T('Run the probe to see what works now. Errors listed below are earlier failures, not the current state.')}</p>
         ) : null}
@@ -136,7 +168,8 @@ export function DiagnosticsPanel({
                 {failing.map(r => (
                   <li data-ops-probe-check={r.id} data-ops-probe-fail={r.state} data-ops-probe-state={r.state} key={r.id}>
                     <strong>{T(r.label)}</strong>
-                    <span>{r.detail}</span>
+                    {/* P26: the human reason, not the transport wrapper (the copied report keeps the raw text). */}
+                    <span>{r.state === 'missing' ? r.detail : humanErrorLine(humanError(r.detail), T)}</span>
                   </li>
                 ))}
               </ul>
@@ -162,14 +195,25 @@ export function DiagnosticsPanel({
           <h4>
             {T("Recent errors")}{' '}<span data-ops-error-count="">{errors.length}</span>
           </h4>
-          {/* P20c/P24: one line per failing endpoint (latest message, repeat count); the raw log is folded at the end. */}
+          {/* P20c/P24: one line per failing endpoint (latest message, repeat count); the raw log is folded at the end.
+              P26 (judge pass 20 #3): the human reason leads, then the endpoint and its last occurrence; the transport
+              wrapper is only in the full error log. */}
           <ul data-ops-error-groups="">
-            {groupOpsErrors(errors).map(g => (
-              <li data-ops-error-group="" key={g.key}>
-                <strong>{g.key}</strong> <span>{g.message}</span>
-                {g.count > 1 ? <span data-ops-error-repeat="">{' \u00d7'}{g.count}</span> : null}
-              </li>
-            ))}
+            {groupOpsErrors(errors).map(g => {
+              const last = lastAt(errors, g.key)
+
+              return (
+                <li data-ops-error-group="" key={g.key}>
+                  <strong data-ops-error-reason="">{humanErrorLine(humanError(g.message), T)}</strong> <span data-ops-error-endpoint="">{g.key}</span>{' '}
+                  {last === null ? null : (
+                    <time data-ops-error-last="" dateTime={new Date(last).toISOString()}>
+                      {relativeAgo(last, Math.max(now, last))}
+                    </time>
+                  )}
+                  {g.count > 1 ? <span data-ops-error-repeat="">{' \u00d7'}{g.count}</span> : null}
+                </li>
+              )
+            })}
           </ul>
         </section>
       ) : null}
@@ -235,6 +279,14 @@ export function SystemStatus({ policySource, onOpen }: { policySource: string | 
       </button>
     </p>
   )
+}
+
+/** P26: the most recent occurrence (ms) of an endpoint key as groupOpsErrors builds it. */
+function lastAt(errors: readonly { at: number | string; method?: string; path?: string }[], key: string): number | null {
+  const times = errors.filter(e => (`${e.method ?? ''} ${e.path ?? ''}`.trim() || '?') === key).map(e => (typeof e.at === 'number' ? e.at : Date.parse(e.at)))
+  const t = Math.max(...times.filter(Number.isFinite))
+
+  return Number.isFinite(t) ? t : null
 }
 
 /** P20c/P24: one line per endpoint with its repeat count and its MOST RECENT message (by `at`; the ring prepends, so on ties the first seen is newest). */

@@ -982,6 +982,8 @@
 
 /* P12: thresholds use the exact Settings row anatomy (same columns, label style, 48px rows). */
 :where(fieldset[data-ops-thresholds]) :where(label) { grid-template-columns: minmax(10rem, 34%) minmax(0, 1fr); min-height: 48px; padding: 8px 0; font-size: var(--type-meta,14px); line-height: var(--type-meta-lh,20px); color: var(--ops-fg); }
+/* P26: at a 320px panel the number field shrinks to its column instead of pushing the form 20px wide (measured in Chromium). */
+:where(fieldset[data-ops-thresholds]) :where(label > input) { box-sizing: border-box; max-width: 100%; min-width: 0; }
 :where(fieldset[data-ops-thresholds]) :where(label > input) { justify-self: start; width: 8rem; }
 :where([data-ops-settings-main]) > :where(h2) { margin-top: var(--space-4,16px); }
 
@@ -1043,7 +1045,11 @@
 :where([data-ops-intent]) { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: var(--space-2,8px); min-width: 0; }
 :where([data-ops-intent="links"]) :where(button[data-ops-row-link]) { background: transparent; border-color: transparent; color: var(--ops-muted); text-decoration: underline; text-underline-offset: 3px; }
 :where([data-ops-intent]) :where([data-ops-disclosure] > summary) { margin-left: 0; }
-:where([data-ops-refused]) { flex: 1 1 100%; color: var(--ops-bad, #e5484d); font-size: var(--type-meta,14px); }
+/* P26 (judge pass 20 #3): a refusal is one wrapping line (human reason) and a folded raw detail; neither widens the row at 420px. */
+:where([data-ops-refused]) > :where([data-ops-disclosure]) { min-width: 0; max-width: 100%; }
+:where([data-ops-refused]) > :where([data-ops-disclosure][open]) { flex: 1 1 100%; }
+:where([data-ops-refused-raw]) { display: block; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; line-height: 16px; color: var(--ops-muted); }
+:where([data-ops-refused]) { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2,8px); max-width: 100%; min-width: 0; overflow-wrap: anywhere; color: var(--ops-bad, #e5484d); font-size: var(--type-meta,14px); }
 @container ops-rows (max-width: 40rem) { :where([data-ops-row]) { grid-template-columns: auto minmax(0, 1fr); } :where([data-ops-row-actions]) { grid-column: 2; max-width: none; justify-content: flex-start; padding-top: var(--space-2,8px); } :where([data-ops-row-more-slot]) { grid-column: 2; grid-row: auto; justify-content: flex-start; } }
 :where([data-ops-team-task-status]) { color: var(--ops-muted); }
 :where([data-ops-team-task-status='blocked']) { color: var(--ops-warn,#e3a33b); }

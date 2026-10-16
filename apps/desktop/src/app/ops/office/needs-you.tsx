@@ -9,6 +9,7 @@
 
 import { type ReactNode, useState } from 'react'
 
+import { humanError, humanErrorHasMore, humanErrorLine } from '../feed/api-error'
 import type { ApprovalItem, CronJobLite } from '../feed/ops-client'
 import { T } from '../main-i18n'
 import { Disclosure, EntityList, EntityRow } from '../primitives/entity-row'
@@ -121,7 +122,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
       return true
     } catch (e) {
       setBusy(b => ({ ...b, [key]: 'failed' }))
-      setErrors(x => ({ ...x, [key]: e instanceof Error ? e.message : 'refused' }))
+      // P26: keep the raw text; the line shows the human reason, the raw only in a folded detail.
+      setErrors(x => ({ ...x, [key]: e instanceof Error ? e.message : typeof e === 'string' ? e : 'refused' }))
 
       return false
     }
@@ -132,7 +134,28 @@ export function NeedsYouQueue(p: NeedsYouProps) {
   const total = p.items.length + failing.length + policy.length
 
   // P24 (judge pass 18): a refusal is said next to the control that was refused, and the typed note stays.
-  const alertFor = (k: string) => (errors[k] && busy[k] === 'failed' ? <span data-ops-refused={k} role="alert">{errors[k]}</span> : null)
+  // P26 (judge pass 20 #3): one short line, human reason first (status meaning + server words); the transport/IPC
+  // text is only in a folded detail after it.
+  const alertFor = (k: string) => {
+    if (!errors[k] || busy[k] !== 'failed') {
+      return null
+    }
+
+    const h = humanError(errors[k])
+
+    return (
+      <span data-ops-refused={k}>
+        <span data-ops-refused-reason="" role="alert">
+          {humanErrorLine(h, T)}
+        </span>
+        {humanErrorHasMore(h) ? (
+          <Disclosure kind="refused-raw" label={T('Details')}>
+            <code data-ops-refused-raw="">{h.raw}</code>
+          </Disclosure>
+        ) : null}
+      </span>
+    )
+  }
 
   const alerts = (key: string) => (
     <>

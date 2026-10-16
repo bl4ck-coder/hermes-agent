@@ -33,7 +33,7 @@ describe('P25 Diagnostics: present probe vs error history', () => {
     expect(document.querySelector('[data-ops-diag-summary]')?.textContent).toContain('7/7')
     // History is still there, labelled as recent errors, with its latest message.
     expect(historyGroups()).toHaveLength(1)
-    expect(historyGroups()[0]).toContain('502: Bad Gateway')
+    expect(historyGroups()[0]).toContain('Bad gateway (502)')
   })
 
   it('before any probe, it says so instead of inferring health (good or bad) from history', () => {
@@ -48,7 +48,7 @@ describe('P25 Diagnostics: present probe vs error history', () => {
     expect(unprobed!.closest('details')).toBeNull()
     expect(unprobed!.textContent).toMatch(/earlier/i)
     expect(document.querySelector('[data-ops-diag-summary]')?.textContent).not.toMatch(/available/)
-    expect(historyGroups()[0]).toContain('500: boom')
+    expect(historyGroups()[0]).toContain('Server error (500): boom')
   })
 
   it('fail -> recover -> probe 7/7: the header shows the recovered present state, the earlier failure stays as history', async () => {
@@ -79,6 +79,6 @@ describe('P25 Diagnostics: present probe vs error history', () => {
     expect(state()).toBe('All capabilities available')
     expect(document.querySelector('[data-ops-probe-failing]')).toBeNull()
     expect(historyGroups()).toHaveLength(1)
-    expect(historyGroups()[0]).toContain('503: Service Unavailable')
+    expect(historyGroups()[0]).toContain('Unavailable (503)')
   })
 })
