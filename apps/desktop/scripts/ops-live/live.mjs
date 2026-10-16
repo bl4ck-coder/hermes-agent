@@ -260,7 +260,18 @@ await sleep(5000)
 log.bootMs = Date.now() - t0
 await shot('00-boot').catch(e => { log.bootShotError = String(e).slice(0, 300) })
 
-log.boardBefore = await page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') }).catch(e => 'ERR ' + e)
+// P27: the board signature taken before the visits must be a real reading. On a cold snapshot gateway the first reads
+// can fail ('gateway ensure'); retry for up to 180 s. An unreadable 'before' makes the unchanged-board check unverifiable,
+// which fails the run (it is never compared against an error string).
+{
+  const t = Date.now()
+  for (;;) {
+    log.boardBefore = await page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') }).catch(e => 'ERR ' + e)
+    if (!/^ERR /.test(log.boardBefore) || Date.now() - t > 180_000) break
+    await sleep(5000)
+  }
+  log.boardBeforeMs = Date.now() - t
+}
 if (want('probe')) {
   log.api = await page.evaluate(async () => {
     const out = {}
@@ -485,7 +496,8 @@ if (want('app') || want('artifacts-probe')) {
 }
 const boardSig = () => page.evaluate(async () => { const b = await window.hermesDesktop.api({ path: '/api/plugins/kanban/board' }); return b.columns.map(c => `${c.name}:${c.tasks.map(t => t.id).sort().join(',')}`).join('|') })
 log.boardAfter = await boardSig().catch(e => 'ERR ' + e)
-log.boardUnchanged = log.boardBefore === log.boardAfter
+log.boardUnchanged = !/^ERR /.test(log.boardBefore) && !/^ERR /.test(log.boardAfter) && log.boardBefore === log.boardAfter
+log.boardCheck = /^ERR /.test(log.boardBefore) ? `unverifiable: board unreadable before the visits (${log.boardBefore.slice(0, 160)})` : /^ERR /.test(log.boardAfter) ? `unverifiable: board unreadable after the visits (${log.boardAfter.slice(0, 160)})` : log.boardUnchanged ? 'unchanged' : 'CHANGED during the visits'
 save()
 // P27: the summary separates READY / NOT READY / FAILED (never one number), and is what decides the exit code.
 {
@@ -501,6 +513,7 @@ save()
     bootReady: log.bootReady,
     pageErrors: log.pageErrors.length,
     boardUnchanged: log.boardUnchanged,
+    boardCheck: log.boardCheck,
     exit: 0
   }
   log.summary.exit = log.summary.total > 0 && log.summary.READY === log.summary.total && log.bootReady && log.boardUnchanged ? 0 : 5
@@ -508,7 +521,7 @@ save()
 }
 console.log(JSON.stringify({ boardUnchanged: log.boardUnchanged, sections: log.sections, fps: log.fps, bootMs: log.bootMs, console: log.console.length, pageErrors: log.pageErrors.length }, null, 1))
 console.log('READINESS ' + JSON.stringify(log.readiness, null, 1))
-console.log(`SUMMARY sections=${log.summary.total} READY=${log.summary.READY} NOT READY=${log.summary['NOT READY']} FAILED=${log.summary.FAILED} pageErrors=${log.summary.pageErrors} boardUnchanged=${log.boardUnchanged} exit=${log.summary.exit}`)
+console.log(`SUMMARY sections=${log.summary.total} READY=${log.summary.READY} NOT READY=${log.summary['NOT READY']} FAILED=${log.summary.FAILED} pageErrors=${log.summary.pageErrors} boardUnchanged=${log.boardUnchanged} (${log.boardCheck}) exit=${log.summary.exit}`)
 for (const f of log.summary.failed) console.log(`  FAILED ${f.section}: ${f.why.join(' | ')}`)
 for (const f of log.summary.notReady) console.log(`  NOT READY ${f.section}: ${f.readiness}`)
 // P26 (judge pass 20): the last run hung after finishing. A bounded close, then the app process is killed, the
