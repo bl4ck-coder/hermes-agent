@@ -97,12 +97,56 @@ const age = (s: number | null | undefined) =>
 
 const MISSING_WHY = new Set(['', 'reason not recorded', 'motivo no registrado'])
 
+/** P27: a reason longer than this (or multi-line) is clamped to two lines and unfolds on focus. */
+export const WHY_LONG = 120
+
+/**
+ * P27 (judge pass 21 #7): typed notes outlive the queue. Opening the task can leave Office (the route changes and the
+ * queue unmounts); the draft is still there when the user comes back. Keyed by row intent, kept for the app session.
+ */
+const DRAFTS = new Map<string, string>()
+
+/** The recorded reason; a long one is two lines until it gets focus (keyboard or tap), then reads whole. */
+function Why({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const long = text.length > WHY_LONG || text.includes('\n')
+
+  return (
+    <span
+      data-ops-why=""
+      data-ops-why-expanded={long && expanded ? '' : undefined}
+      data-ops-why-long={long ? '' : undefined}
+      onBlur={long ? () => setExpanded(false) : undefined}
+      onFocus={long ? () => setExpanded(true) : undefined}
+      tabIndex={long ? 0 : undefined}
+    >
+      {text}
+    </span>
+  )
+}
+
 type State = 'sending' | 'done' | 'failed'
 
 export function NeedsYouQueue(p: NeedsYouProps) {
   const [busy, setBusy] = useState<Record<string, State>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [notes, setNotesState] = useState<Record<string, string>>(() => Object.fromEntries(DRAFTS))
+
+  const setNotes = (next: (n: Record<string, string>) => Record<string, string>) =>
+    setNotesState(n => {
+      const out = next(n)
+
+      for (const [k, v] of Object.entries(out)) {
+        if (v) {
+          DRAFTS.set(k, v)
+        } else {
+          DRAFTS.delete(k)
+        }
+      }
+
+      return out
+    })
+
   const [results, setResults] = useState<Record<string, unknown>>({})
 
   if (!p.items) {
@@ -244,14 +288,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
             </button>
             {alertFor(`r:${key}`)}
           </span>
-          <span data-ops-intent="links">
-            {p.onOpenTask ? (
-              <button data-ops-row-link="" onClick={() => p.onOpenTask?.(item.id)} type="button">
-                {T('Open task')}
-              </button>
-            ) : null}
-            {comment(item, key)}
-          </span>
+          {/* P27: the task is opened from the context line (Review task), so the links line keeps only Comment. */}
+          <span data-ops-intent="links">{comment(item, key)}</span>
         </>
       )
     } else if (item.origin === 'kanban_blocked') {
@@ -281,10 +319,24 @@ export function NeedsYouQueue(p: NeedsYouProps) {
         context={
           <>
             {/* P23b (judge pass 17): the reason helps decide, so it sits before the controls; a missing one is said here too. */}
-            {why ? <span data-ops-why="">{why}</span> : item.origin === 'kanban_review' || item.origin === 'kanban_blocked' ? <span data-ops-why-missing="">{T("reason not recorded")}</span> : null}
+            {/* P27 (judge pass 21 #7): reviewing the task sits with the reason, before Approve: a quiet link, not a second primary. */}
+            {item.origin === 'kanban_review' && p.onOpenTask ? (
+              <span data-ops-review-context="">
+                {why ? <Why text={why} /> : <span data-ops-why-missing="">{T("reason not recorded")}</span>}
+                <button data-ops-review-task={key} data-ops-row-link="" onClick={() => p.onOpenTask?.(item.id)} type="button">
+                  {T('Review task')}
+                </button>
+              </span>
+            ) : why ? (
+              <Why text={why} />
+            ) : item.origin === 'kanban_review' || item.origin === 'kanban_blocked' ? (
+              <span data-ops-why-missing="">{T("reason not recorded")}</span>
+            ) : null}
             {cmd && (item.origin === 'jsonrpc' || item.origin === 'gateway_run') ? <pre data-ops-row-command="" data-ops-waiting-on="">{cmd}</pre> : null}
           </>
         }
+        // P27: a draft kept from before (the user left to review the task) reopens its expansion.
+        defaultOpen={Boolean(more && (notes[key] ?? '').trim())}
         focusable
         key={key}
         lead={item.profile ? <Sigil name={item.profile} size={20} /> : null}

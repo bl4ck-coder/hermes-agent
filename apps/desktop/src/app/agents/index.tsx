@@ -23,6 +23,7 @@ import {
   type SubagentStreamEntry
 } from '@/store/subagents'
 
+import { T } from '../ops/main-i18n'
 import { Panel, PanelEmpty, PanelHeader } from '../overlays/panel'
 
 // Mirrors statusGlyph() in tool-fallback.tsx so subagent rows speak the
@@ -99,28 +100,36 @@ export function AgentsView({ onClose }: AgentsViewProps) {
 
   return (
     <Panel closeLabel={t.agents.close} onClose={onClose}>
-      {/* B35b: the spawn tree always opens on its hero, empty or not. */}
-      <PanelHeader icon={<Codicon name="hubot" />} stats={agentHeroStats(subagentsForPanel(subagentsBySession, activeSessionId), t.agents)} subtitle={t.agents.subtitle} title={t.agents.title} />
       {tree.length === 0 ? (
-        <PanelEmpty
-          align="start"
-          action={
-            // P9: the next step is the content: the example prompt at body size with its action in the same row.
-            <div className="flex w-full max-w-(--width-reading) items-center gap-3 rounded-lg border border-(--ui-stroke-tertiary) px-4 py-3 text-left" data-agents-next-step="">
-              <p className="m-0 min-w-0 flex-1 text-(length:--type-body) leading-(--type-body-lh) text-foreground" data-agents-empty-hint="">
-                {t.teach.agentsEmptyHint}
-              </p>
-              <CopyButton appearance="button" buttonVariant="default" label={t.common.copy} showLabel text={agentsHintExample(t.teach.agentsEmptyHint)} />
-            </div>
-          }
-          id="agents"
-          illustration={<DelegationIllustration />}
-          description={t.agents.emptyDesc}
-          icon="hubot"
-          title={t.agents.emptyTitle}
-        />
+        <>
+          {/* B35b: the empty spawn tree opens on its hero. */}
+          <PanelHeader icon={<Codicon name="hubot" />} subtitle={t.agents.subtitle} title={t.agents.title} />
+          <PanelEmpty
+            action={
+              // P9: the next step is the content: the example prompt at body size with its action in the same row.
+              <div className="flex w-full max-w-(--width-reading) items-center gap-3 rounded-lg border border-(--ui-stroke-tertiary) px-4 py-3 text-left" data-agents-next-step="">
+                <p className="m-0 min-w-0 flex-1 text-(length:--type-body) leading-(--type-body-lh) text-foreground" data-agents-empty-hint="">
+                  {t.teach.agentsEmptyHint}
+                </p>
+                <CopyButton appearance="button" buttonVariant="default" label={t.common.copy} showLabel text={agentsHintExample(t.teach.agentsEmptyHint)} />
+              </div>
+            }
+            align="start"
+            description={t.agents.emptyDesc}
+            icon="hubot"
+            id="agents"
+            illustration={<DelegationIllustration />}
+            title={t.agents.emptyTitle}
+          />
+        </>
       ) : (
         <>
+          {/* P27 (judge pass 21 #6): work first. One compact line (title + what the panel is), no counters; the tree
+              follows at once and the counters live once, folded, below it. */}
+          <header className="flex min-w-0 shrink-0 items-baseline gap-3 pb-3 pr-8" data-agents-header="">
+            <h2 className="m-0 shrink-0 text-(length:--type-section) font-semibold leading-(--type-section-lh) text-foreground">{t.agents.title}</h2>
+            <p className="m-0 min-w-0 truncate text-xs text-muted-foreground/75">{t.agents.subtitle}</p>
+          </header>
           <SubagentTree tree={tree} />
         </>
       )}
@@ -278,21 +287,27 @@ function SubagentTree({ tree }: { tree: SubagentNode[] }) {
   ].filter(Boolean)
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <p className="shrink-0 text-xs text-muted-foreground/70">
-        {summary.map((part, index) => (
-          <Fragment key={part}>
-            {index > 0 ? ' · ' : null}
-            {part === failedLabel ? <span className="text-destructive">{part}</span> : part}
-          </Fragment>
-        ))}
-      </p>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pr-1">
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6" data-agents-tree="">
           {groups.map(group => (
             <DelegationGroup group={group} key={group.id} nowMs={nowMs} />
           ))}
         </div>
+        {/* P27: the counters are support, read after the work: folded, once. */}
+        <details className="mt-6 text-xs text-muted-foreground/70" data-agents-summary="">
+          <summary className="flex min-h-10 cursor-pointer items-center text-xs font-medium text-muted-foreground/80">{T('Summary')}</summary>
+          <p className="m-0 pb-2">
+            {summary.map((part, index) => (
+              <Fragment key={part}>
+                {index > 0 ? ' · ' : null}
+                <span className={part === failedLabel ? 'text-destructive' : undefined} data-agents-summary-part="">
+                  {part}
+                </span>
+              </Fragment>
+            ))}
+          </p>
+        </details>
       </div>
     </div>
   )
@@ -453,32 +468,6 @@ export function SubagentRow({ node, depth = 0, nowMs }: { node: SubagentNode; de
       ) : null}
     </div>
   )
-}
-
-/** B36: the same buckets the rows use (statusGlyph): interrupted counts as failed, queued as running. */
-export function agentStatusBucket(status: SubagentStatus): 'done' | 'failed' | 'running' {
-  switch (status) {
-    case 'failed':
-    case 'interrupted':
-      return 'failed'
-    case 'completed':
-      return 'done'
-    case 'queued':
-    case 'running':
-      return 'running'
-  }
-}
-
-export function agentHeroStats(list: readonly { status: SubagentStatus }[], a: Translations['agents']) {
-  const n = { done: 0, failed: 0, running: 0 }
-  for (const x of list) n[agentStatusBucket(x.status)]++
-  // Empty metrics read as broken; the hero shows numbers only once a turn delegated.
-  if (n.done + n.failed + n.running === 0) return undefined
-  return [
-    { label: a.running, primary: true, tone: n.running ? ('good' as const) : ('muted' as const), value: n.running },
-    { label: a.done, value: n.done },
-    { label: a.failed, tone: n.failed ? ('bad' as const) : undefined, value: n.failed }
-  ]
 }
 
 /** B36: one meaningful picture of delegation: a parent turn fanning out to child agents. */
