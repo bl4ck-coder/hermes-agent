@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { ProfileScope } from '@/api/client'
+import { migrateOpsSplitForProfile } from '@/app/ops/layout-store'
 import { ActionStatus } from '@/components/ui/action-status'
 import { Button } from '@/components/ui/button'
 import {
@@ -102,6 +103,7 @@ export function RenameProfileDialog({
       // dials a backend that no longer exists (#111868).
       if (!isDefault && scope == null) {
         migrateTilesForProfile(currentName, trimmed)
+        migrateOpsSplitForProfile(currentName, trimmed)
       }
 
       await onRenamed?.(trimmed)
@@ -145,7 +147,7 @@ export function RenameProfileDialog({
           </Field>
 
           {error && (
-            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-gn-destructive-copy">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
               <span>{error}</span>
             </div>

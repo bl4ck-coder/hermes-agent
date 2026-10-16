@@ -11,6 +11,7 @@
  * recognized and paused.
  */
 
+import { existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
 import { describe, expect, it } from 'vitest'
@@ -19,9 +20,17 @@ import { isLegacyDelegatedRoutine, normalizedProfileName, routineInputError, rou
 
 /** Run the delegation command under a `hermes` stub that prints its argv, so
  *  the assertion is what the SHELL passed — not what the string looks like. */
+// Windows has no `sh` on PATH; Git for Windows ships one beside git.exe.
+function posixShell(): string {
+  if (process.platform !== 'win32') return 'sh'
+  const git = spawnSync('where', ['git'], { encoding: 'utf8' }).stdout?.split(/\r?\n/)[0]?.trim()
+  const candidates = [git?.replace(/\\(cmd|bin|mingw64\\bin)\\git\.exe$/i, '\\bin\\sh.exe'), 'C:\\Program Files\\Git\\bin\\sh.exe']
+  return candidates.find(p => p && existsSync(p)) ?? 'sh'
+}
+
 function argvOf(prompt: string): string[] {
   const command = prompt.slice(prompt.indexOf('hermes '), prompt.lastIndexOf('\n\nIf the command'))
-  const result = spawnSync('sh', ['-c', `hermes() { printf '%s\\037' "$@"; }\n${command}`], { encoding: 'utf8' })
+  const result = spawnSync(posixShell(), ['-c', `hermes() { printf '%s\\037' "$@"; }\n${command}`], { encoding: 'utf8' })
 
   expect(result.status, result.stderr).toBe(0)
 

@@ -9,12 +9,18 @@
  * a fresh status the caller uses to flip the pane to "Start screen".
  */
 
-import { Button, Codicon, GlyphSpinner, host } from '@hermes/plugin-sdk'
+import { Button, Codicon, EmptyState, GlyphSpinner, host } from '@hermes/plugin-sdk'
 import type { RpcEvent } from '@hermes/plugin-sdk'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useBots } from './i18n'
-import { displayRequest, type DisplayStatus, isEventForBotScreen, retainBotScreen } from './screen-connection'
+import {
+  displayRequest,
+  type DisplayStatus,
+  isEventForBotScreen,
+  isManagedBackend,
+  retainBotScreen
+} from './screen-connection'
 import type { RosterRow } from './types'
 
 const LOG_KEEP = 200
@@ -23,6 +29,21 @@ interface ScreenInstallCardProps {
   bot: RosterRow
   status: DisplayStatus
   onInstalled: (status: DisplayStatus) => void
+}
+
+/**
+ * The pane for a host without the screen packages. Hermes Cloud ships Screen in the image of
+ * its larger sizes; a smaller bot's image leaves it out, and packages installed by hand would
+ * not survive the next update, so only a self-managed host is offered the install.
+ */
+export function ScreenNotInstalled(props: ScreenInstallCardProps) {
+  const t = useBots()
+
+  if (isManagedBackend(props.bot)) {
+    return <EmptyState description={t.screen.managedNotIncludedBody} title={t.screen.managedNotIncludedTitle} />
+  }
+
+  return <ScreenInstallCard {...props} />
 }
 
 export function ScreenInstallCard({ bot, status, onInstalled }: ScreenInstallCardProps) {
@@ -131,7 +152,7 @@ export function ScreenInstallCard({ bot, status, onInstalled }: ScreenInstallCar
           </Button>
         ) : null}
         {log.length > 0 ? (
-          <pre className="max-h-48 overflow-auto rounded bg-black/80 p-2 text-left font-mono text-[0.65rem] leading-tight text-white/85">
+          <pre className="max-h-48 overflow-auto rounded bg-black/80 p-2 text-left font-mono text-xs leading-tight text-white/85">
             {log.join('\n')}
             <div ref={logEnd} />
           </pre>

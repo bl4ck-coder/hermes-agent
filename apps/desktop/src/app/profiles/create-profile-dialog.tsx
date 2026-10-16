@@ -77,10 +77,11 @@ export function CreateProfileDialog({
     setError(null)
 
     try {
-      await createProfile({ name: trimmed, clone_from: cloneFrom })
+      const result = await createProfile({ name: trimmed, clone_from: cloneFrom, ...(soul.trim() ? { soul } : {}) })
 
-      if (soul.trim()) {
-        await updateProfileSoul(trimmed, soul)
+      // Older remote backends do not accept an initial persona in the create request.
+      if (soul.trim() && !result.soul_set) {
+        await updateProfileSoul(trimmed, soul, trimmed)
       }
 
       await onCreated?.(trimmed)
@@ -145,7 +146,7 @@ export function CreateProfileDialog({
           </Field>
 
           {error && (
-            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-gn-destructive-copy">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
               <span>{error}</span>
             </div>

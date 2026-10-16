@@ -545,6 +545,7 @@ export const zhHantCommandCenter = {
     promptPlaceholder: '代理每次執行時應做什麼？',
     frequencyLabel: '頻率',
     deliverLabel: '傳遞至',
+    lastDeliveryFailed: '已執行，但傳遞失敗',
     deliverNeedsHomeChannel: '請先設定主頻道',
     modelLabel: '模型',
     modelDefault: '預設（全域模型）',

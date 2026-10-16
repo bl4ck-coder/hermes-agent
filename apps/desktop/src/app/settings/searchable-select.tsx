@@ -52,7 +52,8 @@ export function SearchableSelect({
   options,
   placeholder = 'Search…',
   emptyMessage = 'No results found.',
-  clearLabel
+  clearLabel,
+  ...field
 }: {
   value: string
   onChange: (value: string) => void
@@ -62,6 +63,11 @@ export function SearchableSelect({
   /** When set, prepends a "clear" item that sets the value to ''.
    *  Matches the existing <Select> pattern of EMPTY_SELECT_VALUE + "(none)". */
   clearLabel?: string
+  /** P25: form-row association (SettingsFormRow id, label, help/error, invalid). */
+  id?: string
+  'aria-labelledby'?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -80,6 +86,7 @@ export function SearchableSelect({
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
         <button
+          {...field}
           aria-expanded={open}
           aria-haspopup="listbox"
           className={cn(

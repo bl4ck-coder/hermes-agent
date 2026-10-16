@@ -533,6 +533,10 @@ async def get_status(profile: Optional[str] = None):
         if install_id:
             status["install_id"] = install_id
 
+        # SPEC v2.1 3b: static Ops capability tokens (no secrets, no paths).
+        from hermes_cli.ops_capabilities import ops_capabilities
+        status["ops_capabilities"] = ops_capabilities()
+
         # Advisory only. Expose no paths or process identities on this public probe.
         from hermes_cli.shared_profile_warning import shared_profile_warning
         status["shared_profile_warning"] = bool(await run_in_threadpool(shared_profile_warning))

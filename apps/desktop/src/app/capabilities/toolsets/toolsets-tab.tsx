@@ -146,6 +146,7 @@ export function ToolsetsTab({ profile, query, toolsets }: ToolsetsTabProps) {
   return (
     <MasterDetail resizeId="capabilities-split" split="wide">
       <ListColumn
+        current={activeToolset ? toolsetDisplayLabel(activeToolset) : null}
         header={
           <ListStrip
             left={<SortButton desc={toolsetsSortDesc} onFlip={() => $toolsetsSortDesc.set(!$toolsetsSortDesc.get())} />}

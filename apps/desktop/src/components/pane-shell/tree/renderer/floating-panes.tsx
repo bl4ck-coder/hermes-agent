@@ -13,7 +13,7 @@ import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef 
 
 import { HUD_SURFACE } from '@/app/floating-hud'
 import { TITLEBAR_HEIGHT } from '@/app/shell/titlebar'
-import { useOnboardingChatActive } from '@/components/onboarding-chat/assembly'
+import { useOnboardingChatActive } from '@/components/onboarding/first-run/assembly'
 import { Codicon } from '@/components/ui/codicon'
 import { ContribBoundary, ContribRender } from '@/contrib/react/boundary'
 import { useContributions } from '@/contrib/react/use-contributions'
@@ -174,7 +174,7 @@ function FloatingPane({ pane }: { pane: Contribution }) {
     >
       {/* Header IS the drag handle — the floating equivalent of a tab strip. */}
       <header
-        className="flex shrink-0 cursor-grab items-center justify-between gap-2 px-2.5 py-1.5 text-[0.6875rem] text-(--ui-text-secondary) select-none"
+        className="flex shrink-0 cursor-grab items-center justify-between gap-2 px-2.5 py-1.5 text-xs text-(--ui-text-secondary) select-none"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

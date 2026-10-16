@@ -25,7 +25,8 @@ from typing import Any, Callable, Iterator, Optional
 
 from fastapi import (
     APIRouter, File, Form, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect, status as http_status)
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from starlette.requests import Request
 from pydantic import BaseModel, Field
 
 from hermes_cli import kanban_db
@@ -549,6 +550,9 @@ class UpdateTaskBody(BaseModel):
     clear_model_override: bool = False
     reasoning_effort: Optional[str] = None
     clear_reasoning_effort: bool = False
+    # Ops MF7: optional optimistic guard. When sent, the patch applies only if the task is still in this
+    # status; otherwise 409 stale_status and nothing changes. Older clients omit it (unchanged behaviour).
+    expected_status: Optional[str] = None
 
 
 class BulkTaskBody(BaseModel):
@@ -692,7 +696,12 @@ def _patch_title_body(conn, task_id: str, payload: UpdateTaskBody, board: Option
 @router.patch("/tasks/{task_id}")
 def update_task(task_id: str, payload: UpdateTaskBody, board: Optional[str] = Query(None)):
     with _board_conn(board) as (board, conn):
-        _require_task(conn, task_id)
+        current = _require_task(conn, task_id)
+        if payload.expected_status is not None and current.status != payload.expected_status:
+            raise HTTPException(status_code=409, detail={
+                "code": "stale_status", "expected_status": payload.expected_status,
+                "current_status": current.status,
+                "message": f"task is {current.status}, not {payload.expected_status}; review again"})
         # For a combined assignee+review patch, request_review must capture the
         # current implementer before the task is routed to the reviewer.
         review_assignee_deferred = payload.status == "review" and payload.assignee is not None
@@ -931,6 +940,50 @@ def list_active_workers(board: Optional[str] = _BOARD_Q):
             "ORDER BY r.started_at ASC").fetchall()
         workers = [dict(row) for row in rows]
         return {"workers": workers, "count": len(workers), "checked_at": int(time.time())}
+
+
+@router.get("/runs/stats")
+def run_stats(since: int = Query(0, ge=0), board: Optional[str] = _BOARD_Q):
+    """Ops Fleet (R72): ``task_runs`` rows started at or after ``since`` (epoch s), per profile.
+
+    Read-only aggregate: ``{since, profiles: {name: {runs, failed, last_started_at}}, total}``.
+    ``failed`` counts ended runs whose outcome is not ``completed``.
+    """
+    with _board_conn(board) as (board, conn):
+        rows = conn.execute(
+            "SELECT COALESCE(r.profile, t.assignee) AS profile, COUNT(*) AS runs, "
+            "SUM(CASE WHEN r.ended_at IS NOT NULL AND COALESCE(r.outcome, '') != 'completed' THEN 1 ELSE 0 END) AS failed, "
+            "MAX(r.started_at) AS last_started_at "
+            "FROM task_runs r LEFT JOIN tasks t ON t.id = r.task_id "
+            "WHERE r.started_at >= ? GROUP BY COALESCE(r.profile, t.assignee)", (since,)).fetchall()
+        profiles = {
+            (row["profile"] or ""): {"runs": int(row["runs"]), "failed": int(row["failed"] or 0), "last_started_at": row["last_started_at"]}
+            for row in rows}
+        return {"since": since, "profiles": profiles, "total": sum(p["runs"] for p in profiles.values())}
+
+
+@router.get("/attachments")
+def list_recent_attachments(
+    limit: int = Query(50, ge=1, le=200),
+    before_id: Optional[int] = Query(None, ge=1),
+    board: Optional[str] = _BOARD_Q,
+):
+    """Ops Files (R70): every attachment on the board, newest first, keyset-paged by id.
+
+    ``{attachments: [... + task_title], next_before_id}``; ``next_before_id`` is null on the last page.
+    """
+    with _board_conn(board) as (board, conn):
+        sql = ("SELECT a.*, t.title AS task_title FROM task_attachments a LEFT JOIN tasks t ON t.id = a.task_id "
+               + ("WHERE a.id < ? " if before_id else "") + "ORDER BY a.id DESC LIMIT ?")
+        params = ((before_id,) if before_id else ()) + (limit + 1,)
+        rows = conn.execute(sql, params).fetchall()
+        page = rows[:limit]
+        out = []
+        for row in page:
+            d = _attachment_dict(kanban_db.Attachment.from_row(row))
+            d["task_title"] = row["task_title"]
+            out.append(d)
+        return {"attachments": out, "next_before_id": page[-1]["id"] if len(rows) > limit and page else None}
 
 
 @router.get("/runs/{run_id}")
@@ -1845,3 +1898,71 @@ async def stream_events(ws: WebSocket):
             pass
     finally:
         await tail.shutdown()
+
+
+# --- SSE: GET /events/stream?board=<slug> (ops-panel P1-05, A7) --------------------------------
+# Same producer, frame rows and cursor as the WebSocket above: each SSE message is one
+# ``task_events`` row and its SSE ``id`` is ``task_events.id``. Resume with the standard
+# ``Last-Event-ID`` header (EventSource sends it on reconnect) or ``?last_event_id=``; a missing
+# cursor starts at the board's tail (never a full-history replay), so a reconnect with the last
+# seen id loses nothing and repeats nothing.
+
+_SSE_KEEPALIVE_SECONDS = 15.0
+# Test seam: stop after N polls (None = run until the client disconnects).
+_SSE_MAX_POLLS: Optional[int] = None
+
+
+def _sse_cursor(header_value: Optional[str], query_value: Optional[str]) -> Optional[int]:
+    for raw in (header_value, query_value):
+        if raw is None or not str(raw).strip():
+            continue
+        try:
+            return max(0, int(str(raw).strip()))
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _sse_frame(event: dict) -> str:
+    return f"id: {event['id']}\nevent: kanban\ndata: {json.dumps(event, separators=(',', ':'))}\n\n"
+
+
+async def _sse_kanban_events(tail: "_EventTail", cursor: Optional[int],
+                             is_disconnected: Callable[[], Any]):
+    try:
+        if cursor is None:
+            cursor = await tail.latest()
+        yield f"retry: 2000\n: cursor {cursor}\n\n"
+        polls = 0
+        idle = 0.0
+        while True:
+            if await is_disconnected():
+                return
+            cursor, events = await tail.poll(cursor)
+            for ev in events:
+                yield _sse_frame(ev)
+            polls += 1
+            if _SSE_MAX_POLLS is not None and polls >= _SSE_MAX_POLLS:
+                return
+            if events:
+                idle = 0.0
+                continue  # drain a backlog (200 rows per poll) without sleeping
+            idle += _EVENT_POLL_SECONDS
+            if idle >= _SSE_KEEPALIVE_SECONDS:
+                idle = 0.0
+                yield ": keepalive\n\n"
+            await asyncio.sleep(_EVENT_POLL_SECONDS)
+    finally:
+        await tail.shutdown()
+
+
+@router.get("/events/stream")
+async def stream_events_sse(request: Request, board: Optional[str] = None,
+                            last_event_id: Optional[str] = None):
+    board_slug = _resolve_board(board)
+    cursor = _sse_cursor(request.headers.get("last-event-id"), last_event_id)
+    tail = _EventTail(board_slug)
+    return StreamingResponse(
+        _sse_kanban_events(tail, cursor, request.is_disconnected),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

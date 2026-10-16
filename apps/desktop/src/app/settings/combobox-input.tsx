@@ -33,7 +33,8 @@ export function ComboboxInput({
   options,
   placeholder,
   renderOption,
-  value
+  value,
+  ...field
 }: {
   'aria-label'?: string
   className?: string
@@ -45,6 +46,11 @@ export function ComboboxInput({
   /** Custom row content, e.g. a font name set in its own face. */
   renderOption?: (option: string) => ReactNode
   value: string
+  /** P25: form-row association (SettingsFormRow id, label, help/error, invalid). */
+  id?: string
+  'aria-labelledby'?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
 }) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
@@ -76,6 +82,7 @@ export function ComboboxInput({
       <PopoverAnchor asChild>
         <div className={cn('relative', className)} ref={anchorRef}>
           <Input
+            {...field}
             aria-autocomplete="list"
             aria-controls={expanded ? listId : undefined}
             aria-expanded={expanded}

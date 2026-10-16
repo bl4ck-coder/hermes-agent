@@ -516,13 +516,13 @@ export function BootFailureOverlay() {
         </div>
 
         <div className="grid gap-4 p-5 pt-0">
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-gn-destructive-copy">
             {failureCopy.headline}
             {failureCopy.rawDetail ? (
               <details className="mt-2 text-muted-foreground">
                 <summary className="cursor-pointer select-none font-medium">{copy.details}</summary>
                 <pre
-                  className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap wrap-break-word font-mono text-[0.6875rem] leading-relaxed"
+                  className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap wrap-break-word font-mono text-xs leading-relaxed"
                   data-selectable-text="true"
                 >
                   {failureCopy.rawDetail}

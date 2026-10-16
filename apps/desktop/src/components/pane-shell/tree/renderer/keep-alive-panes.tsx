@@ -206,6 +206,11 @@ export function KeepAlivePaneSlot({
   )
 
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0" style={{ anchorName: anchor } as CSSProperties} />
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0"
+      data-pane-slot={paneId}
+      style={{ anchorName: anchor } as CSSProperties}
+    />
   )
 }

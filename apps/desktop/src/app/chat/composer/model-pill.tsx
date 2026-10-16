@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSessionView } from '@/app/chat/session-view'
 import { useTourMarker } from '@/app/chat/tour-marker'
 import { ModelMenuCloseContext } from '@/app/shell/model-menu-panel'
+import { MODEL_PILL_CLASS } from '@/components/model-pill-control'
 import { isElementInHiddenPane } from '@/components/pane-shell/pane-visibility'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -31,10 +32,7 @@ import type { ChatBarState } from './types'
 // arbitrary 160px.
 const UNKNOWN_TIER = atom('')
 
-const PILL = cn(
-  'h-(--composer-control-size) min-w-0 shrink gap-1 rounded-md px-2 text-xs font-normal',
-  'text-(--ui-text-tertiary) hover:bg-(--chrome-action-hover) hover:text-foreground'
-)
+const PILL = MODEL_PILL_CLASS
 
 /**
  * Composer model selector — the relocated status-bar pill. Reuses the live

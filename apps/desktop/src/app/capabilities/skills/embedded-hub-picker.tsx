@@ -16,6 +16,7 @@ import {
 } from '@/store/hub-actions'
 import { notify, notifyError } from '@/store/notifications'
 import { $paneHeightOverride, setPaneHeightOverride } from '@/store/panes'
+import { useTheme } from '@/themes/context'
 
 // The REAL Skills Hub page (docs site) embedded as a one-click picker — the
 // same trick the Bot Mode agent editor uses. `?embed=picker` hides the docs
@@ -55,6 +56,8 @@ interface EmbeddedHubPickerProps {
    *  this to preserve the loaded hub iframe across tab switches — a plain
    *  unmount would reload the whole docs site on every return to Skills. */
   hidden?: boolean
+  /** B38: Explore mode. The hub owns the whole column (no sash, no hide). */
+  fill?: boolean
   /** Names of skills already installed in the scoped profile — a pick that
    *  matches is refused with a toast instead of re-running the install. */
   installedNames: ReadonlySet<string>
@@ -69,12 +72,17 @@ interface EmbeddedHubPickerProps {
  *  other pane) and an update-all action. Memoized: the iframe must not sit in
  *  the parent's keystroke/re-render path. */
 export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
+  fill = false,
   hidden = false,
   installedNames,
   profile
 }: EmbeddedHubPickerProps) {
   const { t } = useI18n()
   const h = t.skills.hub
+  // B33: the hub is a Docusaurus site; its documented theme query keeps it dark inside a dark app
+  // (the iframe otherwise follows the OS scheme and flashed a white page into Gold Night).
+  const { renderedMode } = useTheme()
+  const hubSrc = `${HUB_PICKER_URL}&docusaurus-theme=${renderedMode}`
   // Subscribe to the ONE flag this header renders, not the whole action map —
   // $hubActions churns on every tailed log line during an install.
   const updating = useStoreSelector($hubActions, actions => actions[UPDATE_ALL_KEY]?.running ?? false)
@@ -84,7 +92,7 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
   // site — on every visit. Same contract as DetailPane.
   const heightOverride = useStore($paneHeightOverride(HUB_PANE_ID))
   const height = heightOverride ?? HUB_DEFAULT_PX
-  const open = height > HUB_COLLAPSED_PX
+  const open = fill || height > HUB_COLLAPSED_PX
   const [dragging, setDragging] = useState(false)
   const sectionRef = useRef<HTMLElement>(null)
 
@@ -179,11 +187,14 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
         // section clips its own content and gives height back to the list;
         // min-h keeps the header row itself always visible.
         'relative flex min-h-9 flex-col overflow-hidden border-t border-(--ui-stroke-secondary)',
+        fill && 'min-h-0 flex-1 border-t-0',
         hidden && 'hidden'
       )}
+      data-hub-fill={fill ? '' : undefined}
       ref={sectionRef}
     >
-      {/* Top-edge drag sash — pull the whole hub section up/down. */}
+      {!fill && (
+      /* Top-edge drag sash — pull the whole hub section up/down. */
       <div
         className="group/hubsash absolute inset-x-0 top-0 z-10 h-1 -translate-y-1/2 cursor-row-resize"
         onDoubleClick={() => setPaneHeightOverride(HUB_PANE_ID, undefined)}
@@ -196,20 +207,23 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
           )}
         />
       </div>
+      )}
       <div className="flex shrink-0 items-center justify-between px-3 py-1.5">
-        <span className="text-[0.7rem] font-medium text-(--ui-text-tertiary)">{h.pickerTitle}</span>
+        <span className="text-xs font-medium text-(--ui-text-tertiary)">{h.pickerTitle}</span>
         <div className="flex items-center gap-1">
           <Button disabled={updating} onClick={updateAll} size="xs" variant="text">
             {updating && <Loader2 className="size-3 animate-spin" />}
             {updating ? h.updating : h.updateAll}
           </Button>
-          <Button onClick={() => setPaneHeightOverride(HUB_PANE_ID, open ? 0 : undefined)} size="xs" variant="text">
-            {open ? h.pickerHide : h.pickerBrowse}
-          </Button>
+          {!fill && (
+            <Button onClick={() => setPaneHeightOverride(HUB_PANE_ID, open ? 0 : undefined)} size="xs" variant="text">
+              {open ? h.pickerHide : h.pickerBrowse}
+            </Button>
+          )}
         </div>
       </div>
       {open && (
-        <div className="flex min-h-0 flex-col gap-1 px-3 pb-2">
+        <div className={cn('flex min-h-0 flex-col gap-1 px-3 pb-2', fill && 'flex-1')}>
           {/* Resizable viewport: height comes from the top-edge drag sash
               above (persisted; double-click resets). flex-basis instead of a
               hard height so a short window shrinks the hub viewport rather
@@ -220,8 +234,9 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
           <div
             style={{
               border: '1px solid var(--ui-stroke-secondary)',
-              borderRadius: 8,
-              flex: `0 1 ${height}px`,
+              borderRadius: 12,
+              boxShadow: '0 18px 48px -28px rgb(0 0 0 / 0.8)',
+              flex: fill ? '1 1 auto' : `0 1 ${height}px`,
               maxWidth: '100%',
               minHeight: 0,
               minWidth: 320,
@@ -232,7 +247,7 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
           >
             <iframe
               sandbox="allow-scripts allow-same-origin"
-              src={HUB_PICKER_URL}
+              src={hubSrc}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -247,7 +262,7 @@ export const EmbeddedHubPicker = memo(function EmbeddedHubPicker({
               title={h.pickerTitle}
             />
           </div>
-          <p className="shrink-0 px-1 text-[0.65rem] leading-4 text-(--ui-text-quaternary)">{h.pickerHint}</p>
+          <p className="shrink-0 px-1 text-xs leading-4 text-(--ui-text-quaternary)">{h.pickerHint}</p>
         </div>
       )}
     </section>

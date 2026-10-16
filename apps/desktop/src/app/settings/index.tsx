@@ -249,6 +249,11 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
             const view = `config:${s.id}` as SettingsViewId
 
             const entry = {
+              ...(s.id === 'model'
+                ? { sectionLabel: t.teach.navCore }
+                : s.id === 'advanced'
+                  ? { sectionLabel: t.teach.navSystem }
+                  : {}),
               active: activeView === view,
               icon: s.icon,
               id: view,
@@ -348,6 +353,7 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
                 : [])
             ],
             gapBefore: true,
+            sectionLabel: t.teach.navConnections,
             icon: Zap,
             id: 'providers',
             label: t.settings.nav.providers,
@@ -401,6 +407,7 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
             active: activeView === 'plugins',
             children: pluginSettingsNavChildren(plugins.entries, plugins.target, plugins.open),
             gapBefore: true,
+            sectionLabel: t.teach.navExtensions,
             icon: PLUGINS_NAV_ICON,
             id: 'plugins',
             label: t.settings.nav.plugins,
@@ -585,7 +592,7 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
             {needsSubpageRedirect ? (
               <Navigate replace to={{ hash, pathname, search: `?${subpageSearch}` }} />
             ) : (
-              activeSettingsContent
+              <div className="contents" data-settings-body="">{activeSettingsContent}</div>
             )}
           </SettingsBreadcrumbContext.Provider>
         </OverlayMain>

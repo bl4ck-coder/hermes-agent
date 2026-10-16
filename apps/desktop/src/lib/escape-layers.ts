@@ -31,23 +31,67 @@ export const ESCAPE_PRIORITY = {
 
 const active = new Map<symbol, number>()
 
-/** Register a layer as open; call the returned disposer when it closes. */
-export function pushEscapeLayer(priority: number): () => void {
-  const key = Symbol('escape-layer')
-  active.set(key, priority)
-
-  return () => {
-    active.delete(key)
-  }
+export interface EscapeLayerHandle {
+  (): void
+  /** True only for the latest registration at the winning priority. */
+  isTop: () => boolean
 }
 
-/** True when no open layer outranks `priority`, so its handler should act. */
-export function isTopEscapeLayer(priority: number): boolean {
-  for (const p of active.values()) {
-    if (p > priority) {
-      return false
+function winningKey(): symbol | null {
+  let top = -Infinity
+  let key: symbol | null = null
+
+  for (const [candidate, priority] of active) {
+    if (priority >= top) {
+      top = priority
+      key = candidate
     }
   }
 
-  return true
+  return key
+}
+
+/** Register a layer as open; call the returned disposer when it closes.
+ *  Ties: only the most recently pushed registration at the winning priority acts. */
+export function pushEscapeLayer(priority: number): EscapeLayerHandle {
+  const key = Symbol('escape-layer')
+  active.set(key, priority)
+
+  const dispose = (() => {
+    active.delete(key)
+  }) as EscapeLayerHandle
+
+  dispose.isTop = () => winningKey() === key
+
+  return dispose
+}
+
+/** True when this priority is the unique winner. A tie returns false — callers
+ *  that share a priority must use the handle's `isTop`. */
+export function isTopEscapeLayer(priority: number): boolean {
+  const key = winningKey()
+
+  if (!key) {
+    return true
+  }
+
+  const winning = active.get(key) ?? -Infinity
+
+  if (priority < winning) {
+    return false
+  }
+
+  if (priority > winning) {
+    return true
+  }
+
+  let count = 0
+
+  for (const value of active.values()) {
+    if (value === priority) {
+      count += 1
+    }
+  }
+
+  return count === 1
 }

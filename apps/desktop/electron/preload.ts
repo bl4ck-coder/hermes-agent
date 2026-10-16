@@ -15,7 +15,7 @@ const translucencySupport = ipcRenderer.sendSync('hermes:translucency:support')
 const hudWindowing = ipcRenderer.sendSync('hermes:hud:windowing')
 const hudNativeDrag = hudWindowing?.nativeDrag === true
 
-const launchFlags: { localModels?: boolean; guestOnboarding?: boolean } | undefined =
+const launchFlags: { localModels?: boolean; assumeFreshInstall?: boolean } | undefined =
   ipcRenderer.sendSync('hermes:feature-flags')
 
 // Local, sanitized skin payload for the first renderer theme paint. This does
@@ -31,10 +31,9 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
   // Launch-flag fact: the app was started with --local, so the renderer may
   // show the local-models surfaces. Static for the window's lifetime.
   localModelsEnabled: launchFlags?.localModels === true,
-  // Launch-flag fact: the Nous free tier is on for this launch
-  // (HERMES_GUEST_ONBOARDING=1 or --guest-onboarding). Read-only; the same
-  // decision is stamped onto every backend the app spawns.
-  guestOnboardingEnabled: launchFlags?.guestOnboarding === true,
+  // Dev-only launch fact: an unpackaged app started with --fresh-install, so
+  // onboarding treats this launch as a fresh install. Always false when packaged.
+  assumeFreshInstall: launchFlags?.assumeFreshInstall === true,
   localSkin: localSkin && typeof localSkin === 'object' ? localSkin : null,
   getConnection: (profile, opts) => ipcRenderer.invoke('hermes:connection', profile, opts),
   // Loopback origin that hosts YouTube's player for the file:// renderer.
@@ -43,9 +42,6 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
   getConnectionFor: payload => ipcRenderer.invoke('hermes:connection:for', payload),
   getProfileRoutes: profiles => ipcRenderer.invoke('hermes:plugin-profile-routes', profiles),
   revalidateConnection: () => ipcRenderer.invoke('hermes:connection:revalidate'),
-  touchBackend: (profile, options) => ipcRenderer.invoke('hermes:backend:touch', profile, options),
-  getPoolLimits: () => ipcRenderer.invoke('hermes:pool-limits:get'),
-  setPoolLimits: limits => ipcRenderer.invoke('hermes:pool-limits:set', limits),
   getGatewayWsUrl: profile => ipcRenderer.invoke('hermes:gateway:ws-url', profile),
   // Registry-scoped fresh WS URL: { connectionId, profile } → result shape of
   // getGatewayWsUrl, minted against that connection's backend.
@@ -433,6 +429,12 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
     setDefaultProjectDir: dir => ipcRenderer.invoke('hermes:setting:defaultProjectDir:set', dir),
     pickDefaultProjectDir: () => ipcRenderer.invoke('hermes:setting:defaultProjectDir:pick')
   },
+  preparedSubmissions: {
+    read: () => ipcRenderer.invoke('hermes:prepared-submissions:read'),
+    update: (key, entry) => ipcRenderer.invoke('hermes:prepared-submissions:update', key, entry),
+    compareAndSet: (key, expected, entry) =>
+      ipcRenderer.invoke('hermes:prepared-submissions:compare-and-set', key, expected, entry)
+  },
   zoom: {
     // Current zoom of this window, as { level, percent }.
     get: () => ipcRenderer.invoke('hermes:zoom:get'),
@@ -465,6 +467,40 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
   renamePath: (targetPath, newName) => ipcRenderer.invoke('hermes:fs:rename', targetPath, newName),
   writeTextFile: (filePath, content) => ipcRenderer.invoke('hermes:fs:writeText', filePath, content),
   trashPath: targetPath => ipcRenderer.invoke('hermes:fs:trash', targetPath),
+  // ops-panel P1-06: typed /v1/runs/* proxy + ops SSE. The gateway API key never
+  // reaches the renderer; remoteKey.set is write-only and status never returns it.
+  runs: {
+    get: (ref, runId) => ipcRenderer.invoke('hermes:runs:get', ref, runId),
+    create: (ref, body) => ipcRenderer.invoke('hermes:runs:create', ref, body),
+    approve: (ref, runId, body) => ipcRenderer.invoke('hermes:runs:approve', ref, runId, body),
+    steer: (ref, runId, body) => ipcRenderer.invoke('hermes:runs:steer', ref, runId, body),
+    stop: (ref, runId) => ipcRenderer.invoke('hermes:runs:stop', ref, runId),
+    clarify: (ref, runId, body) => ipcRenderer.invoke('hermes:runs:clarify', ref, runId, body),
+    resolveUnknown: (ref, runId, body) => ipcRenderer.invoke('hermes:runs:resolve-unknown', ref, runId, body),
+    openEvents: (ref, runId, opts) => ipcRenderer.invoke('hermes:runs:events:open', ref, runId, opts),
+    closeEvents: subscriptionId => ipcRenderer.invoke('hermes:runs:events:close', subscriptionId),
+    onEvent: callback => {
+      const listener = (_event, payload) => callback(payload)
+      ipcRenderer.on('hermes:runs:event', listener)
+
+      return () => ipcRenderer.removeListener('hermes:runs:event', listener)
+    },
+    remoteKey: {
+      set: (connectionId, baseUrl, key) => ipcRenderer.invoke('hermes:runs:remoteKey:set', connectionId, baseUrl, key),
+      status: connectionId => ipcRenderer.invoke('hermes:runs:remoteKey:status', connectionId),
+      clear: connectionId => ipcRenderer.invoke('hermes:runs:remoteKey:clear', connectionId)
+    }
+  },
+  opsSse: {
+    open: request => ipcRenderer.invoke('hermes:ops:sse:open', request),
+    close: subscriptionId => ipcRenderer.invoke('hermes:ops:sse:close', subscriptionId),
+    onEvent: callback => {
+      const listener = (_event, payload) => callback(payload)
+      ipcRenderer.on('hermes:ops:sse:event', listener)
+
+      return () => ipcRenderer.removeListener('hermes:ops:sse:event', listener)
+    }
+  },
   git: {
     worktreeList: repoPath => ipcRenderer.invoke('hermes:git:worktreeList', repoPath),
     worktreeAdd: (repoPath, options) => ipcRenderer.invoke('hermes:git:worktreeAdd', repoPath, options),
@@ -590,15 +626,6 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
     ipcRenderer.on('hermes:backend-exit', listener)
 
     return () => ipcRenderer.removeListener('hermes:backend-exit', listener)
-  },
-  // Cooperative pool retirement (main → renderer): the pooled backend under
-  // `poolKey` is being stopped for a foreground open. Park that scope; do not
-  // redial into the slot it vacated.
-  onPoolBackendRetiring: callback => {
-    const listener = (_event, payload) => callback(payload)
-    ipcRenderer.on('hermes:pool:retiring', listener)
-
-    return () => ipcRenderer.removeListener('hermes:pool:retiring', listener)
   },
   // Soft gateway-mode apply finished tearing down the primary backend. Renderer
   // should wipe session lists + re-dial without a window reload.

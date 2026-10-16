@@ -620,6 +620,7 @@ export const arCommandCenter = {
     promptPlaceholder: 'ماذا تريد من Hermes أن يفعل؟',
     frequencyLabel: 'التكرار',
     deliverLabel: 'التسليم',
+    lastDeliveryFailed: 'نُفِّذ، لكن فشل التسليم',
     customScheduleLabel: 'جدول مخصص',
     customPlaceholder: 'تعبير cron',
     customHint: 'استخدم صيغة cron القياسية.',

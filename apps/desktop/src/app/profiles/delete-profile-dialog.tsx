@@ -1,4 +1,5 @@
 import type { ProfileScope } from '@/api/client'
+import { dropOpsSplitForProfile } from '@/app/ops/layout-store'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { deleteProfile } from '@/hermes'
 import { useI18n } from '@/i18n'
@@ -75,6 +76,7 @@ export function DeleteProfileDialog({
         // profile's backend, whose ensure_hermes_home() re-creates the
         // directory the delete just removed (hermes-agent#94235).
         dropTilesForProfile(profile.name)
+        dropOpsSplitForProfile(profile.name)
         await onDeleted?.()
 
         if (wasActive) {

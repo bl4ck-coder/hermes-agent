@@ -23,6 +23,7 @@ import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router'
 
 import App from './app'
+import { applyOpsLaunchRoute } from './app/ops/motion/launch'
 import { RootErrorBoundary } from './components/error-boundary'
 import { HapticsProvider } from './components/haptics-provider'
 import { RootTooltipProvider } from './components/ui/tooltip'
@@ -85,6 +86,8 @@ if (winParam === 'overlay') {
   // main window's visibility state to :root so decorative infinite
   // animations stop producing frames when nobody can see them.
   installRendererAnimationPauseState()
+  // R55 (P8 b6): Ops "open on launch" preference; only replaces a cold-start hash.
+  applyOpsLaunchRoute()
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

@@ -773,7 +773,7 @@ describe('FindBar', () => {
     expect($findInPage.get().matchOrdinal).toBe(1)
   })
 
-  it('Escape closes the bar and unwraps the highlights', async () => {
+  it('Escape is owned by the keybind dispatcher, not this sibling listener', async () => {
     const surface = plantSurface()
     surface.textContent = 'needle haystack'
     openFindBar()
@@ -783,9 +783,9 @@ describe('FindBar', () => {
     renderFindBar()
     fireEvent.keyDown(window, { key: 'Escape' })
 
-    expect($findInPage.get().active).toBe(false)
-    expect(surface.querySelectorAll('mark.find-hit').length).toBe(0)
-    await waitFor(() => expect(screen.queryByRole('search')).toBeNull())
+    expect($findInPage.get().active).toBe(true)
+    expect(surface.querySelectorAll('mark.find-hit').length).toBe(1)
+    expect(screen.getByRole('search')).toBeTruthy()
   })
 
   it('the close button clears state and unwraps the highlights', async () => {

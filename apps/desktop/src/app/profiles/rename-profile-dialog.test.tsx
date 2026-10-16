@@ -55,6 +55,19 @@ it('retires the old-name local gateways before issuing the rename', async () => 
   expect(migrateTilesForProfile).toHaveBeenCalledWith('selena', 'renamed')
 })
 
+it('moves the scoped ops split key when a local profile is renamed', async () => {
+  const { resizeOpsSplit, readOpsLayout, OPS_DEFAULT_WIDTH_PX } = await import('@/app/ops/layout-store')
+
+  resizeOpsSplit(510, 1600, { connectionId: 'local', profile: 'selena', remote: false, label: 'local' })
+  render(<RenameProfileDialog currentName="selena" onClose={vi.fn()} open />)
+  fireEvent.change(screen.getByLabelText(/new name/i), { target: { value: 'renamed' } })
+  fireEvent.click(screen.getByRole('button', { name: /^rename$/i }))
+
+  await waitFor(() => expect(readOpsLayout('local', 'renamed').widthPx).toBe(510))
+  expect(readOpsLayout('local', 'selena').widthPx).toBe(OPS_DEFAULT_WIDTH_PX)
+  expect(readOpsLayout('local', 'renamed').rail).toBe('full')
+})
+
 it('does not retire gateways when validation rejects the submit', async () => {
   render(<RenameProfileDialog currentName="selena" onClose={vi.fn()} open />)
 

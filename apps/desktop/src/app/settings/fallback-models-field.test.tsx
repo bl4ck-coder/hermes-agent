@@ -74,7 +74,7 @@ describe('FallbackModelsField', () => {
 
     // One Remove control per entry proves the object list became rows — the old
     // generic `list` input stringified the array to "[object Object]".
-    expect(screen.getAllByLabelText('Remove')).toHaveLength(2)
+    expect(screen.getAllByLabelText(/^Remove [0-9]/)).toHaveLength(2)
     expect(screen.getByText('Add fallback')).toBeTruthy()
     expect(screen.queryByText(/\[object Object\]/)).toBeNull()
     await waitFor(() => expect(getGlobalModelOptions).toHaveBeenCalled())
@@ -86,7 +86,7 @@ describe('FallbackModelsField', () => {
     const routed = { provider: 'custom', model: 'glm-5.08', base_url: 'http://gw:8080/v1', api_key: '${GW_KEY}' }
     const onChange = await renderField([...CHAIN, routed])
 
-    fireEvent.click(screen.getAllByLabelText('Remove')[0])
+    fireEvent.click(screen.getAllByLabelText(/^Remove [0-9]/)[0])
 
     expect(onChange.mock.calls.at(-1)?.[0]).toEqual([{ provider: 'openai-codex', model: 'gpt-5.4-mini' }, routed])
   })
@@ -98,16 +98,16 @@ describe('FallbackModelsField', () => {
 
     // The new empty row stays in the UI but only complete pairs are emitted.
     expect(onChange.mock.calls.at(-1)?.[0]).toEqual(CHAIN)
-    expect(screen.getAllByLabelText('Remove')).toHaveLength(3)
+    expect(screen.getAllByLabelText(/^Remove [0-9]/)).toHaveLength(3)
   })
 
   it('resyncs rows when persisted config changes', async () => {
     const rerender = await renderFieldWithRerender(CHAIN)
-    expect(screen.getAllByLabelText('Remove')).toHaveLength(2)
+    expect(screen.getAllByLabelText(/^Remove [0-9]/)).toHaveLength(2)
 
     rerender([{ provider: 'nous', model: 'hermes-4' }])
 
-    await waitFor(() => expect(screen.getAllByLabelText('Remove')).toHaveLength(1))
+    await waitFor(() => expect(screen.getAllByLabelText(/^Remove [0-9]/)).toHaveLength(1))
   })
 
   it('keeps a draft row visible after autosave re-renders the same persisted chain', async () => {
@@ -117,11 +117,26 @@ describe('FallbackModelsField', () => {
     fireEvent.click(screen.getByText('Add fallback'))
 
     expect(onChange.mock.calls.at(-1)?.[0]).toEqual([])
-    expect(screen.getAllByLabelText('Remove')).toHaveLength(1)
+    expect(screen.getAllByLabelText(/^Remove [0-9]/)).toHaveLength(1)
 
     // Parent autosave echo — same complete chain, new array identity.
     rerender([])
 
-    await waitFor(() => expect(screen.getAllByLabelText('Remove')).toHaveLength(1))
+    await waitFor(() => expect(screen.getAllByLabelText(/^Remove [0-9]/)).toHaveLength(1))
+  })
+
+  // P27 (judge pass 21, hard state fallback-rejected): removing an entry used to drop focus to <body>.
+  it('removing an entry keeps focus in the field (next Remove, else previous, else Add)', async () => {
+    await renderField(CHAIN)
+
+    const first = screen.getAllByLabelText(/^Remove [0-9]/)[0]
+
+    first.focus()
+    fireEvent.click(first)
+    await waitFor(() => expect(document.activeElement?.getAttribute('aria-label')).toMatch(/^Remove 1/))
+
+    fireEvent.click(document.activeElement as HTMLElement)
+    await waitFor(() => expect(document.activeElement?.hasAttribute('data-fallback-add')).toBe(true))
+    expect(document.activeElement).not.toBe(document.body)
   })
 })

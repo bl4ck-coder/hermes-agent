@@ -1,11 +1,9 @@
-import { compactNumber } from '@hermes/shared'
 import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
-import { type ReactNode, useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { ArchiveSkillConfirmDialog } from '@/app/learning/archive-skill-confirm-dialog'
 import { CodeEditor } from '@/components/chat/code-editor'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   editLearningNode,
@@ -46,27 +44,9 @@ import { categoryFor, filteredOfficial, filteredSkills, skillsQueryKey, usageOf 
 // most/least-used across navigations and restarts.
 const $skillsSortDesc = persistentAtom('hermes.desktop.capabilities.skillsSortDesc', true, Codecs.bool)
 
-// Row subtitle: category, with non-default origins badged.
-function skillSubtitle(skill: SkillInfo): ReactNode {
-  const category = prettyName(categoryFor(skill))
-  const provenance = skill.provenance
-
-  return (
-    <>
-      <span className="truncate">{category}</span>
-      {provenance === 'agent' && (
-        <Badge className="shrink-0 normal-case" variant="default">
-          learned
-        </Badge>
-      )}
-      {provenance === 'hub' && (
-        <Badge className="shrink-0 normal-case" variant="muted">
-          hub
-        </Badge>
-      )}
-    </>
-  )
-}
+// Row subtitle: the category only. P25 (judge pass 19): the side list keeps the one state that changes a decision
+// (the on/off switch); origin and usage live in the detail header.
+const skillSubtitle = (skill: SkillInfo): string => prettyName(categoryFor(skill))
 
 interface SkillsTabProps {
   /** The scope's skill list, straight from the shell's query. */
@@ -262,7 +242,7 @@ export function SkillsTab({ onRefresh, profile, query, skills }: SkillsTabProps)
       }
       id="skill-editor"
       onClose={() => setSkillEditor(null)}
-      title={<span className="text-[0.68rem] font-normal text-muted-foreground/60">{skillEditor.name}/SKILL.md</span>}
+      title={<span className="text-xs font-normal text-muted-foreground/60">{skillEditor.name}/SKILL.md</span>}
     >
       <CodeEditor
         filePath="SKILL.md"
@@ -282,6 +262,7 @@ export function SkillsTab({ onRefresh, profile, query, skills }: SkillsTabProps)
       ) : (
         <MasterDetail pane={skillEditorPane} resizeId="capabilities-split" split="wide">
           <ListColumn
+            current={activeOfficial?.name ?? activeSkill?.name ?? null}
             header={
               <ListStrip
                 left={<SortButton desc={skillsSortDesc} onFlip={() => $skillsSortDesc.set(!$skillsSortDesc.get())} />}
@@ -307,7 +288,6 @@ export function SkillsTab({ onRefresh, profile, query, skills }: SkillsTabProps)
                 busy={bulkBusy}
                 enabled={skill.enabled}
                 key={skill.name}
-                meta={usageOf(skill) > 0 ? `×${compactNumber(usageOf(skill))}` : undefined}
                 onSelect={() => {
                   setSelectedSkill(skill.name)
                   setSelectedOfficial(null)
@@ -319,7 +299,7 @@ export function SkillsTab({ onRefresh, profile, query, skills }: SkillsTabProps)
               />
             ))}
             {visibleOfficial.length > 0 && (
-              <div className="flex h-7 shrink-0 items-end px-2 pb-1 text-[0.62rem] font-medium uppercase tracking-wide text-(--ui-text-quaternary)">
+              <div className="flex h-7 shrink-0 items-end px-2 pb-1 text-xs font-medium uppercase tracking-wide text-(--ui-text-quaternary)">
                 {t.skills.officialCatalog}
               </div>
             )}

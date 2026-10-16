@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 
+import { activeElementInOpsRoot } from '@/app/ops/keymap'
 import { triggerHaptic } from '@/lib/haptics'
 import { composerFocusBlockedBySurface } from '@/lib/keybinds/composer-focus-keys'
 
@@ -51,7 +52,7 @@ export function useComposerEscCancel({ awaitingInput, busy, onCancel, target }: 
     // An overlay covering the chat owns Esc (its escape layer closes it) —
     // the composer stays mounted beneath it, so stand down. Same surface
     // signal as type-to-focus; also covers Radix dialogs/popovers.
-    if (composerFocusBlockedBySurface()) {
+    if (composerFocusBlockedBySurface() || activeElementInOpsRoot()) {
       return
     }
 

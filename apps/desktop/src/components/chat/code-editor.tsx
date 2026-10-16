@@ -1,7 +1,7 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { bracketMatching, indentOnInput, LanguageDescription } from '@codemirror/language'
 import { languages } from '@codemirror/language-data'
-import { Compartment, EditorState } from '@codemirror/state'
+import { Compartment, EditorState, Prec } from '@codemirror/state'
 import { Decoration, drawSelection, EditorView, keymap, lineNumbers } from '@codemirror/view'
 import { type RefObject, useEffect, useRef } from 'react'
 
@@ -40,6 +40,8 @@ export interface CodeEditorApi {
 interface CodeEditorProps {
   apiRef?: RefObject<CodeEditorApi | null>
   className?: string
+  /** id(s) of a status that describes the document (e.g. a refused save); set on the focusable content node. */
+  describedBy?: string
   /** Read-only: block edits (e.g. while a save is in flight) without unmounting. */
   disabled?: boolean
   /** Mod-Shift-F + `apiRef.formatJson()`. In-memory JSON docs only. */
@@ -49,6 +51,8 @@ interface CodeEditorProps {
    * inside is identical to pane previews (no extra inset). Off by default.
    */
   framed?: boolean
+  /** P8: render the document as prose (sans, 16/26) instead of code; used for SOUL.md. */
+  prose?: boolean
   filePath: string
   /** Character range to wash with a subtle background (the "you are here" block). */
   highlight?: null | { from: number; to: number }
@@ -164,9 +168,20 @@ const LAYOUT_THEME = EditorView.theme({
 // shoved text right and made the left inset dwarf the top), and zero the line's
 // own horizontal padding so the host's uniform `p-2` is the ONLY inset — even
 // breathing room on all four sides. Long lines wrap rather than scroll.
+// P8: prose documents (SOUL.md) read as instructions, not code: the font is set on every layer
+// CodeMirror paints (.cm-scroller, .cm-content and .cm-line), at the body reading scale.
+const PROSE_FONT = 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)'
+const PROSE_THEME = EditorView.theme({
+  '.cm-scroller': { fontFamily: PROSE_FONT, fontSize: 'var(--type-body, 1rem)', lineHeight: 'var(--type-reading-lh, 1.625rem)' },
+  '.cm-content': { fontFamily: PROSE_FONT, fontSize: 'var(--type-body, 1rem)', lineHeight: 'var(--type-reading-lh, 1.625rem)', padding: '0.75rem 1rem' },
+  '.cm-line': { fontFamily: PROSE_FONT, fontSize: 'var(--type-body, 1rem)', lineHeight: 'var(--type-reading-lh, 1.625rem)', padding: '0' }
+})
+
 const FRAMED_THEME = EditorView.theme({
   '.cm-line': { padding: '0' }
 })
+
+const describedByAttr = (id: string | undefined) => (id ? EditorView.contentAttributes.of({ 'aria-describedby': id }) : [])
 
 // A deliberately small CodeMirror 6 surface for *spot edits* — not an IDE: line
 // numbers, history, selection, bracket matching, syntax highlighting. No fold
@@ -177,9 +192,11 @@ const FRAMED_THEME = EditorView.theme({
 export function CodeEditor({
   apiRef,
   className,
+  describedBy,
   disabled = false,
   formatJson = false,
   framed = false,
+  prose = false,
   filePath,
   highlight,
   initialValue,
@@ -189,13 +206,16 @@ export function CodeEditor({
   onFormatJsonError,
   onSave
 }: CodeEditorProps) {
-  const { resolvedMode } = useTheme()
+  // Painted mode, not the switch: Gold Night stays dark under a light switch (renderedMode,
+  // as the terminal does), and the GitHub-light ink was near-invisible on it.
+  const { renderedMode: resolvedMode } = useTheme()
   const hostRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
   const languageConf = useRef(new Compartment())
   const themeConf = useRef(new Compartment())
   const highlightConf = useRef(new Compartment())
   const editableConf = useRef(new Compartment())
+  const describedByConf = useRef(new Compartment())
   const onCancelRef = useRef(onCancel)
   const onChangeRef = useRef(onChange)
   const onCursorChangeRef = useRef(onCursorChange)
@@ -268,6 +288,7 @@ export function CodeEditor({
         themeConf.current.of(githubEditorTheme(isDark)),
         highlightConf.current.of([]),
         editableConf.current.of(EditorState.readOnly.of(disabled)),
+        describedByConf.current.of(describedByAttr(describedBy)),
         EditorView.updateListener.of(update => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString())
@@ -281,7 +302,8 @@ export function CodeEditor({
         // Standalone edits (SOUL.md, skills, memories) are prose, not code —
         // wrap long lines instead of scrolling horizontally, and drop the gutter
         // inset. Pane previews stay flush/scrolling to mirror their SourceView.
-        ...(framed ? [EditorView.lineWrapping, FRAMED_THEME] : [])
+        ...(framed ? [EditorView.lineWrapping, FRAMED_THEME] : []),
+        ...(prose ? [Prec.highest(PROSE_THEME)] : [])
       ]
     })
 
@@ -368,6 +390,10 @@ export function CodeEditor({
   useEffect(() => {
     viewRef.current?.dispatch({ effects: editableConf.current.reconfigure(EditorState.readOnly.of(disabled)) })
   }, [disabled])
+
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: describedByConf.current.reconfigure(describedByAttr(describedBy)) })
+  }, [describedBy])
 
   if (!framed) {
     return <div className={cn('h-full min-h-0 overflow-hidden', className)} ref={hostRef} />

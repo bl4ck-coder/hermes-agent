@@ -125,7 +125,7 @@ export function NodeContextMenu({ onClose, onNodeRemoved, target }: NodeContextM
             <span aria-hidden style={{ left: target.x, position: 'fixed', top: target.y }} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" onCloseAutoFocus={e => e.preventDefault()} side="bottom">
-            <DropdownMenuLabel className="truncate text-[0.68rem] font-normal text-muted-foreground">
+            <DropdownMenuLabel className="truncate text-xs font-normal text-muted-foreground">
               {target.label}
             </DropdownMenuLabel>
             <DropdownMenuItem
@@ -166,7 +166,7 @@ export function NodeContextMenu({ onClose, onNodeRemoved, target }: NodeContextM
               />
             )}
           </div>
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {error ? <p className="text-xs text-gn-destructive-copy">{error}</p> : null}
           <DialogFooter>
             <Button disabled={saving} onClick={() => setEditing(null)} type="button" variant="ghost">
               Cancel

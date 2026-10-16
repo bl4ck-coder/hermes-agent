@@ -1,5 +1,6 @@
 import { getActiveComposer } from '@/app/chat/composer/focus'
 import { RICH_INPUT_SLOT } from '@/app/chat/composer/rich-editor'
+import { opsEscSkipsApproval } from '@/app/ops/keymap'
 import { queryAllVisible } from '@/components/pane-shell/pane-visibility'
 
 import { isEditableTarget } from './combo'
@@ -27,13 +28,22 @@ function activeApprovalStack(): HTMLElement | undefined {
 
 /** One dispatch per keydown, never one listener per card or per session. */
 export function handleApprovalKey(event: KeyboardEvent): boolean {
+  if (opsEscSkipsApproval(event.target)) {
+    releaseApprovalKey()
+
+    return false
+  }
+
+  const targetEl = event.target instanceof Element ? event.target : null
+  const opsApproval = Boolean(targetEl?.closest('[data-ops-root]') && targetEl.closest('[data-approval-stack]'))
+
   if (
     event.defaultPrevented ||
     event.isComposing ||
     event.altKey ||
     event.shiftKey ||
     (event.key !== 'Enter' && event.key !== 'Escape') ||
-    composerFocusBlockedBySurface()
+    (composerFocusBlockedBySurface() && !opsApproval)
   ) {
     releaseApprovalKey()
 

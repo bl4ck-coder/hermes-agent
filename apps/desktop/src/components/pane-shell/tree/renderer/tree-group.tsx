@@ -52,6 +52,7 @@ import {
   $narrowViewport,
   $newSessionTabAction,
   $panesWithCloser,
+  $releaseMainFloor,
   $treeDragging,
   $treePaneEpochs,
   activateTreePane,
@@ -277,6 +278,7 @@ export function TreeGroup({
   const wcOverlap = useWindowControlsOverlap(ref, !topEdge)
 
   const hiddenPanes = useStore($hiddenTreePanes)
+  const releaseMainFloor = useStore($releaseMainFloor)
   const narrow = useStore($narrowViewport)
   const workspaceMode = useStore($workspaceMode)
   const workspaceOwnerKey = useStore($workspaceOwnerKey)
@@ -382,6 +384,13 @@ export function TreeGroup({
 
   const hostedPanes = stableHosts ? node.panes.filter(id => paneChrome(paneFor(id)).lifecycleKeepAlive) : []
   const inlinePanes = mountedPanes.filter(id => !stableHosts || !paneChrome(paneFor(id)).lifecycleKeepAlive)
+
+  // Ops full-screen collapses the main track without putting the chat in
+  // `$hiddenTreePanes` (that set unmounts a non-hosted body). The keep-alive
+  // slot goes hot-hidden so the same host stays mounted.
+  const fullscreenHotHidden = (paneId: string) =>
+    releaseMainFloor &&
+    (paneId === 'workspace' || paneId.startsWith('session-tile:') || paneChrome(paneFor(paneId)).placement === 'main')
 
   // ONE header style: the app's compact pane-header. Whether this zone shows
   // it is the resolver's call, not this component's — see strip-visibility.ts
@@ -818,7 +827,7 @@ export function TreeGroup({
               headerVisible={headerVisible}
               key={paneId}
               paneId={paneId}
-              visible={paneId === activeId && !node.minimized}
+              visible={paneId === activeId && !node.minimized && !fullscreenHotHidden(paneId)}
             />
           ))}
           {isEmpty ? (
@@ -829,7 +838,7 @@ export function TreeGroup({
           ) : (
             inlinePanes.map(paneId => {
               const pane = paneFor(paneId)
-              const isActive = paneId === activeId && !node.minimized
+              const isActive = paneId === activeId && !node.minimized && !fullscreenHotHidden(paneId)
 
               return (
                 <div
@@ -863,7 +872,7 @@ export function TreeGroup({
                     </PaneGroupContext.Provider>
                   ) : (
                     isActive && (
-                      <div className="p-3 font-mono text-[11px] text-(--ui-text-quaternary)">
+                      <div className="p-3 font-mono text-xs text-(--ui-text-quaternary)">
                         {t.zones.missingPane(paneId)}
                       </div>
                     )
@@ -896,7 +905,7 @@ export function TreeGroup({
               outlineColor: 'color-mix(in srgb, var(--ui-accent) 55%, transparent)'
             }}
           >
-            <span className="flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-md border border-(--ui-stroke-secondary) bg-popover px-2 py-1 text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-(--ui-text-secondary)">
+            <span className="flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-md border border-(--ui-stroke-secondary) bg-popover px-2 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-(--ui-text-secondary)">
               <Codicon className="shrink-0" name="gripper" size="0.8125rem" />
               <span className="min-w-0 truncate">{tabText(activeId)}</span>
             </span>

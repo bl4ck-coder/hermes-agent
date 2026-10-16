@@ -1,4 +1,6 @@
 import { mainChatOccupied } from '@/app/open-session'
+import { consumeOpsClose, opsOwnsCloseTarget } from '@/app/ops/keymap'
+import { focusedInteractiveTerminalOwnsWordErase } from '@/app/right-sidebar/terminal/terminal-context-menu'
 import { closeActiveTerminal } from '@/app/right-sidebar/terminal/terminals'
 import { $workspaceIsPage } from '@/app/routes'
 import { closeFocusedSessionTab, closeFocusedToolTab } from '@/components/pane-shell/tree/store'
@@ -92,4 +94,30 @@ export function closeActiveTab(loadSessionIntoWorkspace?: (storedSessionId: stri
   }
 
   return closeWorkspaceTab(loadSessionIntoWorkspace)
+}
+
+export type CloseTabChordResult = 'pty' | 'ops-closed' | 'ops-pinned-consumed' | 'desktop-closed'
+export type CloseTabChordShape = 'bare' | 'rebind' | 'after-pty'
+
+/**
+ * One close-tab decision. Does not write ^W and does not close the window.
+ * `bare` may return `pty` for the caller to relay once. Other shapes start at
+ * the Ops rung. Ops focus never falls through to a Desktop tab.
+ */
+export function routeCloseTabChord(
+  shape: CloseTabChordShape,
+  loadSessionIntoWorkspace?: (storedSessionId: string) => void,
+  focus: EventTarget | null = typeof document !== 'undefined' ? document.activeElement : null
+): CloseTabChordResult {
+  if (shape === 'bare' && focusedInteractiveTerminalOwnsWordErase()) {
+    return 'pty'
+  }
+
+  if (opsOwnsCloseTarget(focus)) {
+    return consumeOpsClose() === 'closed' ? 'ops-closed' : 'ops-pinned-consumed'
+  }
+
+  closeActiveTab(loadSessionIntoWorkspace)
+
+  return 'desktop-closed'
 }

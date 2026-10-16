@@ -19,8 +19,9 @@ export const SettingsBreadcrumbContext = createContext(false)
 export function SettingsContent({ children, bare = false }: { children: ReactNode; bare?: boolean }) {
   return (
     <section className="min-h-0 overflow-hidden">
-      <div className={cn('h-full min-h-0 overflow-y-auto', bare ? 'px-5 pb-6' : cn('pb-20', PAGE_INSET_X))}>
-        {children}
+      <div className={cn('h-full min-h-0 overflow-y-auto', bare ? 'px-5 pb-6' : cn('pb-20', PAGE_INSET_X))} data-settings-scroll="">
+        {/* P10: one form axis. The page column is a real wrapper, not a centering rule on arbitrary children. */}
+        {bare ? children : <div className="mx-auto w-full max-w-(--width-form)" data-settings-form="">{children}</div>}
       </div>
     </section>
   )
@@ -73,7 +74,7 @@ export function SectionHeading({
   }
 
   return (
-    <div className="mb-2.5 flex items-center gap-2 pt-2 text-[length:var(--conversation-text-font-size)] font-medium">
+    <div className="mb-3 flex items-center gap-2 pt-2 text-(length:--type-section) leading-(--type-section-lh) font-semibold" data-settings-heading="">
       {showTitle && (
         <>
           <Icon className="size-4 shrink-0 text-muted-foreground" />
@@ -103,7 +104,7 @@ export function SettingsSection({
   title: string
 }) {
   return (
-    <section className="mb-6">
+    <section className="mb-6" data-settings-section="">
       <SectionHeading aside={aside} icon={icon} meta={meta} title={title} />
       {children}
     </section>
@@ -143,7 +144,8 @@ export function NavLink({
 // The label/control split every settings-style row keys on. Rows that cannot
 // be a ListRow (expandable credential cards, the billing plan card with its
 // tier art) still lay out on these exact columns so their controls line up.
-export const LIST_ROW_COLUMNS = '@2xl:grid-cols-[minmax(0,1fr)_minmax(15rem,22rem)]'
+// P18e (judge consult): one settings axis. Label column matches SettingsFormRow (12–20rem), control column takes the rest.
+export const LIST_ROW_COLUMNS = '@2xl:grid-cols-[minmax(12rem,20rem)_minmax(0,1fr)]'
 
 // The one settings row. `action` is the row's control: beside the label on a
 // wide pane, under the description on a narrow one — the row owns that
@@ -176,23 +178,23 @@ export function ListRow({
     // Container-queried, not viewport-queried: the label/control split keys on
     // the row's own pane width, so a narrow detail column (messaging, split
     // views) stacks instead of squishing the label against minmax(15rem,…).
-    <div className={cn('@container', className)} data-tour={dataTour} id={id}>
+    <div className={cn('@container', className)} data-settings-row="" data-tour={dataTour} id={id}>
       <div className={cn('grid gap-3 py-3', !wide && [LIST_ROW_COLUMNS, '@2xl:items-center'])}>
         <div className="min-w-0">
-          <div className="flex items-center justify-between gap-3 text-[length:var(--conversation-text-font-size)] font-medium text-foreground">
+          <div className="flex items-center justify-between gap-3 text-(length:--type-body) leading-(--type-body-lh) font-medium text-foreground">
             <span className="min-w-0">{title}</span>
             {wide && action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
           </div>
           {description && (
-            <div className="mt-1 text-[length:var(--conversation-caption-font-size)] leading-(--conversation-caption-line-height) text-(--ui-text-tertiary)">
+            <div className="mt-1 max-w-(--width-field) text-(length:--type-meta) leading-(--type-meta-lh) text-(--ui-text-tertiary)">
               {description}
             </div>
           )}
-          {hint && <div className="mt-1 block font-mono text-[0.68rem] text-muted-foreground/45">{hint}</div>}
+          {hint && <div className="mt-1 block font-mono text-xs text-muted-foreground/45">{hint}</div>}
           {below}
         </div>
         {!wide && action && (
-          <div className="flex min-w-0 flex-wrap items-center gap-2 @2xl:justify-self-end @2xl:justify-end">
+          <div className="flex min-w-0 max-w-(--width-field) flex-wrap items-center gap-2 justify-start" data-settings-row-control="">
             {action}
           </div>
         )}

@@ -47,6 +47,8 @@ export function ScopeChip({ active, label, onSelect }: { active: boolean; label:
  *  ($settingsScopeOverride) so the selection persists across pages. Hidden with
  *  fewer than two profiles, so single-profile users never see it and every
  *  request keeps its unscoped default shape. */
+const COLLAPSE_AT = 8
+
 export function SettingsProfileScope({ className }: { className?: string }) {
   const { t } = useI18n()
   const scope = t.settings.profileScope
@@ -72,19 +74,50 @@ export function SettingsProfileScope({ className }: { className?: string }) {
 
   return (
     <div className={cn('grid gap-2', className)}>
-      <div className="text-[length:var(--conversation-caption-font-size)] font-medium text-(--ui-text-secondary)">
-        {scope.appliesTo}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {profiles.map(profile => (
-          <ScopeChip
-            active={normalizeProfileKey(profile.name) === selected}
-            key={profile.name}
-            label={settingsScopeLabel(profile)}
-            onSelect={() => setSettingsScope(profile.name)}
-          />
-        ))}
-      </div>
+      {/* IA: with many profiles the chip wall pushed the page's real controls below the fold.
+          Past COLLAPSE_AT it folds into a disclosure whose summary names the current target. */}
+      {profiles.length > COLLAPSE_AT ? (
+        <details data-scope-collapsible="">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 text-[length:var(--conversation-caption-font-size)] font-medium text-(--ui-text-secondary)">
+            {scope.appliesTo}
+            <span
+              className="rounded-full border border-(--ui-stroke-secondary) bg-(--ui-bg-tertiary) px-3 py-1 text-(--ui-text-primary)"
+              data-scope-current=""
+            >
+              {selectedName}
+            </span>
+            <span className="text-(--ui-text-tertiary)" data-scope-count="">
+              {profiles.length} ▾
+            </span>
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {profiles.map(profile => (
+              <ScopeChip
+                active={normalizeProfileKey(profile.name) === selected}
+                key={profile.name}
+                label={settingsScopeLabel(profile)}
+                onSelect={() => setSettingsScope(profile.name)}
+              />
+            ))}
+          </div>
+        </details>
+      ) : (
+        <>
+          <div className="text-[length:var(--conversation-caption-font-size)] font-medium text-(--ui-text-secondary)">
+            {scope.appliesTo}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {profiles.map(profile => (
+              <ScopeChip
+                active={normalizeProfileKey(profile.name) === selected}
+                key={profile.name}
+                label={settingsScopeLabel(profile)}
+                onSelect={() => setSettingsScope(profile.name)}
+              />
+            ))}
+          </div>
+        </>
+      )}
       {/* Note truth table (override × non-default target, per the store's
           $settingsScopeEditsNonDefault): non-default target → loud accented
           note whether or not an override is set (the bot-active misdirect);

@@ -60,6 +60,14 @@ export function wordEraseFocusedTerminal(): boolean {
   return handle?.wordErase?.() ?? false
 }
 
+/** Same lookup as wordEraseFocusedTerminal, without the write. */
+export function focusedInteractiveTerminalOwnsWordErase(): boolean {
+  const host = document.activeElement?.closest('[data-interactive-terminal]')
+  const handle = host ? handles.get(host) : undefined
+
+  return typeof handle?.wordErase === 'function'
+}
+
 /** The handle owning `element`, when the click landed inside a terminal. */
 export function terminalMenuHandleFor(element: Element | null): TerminalMenuHandle | null {
   const host = element?.closest('[data-terminal]')

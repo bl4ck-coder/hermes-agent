@@ -5,20 +5,25 @@
 // partial locales should use `defineLocale()` so missing desktop-only strings
 // fall back to English while new keys remain type-checked.
 
+import type { OpsCopy } from '@/app/ops/locales'
 import type { ErrorCodeKey } from '@/lib/error-surface'
 import type { TipId } from '@/lib/tips/catalog'
 
-import type { AppTourTranslations, HandoffTourTranslations } from './types_app_tour'
+import type { AppTourTranslations } from './types_app_tour'
 import type { AuxTaskCopyMap } from './types_aux_tasks'
 import type { BillingTranslations } from './types_billing'
 import type { BootTranslations } from './types_boot'
 import type { CatalogInstallTranslations } from './types_catalog_install'
+import type { ClarifyCopy } from './types_clarify'
 import type { ConnectorAccountsTranslations, ConnectorCardTranslations } from './types_connectors'
+import type { FirstRunCopy } from './types_first_run'
 import type { ModelMenuTranslations } from './types_model_menu'
 import type { NoticeTranslations } from './types_notices'
+import type { OpsStatesTranslations } from './types_ops_states'
 import type { OnboardingTranslations } from './types_onboarding'
 import type { SidebarProjectsTranslations } from './types_projects'
 import type { SharedMetricsTranslations } from './types_shared_metrics'
+import type { ThemePickerCopy } from './types_theme_picker'
 import type { UninstallSectionTranslations } from './types_uninstall_section'
 import type { UpdateChannelCopy } from './types_update_channel'
 
@@ -56,8 +61,6 @@ export type ToolTitleKey =
   | 'read_file'
   | 'search_files'
   | 'session_search_recall'
-  | 'setup_choose'
-  | 'start_chat'
   | 'terminal'
   | 'todo'
   | 'vision_analyze'
@@ -76,10 +79,22 @@ interface ModeOptionCopy {
   description: string
 }
 
-export interface Translations extends NoticeTranslations {
+export interface Translations extends NoticeTranslations, OpsStatesTranslations {
+  /** Teaching copy for navigation sections and empty states (IA pass). */
+  teach: {
+    navCore: string
+    navSystem: string
+    navConnections: string
+    navExtensions: string
+    chatIntroHint: string
+    agentsEmptyHint: string
+  }
+  /** Ops shell (P0.5) copy; catalog in app/ops/locales.ts. */
+  ops: OpsCopy
   /** Shared-metrics consent: first-run dialog + Settings › Safety toggles. */
   sharedMetrics: SharedMetricsTranslations
   appTour: AppTourTranslations
+  firstRun: FirstRunCopy
   externalOpenFailed: {
     title: string
     message: string
@@ -636,15 +651,22 @@ export interface Translations extends NoticeTranslations {
         title: string
         description: string
         repoLabel: string
+        verified: string
+        unverified: string
+        reviewedByNous: string
+        installsAndEnables: (profile: string) => string
+        installsOnly: (profile: string) => string
+        advanced: string
+        versionLabel: string
+        reviewedPin: (sha: string) => string
+        latestCommit: string
+        nothingToInstall: string
         includesHeading: string
         agentLabel: string
         desktopLabel: string
         profileLabel: string
         agentTargetLocal: (profile: string, dir: string) => string
         agentTargetRemote: (profile: string) => string
-        catalogPinned: (name: string, sha: string) => string
-        reviewedHeading: string
-        reviewedIntro: string
         toolsConnected: (n: number) => string
         skillsReady: (names: string[]) => string
         nextChat: string
@@ -655,12 +677,10 @@ export interface Translations extends NoticeTranslations {
         desktopTargetFromPackage: string
         desktopOnlyNote: string
         insecureWarning: string
-        securityHeading: string
         securityIntro: string
         sourceHeading: string
         viewRepository: string
         viewPluginFiles: string
-        gitCloneLabel: string
         enableAgent: string
         forceReinstall: string
         pinToCommit: string
@@ -922,12 +942,6 @@ export interface Translations extends NoticeTranslations {
     fieldLabels: Record<string, string>
     fieldDescriptions: Record<string, string>
     uninstallSection: UninstallSectionTranslations
-    poolLimits: {
-      warmBotBackendsAria: string
-      warmBotBackendsTitle: string
-      backendIdleTimeoutAria: string
-      backendIdleTimeoutTitle: string
-    }
     customEndpoints: {
       active: string
       apiKeySet: string
@@ -992,6 +1006,7 @@ export interface Translations extends NoticeTranslations {
       emptyDesc: string
       failedLoad: string
       autosaveFailed: string
+      autosaveRevert: string
       imported: string
       invalidJson: string
       toolsetsWipeConfirm: string
@@ -1004,11 +1019,6 @@ export interface Translations extends NoticeTranslations {
       disableF12Desc: string
       alwaysExternalLinksTitle: string
       alwaysExternalLinksDesc: string
-      developerTitle: string
-      resetOnboardingTitle: string
-      resetOnboardingDesc: string
-      resetOnboardingAction: string
-      resetOnboardingFailed: string
       attachmentSizeTitle: string
       attachmentSizeDesc: string
       attachmentSizeUnit: string
@@ -2719,6 +2729,7 @@ export interface Translations extends NoticeTranslations {
     promptPlaceholder: string
     frequencyLabel: string
     deliverLabel: string
+    lastDeliveryFailed: string
     deliverNeedsHomeChannel: string
     modelLabel: string
     modelDefault: string
@@ -2962,6 +2973,7 @@ export interface Translations extends NoticeTranslations {
     openDirective: string
     queueMessage: string
     steer: string
+    redirect: string
     stop: string
     send: string
     speaking: string
@@ -3024,6 +3036,11 @@ export interface Translations extends NoticeTranslations {
     queueSend: string
     queueSteer: string
     queueDelete: string
+    queueLostNote: string
+    restoreImageDraft: string
+    queueCancelFailed: string
+    queueLostDiscard: string
+    queueLostDiscardTip: string
     queueResume: string
     queueResumeTip: string
     queueStuckTitle: string
@@ -3388,7 +3405,6 @@ export interface Translations extends NoticeTranslations {
     versionDetailsUncommittedChanges: string
   }
 
-  handoffTour: HandoffTourTranslations
   install: {
     stageStates: Record<string, string>
     oneTimeTitle: string
@@ -4104,42 +4120,8 @@ export interface Translations extends NoticeTranslations {
       alwaysDescription: (pattern: string) => string
       alwaysAllow: string
     }
-    clarify: {
-      notReady: string
-      gatewayDisconnected: string
-      sendFailed: string
-      loadingQuestion: string
-      other: string
-      placeholder: string
-      skip: string
-      skipped: string
-      noAnswer: string
-      confirmAndContinueLabel: string
-      singleSelectHint: string
-      multiSelectHint: string
-      oneQuestion: string
-      questionProgress: (answered: number, total: number) => string
-      notDelivered: string
-    }
-    setupChoose: {
-      kinds: Record<'accent' | 'connectors' | 'layout' | 'plugins' | 'theme', string>
-      loading: string
-      unavailable: string
-      findApp: string
-      customColor: string
-      plugin: string
-      startsLater: string
-    }
-    startChat: {
-      starting: (title: string) => string
-      startingUntitled: string
-      untitled: string
-      notStarted: string
-      retry: string
-      inProfile: (profile: string) => string
-      open: string
-      openFailed: string
-    }
+    clarify: ClarifyCopy
+    themePicker: ThemePickerCopy
     catalogInstall: CatalogInstallTranslations
     mcpSetup: {
       installTitle: string

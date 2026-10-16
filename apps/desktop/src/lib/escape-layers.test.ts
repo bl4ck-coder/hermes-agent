@@ -19,11 +19,21 @@ describe('escape-layers', () => {
     expect(isTopEscapeLayer(ESCAPE_PRIORITY.narrowOverlay)).toBe(true)
   })
 
-  it('equal-or-higher priority counts as top (ties act)', () => {
-    const release = pushEscapeLayer(ESCAPE_PRIORITY.zoneEditor)
+  it('only the latest registration at a tied priority acts', () => {
+    const first = pushEscapeLayer(ESCAPE_PRIORITY.zoneEditor)
+    expect(first.isTop()).toBe(true)
     expect(isTopEscapeLayer(ESCAPE_PRIORITY.zoneEditor)).toBe(true)
     expect(isTopEscapeLayer(ESCAPE_PRIORITY.layoutEdit)).toBe(false)
-    release()
+
+    const second = pushEscapeLayer(ESCAPE_PRIORITY.zoneEditor)
+    expect(first.isTop()).toBe(false)
+    expect(second.isTop()).toBe(true)
+    expect(isTopEscapeLayer(ESCAPE_PRIORITY.zoneEditor)).toBe(false)
+
+    second()
+    expect(first.isTop()).toBe(true)
+    expect(isTopEscapeLayer(ESCAPE_PRIORITY.zoneEditor)).toBe(true)
+    first()
   })
 
   it('tracks the max across several open layers', () => {

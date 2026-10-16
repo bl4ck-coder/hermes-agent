@@ -118,6 +118,13 @@ export const NEW_SESSION_DRAG = '__new-session-drag__'
  */
 export const $hiddenTreePanes = atom<ReadonlySet<string>>(new Set())
 
+/**
+ * Ops full-screen only. When true, a main-bearing subtree whose panes are all
+ * hot-hidden collapses so the sibling can take the workspace. Default false:
+ * chrome-hiding a main tab must not let a sidebar absorb the center (Bot Mode).
+ */
+export const $releaseMainFloor = atom(false)
+
 /** Add/remove `item` in a readonly set, returning a fresh set — or null when
  *  membership already matches `present` (so callers can early-out on a no-op). */
 function toggledSet<T>(set: ReadonlySet<T>, item: T, present: boolean): Set<T> | null {

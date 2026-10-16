@@ -3,6 +3,8 @@
 @import 'tw-shimmer';
 @import 'katex/dist/katex.min.css';
 @import '@vscode/codicons/dist/codicon.css';
+@import './styles/hierarchy.css';
+@import './styles/glass/glass.css';
 
 /* Titlebar clusters: 24×24 hit targets, 13.9px glyphs. codicon.css is
    unlayered (`font: 16px/1`); Tailwind utilities in @layer lose that fight. */
@@ -122,6 +124,37 @@
   font-weight: 400;
   font-display: swap;
   src: url('./fonts/JetBrainsMono-Italic.woff2') format('woff2');
+}
+
+/* Geist / Geist Mono — local OFL faces for Gold Night. No runtime font fetch.
+   Regular and Medium are the already-local latin variable subset; Mono is
+   converted from the local canvas-fonts TTF. License: src/fonts/Geist-OFL.txt. */
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/Geist-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/Geist-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/GeistMono-Regular.woff2') format('woff2');
+}
+
+/* Error copy. Gold Night sets --gn-destructive-copy; every other skin falls
+   back to the fill token so this class does not restyle them. */
+.text-gn-destructive-copy {
+  color: var(--gn-destructive-copy, var(--dt-destructive));
 }
 
 @theme inline {
@@ -1903,8 +1936,13 @@ body.guest-pointer-lock :is(webview, iframe) {
 /* Stick-to-bottom owns scrollTop while following. Once escaped, native anchoring
    is safe and keeps sticky human edits from shoving the viewport; data-editing
    enables that path before React swaps in the inline editor. */
+/* P27 (judge pass 21 #5): messages and composer share one column. The gutter is
+   reserved on both edges (thread or no scrollbar), so the thread's content box is
+   centered on the same axis as the composer dock; with the 0.5rem padding below, the
+   text column lands exactly on the composer surface (dock: min(width, 100% - 2rem)). */
 [data-slot='aui_thread-viewport'] {
   overflow-anchor: none;
+  scrollbar-gutter: stable both-edges;
 }
 
 [data-slot='aui_thread-viewport'][data-following='false'],
@@ -1913,8 +1951,8 @@ body.guest-pointer-lock :is(webview, iframe) {
 }
 
 [data-slot='aui_thread-content'] {
-  max-width: var(--composer-width);
-  padding-inline: 1.5rem;
+  max-width: calc(var(--composer-width) + 1rem);
+  padding-inline: 0.5rem;
 }
 
 [data-slot='aui_intro'] {

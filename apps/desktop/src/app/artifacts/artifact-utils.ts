@@ -131,7 +131,11 @@ function normalizeValue(value: string): string {
     break
   }
 
-  return trimmed.replace(/[`*]+$/g, '').replace(/[),.;]+$/, '')
+  trimmed = trimmed.replace(/[`*]+$/g, '').replace(/[),.;]+$/, '')
+
+  // P27 (judge pass 21 #8): a URL scraped from JSON-escaped text keeps the escape's backslashes
+  // (`…jpg?name=orig\\`); requested as-is the host answers 400. A URL never ends in a backslash.
+  return /^https?:\/\//i.test(trimmed) ? trimmed.replace(/\\+$/, '') : trimmed
 }
 
 // Chat renders file refs as `[label](#media:<encoded path>)`. Decode before
@@ -539,7 +543,11 @@ export async function loadArtifactsForSessions(
     session: SessionInfo,
     page: { limit: number; offset: number }
   ) => Promise<Pick<SessionMessagesResponse, 'messages' | 'pagination'>>,
-  options: { maxPageJsonChars?: number } = {}
+  options: {
+    maxPageJsonChars?: number
+    /** Called after each session so the page can show results as they arrive. */
+    onSession?: (artifacts: ArtifactRecord[]) => void
+  } = {}
 ): Promise<ArtifactLoadResult> {
   const artifacts: ArtifactRecord[] = []
   const failures: ArtifactLoadFailure[] = []
@@ -578,9 +586,13 @@ export async function loadArtifactsForSessions(
       }
 
       artifacts.push(...sessionArtifacts.values())
+      options.onSession?.(artifacts)
     } catch (error) {
       failures.push({ error, session })
     }
+
+    // Yield between sessions: each page is parsed and scanned on the renderer thread.
+    await new Promise(resolve => setTimeout(resolve, 0))
   }
 
   return { artifacts, failures }

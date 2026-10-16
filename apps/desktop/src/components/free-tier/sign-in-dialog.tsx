@@ -40,9 +40,9 @@ import {
   stopFreeTierOffer,
   syncFreeTierOffer
 } from '@/store/free-tier-sign-in'
+import { $localModelOfferPending } from '@/store/local-model-offer'
 import { refreshOnboardingProviders } from '@/store/onboarding'
-import { $onboardingGate } from '@/store/onboarding-gate'
-import { $onboardingSurfaces } from '@/store/onboarding-presence'
+import { $onboardingSurfaceClear } from '@/store/onboarding-presence'
 import { $currentModel, setModelPickerOpen } from '@/store/session'
 
 interface FreeTierSignInDialogProps {
@@ -84,7 +84,7 @@ export function FreeTierSignInDialog({ onSelectModel }: FreeTierSignInDialogProp
     }
   }, [owned, requestGateway, state.status])
 
-  // The sign-in offer rides every status read, and retries once guided
+  // The sign-in offer rides every status read, and retries once the first-run
   // onboarding leaves the screen. A completed free-tier turn re-reads the
   // status, since that is when the backend arms the next offer. Only the
   // owner (main windows) times it.
@@ -97,8 +97,8 @@ export function FreeTierSignInDialog({ onSelectModel }: FreeTierSignInDialogProp
 
     const stops = [
       $freeTierStatus.listen(sync),
-      $onboardingGate.listen(sync),
-      $onboardingSurfaces.listen(sync),
+      $onboardingSurfaceClear.listen(sync),
+      $localModelOfferPending.listen(sync),
       $freeTierTurnCompleted.listen(() => void refreshFreeTierStatus(requestGateway, sameGatewayRoute()))
     ]
 
@@ -204,7 +204,7 @@ export function FreeTierSignInDialog({ onSelectModel }: FreeTierSignInDialogProp
           >
             {state.model && (
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-muted-foreground">
+                <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   {copy.defaultModel}
                 </span>
                 <span className="min-w-0 truncate font-mono text-[length:var(--conversation-text-font-size)]">

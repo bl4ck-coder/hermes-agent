@@ -32,6 +32,12 @@ export const fromItemValue = (item: string): string | null =>
 
 interface ModelSelectProps {
   'aria-label'?: string
+  /** P18: form-row association (SettingsFormRow passes `${id}` and `${id}-label`). */
+  'aria-labelledby'?: string
+  /** P26: composite rows pass the row's help/error and its refused state through to this control. */
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
+  id?: string
   className?: string
   /** The provider's catalog row when known: the typed id is remembered under
    *  it and made visible in the pickers. Absent (provider not in the catalog)
@@ -52,6 +58,10 @@ interface ModelSelectProps {
  */
 export function ModelSelect({
   'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  id,
   className,
   models,
   onValueChange,
@@ -95,9 +105,13 @@ export function ModelSelect({
   if (typing) {
     return (
       <Input
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
         aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
         className={cn(CONTROL_TEXT, 'font-mono')}
         containerClassName={className}
+        id={id}
         onBlur={remember}
         onChange={event => onValueChange(event.target.value)}
         onKeyDown={event => {
@@ -140,7 +154,14 @@ export function ModelSelect({
       }}
       value={toItemValue(value)}
     >
-      <SelectTrigger aria-label={ariaLabel} className={cn(className, CONTROL_TEXT)}>
+      <SelectTrigger
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        className={cn(className, CONTROL_TEXT)}
+        id={id}
+      >
         <SelectValue placeholder={m.model} />
       </SelectTrigger>
       <SelectContent>

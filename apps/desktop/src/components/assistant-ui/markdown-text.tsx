@@ -36,6 +36,7 @@ import {
   resolveMediaPlaybackSrc,
   validImageDimensions
 } from '@/lib/media'
+import { opsTaskIdFromHref, remarkOpsTaskLinks } from '@/lib/ops-task-links'
 import { previewTargetFromMarkdownHref } from '@/lib/preview-targets'
 import { remarkSoftBreaks } from '@/lib/remark-soft-breaks'
 import { sessionRefFromMarkdownHref } from '@/lib/session-refs'
@@ -97,7 +98,7 @@ function useCodePlugin(): CodePlugin | null {
   return plugin
 }
 
-const REMARK_PLUGINS = [...Object.values(defaultRemarkPlugins), remarkSoftBreaks]
+const REMARK_PLUGINS = [...Object.values(defaultRemarkPlugins), remarkSoftBreaks, remarkOpsTaskLinks]
 
 // Replaces Streamdown's `parseIncompleteMarkdown` (full-text remend per
 // flush) with a tail-bounded repair. Must stay module-scope so the prop
@@ -306,6 +307,17 @@ function MarkdownLink({ children, className, href, ...props }: ComponentProps<'a
 
   if (previewTarget) {
     return <PreviewAttachment target={previewTarget} />
+  }
+
+  // O67 (P8 b6): a Kanban task id opens the Ops task tab (HashRouter route).
+  const opsTaskId = opsTaskIdFromHref(href)
+
+  if (opsTaskId) {
+    return (
+      <a className={cn('font-mono underline underline-offset-2', className)} data-ops-task-link={opsTaskId} href={href} title={`Open ${opsTaskId} in Ops`}>
+        {children}
+      </a>
+    )
   }
 
   const sessionRef = sessionRefFromMarkdownHref(href)
@@ -539,7 +551,7 @@ function HugeTextFallback({ containerClassName, text }: { containerClassName?: s
   return (
     <div
       className={cn(
-        'aui-md w-full max-w-none overflow-hidden rounded-[0.625rem] border border-(--ui-stroke-tertiary) font-mono text-[0.7rem] leading-relaxed text-foreground/90',
+        'aui-md w-full max-w-none overflow-hidden rounded-[0.625rem] border border-(--ui-stroke-tertiary) font-mono text-xs leading-relaxed text-foreground/90',
         containerClassName
       )}
     >

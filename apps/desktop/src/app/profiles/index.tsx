@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react'
 import type * as React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { CodeEditor } from '@/components/chat/code-editor'
 import { PageLoader } from '@/components/page-loader'
@@ -16,6 +16,8 @@ import { notify, notifyError } from '@/store/notifications'
 import { $profileColors, profileLabel, refreshProfiles } from '@/store/profile'
 
 import { useRefreshHotkey } from '../hooks/use-refresh-hotkey'
+import { type HumanError, humanError, humanErrorHasMore, humanErrorLine } from '../ops/feed/api-error'
+import { TIn } from '../ops/main-i18n'
 import {
   Panel,
   PanelAddButton,
@@ -226,18 +228,25 @@ function ProfileRow({
 function ProfileDetail({ profile }: { profile: ProfileInfo }) {
   const { t } = useI18n()
   const p = t.profiles
+  const colors = useStore($profileColors)
 
   return (
     <PanelDetail>
+      {/* P7: one work column (reading width) holds identity, meta, SOUL and its actions. */}
+      <div className="mx-auto flex w-full max-w-(--width-reading) flex-col gap-6" data-profile-column="">
       <header className="space-y-3">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[0.95rem] font-semibold tracking-tight text-foreground">{profileLabel(profile)}</h3>
+          <div className="flex flex-wrap items-center gap-3" data-profile-hero="">
+            {/* B34: the profile's own glyph, large, as the page's identity mark. */}
+            <span className="grid size-10 shrink-0 place-items-center [&>*]:size-10! [&>*]:text-lg!" data-profile-hero-glyph="">
+              <ProfileGlyph aria-hidden="true" color={resolveProfileColor(profile.name, colors)} isDefault={profile.is_default} name={profile.name} />
+            </span>
+            <h3 className="text-(length:--type-page) leading-(--type-page-lh) font-semibold tracking-tight text-foreground" data-profile-hero-name="">{profileLabel(profile)}</h3>
             {profile.is_default && <PanelPill tone="good">{p.defaultBadge}</PanelPill>}
             {profile.has_env && <PanelPill tone="muted">.env</PanelPill>}
           </div>
           <p
-            className="mt-1 truncate font-mono text-[0.66rem] text-muted-foreground/55"
+            className="mt-1 truncate font-mono text-xs text-muted-foreground/55"
             title={displayPath(profile.path)}
           >
             {displayPath(profile.path)}
@@ -263,12 +272,13 @@ function ProfileDetail({ profile }: { profile: ProfileInfo }) {
       </header>
 
       <SoulEditor profileName={profile.name} />
+      </div>
     </PanelDetail>
   )
 }
 
 function SoulEditor({ profileName }: { profileName: string }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const p = t.profiles
   const [content, setContent] = useState('')
   const [original, setOriginal] = useState('')
@@ -276,6 +286,9 @@ function SoulEditor({ profileName }: { profileName: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<null | string>(null)
+  // P27 (judge pass 21 #3): a refused save is its own state, shown at the editor's top edge (see below).
+  const [saveError, setSaveError] = useState<HumanError | null>(null)
+  const statusId = useId()
   const requestRef = useRef<string>(profileName)
 
   // eslint-disable-next-line no-restricted-syntax -- legitimate non-atom ref write (see eslint rule comment)
@@ -283,6 +296,7 @@ function SoulEditor({ profileName }: { profileName: string }) {
     requestRef.current = profileName
     setLoading(true)
     setError(null)
+    setSaveError(null)
     setContent('')
     setOriginal('')
     setMissing(false)
@@ -310,60 +324,98 @@ function SoulEditor({ profileName }: { profileName: string }) {
 
   const dirty = content !== original
 
+  // The PUT overwrites SOUL.md (the server has no version check), so the only recovery that keeps the draft is to send it
+  // again: Retry is "keep mine". The previous refusal stays visible until the new outcome is known.
   async function handleSave() {
     setSaving(true)
-    setError(null)
 
     try {
       await updateProfileSoul(profileName, content)
       setOriginal(content)
       setMissing(false)
+      setSaveError(null)
       notify({ kind: 'success', title: p.soulSaved, message: profileName })
     } catch (err) {
-      setError(err instanceof Error ? err.message : p.failedSaveSoul)
+      setSaveError(humanError(err ?? p.failedSaveSoul))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <section className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <section className="space-y-3" data-profile-soul="">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <PanelSectionLabel className="text-[0.7rem] tracking-[0.14em]">SOUL.md</PanelSectionLabel>
-          <p className="text-xs text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
+          <PanelSectionLabel className="text-(length:--type-section) leading-(--type-section-lh) tracking-normal normal-case">SOUL.md</PanelSectionLabel>
+          <p className="max-w-(--width-reading) text-(length:--type-meta) leading-(--type-meta-lh) text-muted-foreground">{missing ? p.soulMissing : p.soulDesc}</p>
         </div>
-        {dirty && <span className="text-[0.65rem] text-muted-foreground">{p.unsavedChanges}</span>}
       </div>
+
+      {/* P27: a refused save is announced at the editor's top edge and stays in view (sticky) wherever the caret is in a
+          long document; the editor keeps focus, caret and text, and is described by it. Raw text is folded. */}
+      {saveError && !loading && (
+        <div className="sticky top-0 z-10 bg-background pb-1" data-profile-soul-status="">
+          <div className="flex flex-wrap items-start gap-x-3 gap-y-1 rounded bg-destructive/10 px-3 py-2 text-sm text-gn-destructive-copy">
+            <AlertTriangle className="mt-1 size-3.5 shrink-0" />
+            <p className="min-w-0 flex-1" id={statusId} role="alert">
+              <strong className="font-medium">{p.failedSaveSoul}:</strong>{' '}
+              <span data-profile-soul-reason="">{humanErrorLine(saveError, s => TIn(locale, s))}</span>{' '}
+              <span className="text-muted-foreground">{TIn(locale, 'Your edits are kept in the editor.')}</span>
+            </p>
+            <Button
+              data-profile-soul-retry=""
+              disabled={saving}
+              onClick={() => void handleSave()}
+              // Pointer clicks keep the caret in the editor; keyboard users still reach it by Tab.
+              onMouseDown={event => event.preventDefault()}
+              size="sm"
+              variant="outline"
+            >
+              {saving ? p.saving : t.common.retry}
+            </Button>
+            {humanErrorHasMore(saveError) && (
+              <details className="basis-full text-xs text-muted-foreground" data-profile-soul-raw="">
+                <summary className="cursor-pointer">{t.notifications.details}</summary>
+                <code className="block whitespace-pre-wrap break-all">{saveError.raw}</code>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <PageLoader className="min-h-44" label={p.loadingSoul} />
       ) : (
-        <div className="min-h-48">
+        <div className="min-h-[min(62vh,36rem)] [&>*]:min-h-[inherit] [&_.cm-content]:font-sans [&_.cm-content]:text-(length:--type-body) [&_.cm-content]:leading-(--type-reading-lh) [&_.cm-content]:px-4 [&_.cm-content]:py-3 [&_.cm-editor]:min-h-[inherit] [&_.cm-gutters]:hidden [&_.cm-line]:font-sans" data-profile-soul-editor="">
           <CodeEditor
+            describedBy={saveError ? statusId : undefined}
             filePath="SOUL.md"
             framed
             initialValue={content}
             key={profileName}
             onChange={setContent}
             onSave={() => void handleSave()}
+            prose
           />
         </div>
       )}
 
-      {error && (
-        <div className="flex items-start gap-2 rounded bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="flex justify-end">
+      {/* P9: Save sits under the instructions it saves, in the same column. */}
+      <div className="flex items-center justify-end gap-3 pt-1" data-profile-soul-actions="">
+        {dirty && <span className="text-sm text-muted-foreground">{p.unsavedChanges}</span>}
         <Button disabled={!dirty || saving || loading} onClick={() => void handleSave()} size="sm">
           <Save />
           {saving ? p.saving : p.saveSoul}
         </Button>
       </div>
+
+      {error && (
+        <div className="flex items-start gap-2 rounded bg-destructive/10 px-3 py-2 text-xs text-gn-destructive-copy">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
     </section>
   )
 }

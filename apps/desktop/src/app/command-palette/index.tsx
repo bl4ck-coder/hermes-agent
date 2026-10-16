@@ -13,8 +13,9 @@ import {
   HUD_SURFACE,
   HUD_TEXT
 } from '@/app/floating-hud'
+import { finishOpsPaletteCommand, OpsPalettePage } from '@/app/ops/palette'
 import { SESSION_IMPORT_ROUTE } from '@/app/routes'
-import { leaveIntro } from '@/components/onboarding-chat/intro'
+import { leaveIntro } from '@/components/onboarding/first-run/intro'
 import { codiconIcon } from '@/components/ui/codicon'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { HighlightMatches } from '@/components/ui/highlight-matches'
@@ -50,6 +51,7 @@ import {
   Pin,
   Plus,
   RefreshCw,
+  Search,
   Settings,
   Settings2,
   SlidersHorizontal,
@@ -61,6 +63,7 @@ import {
 } from '@/lib/icons'
 import { getServers } from '@/lib/mcp-servers'
 import { normalize } from '@/lib/text'
+import { rollbackSentence } from '@/lib/update-copy'
 import { cn } from '@/lib/utils'
 import { resolveVersionStatus } from '@/lib/version-status'
 import { $repoWorktrees } from '@/store/coding-status'
@@ -526,6 +529,16 @@ function themeSupportsMode(name: string, target: 'light' | 'dark'): boolean {
  */
 export function CommandPalette() {
   const open = useStore($commandPaletteOpen)
+  // Capture before the exiting body can consume the next deep-link request.
+  // Reopening/remounting must retain the Ops page and its search seed.
+  const launch = useRef({ open: false, page: null as string | null, seed: null as string | null })
+
+  if (open && !launch.current.open) {
+    launch.current = { open, page: $commandPalettePage.get(), seed: $commandPaletteSeed.get() }
+  } else if (!open) {
+    launch.current.open = false
+  }
+
   const [mounted, setMounted] = useState(open)
   const [openCount, setOpenCount] = useState(0)
 
@@ -555,12 +568,27 @@ export function CommandPalette() {
 
   return (
     <DialogPrimitive.Root onOpenChange={setCommandPaletteOpen} open={open}>
-      {mounted && <CommandPaletteBody key={openCount} onExited={retire} />}
+      {mounted && (
+        <CommandPaletteBody
+          initialPage={launch.current.page}
+          initialSearch={launch.current.seed}
+          key={openCount}
+          onExited={retire}
+        />
+      )}
     </DialogPrimitive.Root>
   )
 }
 
-function CommandPaletteBody({ onExited }: { onExited: () => void }) {
+function CommandPaletteBody({
+  initialPage,
+  initialSearch,
+  onExited
+}: {
+  initialPage: string | null
+  initialSearch: string | null
+  onExited: () => void
+}) {
   const { t } = useI18n()
   const pendingPage = useStore($commandPalettePage)
   const pendingSeed = useStore($commandPaletteSeed)
@@ -583,8 +611,8 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
     [systemDark]
   )
 
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState<string | null>(null)
+  const [search, setSearch] = useState(initialSearch ?? '')
+  const [page, setPage] = useState<string | null>(initialPage)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // The Update row names the same install the statusbar names — same target
@@ -606,8 +634,11 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
     return resolveVersionStatus({
       applying: apply.applying || apply.stage === 'restart',
       behind: status?.behind ?? 0,
+      channel: status?.channel === 'stable' ? 'stable' : 'main',
       copy: t.shell.statusbar,
+      latestTag: status?.latestTag,
       remote: backend,
+      rollback: rollbackSentence(status, t.settings.about.channel.rollbackBody),
       restarting: apply.stage === 'restart',
       sha: status?.currentSha?.slice(0, 7) ?? null,
       target: backend ? 'backend' : 'client',
@@ -850,6 +881,18 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
     // worktree named bb/yolo-* as a whole word. So this order IS the priority:
     // where you're going, then what you can do, then what you can configure.
     return [
+      {
+        heading: 'Ops',
+        items: [
+          {
+            icon: Search,
+            id: 'ops-search',
+            keywords: ['ops', 'search', 'office', 'canvas', 'board', 'palette'],
+            label: 'Search Ops',
+            to: 'ops'
+          }
+        ]
+      },
       {
         heading: cc.goTo,
         items: [
@@ -1503,6 +1546,11 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
         title: t.commandCenter.nav.settings.title,
         placeholder: t.settings.search.placeholder,
         groups: settingsPageGroups
+      },
+      ops: {
+        title: 'Ops',
+        placeholder: 'Search Ops',
+        groups: []
       }
     }),
     [
@@ -1626,6 +1674,7 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
             onExited()
           }
         }}
+        onCloseAutoFocus={finishOpsPaletteCommand}
       >
         <DialogPrimitive.Title className="sr-only">{t.commandCenter.paletteTitle}</DialogPrimitive.Title>
         <Command className="bg-transparent" loop shouldFilter={false}>
@@ -1671,7 +1720,9 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
           />
           <CommandList className="dt-portal-scrollbar max-h-[min(20rem,56vh)]">
             {/* Server-driven pages render their own list; the rest show groups. */}
-            {page === 'pets' ? (
+            {page === 'ops' ? (
+              <OpsPalettePage onSearch={setSearch} search={search} />
+            ) : page === 'pets' ? (
               <PetPalettePage
                 onGenerate={() => {
                   closeCommandPalette()

@@ -6,7 +6,7 @@
 const PROFILE_TAG_SATURATION = 68
 const PROFILE_TAG_LIGHTNESS = 58
 
-function hashString(value: string): number {
+export function hashString(value: string): number {
   let hash = 0
 
   for (let index = 0; index < value.length; index += 1) {
