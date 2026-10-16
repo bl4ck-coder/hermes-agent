@@ -12,6 +12,7 @@ import { remoteThumbsOptedOut, THUMB_OPT_OUT_KEY, THUMB_PREF_EVENT } from '../..
 import { forgetDrafts } from '../canvas/drafts'
 import { createNodeClient } from '../canvas/node-editor'
 import { NodeEditor } from '../canvas/node-editor-view'
+import { humanError, humanErrorLine } from '../feed/api-error'
 import { approvalMode, createOpsActions, envPresenceList } from '../feed/ops-actions'
 import { createOpsClient, type PolicyView } from '../feed/ops-client'
 import { T } from '../main-i18n'
@@ -25,6 +26,9 @@ import { cycleMotion, loadMotion, type MotionMode, saveMotion } from './motion'
 import { hostTimezone, opsTimezone as tzOf, validTimezone } from './tz'
 
 const PREF = 'hermes.ops.prefs'
+
+/** A stored Ops preference: the prefs record, plus motion and artifact previews (their own storage keys). */
+type PrefKey = keyof OpsPrefs | 'motion' | 'thumbs'
 
 export type OpsTheme = 'gold-night' | 'light' | 'dark' | 'system'
 
@@ -86,23 +90,53 @@ export function savePrefs(p: OpsPrefs) {
   globalThis.localStorage?.setItem(PREF, JSON.stringify(p))
 }
 
-export function useMotionMode(): [MotionMode, (m: MotionMode) => void] {
+/**
+ * [mode, write, show]: `write` shows the mode and stores it, returning the refusal (null once the write landed) instead of
+ * throwing; `show` changes only what is shown (P27 Revert: back to the stored value without writing).
+ */
+export function useMotionMode(): [MotionMode, (m: MotionMode) => unknown, (m: MotionMode) => void] {
   const [m, setM] = useState<MotionMode>(() => loadMotion())
 
   return [
     m,
     next => {
-      saveMotion(next)
       setM(next)
-    }
+
+      try {
+        saveMotion(next)
+
+        return null
+      } catch (e) {
+        return e ?? new Error('')
+      }
+    },
+    setM
   ]
+}
+
+/** A refused write in one short human line (P26 helper: reason first); '' when nothing was said (PrefRow: "reason not recorded"). */
+function refusal(e: unknown): string {
+  const h = humanError(e)
+
+  return h.status === null && !h.reason ? '' : humanErrorLine(h, T)
 }
 
 const LABEL: Record<MotionMode, string> = { full: 'Full', reduced: 'Reduced', system: 'System' }
 
-export function MotionReadout({ mode, onChange, id }: { mode: MotionMode; onChange: (m: MotionMode) => void; id?: string }) {
+export function MotionReadout({
+  mode,
+  onChange,
+  id,
+  ...aria
+}: {
+  mode: MotionMode
+  onChange: (m: MotionMode) => void
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
+}) {
   return (
-    <button aria-label={`Motion: ${LABEL[mode]}`} data-ops-motion={mode} id={id} onClick={() => onChange(cycleMotion(mode))} type="button">
+    <button aria-label={`Motion: ${LABEL[mode]}`} {...aria} data-ops-motion={mode} id={id} onClick={() => onChange(cycleMotion(mode))} type="button">
       {T("Motion:")}{' '}{LABEL[mode]}
     </button>
   )
@@ -201,36 +235,32 @@ export function SettingsView({
   defaultModel: { provider?: string | null; model?: string | null } | null
   onOpenRoute?: (r: string) => void
 }) {
-  const [motion, setMotion] = useMotionMode()
+  const [motion, writeMotion, showMotion] = useMotionMode()
   const [prefs, setPrefs] = useState<OpsPrefs>(() => loadPrefs())
   const [sheet, setSheet] = useState(false)
   const [view, setView] = useState<'settings' | 'diagnostics'>('settings')
   const policySource = policy ? (policy.error ? `${policy.source} (${policy.error})` : policy.source) : null
   const [draftNote, setDraftNote] = useState<string | null>(null)
   const [thumbs, setThumbs] = useState(() => !remoteThumbsOptedOut())
-
-  const setRemoteThumbs = (on: boolean) => {
-    try {
-      if (on) {
-        globalThis.localStorage?.removeItem(THUMB_OPT_OUT_KEY)
-      } else {
-        globalThis.localStorage?.setItem(THUMB_OPT_OUT_KEY, 'off')
-      }
-    } catch {
-      /* storage unavailable: keep the in-memory choice */
-    }
-
-    // B39: show the preference that is actually in effect (storage can refuse the write).
-    setThumbs(!remoteThumbsOptedOut())
-    globalThis.dispatchEvent?.(new Event(THUMB_PREF_EVENT))
-  }
   // P8: no Settings inspector detail: it only repeated the form's own values (judge pass 8).
 
   // P24: per-preference save outcome. A refused write keeps the draft visible; only the edited keys are written, so a failed
-  // draft of another preference is never smuggled to disk by a later edit.
-  const [prefErr, setPrefErr] = useState<Partial<Record<keyof OpsPrefs, string>>>({})
-  const [savedKeys, setSavedKeys] = useState<(keyof OpsPrefs)[]>([])
+  // draft of another preference is never smuggled to disk by a later edit. P27: motion and artifact previews report the same way.
+  const [prefErr, setPrefErr] = useState<Partial<Record<PrefKey, string>>>({})
+  const [savedKeys, setSavedKeys] = useState<PrefKey[]>([])
   const uid = useId()
+
+  /** One write outcome: null = landed (Saved), anything else = refused (reason beside the control, no Saved). */
+  const settle = (keys: PrefKey[], refused: unknown) => {
+    if (refused === null) {
+      setPrefErr(prev => omitKeys(prev, keys))
+      setSavedKeys(keys)
+    } else {
+      const reason = refusal(refused)
+      setPrefErr(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, reason])) }))
+      setSavedKeys([])
+    }
+  }
 
   const set = (p: Partial<OpsPrefs>) => {
     const keys = Object.keys(p) as (keyof OpsPrefs)[]
@@ -238,25 +268,59 @@ export function SettingsView({
 
     try {
       savePrefs({ ...loadPrefs(), ...p })
-      setPrefErr(prev => omitKeys(prev, keys))
-      setSavedKeys(keys)
+      settle(keys, null)
     } catch (e) {
-      const reason = e instanceof Error ? e.message : String(e)
-      setPrefErr(prev => ({ ...prev, ...Object.fromEntries(keys.map(k => [k, reason])) }))
-      setSavedKeys([])
+      settle(keys, e ?? new Error(''))
     }
   }
 
-  const retry = (k: keyof OpsPrefs) => set({ [k]: prefs[k] } as Partial<OpsPrefs>)
+  const changeMotion = (m: MotionMode) => settle(['motion'], writeMotion(m))
 
-  const revert = (k: keyof OpsPrefs) => {
-    const saved = loadPrefs()
-    setPrefs(prev => ({ ...prev, [k]: saved[k] }))
+  // P27 (was B39): the toggle keeps the choice; it says Saved only when the stored value reads back as chosen.
+  const setRemoteThumbs = (on: boolean) => {
+    setThumbs(on)
+    let refused: unknown = null
+
+    try {
+      if (on) {
+        globalThis.localStorage?.removeItem(THUMB_OPT_OUT_KEY)
+      } else {
+        globalThis.localStorage?.setItem(THUMB_OPT_OUT_KEY, 'off')
+      }
+    } catch (e) {
+      refused = e ?? new Error('')
+    }
+
+    if (refused === null && remoteThumbsOptedOut() === on) {
+      refused = new Error(T('storage kept the previous value'))
+    }
+
+    settle(['thumbs'], refused)
+
+    if (refused === null) {
+      globalThis.dispatchEvent?.(new Event(THUMB_PREF_EVENT))
+    }
+  }
+
+  const retry = (k: PrefKey) =>
+    k === 'motion' ? changeMotion(motion) : k === 'thumbs' ? setRemoteThumbs(thumbs) : set({ [k]: prefs[k] } as Partial<OpsPrefs>)
+
+  /** Back to the stored value; never writes. */
+  const revert = (k: PrefKey) => {
+    if (k === 'motion') {
+      showMotion(loadMotion())
+    } else if (k === 'thumbs') {
+      setThumbs(!remoteThumbsOptedOut())
+    } else {
+      const saved = loadPrefs()
+      setPrefs(prev => ({ ...prev, [k]: saved[k] }))
+    }
+
     setPrefErr(prev => omitKeys(prev, [k]))
   }
 
   /** Row + control wiring for one preference: label→control, help/error described, invalid while refused. */
-  const pref = (k: keyof OpsPrefs, help?: boolean) => {
+  const pref = (k: PrefKey, help?: boolean) => {
     const id = `${uid}-${k}`
     const ids = settingsRowIds(id)
     const err = prefErr[k]
@@ -275,6 +339,8 @@ export function SettingsView({
   const dateFormat = pref('dateFormat')
   const notifyApprovals = pref('notifyApprovals')
   const notifyBlocked = pref('notifyBlocked')
+  const motionPref = pref('motion')
+  const thumbsPref = pref('thumbs', true)
 
   return (
     <section aria-label={T("Ops settings")} data-ops-settings="" data-ops-theme={prefs.theme}>
@@ -340,8 +406,8 @@ export function SettingsView({
             <button data-ops-open-route="/settings" onClick={() => onOpenRoute?.('/settings')} type="button">
               {T("Desktop appearance")}</button>
           </PrefRow>
-          <PrefRow id={`${uid}-motion`} label={T("Motion")}>
-            <MotionReadout id={`${uid}-motion`} mode={motion} onChange={setMotion} />
+          <PrefRow {...motionPref.row} label={T("Motion")}>
+            <MotionReadout {...motionPref.control} mode={motion} onChange={changeMotion} />
           </PrefRow>
           <PrefRow {...defaultTab.row} label={T("Default tab")}>
             <select aria-label={T("default tab")} {...defaultTab.control} onChange={e => set({ defaultTab: e.target.value as OpsPrefs['defaultTab'] })} value={prefs.defaultTab}>
@@ -375,13 +441,13 @@ export function SettingsView({
               <option value="local">{T("Local")}</option>
             </select>
           </PrefRow>
-          {/* B39: this toggle already shows the preference in effect when storage refuses the write. */}
+          {/* P27: a refused write keeps the choice with the reason, Retry and Revert, like every preference above. */}
           <PrefRow
+            {...thumbsPref.row}
             help={T("Loads GitHub preview images for linked repos and PRs (cached on this machine for 7 days). Off keeps the monogram and makes no request.")}
-            id={`${uid}-thumbs`}
             label={T("Artifact previews")}
           >
-            <input aria-describedby={settingsRowIds(`${uid}-thumbs`).help} aria-label={T("load GitHub preview images")} checked={thumbs} data-ops-remote-thumbs={thumbs ? 'on' : 'off'} id={`${uid}-thumbs`} onChange={e => setRemoteThumbs(e.target.checked)} type="checkbox" />
+            <input aria-label={T("load GitHub preview images")} {...thumbsPref.control} checked={thumbs} data-ops-remote-thumbs={thumbs ? 'on' : 'off'} onChange={e => setRemoteThumbs(e.target.checked)} type="checkbox" />
           </PrefRow>
         </div>
       </Group>

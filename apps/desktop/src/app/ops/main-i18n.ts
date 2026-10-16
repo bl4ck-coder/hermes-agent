@@ -17,7 +17,12 @@ export function opsMainLocale(): string {
 }
 
 export function T(s: string): string {
-  const row = MAIN_TRANSLATIONS[locale]
+  return TIn(locale, s)
+}
+
+/** T for a surface outside Ops (Profiles): the caller passes its own Desktop locale, since OpsShell may not be mounted. */
+export function TIn(at: string | null | undefined, s: string): string {
+  const row = MAIN_TRANSLATIONS[at || 'en']
 
   return (row && row[s]) || s
 }

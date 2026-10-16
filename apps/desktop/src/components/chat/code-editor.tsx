@@ -40,6 +40,8 @@ export interface CodeEditorApi {
 interface CodeEditorProps {
   apiRef?: RefObject<CodeEditorApi | null>
   className?: string
+  /** id(s) of a status that describes the document (e.g. a refused save); set on the focusable content node. */
+  describedBy?: string
   /** Read-only: block edits (e.g. while a save is in flight) without unmounting. */
   disabled?: boolean
   /** Mod-Shift-F + `apiRef.formatJson()`. In-memory JSON docs only. */
@@ -179,6 +181,8 @@ const FRAMED_THEME = EditorView.theme({
   '.cm-line': { padding: '0' }
 })
 
+const describedByAttr = (id: string | undefined) => (id ? EditorView.contentAttributes.of({ 'aria-describedby': id }) : [])
+
 // A deliberately small CodeMirror 6 surface for *spot edits* — not an IDE: line
 // numbers, history, selection, bracket matching, syntax highlighting. No fold
 // gutter, autocomplete, or active-line chrome, so it reads like the preview it
@@ -188,6 +192,7 @@ const FRAMED_THEME = EditorView.theme({
 export function CodeEditor({
   apiRef,
   className,
+  describedBy,
   disabled = false,
   formatJson = false,
   framed = false,
@@ -210,6 +215,7 @@ export function CodeEditor({
   const themeConf = useRef(new Compartment())
   const highlightConf = useRef(new Compartment())
   const editableConf = useRef(new Compartment())
+  const describedByConf = useRef(new Compartment())
   const onCancelRef = useRef(onCancel)
   const onChangeRef = useRef(onChange)
   const onCursorChangeRef = useRef(onCursorChange)
@@ -282,6 +288,7 @@ export function CodeEditor({
         themeConf.current.of(githubEditorTheme(isDark)),
         highlightConf.current.of([]),
         editableConf.current.of(EditorState.readOnly.of(disabled)),
+        describedByConf.current.of(describedByAttr(describedBy)),
         EditorView.updateListener.of(update => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString())
@@ -383,6 +390,10 @@ export function CodeEditor({
   useEffect(() => {
     viewRef.current?.dispatch({ effects: editableConf.current.reconfigure(EditorState.readOnly.of(disabled)) })
   }, [disabled])
+
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: describedByConf.current.reconfigure(describedByAttr(describedBy)) })
+  }, [describedBy])
 
   if (!framed) {
     return <div className={cn('h-full min-h-0 overflow-hidden', className)} ref={hostRef} />

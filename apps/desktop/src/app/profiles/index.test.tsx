@@ -23,8 +23,29 @@ afterEach(cleanup)
 
 // Keep editor changes and saves observable without CodeMirror's layout APIs.
 vi.mock('@/components/chat/code-editor', () => ({
-  CodeEditor: ({ initialValue, onChange }: { initialValue: string; onChange: (value: string) => void }) => (
-    <textarea aria-label="SOUL.md" defaultValue={initialValue} onChange={event => onChange(event.target.value)} />
+  CodeEditor: ({
+    describedBy,
+    initialValue,
+    onChange,
+    onSave
+  }: {
+    describedBy?: string
+    initialValue: string
+    onChange: (value: string) => void
+    onSave?: () => void
+  }) => (
+    <textarea
+      aria-describedby={describedBy}
+      aria-label="SOUL.md"
+      defaultValue={initialValue}
+      onChange={event => onChange(event.target.value)}
+      onKeyDown={event => {
+        if (event.key === 's' && event.ctrlKey) {
+          event.preventDefault()
+          onSave?.()
+        }
+      }}
+    />
   )
 }))
 
@@ -159,6 +180,51 @@ describe('ProfilesView', () => {
     await act(async () => fireEvent.click(selectRow('default')))
     expect(screen.getByText('Could not read SOUL.md')).toBeTruthy()
     expect(screen.queryByText(missing)).toBeNull()
+  })
+
+  it('P27: a refused SOUL save (409) is announced at the editor top edge; focus, caret and text stay; Retry saves once', async () => {
+    const longSoul = Array.from({ length: 240 }, (_, i) => `Line ${i + 1} of a long SOUL.md`).join('\n')
+    vi.mocked(refreshProfiles).mockResolvedValue([makeProfile('default', true)])
+    vi.mocked(getProfileSoul).mockResolvedValueOnce({ content: longSoul, exists: true })
+    vi.mocked(updateProfileSoul).mockReset()
+    vi.mocked(updateProfileSoul).mockRejectedValueOnce(
+      new Error(`Error invoking remote method 'hermes:api': Error: 409: {"detail":"SOUL.md changed on disk since it was opened"}`)
+    )
+
+    await renderProfilesView()
+
+    const editor = screen.getByLabelText('SOUL.md') as HTMLTextAreaElement
+    const draft = `${longSoul}\nA line typed at the very end`
+    fireEvent.change(editor, { target: { value: draft } })
+    editor.focus()
+    editor.setSelectionRange(draft.length, draft.length)
+    await act(async () => fireEvent.keyDown(editor, { ctrlKey: true, key: 's' }))
+
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toContain('Conflict (409): SOUL.md changed on disk since it was opened')
+    // At the editor's top edge: before the editor in DOM order, inside a sticky status that precedes the editor block.
+    expect(alert.compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const status = alert.closest('[data-profile-soul-status]') as HTMLElement
+    expect(status).not.toBeNull()
+    expect(status.className).toContain('sticky')
+    expect(status.nextElementSibling?.hasAttribute('data-profile-soul-editor')).toBe(true)
+    // Focus, caret and text are untouched; the editor is described by the alert.
+    expect(globalThis.document.activeElement).toBe(editor)
+    expect(editor.value).toBe(draft)
+    expect(editor.selectionStart).toBe(draft.length)
+    expect(editor.getAttribute('aria-describedby')).toBe(alert.id)
+    // The raw transport text exists only inside a closed disclosure.
+    const raw = status.querySelector('details') as HTMLDetailsElement
+    expect(raw.open).toBe(false)
+    expect(raw.textContent).toContain("Error invoking remote method 'hermes:api'")
+    expect(alert.textContent).not.toContain('Error invoking remote method')
+
+    vi.mocked(updateProfileSoul).mockResolvedValueOnce({ ok: true })
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Retry' })))
+    expect(updateProfileSoul).toHaveBeenCalledTimes(2)
+    expect(updateProfileSoul).toHaveBeenLastCalledWith('default', draft)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(editor.hasAttribute('aria-describedby')).toBe(false)
   })
 
   it('opens the shared create dialog with the SOUL.md field (parity with the rail)', async () => {
