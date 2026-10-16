@@ -121,7 +121,8 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
       'decision-row': ms => see('[data-ops-approval]', { text: 'Run a shell command in the builder workspace', ms }),
       'approvals-mock': ms => served(R_PENDING, { ms })
     },
-    neg: { mocks: [{ path: R_BOARD, body: BOARD }] }
+    // Negative: no approvals fixture. A reload first, so nothing cached from an earlier state can answer for it.
+    neg: { mocks: [{ path: R_BOARD, body: BOARD }], act: async () => { await reload(); await open('office') } }
   }
   await state('office', 'loaded-decisions', officeLoaded)
   await state('office', 'more-actions-open', {
@@ -140,7 +141,9 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
       'cards': ms => see('[data-ops-card]', { min: 5, ms }),
       'board-mock': ms => served(R_BOARD, { ms })
     },
-    neg: { mocks: [{ path: R_PENDING, body: PENDING }] }
+    // Negative: no board fixture. A reload first: a board cached by an earlier state (kept on a failed refresh)
+    // must not answer for it.
+    neg: { mocks: [{ path: R_PENDING, body: PENDING }], act: async () => { await reload(); await open('board') } }
   })
   const clearFilters = async () => { for (const sel of ['input[data-ops-filter]', boardFilter]) { const l = visible(sel); for (let i = await l.count(); i--;) await l.nth(i).fill('').catch(() => {}) } }
   await state('board', 'filtered', {
@@ -757,24 +760,27 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
       await open('office')
       const sel = '[data-ops-approval]'
       const clean = await see(sel, { clear: true, min: 2 }).then(d => ({ pass: true, detail: d }), e => ({ pass: false, detail: String(e?.message ?? e) }))
-      const why = await page.evaluate(sel => {
-        const vis = [...document.querySelectorAll(sel)].filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden')
-        const row = vis[1]
-        if (!row) return 'no second row'
+      // The 2nd VISIBLE match as Playwright sees it (the same element the check probes), scrolled into view. The cover is
+      // an absolutely positioned sibling inside the row's parent, so it scrolls with the row (never a descendant of it).
+      const second = visible(sel).nth(1)
+      const why = await second.evaluate(row => {
+        row.scrollIntoView({ block: 'center' })
+        const p = row.parentElement
+        if (!p) return 'second row has no parent'
+        if (getComputedStyle(p).position === 'static') { p.dataset.opsHardPos = '1'; p.style.position = 'relative' }
         const c = document.createElement('div')
         c.id = 'ops-hard-cover'
-        c.style.cssText = 'position:fixed;z-index:2147483647;background:rgba(255,0,0,0.35);pointer-events:auto'
-        document.body.appendChild(c)
-        const place = () => { const r = row.getBoundingClientRect(); Object.assign(c.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` }); if (c.isConnected) requestAnimationFrame(place) }
-        place()
-        return ''
-      }, sel)
-      if (why) return { held: false, detail: why }
+        c.style.cssText = `position:absolute;z-index:2147483647;background:rgba(255,0,0,0.35);pointer-events:auto;left:${row.offsetLeft}px;top:${row.offsetTop}px;width:${row.offsetWidth}px;height:${row.offsetHeight}px`
+        p.appendChild(c)
+        const r = row.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+        return hit === c ? '' : `cover not on top of the 2nd row (hit <${hit?.tagName.toLowerCase()}>)`
+      }).catch(e => `no second visible row: ${String(e?.message ?? e).slice(0, 120)}`)
+      if (why) { await page.evaluate(() => document.getElementById('ops-hard-cover')?.remove()); return { held: false, detail: why } }
       await sleep(300)
       const covered = await see(sel, { clear: true, min: 2, ms: 1500 }).then(d => ({ pass: true, detail: d }), e => ({ pass: false, detail: String(e?.message ?? e) }))
       const shots = []
       await shot('s-harness-covered-second-row').then(() => shots.push('s-harness-covered-second-row.png'))
-      await page.evaluate(() => document.getElementById('ops-hard-cover')?.remove())
+      await page.evaluate(() => { document.getElementById('ops-hard-cover')?.remove(); for (const p of document.querySelectorAll('[data-ops-hard-pos]')) { p.style.position = ''; delete p.dataset.opsHardPos } })
       const held = clean.pass && !covered.pass && /#2 /.test(covered.detail) && !/#1 /.test(covered.detail)
       return { held, shots, detail: `uncovered rows: ${clean.pass ? 'pass' : `FAIL (${clean.detail.slice(0, 160)})`}; 2nd row covered: ${covered.pass ? 'PASS (false positive)' : `fail (${covered.detail.slice(0, 220)})`}`, checks: [{ label: 'uncovered-rows-pass', ...clean }, { label: 'covered-second-row-fails', pass: !covered.pass, detail: covered.detail }] }
     }
