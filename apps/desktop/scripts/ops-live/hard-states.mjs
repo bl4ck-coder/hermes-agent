@@ -881,7 +881,8 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
       const soul = document.querySelector('[data-profile-soul]')
       const hits = soul ? [...soul.querySelectorAll('*')].filter(e => vis(e) && (e.textContent || '').includes(conflict.slice(0, 30)) && ![...e.children].some(c => (c.textContent || '').includes(conflict.slice(0, 30)))) : []
       const err = hits[0] ?? null
-      const holder = err ? (err.closest('[role="alert"], [data-profile-soul-conflict]') ?? err.parentElement) : null
+      // P27: the reason (role=alert) and its Retry sit together in the editor's sticky status block.
+      const holder = err ? (err.closest('[data-profile-soul-status], [data-profile-soul-conflict]') ?? err.closest('[role="alert"]') ?? err.parentElement) : null
       const buttons = holder ? [...holder.querySelectorAll('button, a[href]')].filter(vis).map(b => ({ text: (b.textContent || b.getAttribute('aria-label') || '').trim().slice(0, 40), ...box(b) })) : []
       const content = document.querySelector('[data-profile-soul-editor] .cm-content')
       const cm = content?.cmView?.rootView?.view ?? content?.cmView?.view ?? null
@@ -1141,7 +1142,14 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     },
     'progress-recognisable': ms => see(block('Prepare the release notes for 2.4'), { text: 'Waiting on two children', ms }),
     'result-recognisable': ms => see(block('Collect the merged PR titles'), { text: 'Result: 14 PR titles collected', ms }),
-    'failure-recognisable': ms => see(block('Build the changelog file'), { text: 'Failed: changelog tool exited with code 2', ms }).then(a => see('p', { text: /1 failed|1 fallidos/, ms }).then(b => `${a}; summary says 1 failed`)),
+    // The failure reads in the tree itself; since P27 the counters live once in the folded Summary after the tree, so the
+    // count is checked there (present in the DOM, folded by design), not as a visible header line.
+    'failure-recognisable': ms => see(block('Build the changelog file'), { text: 'Failed: changelog tool exited with code 2', ms }).then(async a => {
+      const sum = await page.evaluate(() => document.querySelector('[data-agents-summary]')?.textContent ?? null)
+      if (sum === null) fail('no Summary section after the tree')
+      if (!/1\s*(failed|fallidos?)/i.test(sum)) fail(`the Summary does not count the failure: ${JSON.stringify(sum.slice(0, 160))}`)
+      return `${a}; Summary counts 1 failed`
+    }),
     'tree-unobstructed': ms => see('[data-slot="tool-block"] > button', { count: 3, clear: true, ms })
   }
   const treeFails = ['parent-with-two-children', 'progress-recognisable', 'result-recognisable', 'failure-recognisable', 'tree-unobstructed']
@@ -1609,9 +1617,17 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     await type(`${ROW_T6} input[aria-label="changes for t6"]`, REVIEW_NOTE)
     // Long context: visible at rest, or revealed when the row holds focus.
     ctx.whyRest = await visTokens('[data-ops-approval="kanban_review:t9"]', ['END-OF-CONTEXT'])
-    if (!ctx.whyRest.visible.length) { await visible('[data-ops-approval="kanban_review:t9"]').first().focus().catch(() => {}); await sleep(500); ctx.whyFocus = await visTokens('[data-ops-approval="kanban_review:t9"]', ['END-OF-CONTEXT']) }
-    // Inspect the task (Open task), then come back the way a person does (Back).
-    await tap(`${ROW_T6} [data-ops-intent="links"] [data-ops-row-link]`)
+    // P27: the clamped reason is itself the keyboard stop (tabIndex 0, unfolds on focus); focus it, else the row.
+    if (!ctx.whyRest.visible.length) {
+      const why = visible('[data-ops-approval="kanban_review:t9"] [data-ops-why-long]')
+      ctx.whyFocusTarget = (await why.count()) ? 'reason' : 'row'
+      await (ctx.whyFocusTarget === 'reason' ? why : visible('[data-ops-approval="kanban_review:t9"]')).first().focus().catch(() => {})
+      await sleep(500)
+      ctx.whyFocus = await visTokens('[data-ops-approval="kanban_review:t9"]', ['END-OF-CONTEXT'])
+    }
+    // Inspect the task via the row's secondary 'Review task' on its context line (P27; Open task left More actions),
+    // then come back the way a person does (Back).
+    await tap(`${ROW_T6} [data-ops-review-task]`)
     await sleep(2000)
     ctx.opened = await page.evaluate(() => ({ hash: location.hash, inspector: document.querySelector('[data-ops-inspector-detail]')?.getAttribute('data-ops-inspector-detail') ?? null }))
     await ctx.shot('task-open')
@@ -1636,8 +1652,14 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
     checks: {
       'panel-420': ev('width', w => { if (Math.abs(w - 420) > 16) fail(`Ops pane is ${w}px wide, want 420 +- 16`); return `Ops pane ${w}px wide` }),
       'missing-reason-said': ms => see(`${ROW_T6} [data-ops-why-missing]`, { ms }),
-      'long-context-readable': ev('whyRest', (r, ctx) => { if (r.visible.length) return 'the long context is visible to its end at rest'; if (ctx.whyFocus?.visible.length) return 'the long context is revealed to its end when the row holds focus'; fail('the end of the long context is hidden at rest and on focus') }),
-      'note-survives-inspect': ev('noteAfterOpen', (v, ctx) => { if (v !== REVIEW_NOTE) fail(`after Open task (${ctx.opened?.hash}, inspector ${ctx.opened?.inspector}) and back (${ctx.returnedBy}) the note is ${JSON.stringify(v)}`); return `note kept after Open task (${ctx.opened?.hash}) and back (${ctx.returnedBy}); expansion ${ctx.expandedAfterOpen ? 'still open' : 'reopened'}` }),
+      'review-link-secondary': async ms => {
+        await see(`${ROW_T6} [data-ops-review-task]`, { ms })
+        const primary = await visible(`${ROW_T6} [data-ops-review-task]`).first().evaluate(e => e.hasAttribute('data-ops-primary') || Boolean(e.closest('[data-ops-primary]')))
+        if (primary) fail('Review task is styled as a primary action')
+        return 'Review task on the context line, secondary'
+      },
+      'long-context-readable': ev('whyRest', (r, ctx) => { if (r.visible.length) return 'the long context is visible to its end at rest'; if (ctx.whyFocus?.visible.length) return `the long context is revealed to its end when the ${ctx.whyFocusTarget} holds focus`; fail('the end of the long context is hidden at rest and on focus') }),
+      'note-survives-inspect': ev('noteAfterOpen', (v, ctx) => { if (v !== REVIEW_NOTE) fail(`after Review task (${ctx.opened?.hash}, inspector ${ctx.opened?.inspector}) and back (${ctx.returnedBy}) the note is ${JSON.stringify(v)}`); return `note kept after Review task (${ctx.opened?.hash}) and back (${ctx.returnedBy}); expansion ${ctx.expandedAfterOpen ? 'still open' : 'reopened'}` }),
       'refusal-beside-intent-420': ms => see(`${ROW_T6} [data-ops-intent="request-changes"] [data-ops-refused]`, { count: 1, text: 'review changed since you opened it', clear: true, ms }),
       'draft-visible-after-refusal': ms => see(`${ROW_T6} input[aria-label="changes for t6"]`, { value: REVIEW_NOTE, clear: true, ms }),
       'one-primary-per-row': async ms => {
