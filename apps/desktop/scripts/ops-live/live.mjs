@@ -160,12 +160,13 @@ const waitReady = async name => {
 }
 log.readiness = {}
 
-async function section(name, fn) {
+async function section(name, fn, o = {}) {
   const before = { c: log.console.filter(x => x.type === 'error').length, p: log.pageErrors.length, h: log.http.length, f: log.failed.length }
   const failures = []
   let note = ''
   // The interaction is bounded: a hung section is a failure, never a silent wait.
-  try { note = (await Promise.race([Promise.resolve().then(fn), sleep(120_000).then(() => { throw new Error('section interaction timed out after 120 s') })])) ?? '' } catch (e) { failures.push(`interaction: ${String(e?.message ?? e).split('\n')[0].slice(0, 260)}`) }
+  const budget = o.ms ?? 120_000
+  try { note = (await Promise.race([Promise.resolve().then(fn), sleep(budget).then(() => { throw new Error(`section interaction timed out after ${budget / 1000} s`) })])) ?? '' } catch (e) { failures.push(`interaction: ${String(e?.message ?? e).split('\n')[0].slice(0, 260)}`) }
   if (/^chrome-error:/.test(page.url())) failures.push(`navigation error: ${page.url().slice(0, 120)}`)
   await sleep(1500)
   const readiness = await waitReady(name)
@@ -270,7 +271,11 @@ if (want('probe')) {
   })
   save()
 }
-if (want('office')) await section('01-office', async () => { await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) }; const ready = await page.waitForFunction(() => { const v = [...document.querySelectorAll('[data-ops-stat-value]')]; return v.length > 0 && v.every(e => e.textContent !== 'unknown') }, null, { timeout: 25000 }).then(() => '', () => ' [STATS UNRESOLVED after 25s]'); if (ready) throw new Error('office stats unresolved after 25s'); return (await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr')) + ready })
+// P27: the Office stats wait is a semantic readiness wait (OFFICE_STATS_MS), not 25 s: on a cold snapshot gateway (about 40
+// profiles) the kanban feed behind Open tasks / Done this week / Needs attention took 89 s; still unresolved after the
+// budget = FAILED. The note records how long the stats took, so a slow feed stays visible in the evidence.
+const OFFICE_STATS_MS = 180_000
+if (want('office')) await section('01-office', async () => { const t0 = Date.now(); await go('/ops/office'); await page.waitForSelector('[data-ops-writes-gate]', { timeout: 20000 }); if ((await page.getAttribute('[data-ops-fullscreen]', 'data-ops-fullscreen')) !== 'true') { await page.click('[data-ops-fullscreen-toggle]').catch(() => {}); await sleep(1500) }; const ready = await page.waitForFunction(() => { const v = [...document.querySelectorAll('[data-ops-stat-value]')]; return v.length > 0 && v.every(e => e.textContent !== 'unknown') }, null, { timeout: OFFICE_STATS_MS }).then(() => '', () => ` [STATS UNRESOLVED after ${OFFICE_STATS_MS / 1000}s]`); if (ready) { const which = await page.evaluate(() => [...document.querySelectorAll('[data-ops-stat-value]')].filter(e => e.textContent === 'unknown').map(e => { const r = e.getBoundingClientRect(); return `${(e.parentElement?.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 60)}${r.width > 0 ? '' : ' (hidden)'}` })).catch(e => [String(e)]); throw new Error(`office stats unresolved after ${OFFICE_STATS_MS / 1000}s: ${which.join(' | ') || 'none named'}`) }; return (await page.evaluate(() => document.querySelector('[data-ops-writes-gate]')?.getAttribute('data-ops-writes-gate') ?? 'no-gate-attr')) + ready + ` (stats resolved in ${Math.round((Date.now() - t0) / 1000)} s)` }, { ms: OFFICE_STATS_MS + 60_000 })
 if (want('fps')) await sampleFps('office-motion', async () => {}, 6000)
 if (want('board')) await section('02-board', async () => {
   await go('/ops/board')
