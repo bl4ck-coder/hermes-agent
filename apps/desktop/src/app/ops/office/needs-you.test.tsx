@@ -42,6 +42,8 @@ describe('Needs-you queue (P6 F1)', () => {
     render(<NeedsYouQueue items={[item('kanban_blocked', 't2')]} onKanban={onKanban} onOpenTask={onOpenTask} />)
     fireEvent.click(screen.getByText('Open task'))
     expect(onOpenTask).toHaveBeenCalledWith('t2')
+    // P25: Unblock lives in the row's compact expansion, opened from the trigger beside Open task.
+    fireEvent.click(screen.getByText('More actions'))
     fireEvent.change(screen.getByLabelText('unblock note for t2'), { target: { value: 'creds added' } })
     await act(async () => fireEvent.click(document.querySelector('[data-ops-unblock="kanban_blocked:t2"]')!))
     expect(screen.getByRole('alert').textContent).toContain('blocked by parent')

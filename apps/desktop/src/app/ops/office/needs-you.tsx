@@ -184,6 +184,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
     const title = item.origin === 'jsonrpc' || item.origin === 'gateway_run' ? item.what_for || T(KIND[item.origin] ?? item.origin) : item.what_for || cmd || item.id
 
     let primary: ReactNode = null
+    let secondary: ReactNode = null
     let more: ReactNode = null
 
     if (p.readOnly) {
@@ -196,7 +197,8 @@ export function NeedsYouQueue(p: NeedsYouProps) {
       ) : (
         <span data-ops-review={key}>{T("Review")}</span>
       )
-      more =
+      // P25 (judge pass 19 #5): one-click Deny sits on the primary line, so the row has no second band.
+      secondary =
         p.onDeny && item.actions.includes('deny') ? (
           <button data-ops-deny={key} data-ops-write="" disabled={sending || busy[`d:${key}`] === 'sending' || busy[`d:${key}`] === 'done'} onClick={() => void run(`d:${key}`, () => p.onDeny?.(item))} type="button">
             {label(`d:${key}`, 'Deny', 'Denied')}
@@ -209,8 +211,9 @@ export function NeedsYouQueue(p: NeedsYouProps) {
         </button>
       )
       // P24 (judge pass 18): one intent per line inside the expansion: request changes first, then quiet links.
+      // P25: the expansion's trigger sits beside Approve (EntityRow moreLabel); this is only its body.
       more = (
-        <Disclosure label={T('More actions')}>
+        <>
           <span data-ops-intent="request-changes">
             <input aria-label={`changes for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T('What to change')} value={note} />
             <button data-ops-request-changes={key} data-ops-write="" disabled={sending || !note.trim()} onClick={() => void run(`r:${key}`, () => p.onKanban?.({ kind: 'request_changes', taskId: item.id, note: note.trim() }))} type="button">
@@ -226,7 +229,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
             ) : null}
             {comment(item, key)}
           </span>
-        </Disclosure>
+        </>
       )
     } else if (item.origin === 'kanban_blocked') {
       primary = (
@@ -234,7 +237,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
           {T("Open task")}</button>
       )
       more = (
-        <Disclosure label={T('More actions')}>
+        <>
           <span data-ops-intent="unblock">
             <input aria-label={`unblock note for ${item.id}`} onChange={e => setNotes(n => ({ ...n, [key]: e.target.value }))} placeholder={T('Unblock note')} value={note} />
             <button data-ops-unblock={key} data-ops-write="" disabled={sending || !note.trim()} onClick={() => void run(key, () => p.onKanban?.({ kind: 'unblock', taskId: item.id, note: note.trim() }))} type="button">
@@ -243,7 +246,7 @@ export function NeedsYouQueue(p: NeedsYouProps) {
             {alertFor(key)}
           </span>
           <span data-ops-intent="links">{comment(item, key)}</span>
-        </Disclosure>
+        </>
       )
     } else {
       primary = <span data-ops-review={key}>{T("Not routable from this connection")}</span>
@@ -269,13 +272,18 @@ export function NeedsYouQueue(p: NeedsYouProps) {
             <span data-ops-age="">{age(item.age_s)}</span>
           </>
         }
-        more={
-          <>
-            {more}
-            {item.origin === 'kanban_blocked' ? null : alerts(key)}
-          </>
+        more={more}
+        moreLabel={more ? T('More actions') : undefined}
+        primary={
+          primary || secondary ? (
+            <>
+              {primary}
+              {secondary}
+              {/* P24/P25: a refused Approve or Deny is said beside it, on the actions line. */}
+              {item.origin === 'kanban_blocked' ? null : alerts(key)}
+            </>
+          ) : null
         }
-        primary={primary}
         title={cmd && (item.origin === 'jsonrpc' || item.origin === 'gateway_run') ? title : <span data-ops-waiting-on="">{title}</span>}
         tone={item.origin === 'kanban_blocked' ? 'warn' : undefined}
       />
