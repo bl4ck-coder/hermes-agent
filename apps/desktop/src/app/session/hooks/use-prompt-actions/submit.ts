@@ -21,6 +21,7 @@ import {
   revokeDiscardedAttachmentPreviews
 } from '@/store/composer'
 import { serverOwnsComposerQueue } from '@/store/composer-queue'
+import { recordSubmitRefusal } from '@/store/composer-refusal'
 import { noteMessageSent } from '@/store/desktop-metrics'
 import { $hudMode } from '@/store/hud'
 import { clearNotifications, notify, notifyError } from '@/store/notifications'
@@ -61,6 +62,7 @@ import {
   acquireSubmitInFlight,
   type GatewayRequest,
   inlineErrorMessage,
+  isGatewayRefusal,
   isProviderSetupError,
   isSessionBusyError,
   isSessionNotOwnedError,
@@ -1320,6 +1322,24 @@ export function useSubmitPrompt(deps: SubmitPromptDeps) {
         // Another surface owns the session (#106217): a deterministic gateway
         // refusal, so the error card drops Retry and offers a new session.
         const notOwned = isSessionNotOwnedError(err)
+
+        // P27 (judge pass 21 #5): the gateway refused this composer's send. Nothing was admitted, so the
+        // conversation does not change: the optimistic bubble goes (the composer gets the draft back, the one
+        // copy), no error card joins the transcript and no toast; the reason is said beside the composer.
+        // Lost/timed-out requests, the live-owner refusal and provider setup keep their own paths below.
+        if (
+          options?.composerScope !== undefined &&
+          options.displayKind !== 'hidden' &&
+          isGatewayRefusal(err) &&
+          !notOwned &&
+          !isProviderSetupError(err) &&
+          targetIsCurrentView()
+        ) {
+          dropOptimistic(sessionId)
+          recordSubmitRefusal([options.submission_id, submissionId], err)
+
+          return false
+        }
 
         updateSessionState(
           sessionId,

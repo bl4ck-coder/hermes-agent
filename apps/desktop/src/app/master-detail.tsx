@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useEffect,
+  useId,
   useRef,
   useState
 } from 'react'
@@ -24,6 +25,8 @@ import {
   setPaneHeightOverride,
   setPaneWidthOverride
 } from '@/store/panes'
+
+import { T } from './ops/main-i18n'
 
 // Monospace capability chip (tool name, transport, …). Shared by the Skills
 // and MCP tabs so the pill reads identically everywhere.
@@ -159,11 +162,54 @@ export function MasterDetail({
   )
 }
 
-export function ListColumn({ children, header }: { children: ReactNode; header?: ReactNode }) {
+/**
+ * P27 (judge pass 21 #8): with `current` (the selected item's name), a narrow panel (<40rem, the master/detail
+ * container) folds the stacked list to one line naming the selection, so the document keeps the height and the
+ * selection is not shown twice above it; the line unfolds the list, and choosing another item folds it again.
+ * Wide panels always show the rail; the line is not rendered there.
+ */
+export function ListColumn({
+  children,
+  current,
+  header
+}: {
+  children: ReactNode
+  /** Name of the selected item; null when nothing is selected (the list then stays open). Omit for no fold. */
+  current?: null | string
+  header?: ReactNode
+}) {
+  const listId = useId()
+  // Open "at" a selection: picking another item (a new `current`) folds the list without an effect.
+  const [openAt, setOpenAt] = useState<null | string | undefined>(undefined)
+  const foldable = current !== undefined
+  const open = !foldable || current === null || openAt === current
+
   return (
-    <aside className="flex min-h-0 flex-col p-2">
-      {header}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">{children}</div>
+    <aside className="flex min-h-0 flex-col p-2" data-list-column="" data-list-open={open ? '' : undefined}>
+      {foldable && current !== null && (
+        <button
+          aria-controls={listId}
+          aria-expanded={open}
+          className="flex min-h-10 w-full shrink-0 items-center gap-2 rounded-md px-2 text-left text-(length:--type-meta) leading-(--type-meta-lh) hover:bg-(--ui-row-hover-background,rgb(255_255_255/0.04)) @min-[40rem]/md:hidden"
+          data-list-switcher=""
+          onClick={() => setOpenAt(open ? undefined : current)}
+          type="button"
+        >
+          <span className="min-w-0 flex-1 truncate font-medium text-foreground" data-list-current="">
+            {current}
+          </span>
+          <span className="shrink-0 text-muted-foreground">{open ? T('Hide list') : T('Show list')}</span>
+          <Codicon name={open ? 'chevron-up' : 'chevron-down'} size="0.8125rem" />
+        </button>
+      )}
+      <div
+        className={cn('min-h-0 flex-1 flex-col', open ? 'flex' : 'hidden @min-[40rem]/md:flex')}
+        data-list-body=""
+        id={listId}
+      >
+        {header}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">{children}</div>
+      </div>
     </aside>
   )
 }

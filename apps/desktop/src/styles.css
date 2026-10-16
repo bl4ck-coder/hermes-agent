@@ -1936,8 +1936,13 @@ body.guest-pointer-lock :is(webview, iframe) {
 /* Stick-to-bottom owns scrollTop while following. Once escaped, native anchoring
    is safe and keeps sticky human edits from shoving the viewport; data-editing
    enables that path before React swaps in the inline editor. */
+/* P27 (judge pass 21 #5): messages and composer share one column. The gutter is
+   reserved on both edges (thread or no scrollbar), so the thread's content box is
+   centered on the same axis as the composer dock; with the 0.5rem padding below, the
+   text column lands exactly on the composer surface (dock: min(width, 100% - 2rem)). */
 [data-slot='aui_thread-viewport'] {
   overflow-anchor: none;
+  scrollbar-gutter: stable both-edges;
 }
 
 [data-slot='aui_thread-viewport'][data-following='false'],
@@ -1946,8 +1951,8 @@ body.guest-pointer-lock :is(webview, iframe) {
 }
 
 [data-slot='aui_thread-content'] {
-  max-width: var(--composer-width);
-  padding-inline: 1.5rem;
+  max-width: calc(var(--composer-width) + 1rem);
+  padding-inline: 0.5rem;
 }
 
 [data-slot='aui_intro'] {

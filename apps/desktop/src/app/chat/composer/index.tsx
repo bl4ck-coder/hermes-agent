@@ -105,6 +105,7 @@ import { useComposerScope, useComposerSurfaceId } from './scope'
 import { ComposerStatusStack } from './status-stack'
 import { CodingStatusRow } from './status-stack/coding-row'
 import { StatusDrawerContent, StatusDrawerToggle } from './status-stack/drawer'
+import { SubmitRefusalNotice } from './submit-refusal-notice'
 import { SuggestionPills } from './suggestion-pills'
 import { extractClipboardImageBlobs, openDirectiveScope } from './text-utils'
 import { ComposerTriggerPopover } from './trigger-popover'
@@ -415,7 +416,7 @@ export function ChatBar({
 
   // The submit engine — the orchestration seam where draft + queue meet. Owns
   // the submit decision tree, the send-with-restore primitive, and steer.
-  const { queueDraft, steerDraft, submitDraft } = useComposerSubmit({
+  const { dismissRefusal, queueDraft, refusal, steerDraft, submitDraft } = useComposerSubmit({
     busyInputMode,
     activeQueueSessionKey,
     activeQueueSessionKeyRef,
@@ -1492,6 +1493,7 @@ export function ChatBar({
                     onUndone={clearDraft}
                     readLiveText={syncDraftFromEditor}
                   />
+                  <SubmitRefusalNotice onDismiss={dismissRefusal} refusal={refusal} />
                   <VoiceActivity state={voiceActivityState} />
                   <VoicePlaybackActivity />
                   {queueEdit && editingQueuedPrompt && <QueuedEditBanner onExit={exitQueuedEdit} />}
