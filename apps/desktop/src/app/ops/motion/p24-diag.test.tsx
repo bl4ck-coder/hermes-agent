@@ -38,7 +38,7 @@ describe('P24 Diagnostics error grouping', () => {
     expect(opsErrors()[0].message).toBe('502: latest failure')
     render(<DiagnosticsPanel get={() => Promise.resolve({})} policySource="file" />)
     const row = document.querySelector('[data-ops-error-group]')!
-    expect(row.textContent).toContain('502: latest failure')
+    expect(row.textContent).toContain('Bad gateway (502): latest failure')
     expect(row.textContent).not.toContain('first failure')
     expect(row.querySelector('[data-ops-error-repeat]')?.textContent).toContain('2')
   })

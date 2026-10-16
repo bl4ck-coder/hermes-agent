@@ -1,5 +1,6 @@
 // P25 (judge pass 19 #5): Office decisions are compact. 'More actions' sits on the primary action's line (no second
 // near-empty band); the expansion is one intent per line; each refusal stays beside its own intent, notes kept.
+// P26: the refusal line reads the status meaning before the server reason ('Conflict (409): …').
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -60,11 +61,11 @@ describe('P25 Office compact decision row', () => {
 
     fireEvent.change(changesInput, { target: { value: 'Split the commit' } })
     fireEvent.click(changes.querySelector('[data-ops-request-changes]')!)
-    await waitFor(() => expect(changes.querySelector('[role="alert"]')?.textContent).toBe('409: task moved'))
+    await waitFor(() => expect(changes.querySelector('[role="alert"]')?.textContent).toBe('Conflict (409): task moved'))
 
     fireEvent.change(commentInput, { target: { value: 'Ping the owner' } })
     fireEvent.click(comment.querySelector('[data-ops-comment]')!)
-    await waitFor(() => expect(comment.querySelector('[role="alert"]')?.textContent).toBe('403: comments are read-only'))
+    await waitFor(() => expect(comment.querySelector('[role="alert"]')?.textContent).toBe('Refused (403): comments are read-only'))
 
     // Each error sits in its own intent, once; both notes are kept for a retry.
     expect(changes.querySelectorAll('[role="alert"]').length).toBe(1)
@@ -87,7 +88,7 @@ describe('P25 Office compact decision row', () => {
     const actions = rowOf('jsonrpc:a1').querySelector('[data-ops-row-actions]') as HTMLElement
     expect(actions.querySelector('[data-ops-approve]')).toBeTruthy()
     fireEvent.click(actions.querySelector('[data-ops-deny]')!)
-    await waitFor(() => expect(actions.querySelector('[role="alert"]')?.textContent).toBe('410: expired'))
+    await waitFor(() => expect(actions.querySelector('[role="alert"]')?.textContent).toBe('Gone (410): expired'))
     // A single-action row has no empty band below it.
     expect(rowOf('jsonrpc:a1').querySelector('[data-ops-row-more-slot]')).toBeNull()
   })
