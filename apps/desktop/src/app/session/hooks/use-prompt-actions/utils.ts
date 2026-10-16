@@ -292,6 +292,11 @@ export function isDeepTruncateRefusal(error: unknown): boolean {
   return error instanceof JsonRpcGatewayError && error.code === GATEWAY_DEEP_TRUNCATE_REFUSED_CODE
 }
 
+/** The gateway answered the call with a JSON-RPC error: a definite refusal, not a lost or timed-out request. */
+export function isGatewayRefusal(error: unknown): boolean {
+  return error instanceof JsonRpcGatewayError
+}
+
 export function isSessionBusyError(error: unknown): boolean {
   // The shared owner answers its typed reason (`session_busy`), the legacy sidecar prose.
   return /session[ _]busy/i.test(error instanceof Error ? error.message : String(error))

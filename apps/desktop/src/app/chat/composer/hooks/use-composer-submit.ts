@@ -1,5 +1,5 @@
 import { SLASH_COMMAND_RE } from '@hermes/shared'
-import { type RefObject, useLayoutEffect, useRef } from 'react'
+import { type RefObject, useLayoutEffect, useRef, useState } from 'react'
 
 import { usePaneVisible } from '@/components/pane-shell/pane-visibility'
 import { translateNow, useI18n } from '@/i18n'
@@ -17,6 +17,7 @@ import {
 import { type ComposerDraftRetry, draftRetry } from '@/store/composer-draft-retry'
 import { resetBrowseState } from '@/store/composer-input-history'
 import { enqueueQueuedPrompt, type QueuedPromptEntry, serverOwnsComposerQueue } from '@/store/composer-queue'
+import { takeSubmitRefusal } from '@/store/composer-refusal'
 import { hasConnectionRequest, skipConnectionRequest } from '@/store/connection-request'
 import { notify } from '@/store/notifications'
 import { answerParkedCard, skipParkedCards, yieldParkedCardsToMessage } from '@/store/parked-card-answers'
@@ -28,6 +29,13 @@ import { pathifyRefs } from '../path-refs'
 import { composerPlainText } from '../rich-editor'
 import { useComposerScope, useComposerSurfaceId } from '../scope'
 import type { ChatBarProps } from '../types'
+
+/** P27: the gateway's refusal of the last send, shown beside this composer while it shows the same draft scope. */
+export interface ComposerSubmitRefusal {
+  error: unknown
+  /** activeQueueSessionKey when the draft came back; another scope in view hides it. */
+  scope: string | null
+}
 
 interface UseComposerSubmitArgs {
   activeQueueSessionKey: string | null
@@ -103,6 +111,7 @@ export function useComposerSubmit({
   const surfaceId = useComposerSurfaceId()
   const { t } = useI18n()
   const copy = t.desktop
+  const [refusal, setRefusal] = useState<ComposerSubmitRefusal | null>(null)
 
   // Shared send primitive: fire onSubmit, and if the gateway rejects (accepted
   // === false) or throws, re-stash the draft so the words survive. Repaint it
@@ -140,14 +149,22 @@ export function useComposerSubmit({
     // (the explicit retry), else a new one. Equal text never inherits an identity, so a new
     // message that repeats an uncertain send, in this pane or another, is its own turn.
     const submissionId = target?.submission_id ?? crypto.randomUUID()
+    // A new send replaces the last refusal: its outcome is what the composer says next.
+    setRefusal(null)
 
     const restore = () => {
+      // P27 (judge pass 21 #5): the gateway's reason for refusing this send, if it gave one.
+      const refused = takeSubmitRefusal(submissionId)
       stashAt(restoreScope, text, submittedAttachments)
       // Restored with its identity: Enter on this exact draft retries the same send.
       rememberDraftRetry?.(restoreScope, draftRetry(submissionId, text, submittedAttachments))
 
       if ((isFreshDraftScope(draftScopeRef.current) ? null : draftScopeRef.current) === restoreScope) {
         loadIntoComposer(text, submittedAttachments)
+
+        if (refused) {
+          setRefusal({ error: refused.error, scope: activeQueueSessionKeyRef.current })
+        }
       }
     }
 
@@ -513,5 +530,7 @@ export function useComposerSubmit({
     focusInput()
   }
 
-  return { dispatchSubmit, queueDraft, steerDraft, submitDraft }
+  const shownRefusal = refusal && refusal.scope === activeQueueSessionKey ? refusal : null
+
+  return { dismissRefusal: () => setRefusal(null), dispatchSubmit, queueDraft, refusal: shownRefusal, steerDraft, submitDraft }
 }
