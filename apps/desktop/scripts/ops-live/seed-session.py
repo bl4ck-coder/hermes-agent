@@ -3,6 +3,8 @@ hard.mjs, so the chat hard state can open an EXISTING session (resumed through t
 and have only its prompt.submit refused.
 
 Usage: python seed-session.py <session_id> <title> <turns> <last_marker>
+       python seed-session.py --delete <session_id>   (the state's cleanup: the sandbox goes back to no session, so
+                                                       the empty Sessions/Artifacts states of the next run stay empty)
   HERMES_HOME must be set and must not be the real Hermes home (%LOCALAPPDATA%/hermes or under it).
 Idempotent: an existing session with at least 2*turns messages is left as it is.
 Prints one JSON line: {"session_id", "messages", "created"}.
@@ -16,10 +18,14 @@ from pathlib import Path
 
 
 def main() -> int:
-    if len(sys.argv) != 5:
+    delete = len(sys.argv) == 3 and sys.argv[1] == '--delete'
+    if len(sys.argv) != 5 and not delete:
         print(__doc__, file=sys.stderr)
         return 2
-    sid, title, turns, last_marker = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+    if delete:
+        sid, title, turns, last_marker = sys.argv[2], '', 0, ''
+    else:
+        sid, title, turns, last_marker = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
     home = os.environ.get('HERMES_HOME', '')
     real = Path(os.environ.get('LOCALAPPDATA', '~')).expanduser() / 'hermes'
     if not home:
@@ -36,6 +42,11 @@ def main() -> int:
     from hermes_state import SessionDB
 
     db = SessionDB()
+    if delete:
+        gone = bool(db.get_session(sid)) and db.delete_session(sid)
+        print(json.dumps({'session_id': sid, 'deleted': bool(gone), 'remaining': bool(db.get_session(sid))}))
+        db.close()
+        return 0
     existing = db.get_session(sid)
     if existing:
         have = len(db.get_messages(sid))

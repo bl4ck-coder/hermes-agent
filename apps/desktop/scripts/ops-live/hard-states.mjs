@@ -1529,7 +1529,9 @@ export default async function ({ page, app, go, goApp, lens, state, control, eva
       },
       // Negative: the same session, the draft typed but never sent: nothing intercepted, nothing refused.
       neg: { act: submitAct(w, false), fails: ['prompt-submit-intercepted', 'error-beside-composer'] },
-      after: async () => { gateway.setRules([]); await narrow(1600); await reload(); await goApp('/') }
+      // The seeded session is deleted again: the sandbox home persists across runs, and the empty Sessions/Artifacts
+      // states (earlier in the next run) must not find it.
+      after: async () => { gateway.setRules([]); await narrow(1600); await goApp('/'); await sleep(1500); runPython([`${harness.scripts}/seed-session.py`, '--delete', LONG_SID]); await reload() }
     })
   }
 
