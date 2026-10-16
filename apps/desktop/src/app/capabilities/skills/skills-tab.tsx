@@ -262,6 +262,7 @@ export function SkillsTab({ onRefresh, profile, query, skills }: SkillsTabProps)
       ) : (
         <MasterDetail pane={skillEditorPane} resizeId="capabilities-split" split="wide">
           <ListColumn
+            current={activeOfficial?.name ?? activeSkill?.name ?? null}
             header={
               <ListStrip
                 left={<SortButton desc={skillsSortDesc} onFlip={() => $skillsSortDesc.set(!$skillsSortDesc.get())} />}
