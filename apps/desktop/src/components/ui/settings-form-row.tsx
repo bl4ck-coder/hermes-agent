@@ -1,6 +1,6 @@
 ﻿/**
  * P17 (judge consult): one settings form row for App Settings and Ops Settings.
- * label → control → help → error → save status, in that order. Wide panels: label left, everything else in one
+ * label → control → help → error → recovery actions → save status, in that order. Wide panels: label left, everything else in one
  * start-aligned column. Narrow panels (by container, not window): stacked. Slots only, with no API or persistence knowledge.
  */
 import type { ReactNode } from 'react'
@@ -9,11 +9,24 @@ export function settingsRowIds(id: string) {
   return { label: `${id}-label`, help: `${id}-help`, error: `${id}-error` }
 }
 
+/** P25: the control side of a row: its id, its label, and help/error described while present; invalid while refused. */
+export function settingsControlProps(id: string, { help, error }: { help?: boolean; error?: boolean }) {
+  const ids = settingsRowIds(id)
+
+  return {
+    id,
+    'aria-labelledby': ids.label,
+    'aria-describedby': [help ? ids.help : null, error ? ids.error : null].filter(Boolean).join(' ') || undefined,
+    'aria-invalid': error ? true : undefined
+  }
+}
+
 export function SettingsFormRow({
   id,
   label,
   help,
   error,
+  actions,
   status,
   children,
   wide
@@ -23,6 +36,8 @@ export function SettingsFormRow({
   label: ReactNode
   help?: ReactNode
   error?: ReactNode
+  /** P25: recovery for a refused save (Retry, Revert), under the error in the same control column. */
+  actions?: ReactNode
   /** Save state next to the field ("Saved automatically", "Saving…", result). */
   status?: ReactNode
   children: ReactNode
@@ -48,6 +63,7 @@ export function SettingsFormRow({
             {error}
           </p>
         ) : null}
+        {actions ? <div data-sfr-actions="">{actions}</div> : null}
         {status ? (
           <p aria-live="polite" data-sfr-status="">
             {status}

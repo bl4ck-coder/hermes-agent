@@ -111,6 +111,7 @@ export function MotionReadout({ mode, onChange, id }: { mode: MotionMode; onChan
 /**
  * P24 (judge pass 18): a preference row is the shared SettingsFormRow (label, control, help, error, status). A refused save
  * keeps the draft in the control and says why beside it, with Retry (this preference only) and Revert (back to what is saved).
+ * P25 (pass 19 #3): the recovery is the row's actions slot (after the error), the same anatomy App Settings uses.
  */
 function PrefRow({
   id,
@@ -134,21 +135,19 @@ function PrefRow({
 }) {
   return (
     <SettingsFormRow
-      error={
+      actions={
         error === undefined ? undefined : (
-          <>
-            {T('Not saved:')} {error || T('reason not recorded')}
-            <span data-ops-pref-recover="">
-              <button data-ops-pref-retry="" onClick={onRetry} type="button">
-                {T('Retry')}
-              </button>
-              <button data-ops-pref-revert="" onClick={onRevert} type="button">
-                {T('Revert to saved value')}
-              </button>
-            </span>
-          </>
+          <span data-ops-pref-recover="">
+            <button data-ops-pref-retry="" onClick={onRetry} type="button">
+              {T('Retry')}
+            </button>
+            <button data-ops-pref-revert="" onClick={onRevert} type="button">
+              {T('Revert to saved value')}
+            </button>
+          </span>
         )
       }
+      error={error === undefined ? undefined : `${T('Not saved:')} ${error || T('reason not recorded')}`}
       help={help}
       id={id}
       label={label}

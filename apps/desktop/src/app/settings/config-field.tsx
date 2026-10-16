@@ -2,8 +2,11 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { settingsControlProps, SettingsFormRow } from '@/components/ui/settings-form-row'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useI18n } from '@/i18n'
+import { triggerHaptic } from '@/lib/haptics'
 import { prettyName } from '@/lib/text'
 import { cn } from '@/lib/utils'
 import type { ConfigFieldSchema } from '@/types/hermes'
@@ -12,7 +15,6 @@ import { ComboboxInput } from './combobox-input'
 import { CONTROL_TEXT, EMPTY_SELECT_VALUE, FIELD_DESCRIPTIONS, FIELD_LABELS, FREE_INPUT_KEYS } from './constants'
 import { FallbackModelsField } from './fallback-models-field'
 import { fieldCopyForSchemaKey } from './field-copy'
-import { ListRow, ToggleRow } from './primitives'
 import { SearchableSelect } from './searchable-select'
 
 export function parseListFieldDraft(raw: string): string[] {
@@ -29,6 +31,10 @@ export function parseListFieldDraft(raw: string): string[] {
  * (Input + datalist) for FREE_INPUT_KEYS voice/model names, and Input/Textarea
  * for the rest. Shared by the Settings config sections and the Capabilities
  * TTS provider panel so both surfaces render identical fields.
+ *
+ * P25 (judge pass 19 #3): the row is the shared SettingsFormRow, the same anatomy as Ops Settings: label, then in the
+ * control column control → help → error (with its reason) → recovery actions → save status. `error`, `actions` and
+ * `status` belong to this field only; the control is described by its help and error and marked invalid while refused.
  */
 export function ConfigField({
   schemaKey,
@@ -37,7 +43,10 @@ export function ConfigField({
   enumOptions,
   optionLabels,
   onChange,
-  descriptionExtra
+  descriptionExtra,
+  error,
+  actions,
+  status
 }: {
   schemaKey: string
   schema: ConfigFieldSchema
@@ -46,6 +55,12 @@ export function ConfigField({
   optionLabels?: Record<string, string>
   onChange: (value: unknown) => void
   descriptionExtra?: ReactNode
+  /** A refused save for this field, with its reason. */
+  error?: ReactNode
+  /** Recovery for that refused save (Retry, Revert), under the error. */
+  actions?: ReactNode
+  /** Save state for this field ("Saving…"). */
+  status?: ReactNode
 }) {
   const { t } = useI18n()
   const c = t.settings.config
@@ -89,21 +104,23 @@ export function ConfigField({
   // the section for an nth-child path. See lib/tour.
   const dataTour = `field-${schemaKey}`
 
-  const row = (action: ReactNode) => (
-    <ListRow action={action} data-tour={dataTour} description={descriptionNode} title={label} />
+  // One id per field: the label names the control; help and error describe it.
+  const fieldId = `config-field-${schemaKey.replace(/[^\w-]/g, '-')}`
+  const a11y = settingsControlProps(fieldId, { help: Boolean(descriptionNode), error: Boolean(error) })
+
+  // The wrapper is its own container (narrow panes stack by their width) and keeps the tour handle.
+  const formRow = (control: ReactNode, wide = false) => (
+    <div data-settings-form-rows="" data-settings-row="" data-tour={dataTour}>
+      <SettingsFormRow actions={actions} error={error} help={descriptionNode} id={fieldId} label={label} status={status} wide={wide}>
+        {control}
+      </SettingsFormRow>
+    </div>
   )
 
-  // Editors too big for the control column (textareas, structured lists) take
-  // the full width under the description.
-  const wideRow = (editor: ReactNode) => (
-    <ListRow
-      below={<div className="mt-3">{editor}</div>}
-      data-tour={dataTour}
-      description={descriptionNode}
-      title={label}
-      wide
-    />
-  )
+  const row = (control: ReactNode) => formRow(control)
+
+  // Editors too big for a field-width control (textareas, structured lists) take the whole control column.
+  const wideRow = (editor: ReactNode) => formRow(editor, true)
 
   // `fallback_providers` is a list of {provider, model} objects; the generic
   // `list` branch below would stringify them to "[object Object]". Render the
@@ -113,13 +130,14 @@ export function ConfigField({
   }
 
   if (schema.type === 'boolean') {
-    return (
-      <ToggleRow
+    return row(
+      <Switch
+        {...a11y}
         checked={Boolean(value)}
-        data-tour={dataTour}
-        description={descriptionNode}
-        label={label}
-        onChange={onChange}
+        onCheckedChange={on => {
+          triggerHaptic('selection')
+          onChange(on)
+        }}
       />
     )
   }
@@ -133,6 +151,7 @@ export function ConfigField({
   if (selectOptions && schema.searchable) {
     return row(
       <SearchableSelect
+        {...a11y}
         clearLabel={schema.clearable ? c.systemDefault : undefined}
         emptyMessage={c.noResults}
         onChange={next => onChange(next)}
@@ -151,6 +170,7 @@ export function ConfigField({
   if (selectOptions && FREE_INPUT_KEYS.has(schemaKey)) {
     return row(
       <ComboboxInput
+        {...a11y}
         className={CONTROL_TEXT}
         onChange={onChange}
         optionLabels={optionLabels}
@@ -167,7 +187,7 @@ export function ConfigField({
         onValueChange={next => onChange(next === EMPTY_SELECT_VALUE ? '' : next)}
         value={String(value ?? '') || EMPTY_SELECT_VALUE}
       >
-        <SelectTrigger className={CONTROL_TEXT}>
+        <SelectTrigger {...a11y} className={CONTROL_TEXT}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -194,6 +214,7 @@ export function ConfigField({
     return row(
       <div className="relative" data-config-number="">
       <Input
+        {...a11y}
         className={CONTROL_TEXT}
         onChange={e => {
           const raw = e.target.value
@@ -220,12 +241,13 @@ export function ConfigField({
   }
 
   if (schema.type === 'list') {
-    return row(<ListField onChange={onChange} placeholder={c.commaSeparated} value={value} />)
+    return row(<ListField a11y={a11y} onChange={onChange} placeholder={c.commaSeparated} value={value} />)
   }
 
   if (typeof value === 'object' && value !== null) {
     return wideRow(
       <Textarea
+        {...a11y}
         className={cn('min-h-28 resize-y bg-background font-mono', CONTROL_TEXT)}
         onChange={e => {
           try {
@@ -246,6 +268,7 @@ export function ConfigField({
   return isLong
     ? wideRow(
         <Textarea
+          {...a11y}
           className={cn('min-h-24 resize-y bg-background', CONTROL_TEXT)}
           onChange={e => onChange(e.target.value)}
           placeholder={c.notSet}
@@ -254,6 +277,7 @@ export function ConfigField({
       )
     : row(
         <Input
+          {...a11y}
           className={CONTROL_TEXT}
           onChange={e => onChange(e.target.value)}
           placeholder={c.notSet}
@@ -263,10 +287,12 @@ export function ConfigField({
 }
 
 function ListField({
+  a11y,
   value,
   onChange,
   placeholder
 }: {
+  a11y?: ReturnType<typeof settingsControlProps>
   value: unknown
   onChange: (value: unknown) => void
   placeholder: string
@@ -289,6 +315,7 @@ function ListField({
 
   return (
     <Input
+      {...a11y}
       className={CONTROL_TEXT}
       onBlur={() => {
         focusedRef.current = false

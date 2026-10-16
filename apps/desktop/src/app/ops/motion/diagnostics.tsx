@@ -85,15 +85,19 @@ export function DiagnosticsPanel({
   const total = results?.length ?? 0
   const failing = results ? results.filter(r => r.state !== 'ok') : []
   const passing = results ? results.filter(r => r.state === 'ok') : []
-  const tone = !results ? 'idle' : failing.length === 0 && errors.length === 0 ? 'good' : 'warn'
+  // P25 (pass 19 #2): the verdict is the PRESENT probe only. The error ring is history: listed below, never the headline.
+  const tone = !results ? 'idle' : failing.length === 0 ? 'good' : 'warn'
 
   // P7/P24: confirmed state, then the next action, then the probe result and error evidence. Details and the raw log fold away, last.
   return (
     <div data-ops-diagnostics="">
       <header data-ops-diag-hero={tone}>
         <h3 data-ops-diag-state="">
-          {!results ? T('Not probed yet') : tone === 'good' ? T('All systems go') : T('Some capabilities need attention')}
+          {!results ? T('Not probed yet') : tone === 'good' ? T('All capabilities available') : T('Some capabilities need attention')}
         </h3>
+        {!results ? (
+          <p data-ops-diag-unprobed="">{T('Run the probe to see what works now. Errors listed below are earlier failures, not the current state.')}</p>
+        ) : null}
         <p data-ops-diag-summary="">
           {results ? `${ok}/${total} ${T('available')} · ` : ''}
           {T('Recent errors')} {errors.length} · {stream.mode}

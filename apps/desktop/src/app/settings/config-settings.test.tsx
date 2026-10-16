@@ -108,7 +108,7 @@ describe('ConfigSettings autosave', () => {
       toggle.click()
       await vi.advanceTimersByTimeAsync(700)
       await vi.waitFor(() => expect(document.querySelector('[data-settings-field-error="checkpoints.enabled"]')).not.toBeNull())
-      expect(document.querySelector('[data-settings-field-error="checkpoints.enabled"]')?.getAttribute('role')).toBe('alert')
+      expect(document.querySelector('[data-settings-field-error="checkpoints.enabled"]')?.closest('[role="alert"]')).not.toBeNull()
       expect((await screen.findByRole('switch')).getAttribute('aria-checked')).toBe('true')
       // P20d: recovery in place. Revert puts the on-disk value back in the control.
       expect(document.querySelector('[data-settings-field-retry="checkpoints.enabled"]')).not.toBeNull()
@@ -230,6 +230,76 @@ describe('ConfigSettings autosave', () => {
       for (const sel of ['[data-settings-field-retry]', '[data-settings-field-revert]']) {
         expect(document.querySelector(sel)?.className).toMatch(/\bmin-h-10\b/)
       }
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // P25 (judge pass 19 #3): App Settings fields share the SettingsFormRow anatomy with Ops Settings, also when failing:
+  // control -> help -> error (with reason) -> recovery actions, all in the field's own control column.
+  it('P25: two rejected fields: each error and its Retry/Revert sit in its own row control column, after the control', async () => {
+    getHermesConfigRecord.mockResolvedValue({ checkpoints: { enabled: false }, security: { redact_secrets: false } })
+    saveHermesConfig.mockRejectedValue(new Error('disk is read-only'))
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+
+    try {
+      renderConfigSettings()
+      await screen.findAllByRole('switch')
+      fieldSwitch('checkpoints.enabled').click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('checkpoints.enabled')).not.toBeNull())
+      fieldSwitch('security.redact_secrets').click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('security.redact_secrets')).not.toBeNull())
+
+      for (const key of ['checkpoints.enabled', 'security.redact_secrets']) {
+        const row = document.getElementById(`setting-field-${key}`)!.querySelector('[data-settings-form-row]') as HTMLElement
+        expect(row, key).not.toBeNull()
+        const body = row.querySelector('[data-sfr-body]')!
+        const control = body.querySelector('[data-sfr-control] [role="switch"]') as HTMLElement
+        const error = fieldError(key)!
+        const retry = row.querySelector(`[data-settings-field-retry="${key}"]`)!
+        const revert = row.querySelector(`[data-settings-field-revert="${key}"]`)!
+        expect(control, key).not.toBeNull()
+
+        // In the control column, not stacked under the label.
+        for (const el of [error, retry, revert]) {
+          expect(body.contains(el), key).toBe(true)
+          expect(row.querySelector('[data-sfr-label]')!.contains(el), key).toBe(false)
+        }
+
+        expect(error.closest('[data-sfr-error]')?.getAttribute('role')).toBe('alert')
+        expect(error.textContent).toContain('disk is read-only')
+        expect(retry.closest('[data-sfr-actions]')).not.toBeNull()
+        expect(revert.closest('[data-sfr-actions]')).not.toBeNull()
+        // Reading order: control -> error -> actions.
+        const after = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(after(control, error), key).toBe(true)
+        expect(after(error, retry), key).toBe(true)
+        expect(after(retry, revert), key).toBe(true)
+        // The control points at its error and is marked invalid; the label names it.
+        expect(control.getAttribute('aria-invalid')).toBe('true')
+        expect(control.getAttribute('aria-describedby')?.split(' ')).toContain(error.closest('[data-sfr-error]')!.id)
+        expect(row.querySelector('[data-sfr-label]')?.getAttribute('for')).toBe(control.id)
+      }
+
+      // Retry on one sends only its key.
+      const calls = saveHermesConfig.mock.calls.length
+      saveHermesConfig.mockResolvedValue({ ok: true })
+      ;(document.querySelector('[data-settings-field-retry="security.redact_secrets"]') as HTMLButtonElement).click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('security.redact_secrets')).toBeNull())
+      expect(saveHermesConfig).toHaveBeenCalledTimes(calls + 1)
+      expect(saveHermesConfig.mock.calls[calls][0]).toEqual({ security: { redact_secrets: true } })
+      expect(fieldSwitch('security.redact_secrets').getAttribute('aria-invalid')).toBeNull()
+
+      // Revert on the other sends nothing and clears its error.
+      ;(document.querySelector('[data-settings-field-revert="checkpoints.enabled"]') as HTMLButtonElement).click()
+      await vi.advanceTimersByTimeAsync(700)
+      await vi.waitFor(() => expect(fieldError('checkpoints.enabled')).toBeNull())
+      expect(saveHermesConfig).toHaveBeenCalledTimes(calls + 1)
+      expect(fieldSwitch('checkpoints.enabled').getAttribute('aria-checked')).toBe('false')
+      expect(document.getElementById('setting-field-checkpoints.enabled')!.querySelector('[data-sfr-actions]')).toBeNull()
     } finally {
       vi.useRealTimers()
     }

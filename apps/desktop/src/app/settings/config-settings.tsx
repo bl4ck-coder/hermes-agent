@@ -562,49 +562,53 @@ function ConfigSettingsInner({
           {visibleFields.map(([key, field]) => (
             <div className="scroll-mt-6 rounded-lg" id={`setting-field-${key}`} key={key}>
               <ConfigField
+                actions={
+                  fieldSave[key] === 'failed' ? (
+                    <>
+                      {/* P20d/P24: recover in place. Retry resends this field alone; Revert restores what is on disk and clears this error. */}
+                      <button
+                        className="min-h-10 min-w-10 px-2 underline"
+                        data-settings-field-retry={key}
+                        onClick={() => enqueueSave(saveVersionRef.current, key)}
+                        type="button"
+                      >
+                        {t.common.retry}
+                      </button>
+                      <button
+                        className="min-h-10 min-w-10 px-2 underline"
+                        data-settings-field-revert={key}
+                        onClick={() => revertField(key)}
+                        type="button"
+                      >
+                        {c.autosaveRevert}
+                      </button>
+                    </>
+                  ) : undefined
+                }
                 descriptionExtra={
-                  <>
-                    {key === 'memory.provider' && isExternalMemoryProvider(getNested(config, key)) ? (
-                      <MemoryConnect profile={scopeProfile} provider={String(getNested(config, key))} />
-                    ) : null}
-                    {fieldSave[key] === 'failed' ? (
-                      <span className="mt-1 block text-(--destructive)" data-settings-field-error={key} role="alert">
-                        {c.autosaveFailed}
-                        {fieldReason[key] ? `: ${fieldReason[key]}` : ''}{' '}
-                        {/* P20d/P24: recover in place. Retry resends this field alone; Revert restores what is on disk and clears this error. */}
-                        <button
-                          className="min-h-10 min-w-10 px-2 underline"
-                          data-settings-field-retry={key}
-                          onClick={() => enqueueSave(saveVersionRef.current, key)}
-                          type="button"
-                        >
-                          {t.common.retry}
-                        </button>{' '}
-                        <button
-                          className="min-h-10 min-w-10 px-2 underline"
-                          data-settings-field-revert={key}
-                          onClick={() => revertField(key)}
-                          type="button"
-                        >
-                          {c.autosaveRevert}
-                        </button>
-                      </span>
-                    ) : fieldSave[key] === 'saving' ? (
-                      <span aria-live="polite" className="mt-1 block" data-settings-field-status={key}>
-                        {t.common.saving}
-                      </span>
-                    ) : null}
-                  </>
+                  key === 'memory.provider' && isExternalMemoryProvider(getNested(config, key)) ? (
+                    <MemoryConnect profile={scopeProfile} provider={String(getNested(config, key))} />
+                  ) : undefined
                 }
                 enumOptions={
                   key === 'tts.elevenlabs.voice_id'
                     ? enumOptionsFor(key, getNested(config, key), config, elevenLabsVoiceOptions ?? undefined)
                     : enumOptionsFor(key, getNested(config, key), config)
                 }
+                error={
+                  fieldSave[key] === 'failed' ? (
+                    // P25 (judge pass 19 #3): the refusal and its reason sit under this field's control, not under its label.
+                    <span data-settings-field-error={key}>
+                      {c.autosaveFailed}
+                      {fieldReason[key] ? `: ${fieldReason[key]}` : ''}
+                    </span>
+                  ) : undefined
+                }
                 onChange={value => updateConfig(setNested(config, key, value))}
                 optionLabels={key === 'tts.elevenlabs.voice_id' ? elevenLabsVoiceLabels : undefined}
                 schema={field}
                 schemaKey={key}
+                status={fieldSave[key] === 'saving' ? <span data-settings-field-status={key}>{t.common.saving}</span> : undefined}
                 value={getNested(config, key)}
               />
               {key === 'memory.provider' && isExternalMemoryProvider(getNested(config, key)) ? (

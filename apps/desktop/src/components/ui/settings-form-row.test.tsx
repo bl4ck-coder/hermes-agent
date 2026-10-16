@@ -5,7 +5,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 
-import { SettingsFormGroup, SettingsFormRow } from './settings-form-row'
+import { settingsControlProps, SettingsFormGroup, SettingsFormRow } from './settings-form-row'
 
 const css = readFileSync(join(__dirname, '..', '..', 'styles', 'hierarchy.css'), 'utf8')
 
@@ -26,6 +26,30 @@ describe('P17 SettingsFormRow', () => {
     const order = [...container.querySelectorAll('[data-sfr-label],[data-sfr-control],[data-sfr-help],[data-sfr-error],[data-sfr-status]')].map(n => [...n.attributes].find(a => a.name.startsWith('data-sfr'))!.name)
     expect(order).toEqual(['data-sfr-label', 'data-sfr-control', 'data-sfr-help', 'data-sfr-error', 'data-sfr-status'])
     expect(container.querySelector('[data-settings-form-group-title]')?.id).toBe('g-title')
+  })
+
+  it('P25: recovery actions have their own slot in the control column: control -> help -> error -> actions -> status', () => {
+    const { container } = render(
+      <SettingsFormRow actions={<button type="button">Retry</button>} error="Not saved: disk full" help="Tokens" id="ctx" label="Context" status="Saving…">
+        <input id="ctx" />
+      </SettingsFormRow>
+    )
+
+    const body = container.querySelector('[data-sfr-body]')!
+    const order = [...body.children].map(n => [...n.attributes].find(a => a.name.startsWith('data-sfr'))!.name)
+    expect(order).toEqual(['data-sfr-control', 'data-sfr-help', 'data-sfr-error', 'data-sfr-actions', 'data-sfr-status'])
+    expect(container.querySelector('[data-sfr-error]')?.textContent).toBe('Not saved: disk full')
+    expect(container.querySelector('[data-sfr-label]')?.contains(screen.getByText('Retry'))).toBe(false)
+  })
+
+  it('P25: settingsControlProps wires id, label, help and error onto the control', () => {
+    expect(settingsControlProps('ctx', { help: true, error: true })).toEqual({
+      id: 'ctx',
+      'aria-labelledby': 'ctx-label',
+      'aria-describedby': 'ctx-help ctx-error',
+      'aria-invalid': true
+    })
+    expect(settingsControlProps('ctx', {})).toEqual({ id: 'ctx', 'aria-labelledby': 'ctx-label', 'aria-describedby': undefined, 'aria-invalid': undefined })
   })
 
   it('keyboard: focusable controls follow row order (no tabindex reordering) and each label resolves to its control', () => {
