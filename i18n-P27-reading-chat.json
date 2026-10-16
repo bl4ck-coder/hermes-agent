@@ -1,0 +1,32 @@
+{
+  "Not sent": {
+    "es": "No enviado",
+    "fr": "Non envoyé",
+    "de": "Nicht gesendet",
+    "ru": "Не отправлено",
+    "ja": "未送信",
+    "zh": "未发送",
+    "zh-hant": "未傳送",
+    "ar": "لم يُرسَل"
+  },
+  "Show list": {
+    "es": "Mostrar lista",
+    "fr": "Afficher la liste",
+    "de": "Liste anzeigen",
+    "ru": "Показать список",
+    "ja": "リストを表示",
+    "zh": "显示列表",
+    "zh-hant": "顯示清單",
+    "ar": "إظهار القائمة"
+  },
+  "Hide list": {
+    "es": "Ocultar lista",
+    "fr": "Masquer la liste",
+    "de": "Liste ausblenden",
+    "ru": "Скрыть список",
+    "ja": "リストを隠す",
+    "zh": "隐藏列表",
+    "zh-hant": "隱藏清單",
+    "ar": "إخفاء القائمة"
+  }
+}
