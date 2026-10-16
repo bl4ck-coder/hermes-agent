@@ -2,6 +2,8 @@
 
 export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
   "es": {
+     "All capabilities available": "Todas las capacidades disponibles",
+     "Run the probe to see what works now. Errors listed below are earlier failures, not the current state.": "Ejecuta la comprobación para ver qué funciona ahora. Los errores de abajo son fallos anteriores, no el estado actual.",
      "Connecting, board not updated": "Conectando, tablero sin actualizar",
      "Polling, board not updated": "Consultando periódicamente, tablero sin actualizar",
      "No artifacts match": "Ningún artefacto coincide",
@@ -699,6 +701,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml sin procesar",
   },
   "fr": {
+     "All capabilities available": "Toutes les capacités sont disponibles",
+     "Run the probe to see what works now. Errors listed below are earlier failures, not the current state.": "Lancez la vérification pour voir ce qui fonctionne maintenant. Les erreurs ci-dessous sont des échecs antérieurs, pas l'état actuel.",
      "Connecting, board not updated": "Connexion en cours, tableau non mis à jour",
      "Polling, board not updated": "Interrogation périodique, tableau non mis à jour",
      "No artifacts match": "Aucun artefact ne correspond",
@@ -1395,6 +1399,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "config.yaml brut",
   },
   "de": {
+     "All capabilities available": "Alle Funktionen verfügbar",
+     "Run the probe to see what works now. Errors listed below are earlier failures, not the current state.": "Starte die Prüfung, um zu sehen, was jetzt funktioniert. Die Fehler unten sind frühere Ausfälle, nicht der aktuelle Zustand.",
      "Connecting, board not updated": "Verbindung wird hergestellt, Board nicht aktualisiert",
      "Polling, board not updated": "Periodische Abfrage, Board nicht aktualisiert",
      "No artifacts match": "Keine Artefakte passen",
@@ -2091,6 +2097,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Rohes config.yaml",
   },
   "ru": {
+     "All capabilities available": "Все возможности доступны",
+     "Run the probe to see what works now. Errors listed below are earlier failures, not the current state.": "Запустите проверку, чтобы увидеть, что работает сейчас. Ошибки ниже — прошлые сбои, а не текущее состояние.",
      "Connecting, board not updated": "Подключение, доска не обновлена",
      "Polling, board not updated": "Периодический опрос, доска не обновлена",
      "No artifacts match": "Нет подходящих артефактов",
@@ -2787,6 +2795,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "Исходный config.yaml",
   },
   "ja": {
+     "All capabilities available": "すべての機能が利用可能です",
+     "Run the probe to see what works now. Errors listed below are earlier failures, not the current state.": "プローブを実行して現在の動作状況を確認してください。下のエラーは以前の失敗で、現在の状態ではありません。",
      "Connecting, board not updated": "接続中・ボード未更新",
      "Polling, board not updated": "定期取得中・ボード未更新",
      "No artifacts match": "一致するアーティファクトはありません",
@@ -3483,6 +3493,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "生の config.yaml",
   },
   "zh": {
+     "All capabilities available": "所有功能均可用",
+     "Run the probe to see what works now. Errors listed below are earlier failures, not the current state.": "运行探测以查看当前可用的功能。下方列出的错误是之前的失败，并非当前状态。",
      "Connecting, board not updated": "正在连接，看板未更新",
      "Polling, board not updated": "正在轮询，看板未更新",
      "No artifacts match": "没有匹配的产物",
@@ -4179,6 +4191,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "zh-hant": {
+     "All capabilities available": "所有功能皆可用",
+     "Run the probe to see what works now. Errors listed below are earlier failures, not the current state.": "執行探測以查看目前可用的功能。下方列出的錯誤是先前的失敗，並非目前狀態。",
      "Connecting, board not updated": "正在連線，看板未更新",
      "Polling, board not updated": "正在輪詢，看板未更新",
      "No artifacts match": "沒有符合的產物",
@@ -4875,6 +4889,8 @@ export const MAIN_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Raw config.yaml": "原始 config.yaml",
   },
   "ar": {
+     "All capabilities available": "جميع الإمكانات متاحة",
+     "Run the probe to see what works now. Errors listed below are earlier failures, not the current state.": "شغّل الفحص لمعرفة ما يعمل الآن. الأخطاء المدرجة أدناه إخفاقات سابقة، وليست الحالة الحالية.",
      "Connecting, board not updated": "جارٍ الاتصال، اللوحة غير محدّثة",
      "Polling, board not updated": "استطلاع دوري، اللوحة غير محدّثة",
      "No artifacts match": "لا توجد عناصر مطابقة",
