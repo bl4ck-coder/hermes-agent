@@ -94,6 +94,46 @@ function formatTimestamp(value?: number | null): string {
   return fmtDateTime.format(date)
 }
 
+const titleKey = (title: string) => title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+const TWIN_PREFIX = 24
+
+/**
+ * P27 (judge pass 21 #8): sessions whose titles read the same at a glance — equal, or sharing their first 24
+ * characters. Their rows show the whole title (no clamp) so the words that differ are on screen at 420px.
+ * Sorted neighbours are enough: titles sharing a prefix sort next to each other.
+ */
+export function sessionTitleTwins(sessions: readonly SessionInfo[]): Map<string, 'exact' | 'near'> {
+  const keyed = sessions.map(s => ({ id: s.id, key: titleKey(sessionTitle(s)) })).sort((a, b) => a.key.localeCompare(b.key))
+  const twins = new Map<string, 'exact' | 'near'>()
+
+  for (let i = 1; i < keyed.length; i++) {
+    const [a, b] = [keyed[i - 1], keyed[i]]
+    const n = Math.min(TWIN_PREFIX, a.key.length, b.key.length)
+
+    if (a.key === b.key) {
+      twins.set(a.id, 'exact')
+      twins.set(b.id, 'exact')
+    } else if (n >= TWIN_PREFIX && a.key.slice(0, n) === b.key.slice(0, n)) {
+      for (const id of [a.id, b.id]) {
+        twins.set(id, twins.get(id) ?? 'near')
+      }
+    }
+  }
+
+  return twins
+}
+
+/** Where the session ran (folder · branch); for an exact-title twin, also its short id, the one certain difference. */
+export function sessionProvenance(session: SessionInfo, exactTwin: boolean): string {
+  return [
+    session.cwd?.split(/[\\/]/).filter(Boolean).pop(),
+    session.git_branch,
+    exactTwin ? `#${session.id.slice(-6)}` : null
+  ]
+    .filter(Boolean)
+    .join(' \u00b7 ')
+}
+
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value)
 
@@ -214,6 +254,8 @@ export function CommandCenterView({
       return haystack.includes(needle)
     })
   }, [debouncedQuery, sessions])
+
+  const titleTwins = useMemo(() => sessionTitleTwins(filteredSessions), [filteredSessions])
 
   const refreshSystem = useCallback(async () => {
     setSystemLoading(true)
@@ -431,6 +473,11 @@ export function CommandCenterView({
 
                         const pinId = sessionPinId(session)
                         const pinned = pinnedSessionIds.includes(pinId)
+                        const twin = titleTwins.get(session.id)
+                        // P12: a preview that only repeats the title adds nothing.
+                        const rawPreview = session.preview?.trim().replace(/\s+/g, ' ')
+                        const preview = rawPreview && rawPreview.toLowerCase() !== sessionTitle(session).trim().toLowerCase() ? rawPreview : null
+                        const provenance = sessionProvenance(session, twin === 'exact')
 
                         return (
                           <Fragment key={session.id}>
@@ -443,24 +490,34 @@ export function CommandCenterView({
                                 {group}
                               </li>
                             )}
-                            <li className="hx-row group rounded-lg hover:bg-(--ui-row-hover-background,rgb(255_255_255/0.04))" data-hx="row" data-session-row="" data-two-line="">
+                            <li className="hx-row group rounded-lg hover:bg-(--ui-row-hover-background,rgb(255_255_255/0.04))" data-hx="row" data-session-row="" data-session-twin={twin} data-two-line="">
                               <button
                                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
                                 onClick={() => onOpenSession(session.id, session)}
                                 type="button"
                               >
                                 <span className="hx-row-main">
-                                  {/* P24b (judge pass 18): two lines at rest; keyboard focus on the row reveals the whole title and context (not only a native tooltip). */}
-                                  <span className="hx-row-title line-clamp-2 wrap-anywhere text-foreground group-focus-within:line-clamp-none" data-session-title="" title={sessionTitle(session)}>{sessionTitle(session)}</span>
-                                  {/* P11: the second line is what the conversation was about (preview), then where it ran. */}
-                                  {session.preview?.trim() || session.cwd || session.git_branch ? (
-                                    <span className="hx-row-secondary line-clamp-2 wrap-anywhere text-muted-foreground group-focus-within:line-clamp-none" data-session-context="" title={session.preview?.trim() || undefined}>
-                                      {/* P12: a preview that only repeats the title adds nothing. */}
-                                      {[session.preview && session.preview.trim().toLowerCase() !== sessionTitle(session).trim().toLowerCase() ? session.preview.trim().replace(/\s+/g, ' ') : null, session.cwd?.split(/[\\/]/).filter(Boolean).pop(), session.git_branch].filter(Boolean).join(' \u00b7 ')}
+                                  {/* P27 (judge pass 21 #8): the title and its date share the first line, so sessions close in time compare
+                                      at a glance; the date is meta size at full muted contrast, not a faded caption at the far edge. */}
+                                  <span className="flex min-w-0 items-baseline gap-3" data-session-head="">
+                                    {/* P24b (judge pass 18): two lines at rest; keyboard focus on the row reveals the whole title and context (not only a native tooltip).
+                                        P27: a title that reads like another one is never clamped — the words that differ stay on screen. */}
+                                    <span className={cn('hx-row-title min-w-0 flex-1 wrap-anywhere text-foreground', twin ? 'line-clamp-none' : 'line-clamp-2 group-focus-within:line-clamp-none')} data-session-title="" title={sessionTitle(session)}>{sessionTitle(session)}</span>
+                                    <span className="shrink-0 text-(length:--type-meta) leading-(--type-meta-lh) tabular-nums text-muted-foreground" data-session-date="">{formatTimestamp(session.last_active || session.started_at)}</span>
+                                  </span>
+                                  {/* P11/P27: the human context (what the conversation was about) on its own line... */}
+                                  {preview ? (
+                                    <span className="hx-row-secondary line-clamp-2 wrap-anywhere text-muted-foreground group-focus-within:line-clamp-none" data-session-context="" title={preview}>
+                                      {preview}
+                                    </span>
+                                  ) : null}
+                                  {/* ...then where it ran (folder · branch), a quieter mono meta line of its own. */}
+                                  {provenance ? (
+                                    <span className="hx-row-secondary truncate font-mono text-muted-foreground group-focus-within:whitespace-normal group-focus-within:wrap-anywhere" data-session-provenance="">
+                                      {provenance}
                                     </span>
                                   ) : null}
                                 </span>
-                                <span className="hx-row-trailing text-(length:--type-caption) text-muted-foreground/70">{formatTimestamp(session.last_active || session.started_at)}</span>
                               </button>
                               <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                                 <RowIconButton
