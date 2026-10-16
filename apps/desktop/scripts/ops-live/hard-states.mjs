@@ -128,8 +128,12 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
   await state('office', 'more-actions-open', {
     proves: "A decision row's More actions disclosure opens and shows its body.",
     mocks: base, open: () => open('office'),
-    act: async () => { await open('office'); await tap('[data-ops-approval] [data-ops-row-more-slot] summary') },
-    checks: { 'disclosure-body': ms => see(openBody('[data-ops-approval]'), { ms }) }
+    // P25: More actions is a button on the primary action's line; its slot is hidden until it opens.
+    act: async () => { await open('office'); await tap('[data-ops-approval] [data-ops-row-more-trigger]') },
+    checks: {
+      'trigger-expanded': ms => see('[data-ops-approval] [data-ops-row-actions="with-more"] > [data-ops-row-more-trigger]', { attr: { 'aria-expanded': 'true' }, ms }),
+      'disclosure-body': ms => see('[data-ops-approval] [data-ops-row-more-slot]:not([hidden]) [data-ops-disclosure-body] > *', { ms })
+    }
   })
 
   // Board
@@ -181,8 +185,12 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
   await state('fleet', 'details-open', {
     proves: "A Fleet row's Details disclosure opens and shows the fleet details.",
     mocks: base, open: () => open('agents'),
-    act: async () => { await open('agents'); await tap('[data-ops-fleet-row] [data-ops-row-more-slot] summary') },
-    checks: { 'details-body': ms => see('[data-ops-fleet-row] details[open] [data-ops-fleet-details]', { ms }) }
+    // P25: Details is a button beside Open profile; the body renders only when it is open.
+    act: async () => { await open('agents'); await tap('[data-ops-fleet-row] [data-ops-fleet-details-toggle]') },
+    checks: {
+      'toggle-expanded': ms => see('[data-ops-fleet-row] [data-ops-fleet-details-toggle]', { attr: { 'aria-expanded': 'true' }, ms }),
+      'details-body': ms => see('[data-ops-fleet-row] [data-ops-fleet-details]', { ms })
+    }
   })
   const teamsTab = async () => { await open('agents'); await tap('[data-ops-agents-tab="teams"]'); await sleep(800) }
   await state('teams', 'work-and-members-open', {
@@ -415,7 +423,12 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
     await openFn()
     const s0 = await reqSeq()
     await mock(refuse ? [{ path: R_T6_COMMENTS, method: 'POST', throw: '409: request changes refused (mock)' }, ...base] : [{ path: R_T6_COMMENTS, method: 'POST', body: { ok: true } }, { path: R_T6, method: 'PATCH', body: { ok: true } }, ...base])
-    await tap(`${ROW_T6} [data-ops-row-more-slot] summary`)
+    // The row's expansion must be open before typing: wait for aria-expanded=true (one re-tap if the first click did not
+    // land). 'expansion-stays-open' below then proves nothing closed it by itself during the flow.
+    const trig = `${ROW_T6} [data-ops-row-more-trigger]`
+    await tap(trig)
+    if (!(await see(trig, { attr: { 'aria-expanded': 'true' }, ms: 3000 }).then(() => true, () => false))) { await sleep(1500); await tap(trig) }
+    await see(trig, { attr: { 'aria-expanded': 'true' }, ms: 5000 })
     await type(`${ROW_T6} input[aria-label="changes for t6"]`, NOTE_R)
     await tap(`${ROW_T6} [data-ops-request-changes]`)
     await sleep(2000)
@@ -437,6 +450,7 @@ export default async function ({ page, go, goApp, lens, state, control, evalStat
       return 'each refusal only beside its own intent'
     },
     'notes-kept': ms => see(`${ROW_T6} input[aria-label="changes for t6"]`, { value: NOTE_R, ms }).then(a => see(`${ROW_T6} input[aria-label="comment for t6"]`, { value: NOTE_C, ms }).then(b => `${a}; ${b}`)),
+    'expansion-stays-open': ms => see(`${ROW_T6} [data-ops-row-more-trigger]`, { attr: { 'aria-expanded': 'true' }, ms }),
     'no-approve-sent': ev('writes', ws => {
       const posts = ws.filter(w => w.method === 'POST' && /\/tasks\/t6\/comments$/.test(w.path))
       const bad = ws.filter(w => /\/api\/approvals\/respond/.test(w.path) || (/\/tasks\/t6$/.test(w.path) && w.method === 'PATCH'))
